@@ -43,7 +43,6 @@ interface PremiumPlayerCardProps {
   eligibility?: Eligibility;
   costs?: Costs;
   existingKeeper?: ExistingKeeper | null;
-  onClick?: () => void;
   onAddKeeper?: (playerId: string, type: "FRANCHISE" | "REGULAR") => void;
   onRemoveKeeper?: (keeperId: string) => void;
   isLoading?: boolean;
@@ -61,25 +60,18 @@ const positionColors: Record<string, { bg: string; border: string }> = {
   DEF: { bg: "bg-gray-500/10", border: "border-gray-500" },
 };
 
-function getYearsKeptVariant(yearsKept: number, maxYears: number = 2): "info" | "success" | "warning" | "danger" {
-  if (yearsKept === 0) return "info";
-  if (yearsKept >= maxYears) return "danger";
-  if (yearsKept === maxYears - 1) return "warning";
-  return "success";
-}
-
-function getYearsKeptLabel(yearsKept: number, maxYears: number = 2): string {
+function getYearsKeptLabel(yearsKept: number): string {
   if (yearsKept === 0) return "New";
-  if (yearsKept >= maxYears) return "Max";
-  if (yearsKept === maxYears - 1) return "Final";
-  return `Yr ${yearsKept + 1}`;
+  if (yearsKept === 1) return "Year 1";
+  if (yearsKept === 2) return "Year 2 (Final)";
+  return `Year ${yearsKept}`;
 }
 
 function getAcquisitionLabel(type: string): string {
   switch (type) {
-    case "DRAFTED": return "Draft";
+    case "DRAFTED": return "Drafted";
     case "WAIVER": return "Waiver";
-    case "FREE_AGENT": return "FA";
+    case "FREE_AGENT": return "Free Agent";
     case "TRADE": return "Trade";
     default: return type;
   }
@@ -90,7 +82,6 @@ export function PremiumPlayerCard({
   eligibility,
   costs,
   existingKeeper,
-  onClick,
   onAddKeeper,
   onRemoveKeeper,
   isLoading = false,
@@ -103,113 +94,125 @@ export function PremiumPlayerCard({
   const isEligible = eligibility?.isEligible ?? false;
   const isRookie = player.yearsExp === 0;
 
-  const handleCardClick = () => {
-    if (onClick) onClick();
-  };
-
-  const handleActionClick = (e: React.MouseEvent, action: () => void) => {
-    e.stopPropagation();
-    action();
-  };
-
   return (
     <div
-      onClick={handleCardClick}
       className={`
-        premium-player-card aspect-square border-t-4 ${colors.border} ${colors.bg}
+        premium-player-card border-t-4 ${colors.border} ${colors.bg}
         flex flex-col p-3
-        ${onClick ? "cursor-pointer" : ""}
-        ${!isEligible && !isKeeper ? "opacity-50" : ""}
+        ${!isEligible && !isKeeper ? "opacity-60" : ""}
         ${className}
       `}
     >
-      {/* Top: Avatar + Keeper Badge */}
-      <div className="flex items-start justify-between">
+      {/* Header: Avatar + Name + Badges */}
+      <div className="flex items-start gap-3">
         <PlayerAvatar
           sleeperId={player.sleeperId}
           name={player.fullName}
           size="lg"
         />
-        <div className="flex flex-col items-end gap-1">
-          {isKeeper && (
-            <span
-              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                existingKeeper.type === "FRANCHISE"
-                  ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
-                  : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
-              }`}
-            >
-              {existingKeeper.type === "FRANCHISE" ? "FT" : "K"}
-            </span>
-          )}
-          {player.injuryStatus && <InjuryIndicator status={player.injuryStatus} />}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-bold text-white truncate">{player.fullName}</span>
+            {isRookie && <RookieBadge size="xs" />}
+            {player.injuryStatus && <InjuryIndicator status={player.injuryStatus} />}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+            <PositionBadge position={player.position} size="xs" variant="filled" />
+            <TeamLogo team={player.team || null} size="xs" />
+            <span className="text-[10px] text-gray-400">{player.team || "FA"}</span>
+          </div>
         </div>
-      </div>
-
-      {/* Name + Position */}
-      <div className="mt-2 flex-1">
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-bold text-white truncate">{player.fullName}</span>
-          {isRookie && <RookieBadge size="xs" />}
-        </div>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <PositionBadge position={player.position} size="xs" variant="filled" />
-          <TeamLogo team={player.team || null} size="xs" />
-          <span className="text-[9px] text-gray-500">
-            {player.age}yo • {player.yearsExp || 0}yr
+        {/* Keeper Badge */}
+        {isKeeper && (
+          <span
+            className={`text-[10px] font-bold px-2 py-1 rounded ${
+              existingKeeper.type === "FRANCHISE"
+                ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
+                : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
+            }`}
+          >
+            {existingKeeper.type === "FRANCHISE" ? "FT" : "Keeper"}
           </span>
+        )}
+      </div>
+
+      {/* Player Info Grid */}
+      <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+        <div>
+          <div className="text-[9px] text-gray-500 uppercase">Age</div>
+          <div className="text-xs font-semibold text-white">{player.age || "—"}</div>
+        </div>
+        <div>
+          <div className="text-[9px] text-gray-500 uppercase">Exp</div>
+          <div className="text-xs font-semibold text-white">{player.yearsExp ?? 0}yr</div>
+        </div>
+        <div>
+          <div className="text-[9px] text-gray-500 uppercase">Status</div>
+          <div className={`text-xs font-semibold ${player.injuryStatus ? "text-red-400" : "text-green-400"}`}>
+            {player.injuryStatus || "Active"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[9px] text-gray-500 uppercase">Elig</div>
+          <div className={`text-xs font-semibold ${isEligible || isKeeper ? "text-green-400" : "text-red-400"}`}>
+            {isKeeper ? "Kept" : isEligible ? "Yes" : "No"}
+          </div>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="flex flex-wrap items-center gap-1 mt-2">
-        {isKeeper ? (
-          <>
-            <StatPill value={`R${existingKeeper.finalCost}`} variant="primary" size="sm" />
-            {eligibility && (
-              <StatPill
-                value={getYearsKeptLabel(eligibility.yearsKept)}
-                variant={getYearsKeptVariant(eligibility.yearsKept)}
-                size="sm"
-              />
-            )}
-          </>
-        ) : isEligible && costs ? (
-          <>
-            {costs.regular && (
-              <StatPill value={`R${costs.regular.finalCost}`} variant="primary" size="sm" />
-            )}
-            {eligibility && (
-              <StatPill
-                value={getYearsKeptLabel(eligibility.yearsKept)}
-                variant={getYearsKeptVariant(eligibility.yearsKept)}
-                size="sm"
-              />
-            )}
-            <StatPill value={getAcquisitionLabel(eligibility?.acquisitionType || "")} variant="subtle" size="sm" />
-          </>
-        ) : eligibility?.reason ? (
-          <span className="text-[9px] text-gray-500 italic">{eligibility.reason}</span>
-        ) : null}
-      </div>
+      {/* Keeper Status Section */}
+      {eligibility && (
+        <div className="mt-3 pt-3 border-t border-gray-700/30">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="text-[9px] text-gray-500 uppercase">Years Kept</div>
+              <div className="text-[10px] font-semibold text-white">{getYearsKeptLabel(eligibility.yearsKept)}</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-gray-500 uppercase">Acquired</div>
+              <div className="text-[10px] font-semibold text-white">{getAcquisitionLabel(eligibility.acquisitionType)}</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-gray-500 uppercase">Cost</div>
+              <div className="text-[10px] font-semibold text-purple-400">
+                {isKeeper ? `R${existingKeeper.finalCost}` : costs?.regular ? `R${costs.regular.finalCost}` : "—"}
+              </div>
+            </div>
+          </div>
 
-      {/* Action Buttons - Compact */}
+          {/* Cost Breakdown */}
+          {costs?.regular && !isKeeper && (
+            <div className="mt-2 text-[9px] text-gray-500 text-center">
+              {costs.regular.costBreakdown}
+            </div>
+          )}
+
+          {/* Ineligibility Reason */}
+          {!isEligible && !isKeeper && eligibility.reason && (
+            <div className="mt-2 text-[9px] text-red-400 text-center italic">
+              {eligibility.reason}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action Buttons */}
       {!isKeeper && isEligible && costs && onAddKeeper && (
-        <div className="flex items-center gap-1 mt-auto pt-2 border-t border-gray-700/30">
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-700/30">
           {costs.regular && (
             <button
-              onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "REGULAR"))}
+              onClick={() => onAddKeeper(player.id, "REGULAR")}
               disabled={!canAddRegular || isLoading}
-              className="px-3 py-1 rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
+              className="flex-1 py-1.5 rounded text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
             >
-              {isLoading ? "..." : `R${costs.regular.finalCost}`}
+              {isLoading ? "..." : `Keep as R${costs.regular.finalCost}`}
             </button>
           )}
           {costs.franchise && (
             <button
-              onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "FRANCHISE"))}
+              onClick={() => onAddKeeper(player.id, "FRANCHISE")}
               disabled={!canAddFranchise || isLoading}
-              className="px-2 py-1 rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
+              className="px-3 py-1.5 rounded text-[10px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : "FT"}
             </button>
@@ -219,13 +222,13 @@ export function PremiumPlayerCard({
 
       {/* Remove Keeper Button */}
       {isKeeper && !existingKeeper.isLocked && onRemoveKeeper && (
-        <div className="flex items-center justify-center mt-2 pt-2 border-t border-gray-700/30">
+        <div className="flex items-center justify-center mt-3 pt-3 border-t border-gray-700/30">
           <button
-            onClick={(e) => handleActionClick(e, () => onRemoveKeeper(existingKeeper.id))}
+            onClick={() => onRemoveKeeper(existingKeeper.id)}
             disabled={isLoading}
-            className="text-[9px] text-red-400 hover:text-red-300 font-medium"
+            className="px-4 py-1.5 rounded text-[10px] font-medium bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
           >
-            {isLoading ? "..." : "Remove"}
+            {isLoading ? "Removing..." : "Remove Keeper"}
           </button>
         </div>
       )}

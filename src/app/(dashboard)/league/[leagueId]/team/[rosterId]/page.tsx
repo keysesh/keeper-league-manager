@@ -7,7 +7,6 @@ import useSWR from "swr";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
-import { PlayerModal } from "@/components/players/PlayerModal";
 
 // SWR fetcher
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -84,7 +83,6 @@ export default function TeamRosterPage() {
   const rosterId = params.rosterId as string;
   const { success, error: showError } = useToast();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<EligiblePlayer | null>(null);
 
   // Use SWR for faster data loading with caching
   const { data, error, mutate, isLoading } = useSWR<RosterData>(
@@ -111,7 +109,7 @@ export default function TeamRosterPage() {
       }
 
       success(`${playerName} added as ${type === "FRANCHISE" ? "FT" : "Keeper"}`);
-      mutate(); // Revalidate data - counters will update
+      mutate();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Failed to add keeper");
     } finally {
@@ -133,7 +131,7 @@ export default function TeamRosterPage() {
       }
 
       success(`${playerName} removed`);
-      mutate(); // Revalidate data - counters will update
+      mutate();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Failed to remove keeper");
     } finally {
@@ -147,31 +145,12 @@ export default function TeamRosterPage() {
         <div>
           <Skeleton className="h-4 w-24 mb-2" />
           <Skeleton className="h-8 w-48 mb-1" />
-          <Skeleton className="h-4 w-32" />
         </div>
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+        <div className="bg-gray-800/50 rounded-xl p-4">
           <Skeleton className="h-6 w-32 mb-4" />
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="text-center">
-                <Skeleton className="h-10 w-16 mx-auto mb-2" />
-                <Skeleton className="h-4 w-20 mx-auto" />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <Skeleton className="h-6 w-40 mb-4" />
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 bg-gray-700/50 rounded-lg px-4 py-3">
-                <SkeletonAvatar size="sm" />
-                <div className="flex-1">
-                  <Skeleton className="h-4 w-32 mb-1" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-                <Skeleton className="h-8 w-20" />
-              </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-48 rounded-xl" />
             ))}
           </div>
         </div>
@@ -205,7 +184,7 @@ export default function TeamRosterPage() {
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header - Compact */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <Link
@@ -219,7 +198,7 @@ export default function TeamRosterPage() {
         <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded">{data.season}</span>
       </div>
 
-      {/* Keeper Summary - Inline Stats */}
+      {/* Keeper Summary */}
       <div className="flex items-center gap-4 px-3 py-2 rounded-lg bg-gray-800/40">
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-white">{data.currentKeepers.total}<span className="text-xs text-gray-500">/{data.limits.maxKeepers}</span></span>
@@ -243,14 +222,13 @@ export default function TeamRosterPage() {
           <span className="text-xs font-semibold text-purple-400 uppercase">Current Keepers ({currentKeepers.length})</span>
         </div>
         {currentKeepers.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {currentKeepers.map((p) => (
               <PremiumPlayerCard
                 key={p.player.id}
                 player={p.player}
                 eligibility={p.eligibility}
                 existingKeeper={p.existingKeeper}
-                onClick={() => setSelectedPlayer(p)}
                 onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
                 isLoading={actionLoading === p.existingKeeper?.id}
               />
@@ -275,14 +253,13 @@ export default function TeamRosterPage() {
         </div>
 
         {eligiblePlayers.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {eligiblePlayers.map((p) => (
               <PremiumPlayerCard
                 key={p.player.id}
                 player={p.player}
                 eligibility={p.eligibility}
                 costs={p.costs}
-                onClick={() => setSelectedPlayer(p)}
                 onAddKeeper={(playerId, type) => addKeeper(playerId, type, p.player.fullName)}
                 isLoading={actionLoading === p.player.id}
                 canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
@@ -303,39 +280,17 @@ export default function TeamRosterPage() {
           <summary className="text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-400 mb-3">
             Ineligible ({ineligiblePlayers.length})
           </summary>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {ineligiblePlayers.map((p) => (
               <PremiumPlayerCard
                 key={p.player.id}
                 player={p.player}
                 eligibility={p.eligibility}
-                onClick={() => setSelectedPlayer(p)}
               />
             ))}
           </div>
         </details>
       )}
-
-      {/* Player Modal */}
-      <PlayerModal
-        isOpen={!!selectedPlayer}
-        onClose={() => setSelectedPlayer(null)}
-        player={selectedPlayer?.player || null}
-        eligibility={selectedPlayer?.eligibility}
-        costs={selectedPlayer?.costs}
-        existingKeeper={selectedPlayer?.existingKeeper}
-        onAddKeeper={(playerId, type) => {
-          addKeeper(playerId, type, selectedPlayer?.player.fullName || "");
-          setSelectedPlayer(null);
-        }}
-        onRemoveKeeper={(keeperId) => {
-          removeKeeper(keeperId, selectedPlayer?.player.fullName || "");
-          setSelectedPlayer(null);
-        }}
-        canAddFranchise={data?.canAddMore.any && data?.canAddMore.franchise}
-        canAddRegular={data?.canAddMore.any && data?.canAddMore.regular}
-        isLoading={actionLoading === selectedPlayer?.player.id || actionLoading === selectedPlayer?.existingKeeper?.id}
-      />
     </div>
   );
 }
