@@ -53,12 +53,12 @@ interface PremiumPlayerCardProps {
 }
 
 const positionColors: Record<string, { bg: string; border: string }> = {
-  QB: { bg: "bg-red-500/10", border: "border-l-red-500" },
-  RB: { bg: "bg-green-500/10", border: "border-l-green-500" },
-  WR: { bg: "bg-blue-500/10", border: "border-l-blue-500" },
-  TE: { bg: "bg-orange-500/10", border: "border-l-orange-500" },
-  K: { bg: "bg-purple-500/10", border: "border-l-purple-500" },
-  DEF: { bg: "bg-gray-500/10", border: "border-l-gray-500" },
+  QB: { bg: "bg-red-500/10", border: "border-red-500" },
+  RB: { bg: "bg-green-500/10", border: "border-green-500" },
+  WR: { bg: "bg-blue-500/10", border: "border-blue-500" },
+  TE: { bg: "bg-orange-500/10", border: "border-orange-500" },
+  K: { bg: "bg-purple-500/10", border: "border-purple-500" },
+  DEF: { bg: "bg-gray-500/10", border: "border-gray-500" },
 };
 
 function getYearsKeptVariant(yearsKept: number, maxYears: number = 2): "info" | "success" | "warning" | "danger" {
@@ -116,100 +116,91 @@ export function PremiumPlayerCard({
     <div
       onClick={handleCardClick}
       className={`
-        premium-player-card border-l-4 ${colors.border} ${colors.bg}
+        premium-player-card aspect-square border-t-4 ${colors.border} ${colors.bg}
+        flex flex-col p-3
         ${onClick ? "cursor-pointer" : ""}
         ${!isEligible && !isKeeper ? "opacity-50" : ""}
         ${className}
       `}
     >
-      {/* Header Row */}
-      <div className="flex items-start gap-3">
+      {/* Top: Avatar + Keeper Badge */}
+      <div className="flex items-start justify-between">
         <PlayerAvatar
           sleeperId={player.sleeperId}
           name={player.fullName}
-          size="md"
+          size="lg"
         />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-semibold text-white truncate">
-              {player.fullName}
+        <div className="flex flex-col items-end gap-1">
+          {isKeeper && (
+            <span
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                existingKeeper.type === "FRANCHISE"
+                  ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
+                  : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
+              }`}
+            >
+              {existingKeeper.type === "FRANCHISE" ? "FT" : "K"}
             </span>
-            {isRookie && <RookieBadge size="xs" />}
-            {player.injuryStatus && <InjuryIndicator status={player.injuryStatus} />}
-          </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <PositionBadge position={player.position} size="xs" variant="filled" />
-            <div className="flex items-center gap-1">
-              <TeamLogo team={player.team || null} size="xs" />
-              <span className="text-[10px] text-gray-400">{player.team || "FA"}</span>
-            </div>
-            {player.age && (
-              <span className="text-[10px] text-gray-500">
-                {player.age}yo{player.yearsExp ? `, ${player.yearsExp}yr` : ''}
-              </span>
-            )}
-          </div>
+          )}
+          {player.injuryStatus && <InjuryIndicator status={player.injuryStatus} />}
         </div>
-        {/* Keeper Type Badge */}
-        {isKeeper && (
-          <span
-            className={`text-[10px] font-bold px-2 py-1 rounded ${
-              existingKeeper.type === "FRANCHISE"
-                ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
-                : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
-            }`}
-          >
-            {existingKeeper.type === "FRANCHISE" ? "FT" : "K"}
+      </div>
+
+      {/* Name + Position */}
+      <div className="mt-2 flex-1">
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-bold text-white truncate">{player.fullName}</span>
+          {isRookie && <RookieBadge size="xs" />}
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <PositionBadge position={player.position} size="xs" variant="filled" />
+          <TeamLogo team={player.team || null} size="xs" />
+          <span className="text-[9px] text-gray-500">
+            {player.age}yo • {player.yearsExp || 0}yr
           </span>
-        )}
+        </div>
       </div>
 
       {/* Stats Row */}
-      <div className="flex items-center gap-1.5 mt-3">
+      <div className="flex flex-wrap items-center gap-1 mt-2">
         {isKeeper ? (
           <>
-            <StatPill value={`R${existingKeeper.finalCost}`} variant="primary" />
+            <StatPill value={`R${existingKeeper.finalCost}`} variant="primary" size="sm" />
             {eligibility && (
               <StatPill
                 value={getYearsKeptLabel(eligibility.yearsKept)}
                 variant={getYearsKeptVariant(eligibility.yearsKept)}
+                size="sm"
               />
-            )}
-            {eligibility?.acquisitionType && (
-              <StatPill value={getAcquisitionLabel(eligibility.acquisitionType)} variant="subtle" />
             )}
           </>
         ) : isEligible && costs ? (
           <>
             {costs.regular && (
-              <StatPill
-                value={`R${costs.regular.finalCost}${costs.regular.finalCost > costs.regular.baseCost ? ` (+${costs.regular.finalCost - costs.regular.baseCost})` : ''}`}
-                variant="primary"
-              />
+              <StatPill value={`R${costs.regular.finalCost}`} variant="primary" size="sm" />
             )}
             {eligibility && (
               <StatPill
                 value={getYearsKeptLabel(eligibility.yearsKept)}
                 variant={getYearsKeptVariant(eligibility.yearsKept)}
+                size="sm"
               />
             )}
-            {eligibility?.acquisitionType && (
-              <StatPill value={getAcquisitionLabel(eligibility.acquisitionType)} variant="subtle" />
-            )}
+            <StatPill value={getAcquisitionLabel(eligibility?.acquisitionType || "")} variant="subtle" size="sm" />
           </>
         ) : eligibility?.reason ? (
-          <span className="text-[10px] text-gray-500 italic">{eligibility.reason}</span>
+          <span className="text-[9px] text-gray-500 italic">{eligibility.reason}</span>
         ) : null}
       </div>
 
-      {/* Action Row */}
+      {/* Action Buttons - Square */}
       {!isKeeper && isEligible && costs && onAddKeeper && (
         <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700/30">
           {costs.regular && (
             <button
               onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "REGULAR"))}
               disabled={!canAddRegular || isLoading}
-              className="flex-1 px-1.5 py-1 rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
+              className="flex-1 aspect-[2/1] flex items-center justify-center rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : `R${costs.regular.finalCost}`}
             </button>
@@ -218,7 +209,7 @@ export function PremiumPlayerCard({
             <button
               onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "FRANCHISE"))}
               disabled={!canAddFranchise || isLoading}
-              className="px-2 py-1 rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
+              className="aspect-square h-6 flex items-center justify-center rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : "FT"}
             </button>
@@ -228,7 +219,7 @@ export function PremiumPlayerCard({
 
       {/* Remove Keeper Button */}
       {isKeeper && !existingKeeper.isLocked && onRemoveKeeper && (
-        <div className="flex items-center justify-end mt-2 pt-2 border-t border-gray-700/30">
+        <div className="flex items-center justify-center mt-2 pt-2 border-t border-gray-700/30">
           <button
             onClick={(e) => handleActionClick(e, () => onRemoveKeeper(existingKeeper.id))}
             disabled={isLoading}
