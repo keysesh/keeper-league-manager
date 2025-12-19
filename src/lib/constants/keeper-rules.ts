@@ -14,6 +14,7 @@ export const DEFAULT_KEEPER_RULES = {
   MINIMUM_ROUND: 1,
   COST_REDUCTION_PER_YEAR: 1,
   MAX_DRAFT_ROUNDS: 16,
+  TRADE_DEADLINE_WEEK: 11, // Trades after this week reset keeper value
 } as const;
 
 // Visual indicators for UI
@@ -116,4 +117,73 @@ export function getKeeperDeadlineInfo(): {
       message: `${season} Playoffs - keepers locked`,
     };
   }
+}
+
+/**
+ * Check if a trade date falls after the trade deadline for a given season
+ *
+ * Trade deadline is typically around week 11 (late November)
+ * - Trades BEFORE deadline: keeper value is preserved (original draft round, years kept)
+ * - Trades AFTER deadline (offseason): keeper value resets (undrafted round, 0 years kept)
+ *
+ * @param tradeDate - The date the trade occurred
+ * @param season - The NFL season year (e.g., 2024 for the 2024-2025 season)
+ * @param deadlineWeek - The week number of the trade deadline (default: 11)
+ * @returns true if the trade was after the deadline (value should reset)
+ */
+export function isTradeAfterDeadline(
+  tradeDate: Date,
+  season: number,
+  deadlineWeek: number = DEFAULT_KEEPER_RULES.TRADE_DEADLINE_WEEK
+): boolean {
+  // NFL season typically starts first week of September
+  // Week 1 is usually the first Thursday after Labor Day
+  // We approximate: Season starts September 7th (week 1)
+  // Trade deadline at week 11 = approximately mid-November
+
+  const tradeMonth = tradeDate.getMonth(); // 0-indexed
+  const tradeYear = tradeDate.getFullYear();
+
+  // If trade is in the offseason (Jan-Aug of the following year, or Dec-Feb)
+  // it's after the deadline
+
+  // Season runs Sept-Feb: 2024 season = Sept 2024 - Feb 2025
+  // Deadline is ~week 11 = mid-November of the season year
+
+  // Calculate approximate deadline date
+  // Week 1 starts around Sept 7, so week 11 starts around Nov 16
+  const deadlineMonth = 10; // November (0-indexed)
+  const deadlineDay = 7 + (deadlineWeek - 1) * 7; // Approximate
+
+  // Trade is after deadline if:
+  // 1. Same year as season and after November deadline
+  // 2. Next year (offseason trades in Jan-Aug)
+
+  if (tradeYear === season) {
+    // Same year as season
+    if (tradeMonth > deadlineMonth) {
+      // December - after deadline
+      return true;
+    }
+    if (tradeMonth === deadlineMonth && tradeDate.getDate() > deadlineDay) {
+      // Late November - after deadline
+      return true;
+    }
+    // Before or during deadline week
+    return false;
+  }
+
+  if (tradeYear === season + 1) {
+    // Next calendar year
+    if (tradeMonth <= 7) {
+      // Jan-Aug of next year = offseason, after deadline
+      return true;
+    }
+    // Sept+ of next year = new season, not applicable
+    return false;
+  }
+
+  // Trade year doesn't match season year - likely historical
+  // Default to before deadline to preserve value
+  return false;
 }

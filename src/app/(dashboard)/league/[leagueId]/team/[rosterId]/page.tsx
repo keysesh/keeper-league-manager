@@ -88,6 +88,7 @@ export default function TeamRosterPage() {
   const rosterId = params.rosterId as string;
   const { success, error: showError } = useToast();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [syncingKeepers, setSyncingKeepers] = useState(false);
 
   // Use SWR for faster data loading with caching
   const { data, error, mutate, isLoading } = useSWR<RosterData>(
@@ -141,6 +142,30 @@ export default function TeamRosterPage() {
       showError(err instanceof Error ? err.message : "Failed to remove keeper");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const syncKeepers = async () => {
+    setSyncingKeepers(true);
+    try {
+      const res = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "populate-keepers", leagueId }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to sync keepers");
+      }
+
+      const result = await res.json();
+      success(result.message || "Keepers synced from Sleeper");
+      mutate();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Failed to sync keepers");
+    } finally {
+      setSyncingKeepers(false);
     }
   };
 
@@ -200,7 +225,31 @@ export default function TeamRosterPage() {
           </Link>
           <h1 className="text-xl font-bold text-white">Manage Keepers</h1>
         </div>
-        <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-400 rounded">{data.season}</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={syncKeepers}
+            disabled={syncingKeepers}
+            className="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            {syncingKeepers ? (
+              <>
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Syncing...
+              </>
+            ) : (
+              <>
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Sync Keepers
+              </>
+            )}
+          </button>
+          <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-400 rounded">{data.season}</span>
+        </div>
       </div>
 
       {/* Keeper Summary */}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { getCurrentSeason, isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { AcquisitionType, KeeperType } from "@prisma/client";
 
@@ -131,21 +131,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // Helper: Get acquisition type for a player (pure function, no DB calls)
-    function getAcquisition(playerId: string): { type: AcquisitionType; draftRound?: number } {
+    // Also tracks if it was a post-deadline trade (keeper value resets)
+    function getAcquisition(playerId: string): {
+      type: AcquisitionType;
+      draftRound?: number;
+      isPostDeadlineTrade: boolean;
+      tradeDate?: Date;
+    } {
       const recentPick = recentDraftMap.get(playerId);
       const transaction = transactionMap.get(playerId);
 
       if (recentPick) {
         // Check if drafted by current roster or picked up same season
         if (recentPick.rosterId === rosterId) {
-          return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round };
+          return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round, isPostDeadlineTrade: false };
         }
         // Picked up from another team - check if same season
         if (transaction) {
           const txYear = transaction.transaction.createdAt.getFullYear();
           const draftYear = recentPick.draft.season;
           if (txYear <= draftYear + 1) {
-            return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round };
+            return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round, isPostDeadlineTrade: false };
           }
         }
       }
@@ -153,17 +159,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       // Check transaction type
       if (transaction) {
         const txType = transaction.transaction.type;
-        if (txType === "TRADE") return { type: AcquisitionType.TRADE };
-        if (txType === "WAIVER") return { type: AcquisitionType.WAIVER };
-        if (txType === "FREE_AGENT") return { type: AcquisitionType.FREE_AGENT };
+        const txDate = transaction.transaction.createdAt;
+
+        if (txType === "TRADE") {
+          // Check if trade was after the deadline
+          // Use the season before current to check trade timing
+          const tradeSeason = txDate.getMonth() >= 8 ? txDate.getFullYear() : txDate.getFullYear() - 1;
+          const isPostDeadline = isTradeAfterDeadline(txDate, tradeSeason);
+
+          return {
+            type: AcquisitionType.TRADE,
+            isPostDeadlineTrade: isPostDeadline,
+            tradeDate: txDate,
+          };
+        }
+        if (txType === "WAIVER") return { type: AcquisitionType.WAIVER, isPostDeadlineTrade: false };
+        if (txType === "FREE_AGENT") return { type: AcquisitionType.FREE_AGENT, isPostDeadlineTrade: false };
       }
 
-      return { type: AcquisitionType.WAIVER };
+      return { type: AcquisitionType.WAIVER, isPostDeadlineTrade: false };
     }
 
     // Helper: Calculate base cost (pure function, no DB calls)
-    function calculateBaseCost(playerId: string): number {
+    // Post-deadline trades reset to undrafted round
+    // Before-deadline trades preserve original draft value
+    function calculateBaseCost(playerId: string): { baseCost: number; isPostDeadlineTrade: boolean } {
       const acquisition = getAcquisition(playerId);
+
+      // Post-deadline trades ALWAYS reset to undrafted round
+      if (acquisition.isPostDeadlineTrade) {
+        return { baseCost: undraftedRound, isPostDeadlineTrade: true };
+      }
 
       let baseCost: number;
       switch (acquisition.type) {
@@ -171,56 +197,78 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           const draftRound = acquisition.draftRound || undraftedRound;
           baseCost = Math.max(minRound, draftRound - costReduction);
           break;
+        case AcquisitionType.TRADE:
+          // Before-deadline trade: preserve original draft value
+          const originalDraft = getOriginalDraft(playerId);
+          if (originalDraft) {
+            baseCost = Math.max(minRound, originalDraft.draftRound - costReduction);
+          } else {
+            baseCost = undraftedRound;
+          }
+          break;
         case AcquisitionType.WAIVER:
         case AcquisitionType.FREE_AGENT:
-        case AcquisitionType.TRADE:
         default:
           baseCost = undraftedRound;
       }
 
-      return Math.max(minRound, baseCost);
+      return { baseCost: Math.max(minRound, baseCost), isPostDeadlineTrade: false };
     }
 
     // Helper: Calculate eligibility with cost escalation (pure function, no DB calls)
+    // Post-deadline trades reset consecutive years to 0
     function calculateEligibility(playerId: string) {
       const playerKeepers = keepersByPlayer.get(playerId) || [];
       const previousKeepers = playerKeepers.filter(k => k.season < season);
+      const acquisition = getAcquisition(playerId);
+      const costResult = calculateBaseCost(playerId);
 
       // Count consecutive years kept by this owner
+      // BUT: Post-deadline trades reset this to 0 (new acquisition)
       let consecutiveYears = 0;
-      let checkSeason = season - 1;
-      for (const keeper of previousKeepers.sort((a, b) => b.season - a.season)) {
-        if (keeper.season === checkSeason) {
-          consecutiveYears++;
-          checkSeason--;
-        } else {
-          break;
+
+      if (!costResult.isPostDeadlineTrade) {
+        // Only count consecutive years if NOT a post-deadline trade
+        let checkSeason = season - 1;
+        for (const keeper of previousKeepers.sort((a, b) => b.season - a.season)) {
+          if (keeper.season === checkSeason) {
+            consecutiveYears++;
+            checkSeason--;
+          } else {
+            break;
+          }
         }
       }
 
       const yearsKept = consecutiveYears + 1; // Including this season if kept
       const atMaxYears = consecutiveYears >= maxYears;
-      const acquisition = getAcquisition(playerId);
       const originalDraft = getOriginalDraft(playerId);
-      const baseCost = calculateBaseCost(playerId);
+      const baseCost = costResult.baseCost;
 
       // COST ESCALATION: Cost improves (earlier round) by 1 for each consecutive year kept
       // Year 1: baseCost (R3), Year 2: baseCost - 1 (R2), Year 3: baseCost - 2 (R1)
       // Minimum is Round 1 (can't go lower)
+      // Post-deadline trades start fresh at undrafted round with 0 years
       const escalatedCost = Math.max(minRound, baseCost - consecutiveYears);
 
       // Eligibility is based on YEARS KEPT, not cost
       // atMaxYears = true when consecutiveYears >= maxYears (default 2)
+      let reason = atMaxYears ? "At max years - Franchise Tag only" : undefined;
+      if (costResult.isPostDeadlineTrade) {
+        reason = reason || "Acquired via offseason trade - value reset";
+      }
+
       return {
         isEligible: true,
         yearsKept,
         consecutiveYears,
         acquisitionType: acquisition.type,
         atMaxYears,
-        reason: atMaxYears ? "At max years - Franchise Tag only" : undefined,
+        reason,
         baseCost,
         escalatedCost,
         originalDraft,
+        isPostDeadlineTrade: costResult.isPostDeadlineTrade,
       };
     }
 
@@ -249,7 +297,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           const yearsKept = eligibility.consecutiveYears;
 
           let costBreakdown = `R${baseCost}`;
-          if (yearsKept > 0) {
+          if (eligibility.isPostDeadlineTrade) {
+            costBreakdown = `R${baseCost} (offseason trade - reset)`;
+          } else if (yearsKept > 0) {
             costBreakdown = `R${baseCost} - ${yearsKept}yr = R${finalCost}`;
           }
 
