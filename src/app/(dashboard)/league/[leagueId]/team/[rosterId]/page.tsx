@@ -372,86 +372,104 @@ export default function TeamRosterPage() {
             Eligible Players
             <span className="text-gray-500 font-normal">({eligiblePlayers.length})</span>
           </h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedType("REGULAR")}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                selectedType === "REGULAR"
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
-                  : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
-              }`}
-            >
-              Regular Keeper
-            </button>
-            <button
-              onClick={() => setSelectedType("FRANCHISE")}
-              disabled={!data.canAddMore.franchise}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 ${
-                selectedType === "FRANCHISE"
-                  ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-lg shadow-amber-500/30"
-                  : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
-              }`}
-            >
-              Franchise Tag
-            </button>
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-purple-600"></span> Regular
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-gradient-to-r from-amber-500 to-yellow-500"></span> Franchise
+            </span>
           </div>
         </div>
 
         {eligiblePlayers.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="space-y-3">
             {eligiblePlayers.map((p) => {
-              const cost =
-                selectedType === "FRANCHISE" ? p.costs.franchise : p.costs.regular;
-              const canAdd =
-                data.canAddMore.any &&
-                (selectedType === "FRANCHISE"
-                  ? data.canAddMore.franchise
-                  : data.canAddMore.regular);
+              const regularCost = p.costs.regular;
+              const franchiseCost = p.costs.franchise;
+              const canAddRegular = data.canAddMore.any && data.canAddMore.regular;
+              const canAddFranchise = data.canAddMore.any && data.canAddMore.franchise;
+              const isLoading = actionLoading === p.player.id;
 
               return (
                 <div
                   key={p.player.id}
-                  className={`flex items-center gap-4 rounded-xl px-4 py-4 bg-gray-800/40 border border-gray-700/50 transition-all hover:border-purple-500/30 hover:bg-gray-800/60 ${
-                    p.player.position === "QB" ? "hover:border-l-red-500" :
-                    p.player.position === "RB" ? "hover:border-l-green-500" :
-                    p.player.position === "WR" ? "hover:border-l-blue-500" :
-                    p.player.position === "TE" ? "hover:border-l-orange-500" : ""
-                  }`}
+                  className={`rounded-xl bg-gray-800/40 border border-gray-700/50 transition-all hover:border-purple-500/30 hover:bg-gray-800/60 overflow-hidden`}
                 >
-                  <PlayerAvatar sleeperId={p.player.sleeperId} name={p.player.fullName} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <PositionBadge position={p.player.position} size="xs" variant="subtle" />
-                      {p.player.yearsExp === 0 && <RookieBadge size="xs" />}
-                      {p.player.injuryStatus && (
-                        <span className="text-xs text-red-400 font-medium">
-                          {p.player.injuryStatus}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-white font-semibold truncate">{p.player.fullName}</p>
-                    <p className="text-gray-500 text-xs">
-                      {p.player.team || "FA"} &bull; {p.eligibility.acquisitionType}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {cost && (
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-white">R{cost.finalCost}</p>
-                        <p className="text-gray-600 text-xs">{cost.costBreakdown}</p>
+                  {/* Player Info Row */}
+                  <div className={`flex items-center gap-4 px-4 py-4 border-l-4 ${
+                    p.player.position === "QB" ? "border-l-red-500" :
+                    p.player.position === "RB" ? "border-l-green-500" :
+                    p.player.position === "WR" ? "border-l-blue-500" :
+                    p.player.position === "TE" ? "border-l-orange-500" : "border-l-gray-500"
+                  }`}>
+                    <PlayerAvatar sleeperId={p.player.sleeperId} name={p.player.fullName} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <PositionBadge position={p.player.position} size="xs" variant="subtle" />
+                        <YearsKeptBadge years={p.eligibility.yearsKept} />
+                        {p.player.yearsExp === 0 && <RookieBadge size="xs" />}
+                        {p.player.injuryStatus && (
+                          <span className="text-xs text-red-400 font-medium">
+                            {p.player.injuryStatus}
+                          </span>
+                        )}
                       </div>
-                    )}
-                    <button
-                      onClick={() => addKeeper(p.player.id, selectedType, p.player.fullName)}
-                      disabled={!canAdd || actionLoading === p.player.id}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 ${
-                        selectedType === "FRANCHISE"
-                          ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-black hover:shadow-lg hover:shadow-amber-500/30"
-                          : "bg-purple-600 hover:bg-purple-500 text-white hover:shadow-lg hover:shadow-purple-500/30"
-                      }`}
-                    >
-                      {actionLoading === p.player.id ? "..." : "Keep"}
-                    </button>
+                      <p className="text-white font-semibold truncate">{p.player.fullName}</p>
+                      <p className="text-gray-500 text-xs">
+                        {p.player.team || "FA"} &bull; {p.eligibility.acquisitionType}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Keeper Options Row */}
+                  <div className="flex border-t border-gray-700/50">
+                    {/* Regular Keeper Option */}
+                    <div className="flex-1 px-4 py-3 flex items-center justify-between border-r border-gray-700/50">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">Regular Keeper</p>
+                        {regularCost ? (
+                          <p className="text-lg font-bold text-white">
+                            Round {regularCost.finalCost}
+                            {regularCost.baseCost !== regularCost.finalCost && (
+                              <span className="text-gray-600 text-xs font-normal ml-1">
+                                (was {regularCost.baseCost})
+                              </span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-gray-600 text-sm">N/A</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => addKeeper(p.player.id, "REGULAR", p.player.fullName)}
+                        disabled={!canAddRegular || isLoading || !regularCost}
+                        className="px-4 py-2 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white transition-all disabled:opacity-40 disabled:hover:bg-purple-600"
+                      >
+                        {isLoading ? "..." : "Keep"}
+                      </button>
+                    </div>
+
+                    {/* Franchise Tag Option */}
+                    <div className="flex-1 px-4 py-3 flex items-center justify-between bg-amber-500/5">
+                      <div>
+                        <p className="text-xs text-amber-400/70 mb-0.5">Franchise Tag</p>
+                        {franchiseCost ? (
+                          <p className="text-lg font-bold text-amber-400">
+                            Round {franchiseCost.finalCost}
+                          </p>
+                        ) : (
+                          <p className="text-gray-600 text-sm">N/A</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => addKeeper(p.player.id, "FRANCHISE", p.player.fullName)}
+                        disabled={!canAddFranchise || isLoading || !franchiseCost}
+                        className="px-4 py-2 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-500 to-yellow-500 text-black transition-all disabled:opacity-40"
+                      >
+                        {isLoading ? "..." : "Tag"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -466,7 +484,7 @@ export default function TeamRosterPage() {
 
       {/* Ineligible Players */}
       {ineligiblePlayers.length > 0 && (
-        <div className="card-premium rounded-2xl p-6 opacity-75">
+        <div className="card-premium rounded-2xl p-6">
           <h2 className="text-lg font-bold text-white mb-5 flex items-center gap-2">
             <span className="w-1 h-5 bg-red-500 rounded-full"></span>
             Ineligible Players
@@ -476,19 +494,32 @@ export default function TeamRosterPage() {
             {ineligiblePlayers.map((p) => (
               <div
                 key={p.player.id}
-                className="flex items-center gap-4 rounded-xl px-4 py-3 bg-gray-800/30 border border-gray-800"
+                className={`flex items-center gap-4 rounded-xl px-4 py-3 bg-gray-800/20 border border-gray-800/50 border-l-4 ${
+                  p.player.position === "QB" ? "border-l-red-500/30" :
+                  p.player.position === "RB" ? "border-l-green-500/30" :
+                  p.player.position === "WR" ? "border-l-blue-500/30" :
+                  p.player.position === "TE" ? "border-l-orange-500/30" : "border-l-gray-500/30"
+                }`}
               >
                 <PlayerAvatar sleeperId={p.player.sleeperId} name={p.player.fullName} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <PositionBadge position={p.player.position} size="xs" variant="subtle" />
+                    <YearsKeptBadge years={p.eligibility.yearsKept} />
                   </div>
                   <p className="text-gray-400 font-medium truncate">{p.player.fullName}</p>
-                  <p className="text-gray-600 text-xs">{p.player.team || "FA"}</p>
+                  <p className="text-gray-600 text-xs">
+                    {p.player.team || "FA"} &bull; {p.eligibility.acquisitionType}
+                  </p>
                 </div>
-                <p className="text-red-400/80 text-xs max-w-[150px] text-right">
-                  {p.eligibility.reason}
-                </p>
+                <div className="flex flex-col items-end">
+                  <span className="px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs font-medium">
+                    Ineligible
+                  </span>
+                  <p className="text-gray-500 text-xs mt-1 max-w-[120px] text-right">
+                    {p.eligibility.reason}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
