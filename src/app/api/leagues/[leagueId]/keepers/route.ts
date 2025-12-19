@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateKeeperEligibility, calculateKeeperCost } from "@/lib/keeper/calculator";
+import { recalculateAndApplyCascade } from "@/lib/keeper/cascade";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 
@@ -270,10 +271,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
 
+    // Auto-recalculate cascade for all keepers in the league
+    const cascadeResult = await recalculateAndApplyCascade(leagueId, season);
+
+    // Fetch the updated keeper with the recalculated finalCost
+    const updatedKeeper = await prisma.keeper.findUnique({
+      where: { id: keeper.id },
+      include: { player: true },
+    });
+
     return NextResponse.json({
       success: true,
       keeper: {
-        id: keeper.id,
+        id: updatedKeeper?.id || keeper.id,
         player: {
           id: keeper.player.id,
           fullName: keeper.player.fullName,
@@ -282,9 +292,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
         type: keeper.type,
         baseCost: keeper.baseCost,
-        finalCost: keeper.finalCost,
+        finalCost: updatedKeeper?.finalCost || keeper.finalCost,
         yearsKept: keeper.yearsKept,
       },
+      cascadeUpdated: cascadeResult.updatedCount,
     });
   } catch (error) {
     console.error("Error creating keeper:", error);
@@ -365,13 +376,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Store the season before deleting
+    const keeperSeason = keeper.season;
+
     await prisma.keeper.delete({
       where: { id: keeperId },
     });
 
+    // Auto-recalculate cascade for all keepers in the league
+    const cascadeResult = await recalculateAndApplyCascade(leagueId, keeperSeason);
+
     return NextResponse.json({
       success: true,
       message: "Keeper removed",
+      cascadeUpdated: cascadeResult.updatedCount,
     });
   } catch (error) {
     console.error("Error deleting keeper:", error);

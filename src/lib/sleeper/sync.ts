@@ -225,6 +225,14 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
     }
   }
 
+  // Sync transactions (waivers, trades, FA pickups)
+  try {
+    const transactionCount = await syncTransactions(league.id);
+    console.log(`Synced ${transactionCount} transactions for ${league.name}`);
+  } catch (err) {
+    console.warn(`Failed to sync transactions for ${league.name}:`, err);
+  }
+
   console.log(`League sync complete: ${league.name}`);
   return {
     league: { id: league.id, name: league.name },
@@ -272,7 +280,7 @@ async function syncDraft(leagueId: string, draftData: {
       type: draftData.type === "auction" ? "AUCTION" : draftData.type === "linear" ? "LINEAR" : "SNAKE",
       status: mapSleeperDraftStatus(draftData.status),
       startTime: draftData.start_time ? new Date(draftData.start_time) : null,
-      rounds: draftData.settings?.rounds || 16,
+      rounds: typeof draftData.settings?.rounds === 'number' ? draftData.settings.rounds : 16,
       draftOrder: draftData.slot_to_roster_id
         ? (draftData.slot_to_roster_id as Prisma.InputJsonValue)
         : Prisma.JsonNull,
@@ -551,4 +559,103 @@ export async function quickSyncLeague(leagueId: string): Promise<{
   });
 
   return { rosters: rosterCount, players: playerCount };
+}
+
+// ============================================
+// HISTORICAL SYNC
+// ============================================
+
+/**
+ * Sync a league and all its historical seasons by following the previous_league_id chain
+ */
+export async function syncLeagueWithHistory(
+  sleeperLeagueId: string,
+  maxSeasons = 10
+): Promise<{
+  seasons: Array<{ season: number; leagueId: string; name: string }>;
+  totalTransactions: number;
+}> {
+  console.log(`Syncing league ${sleeperLeagueId} with history...`);
+
+  const results = {
+    seasons: [] as Array<{ season: number; leagueId: string; name: string }>,
+    totalTransactions: 0,
+  };
+
+  let currentLeagueId: string | null = sleeperLeagueId;
+  let seasonsProcessed = 0;
+
+  while (currentLeagueId && seasonsProcessed < maxSeasons) {
+    try {
+      // Get league data from Sleeper
+      const leagueData = await sleeper.getLeague(currentLeagueId);
+
+      // Sync the league
+      const syncResult = await syncLeague(currentLeagueId);
+
+      // Count transactions
+      const league = await prisma.league.findUnique({
+        where: { sleeperId: currentLeagueId },
+        include: { _count: { select: { transactions: true } } },
+      });
+
+      results.seasons.push({
+        season: leagueData.season ? parseInt(leagueData.season) : 0,
+        leagueId: syncResult.league.id,
+        name: syncResult.league.name,
+      });
+
+      results.totalTransactions += league?._count.transactions || 0;
+
+      console.log(
+        `Synced ${leagueData.season} season: ${syncResult.league.name} (${syncResult.draftPicks} draft picks)`
+      );
+
+      // Move to previous season
+      currentLeagueId = leagueData.previous_league_id || null;
+      seasonsProcessed++;
+    } catch (err) {
+      console.warn(`Failed to sync historical league ${currentLeagueId}:`, err);
+      break;
+    }
+  }
+
+  console.log(
+    `Historical sync complete: ${results.seasons.length} seasons, ${results.totalTransactions} total transactions`
+  );
+
+  return results;
+}
+
+/**
+ * Get all keeper history from database for a league chain
+ */
+export async function getKeeperHistoryFromDB(
+  leagueId: string
+): Promise<{
+  seasons: number[];
+  keeperCount: number;
+}> {
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+  });
+
+  if (!league) {
+    throw new Error("League not found");
+  }
+
+  // Get all keepers for this league
+  const keepers = await prisma.keeper.findMany({
+    where: {
+      roster: { leagueId },
+    },
+    select: { season: true },
+  });
+
+  const seasons = [...new Set(keepers.map((k) => k.season))].sort((a, b) => b - a);
+
+  return {
+    seasons,
+    keeperCount: keepers.length,
+  };
 }

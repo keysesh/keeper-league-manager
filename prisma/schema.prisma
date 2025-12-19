@@ -66,6 +66,7 @@ model League {
   transactions   Transaction[]
   keeperSettings KeeperSettings?
   tradedPicks    TradedPick[]
+  draftPlans     DraftPlan[]
 
   @@index([season])
   @@map("leagues")
@@ -116,6 +117,7 @@ model Roster {
   keepers       Keeper[]
   draftPicks    DraftPick[]
   teamMembers   TeamMember[]
+  draftPlans    DraftPlan[]
 
   @@unique([leagueId, sleeperId])
   @@map("rosters")
@@ -166,6 +168,7 @@ model Player {
   draftPicks         DraftPick[]
   keeperHistory      Keeper[]
   transactionPlayers TransactionPlayer[]
+  draftPlanKeepers   DraftPlanKeeper[]
 
   @@index([position])
   @@index([team])
@@ -282,6 +285,42 @@ enum AcquisitionType {
   WAIVER
   TRADE
   FREE_AGENT
+}
+
+// ============================================
+// DRAFT PLANS (SIMULATION MODE)
+// ============================================
+
+model DraftPlan {
+  id        String   @id @default(cuid())
+  leagueId  String   @map("league_id")
+  rosterId  String   @map("roster_id")
+  season    Int
+  name      String   @default("My Plan")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  league      League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  roster      Roster            @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  planKeepers DraftPlanKeeper[]
+
+  @@unique([rosterId, season, name])
+  @@index([leagueId, season])
+  @@map("draft_plans")
+}
+
+model DraftPlanKeeper {
+  id       String     @id @default(cuid())
+  planId   String     @map("plan_id")
+  playerId String     @map("player_id")
+  type     KeeperType
+
+  plan   DraftPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  player Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, playerId])
+  @@map("draft_plan_keepers")
 }
 
 // ============================================

@@ -51,82 +51,24 @@ export default function HistoryPage() {
 
   const fetchHistory = async () => {
     try {
-      // Fetch league data for rosters
-      const leagueRes = await fetch(`/api/leagues/${leagueId}`);
-      if (!leagueRes.ok) throw new Error("Failed to fetch league");
-      const leagueData = await leagueRes.json();
+      // Fetch all keeper history from the new API endpoint
+      const res = await fetch(`/api/leagues/${leagueId}/history`);
+      if (!res.ok) throw new Error("Failed to fetch keeper history");
+      const data = await res.json();
 
+      // Set teams from the response
       setTeams(
-        leagueData.rosters.map((r: { id: string; teamName: string | null }) => ({
+        data.teams.map((r: { id: string; teamName: string | null }) => ({
           id: r.id,
           teamName: r.teamName,
         }))
       );
 
-      // Fetch keepers for multiple seasons
-      const currentYear = new Date().getFullYear();
-      const seasons = [currentYear, currentYear - 1, currentYear - 2];
-      const allKeepers: KeeperHistory[] = [];
+      // Set keepers from the response
+      setHistory(data.keepers || []);
 
-      for (const season of seasons) {
-        const keepersRes = await fetch(
-          `/api/leagues/${leagueId}/keepers?season=${season}`
-        );
-        if (keepersRes.ok) {
-          const keepersData = await keepersRes.json();
-          allKeepers.push(...keepersData.keepers);
-        }
-      }
-
-      setHistory(allKeepers);
-
-      // Calculate stats per season
-      const seasonStatsMap = new Map<number, SeasonStats>();
-      for (const keeper of allKeepers) {
-        if (!seasonStatsMap.has(keeper.season)) {
-          seasonStatsMap.set(keeper.season, {
-            season: keeper.season,
-            totalKeepers: 0,
-            franchiseTags: 0,
-            regularKeepers: 0,
-            avgCost: 0,
-            mostKeptPosition: "",
-          });
-        }
-
-        const s = seasonStatsMap.get(keeper.season)!;
-        s.totalKeepers++;
-        if (keeper.type === "FRANCHISE") {
-          s.franchiseTags++;
-        } else {
-          s.regularKeepers++;
-        }
-      }
-
-      // Calculate averages and most kept positions
-      for (const [season, s] of seasonStatsMap) {
-        const seasonKeepers = allKeepers.filter((k) => k.season === season);
-        s.avgCost =
-          seasonKeepers.length > 0
-            ? Math.round(
-                seasonKeepers.reduce((sum, k) => sum + k.finalCost, 0) /
-                  seasonKeepers.length * 10
-              ) / 10
-            : 0;
-
-        const positionCounts: Record<string, number> = {};
-        for (const k of seasonKeepers) {
-          const pos = k.player.position || "Unknown";
-          positionCounts[pos] = (positionCounts[pos] || 0) + 1;
-        }
-        s.mostKeptPosition =
-          Object.entries(positionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
-          "N/A";
-      }
-
-      setStats(
-        Array.from(seasonStatsMap.values()).sort((a, b) => b.season - a.season)
-      );
+      // Set stats from the response (already calculated by the API)
+      setStats(data.seasonStats || []);
     } catch {
       setError("Failed to load keeper history");
     } finally {
@@ -179,8 +121,8 @@ export default function HistoryPage() {
       </div>
 
       {/* Season Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {stats.slice(0, 3).map((s) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {stats.map((s) => (
           <div
             key={s.season}
             className="bg-gray-800/50 rounded-xl p-6 border border-gray-700"

@@ -48,6 +48,23 @@ interface DraftBoardData {
   };
 }
 
+interface PositionCount {
+  QB: number;
+  RB: number;
+  WR: number;
+  TE: number;
+  K: number;
+  DEF: number;
+}
+
+interface TeamStatus {
+  rosterId: string;
+  rosterName: string | null;
+  keeperCount: number;
+  maxKeepers: number;
+  status: "ready" | "planning" | "empty";
+}
+
 export default function DraftBoardPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -56,6 +73,7 @@ export default function DraftBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showPositionSummary, setShowPositionSummary] = useState(true);
 
   useEffect(() => {
     fetchData();
@@ -73,6 +91,63 @@ export default function DraftBoardPage() {
       setLoading(false);
     }
   };
+
+  // Calculate position counts by round
+  const getPositionCountsByRound = (round: number): PositionCount => {
+    const counts: PositionCount = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 };
+    if (!data) return counts;
+
+    const row = data.draftBoard.find(r => r.round === round);
+    if (!row) return counts;
+
+    for (const slot of row.slots) {
+      if (slot.status === "keeper" && slot.keeper?.position) {
+        const pos = slot.keeper.position as keyof PositionCount;
+        if (pos in counts) {
+          counts[pos]++;
+        }
+      }
+    }
+    return counts;
+  };
+
+  // Calculate team statuses
+  const getTeamStatuses = (): TeamStatus[] => {
+    if (!data) return [];
+
+    return data.cascade.map(team => ({
+      rosterId: team.rosterId,
+      rosterName: team.rosterName,
+      keeperCount: team.results.length,
+      maxKeepers: 7, // From keeper settings
+      status: team.results.length === 0
+        ? "empty"
+        : team.results.length >= 7
+          ? "ready"
+          : "planning" as const,
+    }));
+  };
+
+  // Calculate overall position summary
+  const getOverallPositionSummary = (): PositionCount => {
+    const counts: PositionCount = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 };
+    if (!data) return counts;
+
+    for (const team of data.cascade) {
+      for (const keeper of team.results) {
+        if (keeper.position) {
+          const pos = keeper.position as keyof PositionCount;
+          if (pos in counts) {
+            counts[pos]++;
+          }
+        }
+      }
+    }
+    return counts;
+  };
+
+  const teamStatuses = getTeamStatuses();
+  const overallPositions = getOverallPositionSummary();
 
   if (loading) {
     return (
@@ -109,7 +184,17 @@ export default function DraftBoardPage() {
           <h1 className="text-2xl font-bold text-white">Draft Board</h1>
           <p className="text-gray-400 mt-1">{data.season} Season</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setShowPositionSummary(!showPositionSummary)}
+            className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+              showPositionSummary
+                ? "bg-blue-600 text-white"
+                : "bg-gray-700 text-gray-400 hover:text-white"
+            }`}
+          >
+            Position Summary
+          </button>
           <button
             onClick={() => setViewMode("grid")}
             className={`px-4 py-2 rounded-lg text-sm transition-colors ${
@@ -134,7 +219,7 @@ export default function DraftBoardPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
           <p className="text-3xl font-bold text-white">{data.summary.totalKeepers}</p>
           <p className="text-gray-400 text-sm">Total Keepers</p>
@@ -146,6 +231,59 @@ export default function DraftBoardPage() {
         <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
           <p className="text-3xl font-bold text-blue-400">{data.summary.tradedPicks}</p>
           <p className="text-gray-400 text-sm">Traded Picks</p>
+        </div>
+        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <p className="text-3xl font-bold text-green-400">
+            {teamStatuses.filter(t => t.status === "ready").length}/{teamStatuses.length}
+          </p>
+          <p className="text-gray-400 text-sm">Teams Ready</p>
+        </div>
+      </div>
+
+      {/* Position Scarcity Overview */}
+      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium text-gray-400">Position Breakdown</h3>
+          <span className="text-xs text-gray-500">Keepers by position league-wide</span>
+        </div>
+        <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+          {(["QB", "RB", "WR", "TE", "K", "DEF"] as const).map((pos) => (
+            <div key={pos} className="text-center">
+              <PositionBadge position={pos} />
+              <p className="text-xl font-bold text-white mt-1">{overallPositions[pos]}</p>
+              <p className="text-xs text-gray-500">
+                {data.totalRosters > 0
+                  ? `${((overallPositions[pos] / data.totalRosters) * 100).toFixed(0)}%`
+                  : "0%"}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Team Status Indicators */}
+      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+        <h3 className="text-sm font-medium text-gray-400 mb-3">Team Status</h3>
+        <div className="flex flex-wrap gap-2">
+          {teamStatuses.map((team) => (
+            <div
+              key={team.rosterId}
+              className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${
+                team.status === "ready"
+                  ? "bg-green-500/20 border border-green-500/40 text-green-400"
+                  : team.status === "planning"
+                  ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400"
+                  : "bg-gray-700/50 border border-gray-600/40 text-gray-400"
+              }`}
+            >
+              <span className="truncate max-w-[100px]">
+                {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
+              </span>
+              <span className="text-xs opacity-75">
+                {team.keeperCount}/{team.maxKeepers}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -159,31 +297,86 @@ export default function DraftBoardPage() {
                   <th className="sticky left-0 bg-gray-900 z-10 px-3 py-3 text-left text-gray-400 text-sm font-medium border-b border-gray-700 w-16">
                     Rd
                   </th>
-                  {rosters.map((roster) => (
-                    <th
-                      key={roster.rosterId}
-                      className="px-2 py-3 text-center text-gray-400 text-xs font-medium border-b border-gray-700 min-w-[120px]"
-                    >
-                      <span className="truncate block">
-                        {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
-                      </span>
+                  {showPositionSummary && (
+                    <th className="px-2 py-3 text-center text-gray-400 text-xs font-medium border-b border-gray-700 min-w-[100px] bg-gray-900/80">
+                      Pos Summary
                     </th>
-                  ))}
+                  )}
+                  {rosters.map((roster) => {
+                    const teamStatus = teamStatuses.find(t => t.rosterId === roster.rosterId);
+                    return (
+                      <th
+                        key={roster.rosterId}
+                        className="px-2 py-3 text-center text-gray-400 text-xs font-medium border-b border-gray-700 min-w-[120px]"
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="truncate block max-w-[100px]">
+                            {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
+                          </span>
+                          {teamStatus && (
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                teamStatus.status === "ready"
+                                  ? "bg-green-500/30 text-green-400"
+                                  : teamStatus.status === "planning"
+                                  ? "bg-yellow-500/30 text-yellow-400"
+                                  : "bg-gray-600/30 text-gray-500"
+                              }`}
+                            >
+                              {teamStatus.keeperCount}/{teamStatus.maxKeepers}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {data.draftBoard.map((row) => (
-                  <tr key={row.round} className="border-b border-gray-700/50">
-                    <td className="sticky left-0 bg-gray-800 z-10 px-3 py-2 text-gray-400 font-medium border-r border-gray-700">
-                      {row.round}
-                    </td>
-                    {row.slots.map((slot) => (
-                      <td key={slot.rosterId} className="px-1 py-1">
-                        <DraftCell slot={slot} />
+                {data.draftBoard.map((row) => {
+                  const positionCounts = getPositionCountsByRound(row.round);
+                  const hasKeepers = Object.values(positionCounts).some(c => c > 0);
+                  return (
+                    <tr key={row.round} className="border-b border-gray-700/50">
+                      <td className="sticky left-0 bg-gray-800 z-10 px-3 py-2 text-gray-400 font-medium border-r border-gray-700">
+                        {row.round}
                       </td>
-                    ))}
-                  </tr>
-                ))}
+                      {showPositionSummary && (
+                        <td className="px-1 py-1 bg-gray-800/50">
+                          {hasKeepers ? (
+                            <div className="flex flex-wrap gap-0.5 justify-center">
+                              {(["QB", "RB", "WR", "TE"] as const).map((pos) =>
+                                positionCounts[pos] > 0 ? (
+                                  <span
+                                    key={pos}
+                                    className={`text-[10px] px-1 rounded ${
+                                      pos === "QB"
+                                        ? "bg-red-500/30 text-red-400"
+                                        : pos === "RB"
+                                        ? "bg-green-500/30 text-green-400"
+                                        : pos === "WR"
+                                        ? "bg-blue-500/30 text-blue-400"
+                                        : "bg-orange-500/30 text-orange-400"
+                                    }`}
+                                  >
+                                    {positionCounts[pos]}{pos}
+                                  </span>
+                                ) : null
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-600 text-xs">-</span>
+                          )}
+                        </td>
+                      )}
+                      {row.slots.map((slot) => (
+                        <td key={slot.rosterId} className="px-1 py-1">
+                          <DraftCell slot={slot} />
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

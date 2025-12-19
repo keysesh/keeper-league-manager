@@ -239,6 +239,75 @@ async function buildPickOwnershipMap(
 }
 
 /**
+ * Recalculate and apply cascade for all keepers in a league
+ * Call this after adding/removing keepers to update all finalCost values
+ */
+export async function recalculateAndApplyCascade(
+  leagueId: string,
+  season: number
+): Promise<{
+  success: boolean;
+  updatedCount: number;
+  errors: string[];
+}> {
+  // Get all keepers for this season
+  const keepers = await prisma.keeper.findMany({
+    where: {
+      roster: { leagueId },
+      season,
+    },
+    include: {
+      player: true,
+    },
+  });
+
+  if (keepers.length === 0) {
+    return { success: true, updatedCount: 0, errors: [] };
+  }
+
+  // Prepare keeper inputs
+  const keeperInputs: KeeperInput[] = keepers.map((k) => ({
+    playerId: k.player.sleeperId,
+    rosterId: k.rosterId,
+    playerName: k.player.fullName,
+    type: k.type as "FRANCHISE" | "REGULAR",
+  }));
+
+  // Calculate cascade
+  const cascadeResult = await calculateCascade(leagueId, keeperInputs, season);
+
+  if (cascadeResult.hasErrors) {
+    return {
+      success: false,
+      updatedCount: 0,
+      errors: cascadeResult.errors,
+    };
+  }
+
+  // Update all keeper final costs
+  let updatedCount = 0;
+  for (const result of cascadeResult.keepers) {
+    const keeper = keepers.find(
+      (k) => k.player.sleeperId === result.playerId && k.rosterId === result.rosterId
+    );
+
+    if (keeper && keeper.finalCost !== result.finalCost) {
+      await prisma.keeper.update({
+        where: { id: keeper.id },
+        data: { finalCost: result.finalCost },
+      });
+      updatedCount++;
+    }
+  }
+
+  return {
+    success: true,
+    updatedCount,
+    errors: [],
+  };
+}
+
+/**
  * Preview cascade for a single team
  */
 export async function previewTeamCascade(
