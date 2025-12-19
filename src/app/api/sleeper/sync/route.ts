@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { syncLeague, syncUserLeagues, quickSyncLeague } from "@/lib/sleeper/sync";
+import { syncLeague, syncUserLeagues, quickSyncLeague, populateKeepersFromDraftPicks } from "@/lib/sleeper/sync";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
@@ -95,9 +95,43 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "populate-keepers": {
+        // Populate keeper records from historical draft picks with is_keeper=true
+        if (!leagueId) {
+          return NextResponse.json(
+            { error: "leagueId is required for populate-keepers" },
+            { status: 400 }
+          );
+        }
+
+        // Verify user has access to this league
+        const rosterAccess = await prisma.roster.findFirst({
+          where: {
+            leagueId,
+            teamMembers: {
+              some: { userId: session.user.id },
+            },
+          },
+        });
+
+        if (!rosterAccess) {
+          return NextResponse.json(
+            { error: "You don't have access to this league" },
+            { status: 403 }
+          );
+        }
+
+        const result = await populateKeepersFromDraftPicks(leagueId);
+        return NextResponse.json({
+          success: true,
+          message: `Created ${result.created} keeper records, skipped ${result.skipped} (already exist)`,
+          data: result,
+        });
+      }
+
       default:
         return NextResponse.json(
-          { error: "Invalid action. Use 'league', 'user-leagues', or 'quick'" },
+          { error: "Invalid action. Use 'league', 'user-leagues', 'quick', or 'populate-keepers'" },
           { status: 400 }
         );
     }

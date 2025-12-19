@@ -348,6 +348,7 @@ async function syncDraft(leagueId: string, draftData: {
         rosterId,
         playerId,
         pickNumber: pick.pick_no,
+        isKeeper: pick.is_keeper || false,
         metadata: pick.metadata
           ? (pick.metadata as Prisma.InputJsonValue)
           : Prisma.JsonNull,
@@ -359,6 +360,7 @@ async function syncDraft(leagueId: string, draftData: {
         round: pick.round,
         pickNumber: pick.pick_no,
         draftSlot: pick.draft_slot,
+        isKeeper: pick.is_keeper || false,
         metadata: pick.metadata
           ? (pick.metadata as Prisma.InputJsonValue)
           : Prisma.JsonNull,
@@ -859,4 +861,95 @@ export async function getKeeperHistoryFromDB(
     seasons,
     keeperCount: keepers.length,
   };
+}
+
+/**
+ * Populate Keeper records from draft picks marked as keepers
+ * This reconstructs historical keeper data from Sleeper's is_keeper flag
+ */
+export async function populateKeepersFromDraftPicks(
+  leagueId: string
+): Promise<{ created: number; skipped: number }> {
+  // Get all draft picks marked as keepers for this league
+  const keeperPicks = await prisma.draftPick.findMany({
+    where: {
+      isKeeper: true,
+      playerId: { not: null },
+      draft: {
+        league: { id: leagueId },
+      },
+    },
+    include: {
+      draft: true,
+      roster: true,
+      player: true,
+    },
+    orderBy: {
+      draft: { season: "asc" },
+    },
+  });
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const pick of keeperPicks) {
+    if (!pick.playerId || !pick.player) continue;
+
+    const season = pick.draft.season;
+
+    // Check if Keeper record already exists
+    const existingKeeper = await prisma.keeper.findFirst({
+      where: {
+        playerId: pick.playerId,
+        rosterId: pick.rosterId,
+        season: season,
+      },
+    });
+
+    if (existingKeeper) {
+      skipped++;
+      continue;
+    }
+
+    // Count previous consecutive years this player was kept by this roster
+    const previousKeepers = await prisma.keeper.findMany({
+      where: {
+        playerId: pick.playerId,
+        rosterId: pick.rosterId,
+        season: { lt: season },
+      },
+      orderBy: { season: "desc" },
+    });
+
+    let consecutiveYears = 0;
+    let checkSeason = season - 1;
+    for (const keeper of previousKeepers) {
+      if (keeper.season === checkSeason) {
+        consecutiveYears++;
+        checkSeason--;
+      } else {
+        break;
+      }
+    }
+
+    // Create Keeper record
+    await prisma.keeper.create({
+      data: {
+        playerId: pick.playerId,
+        rosterId: pick.rosterId,
+        season: season,
+        type: "REGULAR", // Default to regular keeper
+        baseCost: pick.round,
+        finalCost: Math.max(1, pick.round - consecutiveYears), // Cost improves each year
+        yearsKept: consecutiveYears + 1,
+        acquisitionType: "DRAFTED",
+        originalDraftRound: pick.round,
+      },
+    });
+
+    created++;
+  }
+
+  console.log(`Populated ${created} Keeper records from draft picks (${skipped} already existed)`);
+  return { created, skipped };
 }

@@ -238,6 +238,7 @@ model DraftPick {
   pickNumber    Int       @map("pick_number")
   draftSlot     Int       @map("draft_slot")
   originalOwner String?   @map("original_owner")
+  isKeeper      Boolean   @default(false) @map("is_keeper")
   metadata      Json?
   pickedAt      DateTime? @map("picked_at")
 
@@ -247,6 +248,7 @@ model DraftPick {
 
   @@unique([draftId, round, draftSlot])
   @@index([playerId])
+  @@index([isKeeper])
   @@map("draft_picks")
 }
 
