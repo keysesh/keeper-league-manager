@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { SleeperClient } from "@/lib/sleeper/client";
+import { prisma } from "@/lib/prisma";
 import { getCurrentSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
 
@@ -9,10 +9,24 @@ export default async function DashboardPage() {
   const currentSeason = getCurrentSeason();
   const deadlineInfo = getKeeperDeadlineInfo();
 
-  // Fetch user's leagues from Sleeper
-  const sleeper = new SleeperClient();
-  const leagues = session?.user?.sleeperId
-    ? await sleeper.getUserLeagues(session.user.sleeperId, currentSeason)
+  // Fetch user's leagues from database (synced from Sleeper)
+  const leagues = session?.user?.id
+    ? await prisma.league.findMany({
+        where: {
+          season: currentSeason,
+          rosters: {
+            some: {
+              teamMembers: {
+                some: { userId: session.user.id },
+              },
+            },
+          },
+        },
+        include: {
+          keeperSettings: true,
+        },
+        orderBy: { name: "asc" },
+      })
     : [];
 
   return (
@@ -70,8 +84,8 @@ export default async function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {leagues.map((league) => (
             <Link
-              key={league.league_id}
-              href={`/league/${league.league_id}`}
+              key={league.id}
+              href={`/league/${league.id}`}
               className="group bg-gray-800/50 hover:bg-gray-800 border border-gray-700 hover:border-purple-500/50 rounded-xl p-6 transition-all"
             >
               <div className="flex items-start justify-between">
@@ -80,21 +94,21 @@ export default async function DashboardPage() {
                     {league.name}
                   </h3>
                   <p className="text-sm text-gray-400 mt-1">
-                    {league.total_rosters} teams
+                    {league.totalRosters} teams
                   </p>
                 </div>
                 <span
                   className={`text-xs px-2 py-1 rounded-full ${
-                    league.status === "in_season"
+                    league.status === "IN_SEASON"
                       ? "bg-green-500/20 text-green-400"
-                      : league.status === "complete"
+                      : league.status === "COMPLETE"
                       ? "bg-gray-500/20 text-gray-400"
                       : "bg-yellow-500/20 text-yellow-400"
                   }`}
                 >
-                  {league.status === "in_season"
+                  {league.status === "IN_SEASON"
                     ? "Active"
-                    : league.status === "complete"
+                    : league.status === "COMPLETE"
                     ? "Complete"
                     : "Pre-Draft"}
                 </span>
@@ -102,11 +116,8 @@ export default async function DashboardPage() {
 
               <div className="mt-4 flex items-center gap-4 text-sm text-gray-500">
                 <span>Season {league.season}</span>
-                {league.settings.type === 1 && (
+                {league.keeperSettings && (
                   <span className="text-purple-400">Keeper</span>
-                )}
-                {league.settings.type === 2 && (
-                  <span className="text-blue-400">Dynasty</span>
                 )}
               </div>
             </Link>
