@@ -204,22 +204,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const originalDraft = getOriginalDraft(playerId);
       const baseCost = calculateBaseCost(playerId);
 
-      // COST ESCALATION: Cost increases by 1 round for each consecutive year kept
-      // Year 1: baseCost, Year 2: baseCost + 1, Year 3: baseCost + 2, etc.
-      const escalatedCost = baseCost + consecutiveYears;
+      // COST ESCALATION: Cost improves (earlier round) by 1 for each consecutive year kept
+      // Year 1: baseCost (R3), Year 2: baseCost - 1 (R2), Year 3: baseCost - 2 (R1)
+      // Minimum is Round 1
+      const escalatedCost = Math.max(minRound, baseCost - consecutiveYears);
 
-      // Check if escalated cost exceeds max draft rounds (not undraftedRound)
-      const maxDraftRounds = DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
-      if (escalatedCost > maxDraftRounds) {
+      // If cost would go below Round 1, player is no longer eligible as regular keeper
+      // (they've been kept too long - must use Franchise Tag or let go)
+      if (baseCost - consecutiveYears < minRound) {
         return {
-          isEligible: false,
-          reason: `Keeper cost (R${escalatedCost}) exceeds max draft rounds`,
+          isEligible: true, // Still eligible for FT
+          reason: `Cost reached R1 - Franchise Tag only`,
           yearsKept,
           consecutiveYears,
           acquisitionType: acquisition.type,
-          atMaxYears: false,
+          atMaxYears: true, // Treat as max years (FT only)
           baseCost,
-          escalatedCost,
+          escalatedCost: minRound,
           originalDraft,
         };
       }
@@ -256,14 +257,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         };
 
         if (!eligibility.atMaxYears) {
-          // Regular keeper cost with escalation
+          // Regular keeper cost with escalation (cost improves each year)
           const baseCost = eligibility.baseCost;
           const finalCost = eligibility.escalatedCost;
-          const escalation = eligibility.consecutiveYears;
+          const yearsKept = eligibility.consecutiveYears;
 
           let costBreakdown = `R${baseCost}`;
-          if (escalation > 0) {
-            costBreakdown = `R${baseCost} + ${escalation}yr = R${finalCost}`;
+          if (yearsKept > 0) {
+            costBreakdown = `R${baseCost} - ${yearsKept}yr = R${finalCost}`;
           }
 
           regularCost = {
