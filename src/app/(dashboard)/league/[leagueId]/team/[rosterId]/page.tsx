@@ -7,6 +7,7 @@ import useSWR from "swr";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
+import { PlayerModal } from "@/components/players/PlayerModal";
 
 // SWR fetcher
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -83,6 +84,7 @@ export default function TeamRosterPage() {
   const rosterId = params.rosterId as string;
   const { success, error: showError } = useToast();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<EligiblePlayer | null>(null);
 
   // Use SWR for faster data loading with caching
   const { data, error, mutate, isLoading } = useSWR<RosterData>(
@@ -248,6 +250,7 @@ export default function TeamRosterPage() {
                 player={p.player}
                 eligibility={p.eligibility}
                 existingKeeper={p.existingKeeper}
+                onClick={() => setSelectedPlayer(p)}
                 onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
                 isLoading={actionLoading === p.existingKeeper?.id}
               />
@@ -279,6 +282,7 @@ export default function TeamRosterPage() {
                 player={p.player}
                 eligibility={p.eligibility}
                 costs={p.costs}
+                onClick={() => setSelectedPlayer(p)}
                 onAddKeeper={(playerId, type) => addKeeper(playerId, type, p.player.fullName)}
                 isLoading={actionLoading === p.player.id}
                 canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
@@ -305,11 +309,33 @@ export default function TeamRosterPage() {
                 key={p.player.id}
                 player={p.player}
                 eligibility={p.eligibility}
+                onClick={() => setSelectedPlayer(p)}
               />
             ))}
           </div>
         </details>
       )}
+
+      {/* Player Modal */}
+      <PlayerModal
+        isOpen={!!selectedPlayer}
+        onClose={() => setSelectedPlayer(null)}
+        player={selectedPlayer?.player || null}
+        eligibility={selectedPlayer?.eligibility}
+        costs={selectedPlayer?.costs}
+        existingKeeper={selectedPlayer?.existingKeeper}
+        onAddKeeper={(playerId, type) => {
+          addKeeper(playerId, type, selectedPlayer?.player.fullName || "");
+          setSelectedPlayer(null);
+        }}
+        onRemoveKeeper={(keeperId) => {
+          removeKeeper(keeperId, selectedPlayer?.player.fullName || "");
+          setSelectedPlayer(null);
+        }}
+        canAddFranchise={data?.canAddMore.any && data?.canAddMore.franchise}
+        canAddRegular={data?.canAddMore.any && data?.canAddMore.regular}
+        isLoading={actionLoading === selectedPlayer?.player.id || actionLoading === selectedPlayer?.existingKeeper?.id}
+      />
     </div>
   );
 }
