@@ -1,0 +1,364 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id              String    @id @default(cuid())
+  sleeperId       String    @unique @map("sleeper_id")
+  sleeperUsername String    @map("sleeper_username")
+  displayName     String?   @map("display_name")
+  avatar          String?
+  email           String?   @unique
+  isAdmin         Boolean   @default(false) @map("is_admin")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  lastLoginAt     DateTime? @map("last_login_at")
+
+  teamMemberships TeamMember[]
+  sessions        Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============================================
+// LEAGUE & SEASON
+// ============================================
+
+model League {
+  id               String       @id @default(cuid())
+  sleeperId        String       @unique @map("sleeper_id")
+  name             String
+  season           Int
+  previousLeagueId String?      @map("previous_league_id")
+  status           LeagueStatus @default(PRE_DRAFT)
+  totalRosters     Int          @default(12) @map("total_rosters")
+  draftRounds      Int          @default(16) @map("draft_rounds")
+  settings         Json?
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  lastSyncedAt     DateTime?    @map("last_synced_at")
+
+  rosters        Roster[]
+  drafts         Draft[]
+  transactions   Transaction[]
+  keeperSettings KeeperSettings?
+  tradedPicks    TradedPick[]
+
+  @@index([season])
+  @@map("leagues")
+}
+
+enum LeagueStatus {
+  PRE_DRAFT
+  DRAFTING
+  IN_SEASON
+  COMPLETE
+}
+
+model KeeperSettings {
+  id                   String @id @default(cuid())
+  leagueId             String @unique @map("league_id")
+  maxKeepers           Int    @default(7) @map("max_keepers")
+  maxFranchiseTags     Int    @default(2) @map("max_franchise_tags")
+  maxRegularKeepers    Int    @default(5) @map("max_regular_keepers")
+  regularKeeperMaxYears Int   @default(2) @map("regular_keeper_max_years")
+  undraftedRound       Int    @default(8) @map("undrafted_round")
+  minimumRound         Int    @default(1) @map("minimum_round")
+  costReductionPerYear Int    @default(1) @map("cost_reduction_per_year")
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@map("keeper_settings")
+}
+
+// ============================================
+// ROSTERS & TEAM MEMBERS
+// ============================================
+
+model Roster {
+  id            String  @id @default(cuid())
+  leagueId      String  @map("league_id")
+  sleeperId     String  @map("sleeper_id")
+  ownerId       String? @map("owner_id")
+  teamName      String? @map("team_name")
+  wins          Int     @default(0)
+  losses        Int     @default(0)
+  ties          Int     @default(0)
+  pointsFor     Decimal @default(0) @map("points_for") @db.Decimal(10, 2)
+  pointsAgainst Decimal @default(0) @map("points_against") @db.Decimal(10, 2)
+  settings      Json?
+
+  league        League         @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  rosterPlayers RosterPlayer[]
+  keepers       Keeper[]
+  draftPicks    DraftPick[]
+  teamMembers   TeamMember[]
+
+  @@unique([leagueId, sleeperId])
+  @@map("rosters")
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  rosterId  String   @map("roster_id")
+  role      TeamRole @default(OWNER)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roster Roster @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, rosterId])
+  @@map("team_members")
+}
+
+enum TeamRole {
+  OWNER
+  CO_OWNER
+  VIEWER
+}
+
+// ============================================
+// PLAYERS
+// ============================================
+
+model Player {
+  id               String   @id @default(cuid())
+  sleeperId        String   @unique @map("sleeper_id")
+  firstName        String?  @map("first_name")
+  lastName         String?  @map("last_name")
+  fullName         String   @map("full_name")
+  position         String?
+  team             String?
+  age              Int?
+  yearsExp         Int?     @map("years_exp")
+  status           String?
+  injuryStatus     String?  @map("injury_status")
+  searchRank       Int?     @map("search_rank")
+  fantasyPositions String[] @map("fantasy_positions")
+  metadata         Json?
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  rosterPlayers      RosterPlayer[]
+  draftPicks         DraftPick[]
+  keeperHistory      Keeper[]
+  transactionPlayers TransactionPlayer[]
+
+  @@index([position])
+  @@index([team])
+  @@map("players")
+}
+
+model RosterPlayer {
+  id        String   @id @default(cuid())
+  rosterId  String   @map("roster_id")
+  playerId  String   @map("player_id")
+  isStarter Boolean  @default(false) @map("is_starter")
+  slotType  String?  @map("slot_type")
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  roster Roster @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([rosterId, playerId])
+  @@map("roster_players")
+}
+
+// ============================================
+// DRAFTS
+// ============================================
+
+model Draft {
+  id         String      @id @default(cuid())
+  sleeperId  String      @unique @map("sleeper_id")
+  leagueId   String      @map("league_id")
+  season     Int
+  type       DraftType   @default(SNAKE)
+  status     DraftStatus @default(PRE_DRAFT)
+  startTime  DateTime?   @map("start_time")
+  rounds     Int         @default(16)
+  settings   Json?
+  draftOrder Json?       @map("draft_order")
+
+  league League      @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  picks  DraftPick[]
+
+  @@index([season])
+  @@map("drafts")
+}
+
+enum DraftType {
+  SNAKE
+  LINEAR
+  AUCTION
+}
+
+enum DraftStatus {
+  PRE_DRAFT
+  DRAFTING
+  COMPLETE
+}
+
+model DraftPick {
+  id            String    @id @default(cuid())
+  draftId       String    @map("draft_id")
+  rosterId      String    @map("roster_id")
+  playerId      String?   @map("player_id")
+  round         Int
+  pickNumber    Int       @map("pick_number")
+  draftSlot     Int       @map("draft_slot")
+  originalOwner String?   @map("original_owner")
+  metadata      Json?
+  pickedAt      DateTime? @map("picked_at")
+
+  draft  Draft   @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  roster Roster  @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  player Player? @relation(fields: [playerId], references: [id])
+
+  @@unique([draftId, round, draftSlot])
+  @@index([playerId])
+  @@map("draft_picks")
+}
+
+// ============================================
+// KEEPERS
+// ============================================
+
+model Keeper {
+  id                 String          @id @default(cuid())
+  rosterId           String          @map("roster_id")
+  playerId           String          @map("player_id")
+  season             Int
+  type               KeeperType
+  baseCost           Int             @map("base_cost")
+  finalCost          Int             @map("final_cost")
+  yearsKept          Int             @default(1) @map("years_kept")
+  acquisitionType    AcquisitionType @map("acquisition_type")
+  acquisitionDate    DateTime?       @map("acquisition_date")
+  originalDraftRound Int?            @map("original_draft_round")
+  isLocked           Boolean         @default(false) @map("is_locked")
+  notes              String?
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  roster Roster @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([rosterId, playerId, season])
+  @@index([season])
+  @@map("keepers")
+}
+
+enum KeeperType {
+  FRANCHISE
+  REGULAR
+}
+
+enum AcquisitionType {
+  DRAFTED
+  WAIVER
+  TRADE
+  FREE_AGENT
+}
+
+// ============================================
+// TRANSACTIONS
+// ============================================
+
+model Transaction {
+  id        String          @id @default(cuid())
+  sleeperId String          @unique @map("sleeper_id")
+  leagueId  String          @map("league_id")
+  type      TransactionType
+  status    String
+  week      Int?
+  createdAt DateTime        @map("created_at")
+  metadata  Json?
+
+  league  League              @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  players TransactionPlayer[]
+
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  TRADE
+  WAIVER
+  FREE_AGENT
+  COMMISSIONER
+}
+
+model TransactionPlayer {
+  id            String  @id @default(cuid())
+  transactionId String  @map("transaction_id")
+  playerId      String  @map("player_id")
+  fromRosterId  String? @map("from_roster_id")
+  toRosterId    String? @map("to_roster_id")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  player      Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_players")
+}
+
+// ============================================
+// TRADED PICKS
+// ============================================
+
+model TradedPick {
+  id              String @id @default(cuid())
+  leagueId        String @map("league_id")
+  season          Int
+  round           Int
+  originalOwnerId String @map("original_owner_id")
+  currentOwnerId  String @map("current_owner_id")
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, season, round, originalOwnerId])
+  @@map("traded_picks")
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  oldValue  Json?    @map("old_value")
+  newValue  Json?    @map("new_value")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
