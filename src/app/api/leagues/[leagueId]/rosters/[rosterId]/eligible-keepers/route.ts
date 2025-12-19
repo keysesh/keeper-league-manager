@@ -206,25 +206,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       // COST ESCALATION: Cost improves (earlier round) by 1 for each consecutive year kept
       // Year 1: baseCost (R3), Year 2: baseCost - 1 (R2), Year 3: baseCost - 2 (R1)
-      // Minimum is Round 1
+      // Minimum is Round 1 (can't go lower)
       const escalatedCost = Math.max(minRound, baseCost - consecutiveYears);
 
-      // If cost would go below Round 1, player is no longer eligible as regular keeper
-      // (they've been kept too long - must use Franchise Tag or let go)
-      if (baseCost - consecutiveYears < minRound) {
-        return {
-          isEligible: true, // Still eligible for FT
-          reason: `Cost reached R1 - Franchise Tag only`,
-          yearsKept,
-          consecutiveYears,
-          acquisitionType: acquisition.type,
-          atMaxYears: true, // Treat as max years (FT only)
-          baseCost,
-          escalatedCost: minRound,
-          originalDraft,
-        };
-      }
-
+      // Eligibility is based on YEARS KEPT, not cost
+      // atMaxYears = true when consecutiveYears >= maxYears (default 2)
       return {
         isEligible: true,
         yearsKept,
