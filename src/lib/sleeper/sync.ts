@@ -218,7 +218,11 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
   // Sync drafts
   let draftPickCount = 0;
   for (const draft of drafts) {
-    draftPickCount += await syncDraft(league.id, draft.draft_id);
+    try {
+      draftPickCount += await syncDraft(league.id, draft);
+    } catch (err) {
+      console.warn(`Failed to sync draft ${draft.draft_id}:`, err);
+    }
   }
 
   console.log(`League sync complete: ${league.name}`);
@@ -237,22 +241,20 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
 /**
  * Sync a single draft and its picks
  */
-async function syncDraft(leagueId: string, sleeperDraftId: string): Promise<number> {
-  const [draftData, picks] = await Promise.all([
-    sleeper.getDrafts(sleeperDraftId).then((drafts) =>
-      drafts.find((d) => d.draft_id === sleeperDraftId)
-    ),
-    sleeper.getDraftPicks(sleeperDraftId),
-  ]);
-
-  if (!draftData) {
-    console.warn(`Draft ${sleeperDraftId} not found`);
-    return 0;
-  }
+async function syncDraft(leagueId: string, draftData: {
+  draft_id: string;
+  season: string;
+  status: string;
+  type: string;
+  start_time?: number;
+  settings?: Record<string, unknown>;
+  slot_to_roster_id?: Record<string, number>;
+}): Promise<number> {
+  const picks = await sleeper.getDraftPicks(draftData.draft_id);
 
   // Upsert draft
   const draft = await prisma.draft.upsert({
-    where: { sleeperId: sleeperDraftId },
+    where: { sleeperId: draftData.draft_id },
     update: {
       status: mapSleeperDraftStatus(draftData.status),
       startTime: draftData.start_time ? new Date(draftData.start_time) : null,
@@ -264,7 +266,7 @@ async function syncDraft(leagueId: string, sleeperDraftId: string): Promise<numb
         : Prisma.JsonNull,
     },
     create: {
-      sleeperId: sleeperDraftId,
+      sleeperId: draftData.draft_id,
       leagueId,
       season: parseInt(draftData.season),
       type: draftData.type === "auction" ? "AUCTION" : draftData.type === "linear" ? "LINEAR" : "SNAKE",
