@@ -8,18 +8,18 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 // Team color palette - distinct colors for each team
 const TEAM_COLORS = [
-  { bg: "bg-purple-500/20", border: "border-purple-500/60", text: "text-purple-300", accent: "text-purple-400" },
-  { bg: "bg-blue-500/20", border: "border-blue-500/60", text: "text-blue-300", accent: "text-blue-400" },
-  { bg: "bg-green-500/20", border: "border-green-500/60", text: "text-green-300", accent: "text-green-400" },
-  { bg: "bg-orange-500/20", border: "border-orange-500/60", text: "text-orange-300", accent: "text-orange-400" },
-  { bg: "bg-pink-500/20", border: "border-pink-500/60", text: "text-pink-300", accent: "text-pink-400" },
-  { bg: "bg-cyan-500/20", border: "border-cyan-500/60", text: "text-cyan-300", accent: "text-cyan-400" },
-  { bg: "bg-yellow-500/20", border: "border-yellow-500/60", text: "text-yellow-300", accent: "text-yellow-400" },
-  { bg: "bg-red-500/20", border: "border-red-500/60", text: "text-red-300", accent: "text-red-400" },
-  { bg: "bg-indigo-500/20", border: "border-indigo-500/60", text: "text-indigo-300", accent: "text-indigo-400" },
-  { bg: "bg-teal-500/20", border: "border-teal-500/60", text: "text-teal-300", accent: "text-teal-400" },
-  { bg: "bg-lime-500/20", border: "border-lime-500/60", text: "text-lime-300", accent: "text-lime-400" },
-  { bg: "bg-fuchsia-500/20", border: "border-fuchsia-500/60", text: "text-fuchsia-300", accent: "text-fuchsia-400" },
+  { bg: "bg-rose-500", bgMuted: "bg-rose-500/20", border: "border-rose-500", text: "text-rose-300", accent: "text-rose-400" },
+  { bg: "bg-sky-500", bgMuted: "bg-sky-500/20", border: "border-sky-500", text: "text-sky-300", accent: "text-sky-400" },
+  { bg: "bg-emerald-500", bgMuted: "bg-emerald-500/20", border: "border-emerald-500", text: "text-emerald-300", accent: "text-emerald-400" },
+  { bg: "bg-amber-500", bgMuted: "bg-amber-500/20", border: "border-amber-500", text: "text-amber-300", accent: "text-amber-400" },
+  { bg: "bg-violet-500", bgMuted: "bg-violet-500/20", border: "border-violet-500", text: "text-violet-300", accent: "text-violet-400" },
+  { bg: "bg-cyan-500", bgMuted: "bg-cyan-500/20", border: "border-cyan-500", text: "text-cyan-300", accent: "text-cyan-400" },
+  { bg: "bg-pink-500", bgMuted: "bg-pink-500/20", border: "border-pink-500", text: "text-pink-300", accent: "text-pink-400" },
+  { bg: "bg-lime-500", bgMuted: "bg-lime-500/20", border: "border-lime-500", text: "text-lime-300", accent: "text-lime-400" },
+  { bg: "bg-orange-500", bgMuted: "bg-orange-500/20", border: "border-orange-500", text: "text-orange-300", accent: "text-orange-400" },
+  { bg: "bg-teal-500", bgMuted: "bg-teal-500/20", border: "border-teal-500", text: "text-teal-300", accent: "text-teal-400" },
+  { bg: "bg-indigo-500", bgMuted: "bg-indigo-500/20", border: "border-indigo-500", text: "text-indigo-300", accent: "text-indigo-400" },
+  { bg: "bg-fuchsia-500", bgMuted: "bg-fuchsia-500/20", border: "border-fuchsia-500", text: "text-fuchsia-300", accent: "text-fuchsia-400" },
 ];
 
 function getTeamColor(index: number) {
@@ -79,14 +79,6 @@ interface PositionCount {
   DEF: number;
 }
 
-interface TeamStatus {
-  rosterId: string;
-  rosterName: string | null;
-  keeperCount: number;
-  maxKeepers: number;
-  status: "ready" | "planning" | "empty";
-}
-
 export default function DraftBoardPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -95,7 +87,6 @@ export default function DraftBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [showPositionSummary, setShowPositionSummary] = useState(true);
 
   useEffect(() => {
     fetchData();
@@ -112,42 +103,6 @@ export default function DraftBoardPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Calculate position counts by round
-  const getPositionCountsByRound = (round: number): PositionCount => {
-    const counts: PositionCount = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 };
-    if (!data) return counts;
-
-    const row = data.draftBoard.find(r => r.round === round);
-    if (!row) return counts;
-
-    for (const slot of row.slots) {
-      if (slot.status === "keeper" && slot.keeper?.position) {
-        const pos = slot.keeper.position as keyof PositionCount;
-        if (pos in counts) {
-          counts[pos]++;
-        }
-      }
-    }
-    return counts;
-  };
-
-  // Calculate team statuses
-  const getTeamStatuses = (): TeamStatus[] => {
-    if (!data) return [];
-
-    return data.cascade.map(team => ({
-      rosterId: team.rosterId,
-      rosterName: team.rosterName,
-      keeperCount: team.results.length,
-      maxKeepers: 7, // From keeper settings
-      status: team.results.length === 0
-        ? "empty"
-        : team.results.length >= 7
-          ? "ready"
-          : "planning" as const,
-    }));
   };
 
   // Calculate overall position summary
@@ -168,24 +123,31 @@ export default function DraftBoardPage() {
     return counts;
   };
 
-  const teamStatuses = getTeamStatuses();
   const overallPositions = getOverallPositionSummary();
 
-  // Create team color map
-  const teamColorMap = new Map<string, { color: ReturnType<typeof getTeamColor>; name: string }>();
+  // Create comprehensive team info map - by rosterId AND by team name for traded picks
+  const teamInfoMap = new Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>();
+  const teamNameToInfo = new Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>();
+
   if (data) {
     const rosters = data.draftBoard[0]?.slots || [];
     rosters.forEach((roster, index) => {
-      teamColorMap.set(roster.rosterId, {
+      const info = {
         color: getTeamColor(index),
         name: roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`,
-      });
+        rosterId: roster.rosterId,
+      };
+      teamInfoMap.set(roster.rosterId, info);
+      // Also map by team name for traded picks lookup
+      if (roster.rosterName) {
+        teamNameToInfo.set(roster.rosterName, info);
+      }
     });
   }
 
   if (loading) {
     return (
-      <div className="max-w-full mx-auto space-y-8">
+      <div className="max-w-full mx-auto space-y-6">
         <div>
           <Skeleton className="h-4 w-24 mb-2" />
           <Skeleton className="h-10 w-48 mb-2" />
@@ -193,22 +155,11 @@ export default function DraftBoardPage() {
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card-premium rounded-2xl p-6">
+            <div key={i} className="card-premium rounded-xl p-4">
               <Skeleton className="h-10 w-16 mb-2" />
               <Skeleton className="h-4 w-24" />
             </div>
           ))}
-        </div>
-        <div className="card-premium rounded-2xl p-6">
-          <Skeleton className="h-5 w-40 mb-4" />
-          <div className="grid grid-cols-6 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="text-center">
-                <Skeleton className="h-8 w-12 mx-auto mb-2" />
-                <Skeleton className="h-6 w-8 mx-auto" />
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     );
@@ -217,173 +168,134 @@ export default function DraftBoardPage() {
   if (error || !data) {
     return (
       <div className="max-w-7xl mx-auto">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
           <p className="text-red-400 font-medium">{error || "Failed to load data"}</p>
         </div>
       </div>
     );
   }
 
-  // Get unique rosters for column headers
   const rosters = data.draftBoard[0]?.slots || [];
 
   return (
-    <div className="max-w-full mx-auto space-y-8">
+    <div className="max-w-full mx-auto space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <Link
             href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-3 transition-colors"
           >
             <span>&larr;</span>
             <span>Back to League</span>
           </Link>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">Draft Board</h1>
-          <p className="text-gray-500 mt-2 text-lg">{data.season} Season</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Draft Board</h1>
+          <p className="text-gray-500 mt-1">{data.season} Season</p>
         </div>
-        <div className="flex gap-3 flex-wrap">
-          <button
-            onClick={() => setShowPositionSummary(!showPositionSummary)}
-            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              showPositionSummary
-                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
-            }`}
-          >
-            Position Summary
-          </button>
+        <div className="flex gap-2">
           <button
             onClick={() => setViewMode("grid")}
-            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               viewMode === "grid"
-                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
                 : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
             }`}
           >
-            Grid View
+            Grid
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               viewMode === "list"
-                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
                 : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
             }`}
           >
-            List View
+            By Team
           </button>
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="card-premium rounded-2xl p-6">
-          <p className="text-4xl font-extrabold text-white">{data.summary.totalKeepers}</p>
-          <p className="text-gray-500 text-sm mt-1 font-medium">Total Keepers</p>
+      {/* Stats Row */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
+          <p className="text-3xl font-bold text-white">{data.summary.totalKeepers}</p>
+          <p className="text-gray-500 text-xs mt-1">Total Keepers</p>
         </div>
-        <div className="card-premium rounded-2xl p-6">
-          <p className="text-4xl font-extrabold text-amber-400">{data.summary.cascadedKeepers}</p>
-          <p className="text-gray-500 text-sm mt-1 font-medium">Cascaded Picks</p>
+        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
+          <p className="text-3xl font-bold text-amber-400">{data.summary.cascadedKeepers}</p>
+          <p className="text-gray-500 text-xs mt-1">Cascaded</p>
         </div>
-        <div className="card-premium rounded-2xl p-6">
-          <p className="text-4xl font-extrabold text-blue-400">{data.summary.tradedPicks}</p>
-          <p className="text-gray-500 text-sm mt-1 font-medium">Traded Picks</p>
+        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
+          <p className="text-3xl font-bold text-blue-400">{data.summary.tradedPicks}</p>
+          <p className="text-gray-500 text-xs mt-1">Traded Picks</p>
         </div>
-        <div className="card-premium rounded-2xl p-6">
-          <p className="text-4xl font-extrabold text-green-400">
-            {teamStatuses.filter(t => t.status === "ready").length}/{teamStatuses.length}
-          </p>
-          <p className="text-gray-500 text-sm mt-1 font-medium">Teams Ready</p>
+        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
+          <p className="text-3xl font-bold text-white">{data.totalRosters}</p>
+          <p className="text-gray-500 text-xs mt-1">Teams</p>
         </div>
       </div>
 
-      {/* Position Scarcity Overview */}
-      <div className="card-premium rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <span className="w-1 h-5 bg-green-500 rounded-full"></span>
-            Position Breakdown
-          </h3>
-          <span className="text-xs text-gray-500 font-medium">Keepers by position league-wide</span>
-        </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-          {(["QB", "RB", "WR", "TE", "K", "DEF"] as const).map((pos) => (
-            <div key={pos} className="text-center p-4 rounded-xl bg-gray-800/30">
-              <PositionBadge position={pos} size="md" />
-              <p className="text-2xl font-extrabold text-white mt-3">{overallPositions[pos]}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {data.totalRosters > 0
-                  ? `${((overallPositions[pos] / data.totalRosters) * 100).toFixed(0)}%`
-                  : "0%"}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Team Status Indicators */}
-      <div className="card-premium rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
-          Teams
-        </h3>
-        <div className="flex flex-wrap gap-3">
-          {teamStatuses.map((team) => {
-            const teamInfo = teamColorMap.get(team.rosterId);
-            const teamColor = teamInfo?.color || TEAM_COLORS[0];
+      {/* Team Color Legend */}
+      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
+        <div className="flex flex-wrap gap-2">
+          {rosters.map((roster, index) => {
+            const color = getTeamColor(index);
+            const teamData = data.cascade.find(t => t.rosterId === roster.rosterId);
+            const keeperCount = teamData?.results.length || 0;
             return (
               <div
-                key={team.rosterId}
-                className={`px-4 py-2 rounded-xl text-sm flex items-center gap-3 ${teamColor.bg} border ${teamColor.border}`}
+                key={roster.rosterId}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/50"
               >
-                <span className={`truncate max-w-[120px] font-semibold ${teamColor.text}`}>
-                  {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
+                <div className={`w-3 h-3 rounded-full ${color.bg}`} />
+                <span className="text-gray-300 text-sm font-medium truncate max-w-[100px]">
+                  {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
                 </span>
-                <span className={`text-xs font-bold ${teamColor.accent} bg-black/20 px-2 py-0.5 rounded`}>
-                  {team.keeperCount}/{team.maxKeepers}
-                </span>
+                <span className="text-gray-500 text-xs">({keeperCount})</span>
               </div>
             );
           })}
         </div>
       </div>
 
+      {/* Position Summary */}
+      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
+        <div className="flex items-center gap-6">
+          <span className="text-gray-500 text-sm font-medium">Keepers by Position:</span>
+          <div className="flex gap-4">
+            {(["QB", "RB", "WR", "TE"] as const).map((pos) => (
+              <div key={pos} className="flex items-center gap-2">
+                <PositionBadge position={pos} size="xs" />
+                <span className="text-white font-semibold">{overallPositions[pos]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {viewMode === "grid" ? (
-        /* Grid View */
-        <div className="card-premium rounded-2xl overflow-hidden">
+        /* Grid View - Clean Table */
+        <div className="bg-gray-900/50 rounded-xl border border-gray-700/50 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="w-full">
               <thead>
-                <tr className="bg-gray-900/80">
-                  <th className="sticky left-0 bg-gray-900 z-10 px-4 py-4 text-left text-gray-400 text-sm font-semibold border-b border-gray-800 w-16">
+                <tr>
+                  <th className="sticky left-0 z-20 bg-gray-900 px-3 py-3 text-left text-gray-400 text-sm font-semibold border-b border-gray-700 w-12">
                     Rd
                   </th>
-                  {showPositionSummary && (
-                    <th className="px-3 py-4 text-center text-gray-400 text-xs font-semibold border-b border-gray-800 min-w-[110px] bg-gray-900/80">
-                      Positions
-                    </th>
-                  )}
-                  {rosters.map((roster) => {
-                    const teamStatus = teamStatuses.find(t => t.rosterId === roster.rosterId);
-                    const teamInfo = teamColorMap.get(roster.rosterId);
-                    const teamColor = teamInfo?.color || TEAM_COLORS[0];
+                  {rosters.map((roster, index) => {
+                    const color = getTeamColor(index);
                     return (
                       <th
                         key={roster.rosterId}
-                        className={`px-2 py-4 text-center text-xs font-semibold border-b border-gray-800 min-w-[130px] ${teamColor.bg}`}
+                        className="px-1 py-3 text-center border-b border-gray-700 min-w-[100px]"
                       >
-                        <div className="flex flex-col items-center gap-1.5">
-                          <span className={`truncate block max-w-[110px] font-bold ${teamColor.text}`}>
+                        <div className="flex flex-col items-center gap-1">
+                          <div className={`w-2.5 h-2.5 rounded-full ${color.bg}`} />
+                          <span className="text-gray-300 text-xs font-medium truncate max-w-[90px]">
                             {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
                           </span>
-                          {teamStatus && (
-                            <span
-                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${teamColor.bg} ${teamColor.border} border`}
-                            >
-                              {teamStatus.keeperCount}/{teamStatus.maxKeepers}
-                            </span>
-                          )}
                         </div>
                       </th>
                     );
@@ -391,130 +303,108 @@ export default function DraftBoardPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.draftBoard.map((row) => {
-                  const positionCounts = getPositionCountsByRound(row.round);
-                  const hasKeepers = Object.values(positionCounts).some(c => c > 0);
-                  return (
-                    <tr key={row.round} className="border-b border-gray-800/50">
-                      <td className="sticky left-0 bg-gray-900 z-10 px-4 py-3 text-white font-bold border-r border-gray-800">
-                        {row.round}
-                      </td>
-                      {showPositionSummary && (
-                        <td className="px-2 py-2 bg-gray-800/30">
-                          {hasKeepers ? (
-                            <div className="flex flex-wrap gap-1 justify-center">
-                              {(["QB", "RB", "WR", "TE"] as const).map((pos) =>
-                                positionCounts[pos] > 0 ? (
-                                  <span
-                                    key={pos}
-                                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                                      pos === "QB"
-                                        ? "bg-red-500/30 text-red-400"
-                                        : pos === "RB"
-                                        ? "bg-green-500/30 text-green-400"
-                                        : pos === "WR"
-                                        ? "bg-blue-500/30 text-blue-400"
-                                        : "bg-orange-500/30 text-orange-400"
-                                    }`}
-                                  >
-                                    {positionCounts[pos]}{pos}
-                                  </span>
-                                ) : null
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-600 text-xs">—</span>
-                          )}
-                        </td>
-                      )}
-                      {row.slots.map((slot) => (
-                        <td key={slot.rosterId} className="px-1.5 py-2">
+                {data.draftBoard.map((row, rowIndex) => (
+                  <tr
+                    key={row.round}
+                    className={rowIndex % 2 === 0 ? "bg-gray-800/20" : "bg-transparent"}
+                  >
+                    <td className="sticky left-0 z-10 bg-gray-900 px-3 py-2 text-white font-bold text-sm border-r border-gray-800">
+                      {row.round}
+                    </td>
+                    {row.slots.map((slot, slotIndex) => {
+                      const columnColor = getTeamColor(slotIndex);
+                      return (
+                        <td key={slot.rosterId} className="px-1 py-1.5">
                           <DraftCell
                             slot={slot}
-                            teamColorMap={teamColorMap}
-                            columnRosterId={slot.rosterId}
+                            columnColor={columnColor}
+                            teamInfoMap={teamInfoMap}
+                            teamNameToInfo={teamNameToInfo}
                           />
                         </td>
-                      ))}
-                    </tr>
-                  );
-                })}
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       ) : (
         /* List View - By Team */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {data.cascade.map((team) => {
-            const teamInfo = teamColorMap.get(team.rosterId);
-            const teamColor = teamInfo?.color || TEAM_COLORS[0];
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {data.cascade.map((team, index) => {
+            const color = getTeamColor(index);
             return (
               <div
                 key={team.rosterId}
-                className="card-premium rounded-2xl p-6"
+                className="bg-gray-800/30 rounded-xl border border-gray-700/50 overflow-hidden"
               >
-                <div className="flex items-center justify-between mb-5">
-                  <h3 className={`text-lg font-bold ${teamColor.text}`}>
-                    {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
-                  </h3>
-                  <span className={`text-sm font-bold px-3 py-1 rounded-lg ${teamColor.bg} ${teamColor.accent}`}>
-                    {team.results.length} keeper{team.results.length !== 1 ? "s" : ""}
-                  </span>
+                {/* Team Header */}
+                <div className={`${color.bgMuted} px-4 py-3 border-b ${color.border}/30`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${color.bg}`} />
+                      <span className={`font-semibold ${color.text}`}>
+                        {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
+                      </span>
+                    </div>
+                    <span className="text-gray-400 text-sm">
+                      {team.results.length} keeper{team.results.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
                 </div>
 
-                {team.results.length > 0 ? (
-                  <div className="space-y-2">
-                    {team.results.map((keeper) => (
-                      <div
-                        key={keeper.playerId}
-                        className="flex items-center justify-between bg-gray-800/30 rounded-xl px-4 py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <PositionBadge position={keeper.position} size="sm" />
-                          <div>
-                            <p className="text-white font-medium">{keeper.playerName}</p>
-                            <p className="text-gray-500 text-sm">{keeper.team || "FA"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {keeper.cascaded ? (
-                            <div className="text-right">
-                              <p className="text-white font-medium">
-                                Rd{" "}
-                                <span className="line-through text-gray-600">
-                                  {keeper.baseCost}
-                                </span>{" "}
-                                <span className="text-amber-400 font-bold">{keeper.finalCost}</span>
-                              </p>
-                              <p className="text-amber-400/70 text-xs font-medium">Cascaded</p>
+                {/* Keepers List */}
+                <div className="p-3">
+                  {team.results.length > 0 ? (
+                    <div className="space-y-2">
+                      {team.results
+                        .sort((a, b) => a.finalCost - b.finalCost)
+                        .map((keeper) => (
+                          <div
+                            key={keeper.playerId}
+                            className="flex items-center justify-between bg-gray-900/50 rounded-lg px-3 py-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <PositionBadge position={keeper.position} size="xs" />
+                              <span className="text-white text-sm font-medium truncate">
+                                {keeper.playerName}
+                              </span>
                             </div>
-                          ) : (
-                            <p className="text-white font-bold">Rd {keeper.finalCost}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-4">No keepers selected</p>
-                )}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {keeper.cascaded ? (
+                                <>
+                                  <span className="text-gray-500 text-xs line-through">R{keeper.baseCost}</span>
+                                  <span className="text-amber-400 text-sm font-bold">R{keeper.finalCost}</span>
+                                </>
+                              ) : (
+                                <span className="text-white text-sm font-bold">R{keeper.finalCost}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm text-center py-4">No keepers selected</p>
+                  )}
 
-                {/* Traded Picks Info */}
-                {(team.tradedAwayPicks.length > 0 || team.acquiredPicks.length > 0) && (
-                  <div className="mt-4 pt-4 border-t border-gray-800">
-                    {team.tradedAwayPicks.length > 0 && (
-                      <p className="text-red-400 text-sm font-medium">
-                        Traded Away: Rounds {team.tradedAwayPicks.join(", ")}
-                      </p>
-                    )}
-                    {team.acquiredPicks.length > 0 && (
-                      <p className="text-green-400 text-sm font-medium mt-1">
-                        Acquired: Rounds {team.acquiredPicks.map((p) => p.round).join(", ")}
-                      </p>
-                    )}
-                  </div>
-                )}
+                  {/* Traded Picks */}
+                  {(team.tradedAwayPicks.length > 0 || team.acquiredPicks.length > 0) && (
+                    <div className="mt-3 pt-3 border-t border-gray-700/50 space-y-1">
+                      {team.tradedAwayPicks.length > 0 && (
+                        <p className="text-red-400/80 text-xs">
+                          Traded: R{team.tradedAwayPicks.join(", R")}
+                        </p>
+                      )}
+                      {team.acquiredPicks.length > 0 && (
+                        <p className="text-green-400/80 text-xs">
+                          Acquired: R{team.acquiredPicks.map((p) => p.round).join(", R")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -522,30 +412,18 @@ export default function DraftBoardPage() {
       )}
 
       {/* Legend */}
-      <div className="card-premium rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <span className="w-1 h-5 bg-gray-500 rounded-full"></span>
-          Legend
-        </h3>
-        <div className="flex flex-wrap gap-8 text-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/60 flex items-center justify-center">
-              <span className="text-purple-300 text-xs font-bold">K</span>
-            </div>
-            <span className="text-gray-300">Keeper (team&apos;s pick)</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/20 border-2 border-dashed border-blue-500/60 flex items-center justify-center">
-              <span className="text-blue-300 text-xs">&rarr;</span>
-            </div>
-            <span className="text-gray-300">Traded pick</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gray-500/20 border border-dashed border-gray-500/40 opacity-50 flex items-center justify-center">
-              <span className="text-gray-400 text-xs">—</span>
-            </div>
-            <span className="text-gray-300">Available slot</span>
-          </div>
+      <div className="flex items-center gap-6 text-sm text-gray-400">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-emerald-500/30 border border-emerald-500/50" />
+          <span>Keeper</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded border-2 border-dashed border-sky-500/50 bg-sky-500/10" />
+          <span>Traded Pick</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-gray-700/30 border border-gray-600/30" />
+          <span>Available</span>
         </div>
       </div>
     </div>
@@ -554,48 +432,64 @@ export default function DraftBoardPage() {
 
 interface DraftCellProps {
   slot: DraftSlot;
-  teamColorMap: Map<string, { color: ReturnType<typeof getTeamColor>; name: string }>;
-  columnRosterId: string;
+  columnColor: ReturnType<typeof getTeamColor>;
+  teamInfoMap: Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>;
+  teamNameToInfo: Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>;
 }
 
-function DraftCell({ slot, teamColorMap, columnRosterId }: DraftCellProps) {
-  const columnTeam = teamColorMap.get(columnRosterId);
-  const columnColor = columnTeam?.color || TEAM_COLORS[0];
-
-  // Traded away - show who now owns this pick
+function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
+  // Traded away - show who now owns this pick with THEIR color
   if (slot.status === "traded" && slot.tradedTo) {
-    const newOwner = teamColorMap.get(slot.tradedTo);
-    const newOwnerColor = newOwner?.color || TEAM_COLORS[0];
-    const newOwnerName = newOwner?.name || slot.tradedTo.slice(0, 6);
+    // Try to find the new owner by name first, then by rosterId
+    let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
+
+    // If still not found, try to find by partial match
+    if (!newOwnerInfo) {
+      for (const [name, info] of teamNameToInfo) {
+        if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
+          newOwnerInfo = info;
+          break;
+        }
+      }
+    }
+
+    const ownerColor = newOwnerInfo?.color || columnColor;
+    const ownerName = newOwnerInfo?.name || slot.tradedTo;
 
     return (
-      <div className={`${newOwnerColor.bg} ${newOwnerColor.border} border-2 border-dashed rounded-xl px-2 py-2 text-center min-h-[56px] flex flex-col justify-center`}>
-        <p className={`${newOwnerColor.accent} text-[10px] font-bold`}>
-          &rarr; {newOwnerName}
+      <div
+        className={`${ownerColor.bgMuted} border-2 border-dashed ${ownerColor.border}/50 rounded-lg px-1.5 py-2 text-center h-[52px] flex flex-col justify-center`}
+      >
+        <p className={`${ownerColor.accent} text-[10px] font-semibold truncate`}>
+          {ownerName}
         </p>
         <p className="text-gray-500 text-[9px]">owns pick</p>
       </div>
     );
   }
 
-  // Keeper in this slot
+  // Keeper in this slot - use column team's color
   if (slot.status === "keeper" && slot.keeper) {
     return (
-      <div className={`${columnColor.bg} ${columnColor.border} border rounded-xl px-2 py-2 text-center min-h-[56px] flex flex-col justify-center`}>
-        <div className="flex items-center justify-center gap-1">
+      <div
+        className={`${columnColor.bgMuted} border ${columnColor.border}/50 rounded-lg px-1.5 py-1.5 h-[52px] flex flex-col justify-center`}
+      >
+        <div className="flex items-center justify-center">
           <PositionBadge position={slot.keeper.position} size="xs" />
         </div>
-        <p className={`${columnColor.text} text-[11px] font-semibold truncate mt-1`}>
+        <p className={`${columnColor.text} text-[10px] font-medium truncate text-center mt-0.5`}>
           {slot.keeper.playerName}
         </p>
       </div>
     );
   }
 
-  // Available pick - show in team's color but muted
+  // Available pick - muted version of column team's color
   return (
-    <div className={`${columnColor.bg} opacity-30 border ${columnColor.border} border-dashed rounded-xl px-2 py-2 text-center min-h-[56px] flex items-center justify-center`}>
-      <span className={`${columnColor.text} text-xs`}>—</span>
+    <div
+      className="bg-gray-800/20 border border-gray-700/30 rounded-lg h-[52px] flex items-center justify-center"
+    >
+      <span className="text-gray-600 text-xs">—</span>
     </div>
   );
 }
