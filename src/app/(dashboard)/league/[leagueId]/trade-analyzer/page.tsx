@@ -21,21 +21,6 @@ interface Roster {
   sleeperId: string;
 }
 
-interface TradePlayer {
-  player: Player;
-  fromRoster: Roster;
-  toRoster: Roster;
-  keeperCost: number | null;
-  yearsKept: number;
-}
-
-interface TradePick {
-  season: number;
-  round: number;
-  fromRoster: Roster;
-  toRoster: Roster;
-}
-
 interface TradeAnalysis {
   team1Value: number;
   team2Value: number;
@@ -248,24 +233,24 @@ export default function TradeAnalyzerPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <Skeleton className="h-4 w-24 mb-2" />
-          <Skeleton className="h-8 w-48 mb-1" />
-          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-10 w-64 mb-2" />
+          <Skeleton className="h-5 w-48" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+            <div key={i} className="card-premium rounded-2xl p-6">
               <Skeleton className="h-6 w-24 mb-4" />
-              <Skeleton className="h-10 w-full mb-4" />
-              <Skeleton className="h-4 w-40 mb-2" />
+              <Skeleton className="h-12 w-full mb-4" />
+              <Skeleton className="h-5 w-40 mb-3" />
               <div className="space-y-2">
                 {[1, 2, 3, 4, 5].map((j) => (
-                  <div key={j} className="flex items-center gap-3 p-2 bg-gray-700/30 rounded">
+                  <div key={j} className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-xl">
                     <SkeletonAvatar size="sm" />
-                    <Skeleton className="h-5 w-10" />
-                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-6 w-12" />
+                    <Skeleton className="h-5 w-32" />
                     <Skeleton className="h-4 w-12" />
                   </div>
                 ))}
@@ -279,9 +264,9 @@ export default function TradeAnalyzerPage() {
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <p className="text-red-400">{error}</p>
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+          <p className="text-red-400 font-medium">{error}</p>
         </div>
       </div>
     );
@@ -293,34 +278,38 @@ export default function TradeAnalyzerPage() {
   const team2PlayerList = players.get(team2) || [];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <Link
             href={`/league/${leagueId}`}
-            className="text-gray-400 hover:text-white text-sm mb-2 inline-block"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
           >
-            &larr; Back to League
+            <span>&larr;</span>
+            <span>Back to League</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Trade Analyzer</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="text-4xl font-extrabold text-white tracking-tight">Trade Analyzer</h1>
+          <p className="text-gray-500 mt-2 text-lg">
             Analyze potential trades and keeper implications
           </p>
         </div>
         <button
           onClick={clearTrade}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-white transition-colors"
+          className="px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
         >
           Clear Trade
         </button>
       </div>
 
       {/* Team Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Team 1 */}
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Team 1</h2>
+        <div className="card-premium rounded-2xl p-6">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
+            Team 1
+          </h2>
           <select
             value={team1}
             onChange={(e) => {
@@ -329,7 +318,7 @@ export default function TradeAnalyzerPage() {
               setTeam1Picks([]);
               setAnalysis(null);
             }}
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
+            className="w-full px-4 py-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium mb-5"
           >
             <option value="">Select a team...</option>
             {rosters
@@ -343,17 +332,17 @@ export default function TradeAnalyzerPage() {
 
           {team1 && (
             <>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">
-                Players to trade away:
+              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
+                Players to trade away
               </h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+              <div className="space-y-2 max-h-72 overflow-y-auto mb-5 pr-1">
                 {team1PlayerList.map((player) => (
                   <label
                     key={player.id}
-                    className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
                       team1Players.includes(player.id)
-                        ? "bg-purple-500/20 border border-purple-500"
-                        : "bg-gray-700/30 hover:bg-gray-700/50"
+                        ? "bg-purple-500/20 border-2 border-purple-500 shadow-lg shadow-purple-500/10"
+                        : "bg-gray-800/30 border-2 border-transparent hover:bg-gray-800/50"
                     }`}
                   >
                     <input
@@ -364,37 +353,37 @@ export default function TradeAnalyzerPage() {
                     />
                     <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
                     <PositionBadge position={player.position} size="xs" />
-                    <span className="text-white">{player.fullName}</span>
+                    <span className="text-white font-medium flex-1">{player.fullName}</span>
                     <span className="text-gray-500 text-sm">{player.team}</span>
                   </label>
                 ))}
               </div>
 
-              <h3 className="text-sm font-medium text-gray-400 mb-2">
-                Draft picks to include:
+              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
+                Draft picks to include
               </h3>
-              <div className="flex flex-wrap gap-2 mb-2">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {team1Picks.map((pick, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium"
                   >
                     {pick.season} Rd {pick.round}
                     <button
                       onClick={() => removePick("team1", index)}
-                      className="ml-1 hover:text-red-400"
+                      className="hover:text-red-400 transition-colors"
                     >
                       &times;
                     </button>
                   </span>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {[1, 2, 3, 4, 5].map((round) => (
                   <button
                     key={round}
                     onClick={() => addPick("team1", round)}
-                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300"
+                    className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm text-gray-300 font-medium transition-colors"
                   >
                     +Rd {round}
                   </button>
@@ -404,9 +393,19 @@ export default function TradeAnalyzerPage() {
           )}
         </div>
 
+        {/* Trade Arrow */}
+        <div className="hidden lg:flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          <div className="w-16 h-16 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+            <span className="text-2xl">&#8644;</span>
+          </div>
+        </div>
+
         {/* Team 2 */}
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Team 2</h2>
+        <div className="card-premium rounded-2xl p-6">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <span className="w-1 h-5 bg-green-500 rounded-full"></span>
+            Team 2
+          </h2>
           <select
             value={team2}
             onChange={(e) => {
@@ -415,7 +414,7 @@ export default function TradeAnalyzerPage() {
               setTeam2Picks([]);
               setAnalysis(null);
             }}
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
+            className="w-full px-4 py-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium mb-5"
           >
             <option value="">Select a team...</option>
             {rosters
@@ -429,17 +428,17 @@ export default function TradeAnalyzerPage() {
 
           {team2 && (
             <>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">
-                Players to trade away:
+              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
+                Players to trade away
               </h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+              <div className="space-y-2 max-h-72 overflow-y-auto mb-5 pr-1">
                 {team2PlayerList.map((player) => (
                   <label
                     key={player.id}
-                    className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-colors ${
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
                       team2Players.includes(player.id)
-                        ? "bg-purple-500/20 border border-purple-500"
-                        : "bg-gray-700/30 hover:bg-gray-700/50"
+                        ? "bg-purple-500/20 border-2 border-purple-500 shadow-lg shadow-purple-500/10"
+                        : "bg-gray-800/30 border-2 border-transparent hover:bg-gray-800/50"
                     }`}
                   >
                     <input
@@ -450,37 +449,37 @@ export default function TradeAnalyzerPage() {
                     />
                     <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
                     <PositionBadge position={player.position} size="xs" />
-                    <span className="text-white">{player.fullName}</span>
+                    <span className="text-white font-medium flex-1">{player.fullName}</span>
                     <span className="text-gray-500 text-sm">{player.team}</span>
                   </label>
                 ))}
               </div>
 
-              <h3 className="text-sm font-medium text-gray-400 mb-2">
-                Draft picks to include:
+              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
+                Draft picks to include
               </h3>
-              <div className="flex flex-wrap gap-2 mb-2">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {team2Picks.map((pick, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-sm"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium"
                   >
                     {pick.season} Rd {pick.round}
                     <button
                       onClick={() => removePick("team2", index)}
-                      className="ml-1 hover:text-red-400"
+                      className="hover:text-red-400 transition-colors"
                     >
                       &times;
                     </button>
                   </span>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {[1, 2, 3, 4, 5].map((round) => (
                   <button
                     key={round}
                     onClick={() => addPick("team2", round)}
-                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300"
+                    className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm text-gray-300 font-medium transition-colors"
                   >
                     +Rd {round}
                   </button>
@@ -497,83 +496,94 @@ export default function TradeAnalyzerPage() {
           <button
             onClick={analyzeTrade}
             disabled={analyzing}
-            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-white font-medium transition-colors"
+            className="px-10 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 rounded-xl text-white font-bold text-lg transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/40 hover:scale-[1.02]"
           >
-            {analyzing ? "Analyzing..." : "Analyze Trade"}
+            {analyzing ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Analyzing...
+              </span>
+            ) : (
+              "Analyze Trade"
+            )}
           </button>
         </div>
       )}
 
       {/* Analysis Results */}
       {analysis && (
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">
+        <div className="card-premium rounded-2xl p-6">
+          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
             Trade Analysis
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="text-center">
-              <p className="text-gray-400 text-sm mb-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="text-center p-6 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <p className="text-gray-400 text-sm mb-2 font-medium">
                 {team1Roster?.teamName || "Team 1"} Value
               </p>
-              <p className="text-2xl font-bold text-white">{analysis.team1Value}</p>
+              <p className="text-4xl font-extrabold text-blue-400">{analysis.team1Value}</p>
             </div>
-            <div className="text-center">
-              <p className="text-gray-400 text-sm mb-1">Fairness Score</p>
+            <div className="text-center p-6 rounded-xl bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700">
+              <p className="text-gray-400 text-sm mb-2 font-medium">Fairness Score</p>
               <p
-                className={`text-2xl font-bold ${
+                className={`text-4xl font-extrabold ${
                   analysis.fairnessScore >= 80
                     ? "text-green-400"
                     : analysis.fairnessScore >= 60
-                    ? "text-yellow-400"
+                    ? "text-amber-400"
                     : "text-red-400"
                 }`}
               >
                 {analysis.fairnessScore}%
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-gray-400 text-sm mb-1">
+            <div className="text-center p-6 rounded-xl bg-green-500/10 border border-green-500/20">
+              <p className="text-gray-400 text-sm mb-2 font-medium">
                 {team2Roster?.teamName || "Team 2"} Value
               </p>
-              <p className="text-2xl font-bold text-white">{analysis.team2Value}</p>
+              <p className="text-4xl font-extrabold text-green-400">{analysis.team2Value}</p>
             </div>
           </div>
 
           {/* Fairness Bar */}
-          <div className="mb-6">
+          <div className="mb-8">
             <div className="h-4 bg-gray-700 rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all ${
+                className={`h-full transition-all duration-500 ${
                   analysis.fairnessScore >= 80
-                    ? "bg-green-500"
+                    ? "bg-gradient-to-r from-green-500 to-green-400"
                     : analysis.fairnessScore >= 60
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
+                    ? "bg-gradient-to-r from-amber-500 to-amber-400"
+                    : "bg-gradient-to-r from-red-500 to-red-400"
                 }`}
                 style={{ width: `${analysis.fairnessScore}%` }}
               />
             </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <div className="flex justify-between text-xs text-gray-500 mt-2 font-medium">
               <span>Unfair</span>
-              <span>Fair</span>
+              <span>Perfectly Fair</span>
             </div>
           </div>
 
           {/* Keeper Implications */}
           {analysis.keeperImplications.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">
+              <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">
                 Keeper Implications
               </h3>
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {analysis.keeperImplications.map((implication, index) => (
                   <li
                     key={index}
-                    className="flex items-start gap-2 text-gray-300 text-sm"
+                    className="flex items-start gap-3 text-gray-300 p-4 rounded-xl bg-gray-800/30"
                   >
-                    <span className="text-purple-400">•</span>
-                    {implication}
+                    <span className="text-purple-400 mt-0.5">&#8226;</span>
+                    <span>{implication}</span>
                   </li>
                 ))}
               </ul>
@@ -584,50 +594,57 @@ export default function TradeAnalyzerPage() {
 
       {/* Trade Summary */}
       {(team1Players.length > 0 || team2Players.length > 0 || team1Picks.length > 0 || team2Picks.length > 0) && (
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Trade Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card-premium rounded-2xl p-6">
+          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <span className="w-1 h-5 bg-amber-500 rounded-full"></span>
+            Trade Summary
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">
-                {team1Roster?.teamName || "Team 1"} sends:
+              <h3 className="text-sm font-semibold text-blue-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                {team1Roster?.teamName || "Team 1"} sends
               </h3>
-              <ul className="space-y-1">
+              <ul className="space-y-2">
                 {team1PlayerList
                   .filter((p) => team1Players.includes(p.id))
                   .map((player) => (
-                    <li key={player.id} className="text-white text-sm">
-                      {player.fullName} ({player.position})
+                    <li key={player.id} className="flex items-center gap-3 text-white p-3 rounded-lg bg-gray-800/30">
+                      <PositionBadge position={player.position} size="xs" />
+                      <span className="font-medium">{player.fullName}</span>
                     </li>
                   ))}
                 {team1Picks.map((pick, i) => (
-                  <li key={i} className="text-blue-400 text-sm">
+                  <li key={i} className="text-blue-400 p-3 rounded-lg bg-blue-500/10 font-medium">
                     {pick.season} Round {pick.round} pick
                   </li>
                 ))}
                 {team1Players.length === 0 && team1Picks.length === 0 && (
-                  <li className="text-gray-500 text-sm">Nothing selected</li>
+                  <li className="text-gray-500 p-3">Nothing selected</li>
                 )}
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-400 mb-2">
-                {team2Roster?.teamName || "Team 2"} sends:
+              <h3 className="text-sm font-semibold text-green-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                {team2Roster?.teamName || "Team 2"} sends
               </h3>
-              <ul className="space-y-1">
+              <ul className="space-y-2">
                 {team2PlayerList
                   .filter((p) => team2Players.includes(p.id))
                   .map((player) => (
-                    <li key={player.id} className="text-white text-sm">
-                      {player.fullName} ({player.position})
+                    <li key={player.id} className="flex items-center gap-3 text-white p-3 rounded-lg bg-gray-800/30">
+                      <PositionBadge position={player.position} size="xs" />
+                      <span className="font-medium">{player.fullName}</span>
                     </li>
                   ))}
                 {team2Picks.map((pick, i) => (
-                  <li key={i} className="text-blue-400 text-sm">
+                  <li key={i} className="text-blue-400 p-3 rounded-lg bg-blue-500/10 font-medium">
                     {pick.season} Round {pick.round} pick
                   </li>
                 ))}
                 {team2Players.length === 0 && team2Picks.length === 0 && (
-                  <li className="text-gray-500 text-sm">Nothing selected</li>
+                  <li className="text-gray-500 p-3">Nothing selected</li>
                 )}
               </ul>
             </div>

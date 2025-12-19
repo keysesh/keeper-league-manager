@@ -52,7 +52,7 @@ function LoginForm() {
         <div>
           <label
             htmlFor="username"
-            className="block text-sm font-medium text-gray-300 mb-2"
+            className="block text-sm font-semibold text-gray-400 mb-2"
           >
             Sleeper Username
           </label>
@@ -62,7 +62,7 @@ function LoginForm() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your Sleeper username"
-            className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium"
             required
             autoComplete="username"
             autoFocus
@@ -72,7 +72,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isLoading || !username.trim()}
-          className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3.5 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/40"
         >
           {isLoading ? (
             <>
@@ -121,16 +121,23 @@ function LoginFormFallback() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
-      <div className="w-full max-w-md px-6">
-        <div className="bg-gray-800/50 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-gray-700">
+    <div className="min-h-screen flex items-center justify-center bg-[#0c0c0e] relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-purple-900/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-900/20 to-transparent rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md px-6 relative z-10">
+        <div className="card-premium rounded-3xl shadow-2xl p-8">
           {/* Logo/Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-600/20 mb-4">
-              <span className="text-3xl">🏈</span>
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 mb-5 shadow-xl shadow-purple-500/30">
+              <span className="text-4xl">🏈</span>
             </div>
-            <h1 className="text-2xl font-bold text-white">Keeper League Manager</h1>
-            <p className="text-gray-400 mt-2">
+            <h1 className="text-3xl font-extrabold text-white tracking-tight">E Pluribus</h1>
+            <p className="text-purple-400 font-semibold text-sm mt-1">Keeper Tracker</p>
+            <p className="text-gray-500 mt-4">
               Sign in with your Sleeper username
             </p>
           </div>
@@ -141,13 +148,13 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="mt-8 text-center">
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-600 text-sm">
               Don&apos;t have a Sleeper account?{" "}
               <a
                 href="https://sleeper.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-purple-400 hover:text-purple-300 transition-colors"
+                className="text-purple-400 hover:text-purple-300 transition-colors font-semibold"
               >
                 Download Sleeper
               </a>
@@ -156,7 +163,7 @@ export default function LoginPage() {
         </div>
 
         {/* Info Text */}
-        <p className="text-gray-500 text-xs text-center mt-6 px-4">
+        <p className="text-gray-600 text-xs text-center mt-6 px-4">
           We use your Sleeper username to access your public league data.
           No password is required or stored.
         </p>

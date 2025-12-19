@@ -268,28 +268,28 @@ export default function TeamRosterPage() {
         </div>
       </div>
 
-      {/* Keeper Summary - Square Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="stat-card aspect-square flex flex-col items-center justify-center text-center border-purple-500/30 hover:border-purple-500/50">
-          <p className="text-5xl font-extrabold text-white tracking-tight">
+      {/* Keeper Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="stat-card flex flex-col items-center justify-center text-center py-4 border-purple-500/30 hover:border-purple-500/50">
+          <p className="text-3xl font-bold text-white">
             {data.currentKeepers.total}
+            <span className="text-base text-gray-500 font-medium">/{data.limits.maxKeepers}</span>
           </p>
-          <p className="text-lg text-gray-500 font-medium">/{data.limits.maxKeepers}</p>
-          <p className="text-xs text-gray-500 mt-2 uppercase tracking-wide">Total Keepers</p>
+          <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total</p>
         </div>
-        <div className="stat-card aspect-square flex flex-col items-center justify-center text-center border-amber-500/30 hover:border-amber-500/50">
-          <p className="text-5xl font-extrabold text-amber-400 tracking-tight">
+        <div className="stat-card flex flex-col items-center justify-center text-center py-4 border-amber-500/30 hover:border-amber-500/50">
+          <p className="text-3xl font-bold text-amber-400">
             {data.currentKeepers.franchise}
+            <span className="text-base text-gray-500 font-medium">/{data.limits.maxFranchiseTags}</span>
           </p>
-          <p className="text-lg text-gray-500 font-medium">/{data.limits.maxFranchiseTags}</p>
-          <p className="text-xs text-gray-500 mt-2 uppercase tracking-wide">Franchise Tags</p>
+          <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Franchise</p>
         </div>
-        <div className="stat-card aspect-square flex flex-col items-center justify-center text-center border-blue-500/30 hover:border-blue-500/50">
-          <p className="text-5xl font-extrabold text-blue-400 tracking-tight">
+        <div className="stat-card flex flex-col items-center justify-center text-center py-4 border-blue-500/30 hover:border-blue-500/50">
+          <p className="text-3xl font-bold text-blue-400">
             {data.currentKeepers.regular}
+            <span className="text-base text-gray-500 font-medium">/{data.limits.maxRegularKeepers}</span>
           </p>
-          <p className="text-lg text-gray-500 font-medium">/{data.limits.maxRegularKeepers}</p>
-          <p className="text-xs text-gray-500 mt-2 uppercase tracking-wide">Regular Keepers</p>
+          <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Regular</p>
         </div>
       </div>
 
@@ -407,7 +407,7 @@ export default function TeamRosterPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <PositionBadge position={p.player.position} size="xs" variant="subtle" />
-                        <YearsKeptBadge years={p.eligibility.yearsKept} />
+                        <YearsKeptBadge years={p.eligibility.yearsKept - 1} />
                         {p.player.yearsExp === 0 && <RookieBadge size="xs" />}
                         {p.player.injuryStatus && (
                           <span className="text-xs text-red-400 font-medium">
@@ -505,7 +505,7 @@ export default function TeamRosterPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <PositionBadge position={p.player.position} size="xs" variant="subtle" />
-                    <YearsKeptBadge years={p.eligibility.yearsKept} />
+                    <YearsKeptBadge years={p.eligibility.yearsKept - 1} />
                   </div>
                   <p className="text-gray-400 font-medium truncate">{p.player.fullName}</p>
                   <p className="text-gray-600 text-xs">

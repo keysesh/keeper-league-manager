@@ -53,12 +53,10 @@ export default function HistoryPage() {
 
   const fetchHistory = async () => {
     try {
-      // Fetch all keeper history from the new API endpoint
       const res = await fetch(`/api/leagues/${leagueId}/history`);
       if (!res.ok) throw new Error("Failed to fetch keeper history");
       const data = await res.json();
 
-      // Set teams from the response
       setTeams(
         data.teams.map((r: { id: string; teamName: string | null }) => ({
           id: r.id,
@@ -66,10 +64,7 @@ export default function HistoryPage() {
         }))
       );
 
-      // Set keepers from the response
       setHistory(data.keepers || []);
-
-      // Set stats from the response (already calculated by the API)
       setStats(data.seasonStats || []);
     } catch {
       setError("Failed to load keeper history");
@@ -90,41 +85,24 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="max-w-7xl mx-auto space-y-8">
         <div>
           <Skeleton className="h-4 w-24 mb-2" />
-          <Skeleton className="h-8 w-48 mb-1" />
-          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-10 w-64 mb-2" />
+          <Skeleton className="h-5 w-48" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-              <Skeleton className="h-6 w-32 mb-4" />
-              <div className="space-y-3">
+            <div key={i} className="card-premium rounded-2xl p-6">
+              <Skeleton className="h-8 w-16 mb-4" />
+              <Skeleton className="h-4 w-24 mb-3" />
+              <div className="space-y-2">
                 {[1, 2, 3, 4, 5].map((j) => (
-                  <div key={j} className="flex justify-between">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-12" />
-                  </div>
+                  <Skeleton key={j} className="h-4 w-full" />
                 ))}
               </div>
             </div>
           ))}
-        </div>
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <div className="flex gap-4">
-            <Skeleton className="h-10 w-40" />
-            <Skeleton className="h-10 w-40" />
-          </div>
-        </div>
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="p-4">
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -132,68 +110,64 @@ export default function HistoryPage() {
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <p className="text-red-400">{error}</p>
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+          <p className="text-red-400 font-medium">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <Link
           href={`/league/${leagueId}`}
-          className="text-gray-400 hover:text-white text-sm mb-2 inline-block"
+          className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
         >
-          &larr; Back to League
+          <span>&larr;</span>
+          <span>Back to League</span>
         </Link>
-        <h1 className="text-2xl font-bold text-white">Keeper History</h1>
-        <p className="text-gray-400 mt-1">
+        <h1 className="text-4xl font-extrabold text-white tracking-tight">Keeper History</h1>
+        <p className="text-gray-500 mt-2 text-lg">
           View historical keeper data and trends
         </p>
       </div>
 
       {/* Season Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
           <div
             key={s.season}
-            className="bg-gray-800/50 rounded-xl p-6 border border-gray-700"
+            className="card-premium rounded-2xl p-6"
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
-              {s.season} Season
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">{s.season}</h3>
+              <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-400 font-semibold">
+                Season
+              </span>
+            </div>
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Total Keepers</span>
-                <span className="text-white font-medium">{s.totalKeepers}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-sm">Total Keepers</span>
+                <span className="text-white font-bold text-lg">{s.totalKeepers}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Franchise Tags</span>
-                <span className="text-yellow-400 font-medium">
-                  {s.franchiseTags}
-                </span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-sm">Franchise Tags</span>
+                <span className="badge-franchise">{s.franchiseTags}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Regular Keepers</span>
-                <span className="text-blue-400 font-medium">
-                  {s.regularKeepers}
-                </span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-sm">Regular Keepers</span>
+                <span className="badge-keeper">{s.regularKeepers}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Avg Cost</span>
-                <span className="text-white font-medium">
-                  Round {s.avgCost}
-                </span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-sm">Avg Cost</span>
+                <span className="text-white font-semibold">Rd {s.avgCost}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Most Kept Position</span>
-                <span className="text-purple-400 font-medium">
-                  {s.mostKeptPosition}
-                </span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-sm">Top Position</span>
+                <PositionBadge position={s.mostKeptPosition} size="sm" />
               </div>
             </div>
           </div>
@@ -201,10 +175,14 @@ export default function HistoryPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+      <div className="card-premium rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
+          Filters
+        </h2>
         <div className="flex flex-wrap gap-4">
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Season</label>
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-semibold text-gray-400 mb-2">Season</label>
             <select
               value={selectedSeason}
               onChange={(e) =>
@@ -212,7 +190,7 @@ export default function HistoryPage() {
                   e.target.value === "all" ? "all" : parseInt(e.target.value)
                 )
               }
-              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium"
             >
               <option value="all">All Seasons</option>
               {seasons.map((season) => (
@@ -222,12 +200,12 @@ export default function HistoryPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Team</label>
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-semibold text-gray-400 mb-2">Team</label>
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+              className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium"
             >
               <option value="all">All Teams</option>
               {teams.map((team) => (
@@ -241,80 +219,91 @@ export default function HistoryPage() {
       </div>
 
       {/* Keeper History Table */}
-      <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
+      <div className="card-premium rounded-2xl overflow-hidden">
+        <div className="p-6 border-b border-gray-800">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
+            All Keepers
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              ({filteredHistory.length} records)
+            </span>
+          </h2>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-900">
-                <th className="px-4 py-3 text-left text-gray-400 text-sm font-medium">
+              <tr className="bg-gray-900/50">
+                <th className="px-6 py-4 text-left text-gray-400 text-sm font-semibold uppercase tracking-wider">
                   Season
                 </th>
-                <th className="px-4 py-3 text-left text-gray-400 text-sm font-medium">
+                <th className="px-6 py-4 text-left text-gray-400 text-sm font-semibold uppercase tracking-wider">
                   Player
                 </th>
-                <th className="px-4 py-3 text-left text-gray-400 text-sm font-medium">
+                <th className="px-6 py-4 text-left text-gray-400 text-sm font-semibold uppercase tracking-wider">
                   Team
                 </th>
-                <th className="px-4 py-3 text-center text-gray-400 text-sm font-medium">
+                <th className="px-6 py-4 text-center text-gray-400 text-sm font-semibold uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-4 py-3 text-center text-gray-400 text-sm font-medium">
+                <th className="px-6 py-4 text-center text-gray-400 text-sm font-semibold uppercase tracking-wider">
                   Cost
                 </th>
-                <th className="px-4 py-3 text-center text-gray-400 text-sm font-medium">
+                <th className="px-6 py-4 text-center text-gray-400 text-sm font-semibold uppercase tracking-wider">
                   Years Kept
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-800/50">
               {filteredHistory.length > 0 ? (
                 filteredHistory.map((keeper) => (
                   <tr
                     key={keeper.id}
-                    className="border-t border-gray-700/50 hover:bg-gray-700/20"
+                    className="hover:bg-gray-800/30 transition-colors"
                   >
-                    <td className="px-4 py-3 text-gray-300">{keeper.season}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <PositionBadge position={keeper.player.position} />
+                    <td className="px-6 py-4">
+                      <span className="text-white font-semibold">{keeper.season}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <PositionBadge position={keeper.player.position} size="sm" />
                         <div>
-                          <p className="text-white">{keeper.player.fullName}</p>
+                          <p className="text-white font-medium">{keeper.player.fullName}</p>
                           <p className="text-gray-500 text-sm">
                             {keeper.player.team || "FA"}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-300">
-                      {keeper.roster.teamName || "Unknown"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          keeper.type === "FRANCHISE"
-                            ? "bg-yellow-500/20 text-yellow-400"
-                            : "bg-blue-500/20 text-blue-400"
-                        }`}
-                      >
-                        {keeper.type === "FRANCHISE" ? "FT" : "Regular"}
+                    <td className="px-6 py-4">
+                      <span className="text-gray-300 font-medium">
+                        {keeper.roster.teamName || "Unknown"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center text-white">
-                      {keeper.baseCost !== keeper.finalCost ? (
-                        <>
-                          <span className="line-through text-gray-500">
-                            {keeper.baseCost}
-                          </span>{" "}
-                          <span className="text-yellow-400">
-                            {keeper.finalCost}
-                          </span>
-                        </>
+                    <td className="px-6 py-4 text-center">
+                      {keeper.type === "FRANCHISE" ? (
+                        <span className="badge-franchise">FT</span>
                       ) : (
-                        keeper.finalCost
+                        <span className="badge-keeper">K</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center text-gray-300">
-                      {keeper.yearsKept}
+                    <td className="px-6 py-4 text-center">
+                      {keeper.baseCost !== keeper.finalCost ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="line-through text-gray-600 text-sm">
+                            {keeper.baseCost}
+                          </span>
+                          <span className="text-amber-400 font-bold">
+                            {keeper.finalCost}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-white font-semibold">{keeper.finalCost}</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-bold">
+                        {keeper.yearsKept}
+                      </span>
                     </td>
                   </tr>
                 ))
@@ -322,7 +311,7 @@ export default function HistoryPage() {
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-4 py-8 text-center text-gray-500"
+                    className="px-6 py-12 text-center text-gray-500"
                   >
                     No keeper history found
                   </td>
@@ -333,13 +322,14 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* Keeper Trends */}
+      {/* Position Trends */}
       {history.length > 0 && (
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">
+        <div className="card-premium rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+            <span className="w-1 h-5 bg-green-500 rounded-full"></span>
             Position Trends
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {["QB", "RB", "WR", "TE"].map((position) => {
               const count = filteredHistory.filter(
                 (k) => k.player.position === position
@@ -350,10 +340,21 @@ export default function HistoryPage() {
                   : 0;
 
               return (
-                <div key={position} className="text-center">
-                  <PositionBadge position={position} />
-                  <p className="text-2xl font-bold text-white mt-2">{count}</p>
-                  <p className="text-gray-500 text-sm">{percentage}% of keepers</p>
+                <div key={position} className="text-center p-4 rounded-xl bg-gray-800/30">
+                  <PositionBadge position={position} size="md" />
+                  <p className="text-3xl font-extrabold text-white mt-3">{count}</p>
+                  <p className="text-gray-500 text-sm mt-1">{percentage}% of keepers</p>
+                  <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        position === "QB" ? "bg-red-500" :
+                        position === "RB" ? "bg-green-500" :
+                        position === "WR" ? "bg-blue-500" :
+                        "bg-orange-500"
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -363,11 +364,15 @@ export default function HistoryPage() {
 
       {/* Multi-Year Keepers */}
       {history.length > 0 && (
-        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">
+        <div className="card-premium rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+            <span className="w-1 h-5 bg-amber-500 rounded-full"></span>
             Multi-Year Keepers
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              (Players kept 2+ years)
+            </span>
           </h2>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {filteredHistory
               .filter((k) => k.yearsKept > 1)
               .sort((a, b) => b.yearsKept - a.yearsKept)
@@ -375,19 +380,19 @@ export default function HistoryPage() {
               .map((keeper) => (
                 <div
                   key={keeper.id}
-                  className="flex items-center justify-between bg-gray-700/30 rounded-lg px-4 py-2"
+                  className="flex items-center justify-between bg-gray-800/30 rounded-xl px-5 py-4 hover:bg-gray-800/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <PositionBadge position={keeper.player.position} />
+                  <div className="flex items-center gap-4">
+                    <PositionBadge position={keeper.player.position} size="sm" />
                     <div>
-                      <p className="text-white">{keeper.player.fullName}</p>
+                      <p className="text-white font-semibold">{keeper.player.fullName}</p>
                       <p className="text-gray-500 text-sm">
-                        {keeper.roster.teamName} - {keeper.season}
+                        {keeper.roster.teamName} &bull; {keeper.season}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-purple-400 font-medium">
+                    <p className="text-purple-400 font-bold text-lg">
                       {keeper.yearsKept} years
                     </p>
                     <p className="text-gray-500 text-sm">
@@ -397,9 +402,9 @@ export default function HistoryPage() {
                 </div>
               ))}
             {filteredHistory.filter((k) => k.yearsKept > 1).length === 0 && (
-              <p className="text-gray-500 text-center py-4">
-                No multi-year keepers found
-              </p>
+              <div className="text-center py-8">
+                <p className="text-gray-500">No multi-year keepers found</p>
+              </div>
             )}
           </div>
         </div>

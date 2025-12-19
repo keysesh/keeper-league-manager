@@ -185,49 +185,29 @@ export default function DraftBoardPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="max-w-full mx-auto space-y-8">
         <div>
           <Skeleton className="h-4 w-24 mb-2" />
-          <Skeleton className="h-8 w-48 mb-1" />
-          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-5 w-32" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-              <Skeleton className="h-8 w-16 mb-2" />
+            <div key={i} className="card-premium rounded-2xl p-6">
+              <Skeleton className="h-10 w-16 mb-2" />
               <Skeleton className="h-4 w-24" />
             </div>
           ))}
         </div>
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <Skeleton className="h-5 w-40 mb-3" />
-          <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+        <div className="card-premium rounded-2xl p-6">
+          <Skeleton className="h-5 w-40 mb-4" />
+          <div className="grid grid-cols-6 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="text-center">
-                <Skeleton className="h-6 w-10 mx-auto mb-1" />
-                <Skeleton className="h-6 w-6 mx-auto mb-1" />
-                <Skeleton className="h-3 w-8 mx-auto" />
+                <Skeleton className="h-8 w-12 mx-auto mb-2" />
+                <Skeleton className="h-6 w-8 mx-auto" />
               </div>
             ))}
-          </div>
-        </div>
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="p-4">
-            <div className="flex gap-2 mb-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Skeleton key={i} className="h-12 w-24" />
-              ))}
-            </div>
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((row) => (
-                <div key={row} className="flex gap-2">
-                  <Skeleton className="h-10 w-12" />
-                  {[1, 2, 3, 4, 5, 6].map((col) => (
-                    <Skeleton key={col} className="h-10 w-24" />
-                  ))}
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -236,9 +216,9 @@ export default function DraftBoardPage() {
 
   if (error || !data) {
     return (
-      <div className="p-6">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <p className="text-red-400">{error || "Failed to load data"}</p>
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+          <p className="text-red-400 font-medium">{error || "Failed to load data"}</p>
         </div>
       </div>
     );
@@ -248,46 +228,47 @@ export default function DraftBoardPage() {
   const rosters = data.draftBoard[0]?.slots || [];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-full mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <Link
             href={`/league/${leagueId}`}
-            className="text-gray-400 hover:text-white text-sm mb-2 inline-block"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
           >
-            &larr; Back to League
+            <span>&larr;</span>
+            <span>Back to League</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Draft Board</h1>
-          <p className="text-gray-400 mt-1">{data.season} Season</p>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight">Draft Board</h1>
+          <p className="text-gray-500 mt-2 text-lg">{data.season} Season</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-3 flex-wrap">
           <button
             onClick={() => setShowPositionSummary(!showPositionSummary)}
-            className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               showPositionSummary
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-400 hover:text-white"
+                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
             }`}
           >
             Position Summary
           </button>
           <button
             onClick={() => setViewMode("grid")}
-            className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               viewMode === "grid"
-                ? "bg-purple-600 text-white"
-                : "bg-gray-700 text-gray-400 hover:text-white"
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
             }`}
           >
             Grid View
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
               viewMode === "list"
-                ? "bg-purple-600 text-white"
-                : "bg-gray-700 text-gray-400 hover:text-white"
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
             }`}
           >
             List View
@@ -297,38 +278,41 @@ export default function DraftBoardPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <p className="text-3xl font-bold text-white">{data.summary.totalKeepers}</p>
-          <p className="text-gray-400 text-sm">Total Keepers</p>
+        <div className="card-premium rounded-2xl p-6">
+          <p className="text-4xl font-extrabold text-white">{data.summary.totalKeepers}</p>
+          <p className="text-gray-500 text-sm mt-1 font-medium">Total Keepers</p>
         </div>
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <p className="text-3xl font-bold text-yellow-400">{data.summary.cascadedKeepers}</p>
-          <p className="text-gray-400 text-sm">Cascaded Picks</p>
+        <div className="card-premium rounded-2xl p-6">
+          <p className="text-4xl font-extrabold text-amber-400">{data.summary.cascadedKeepers}</p>
+          <p className="text-gray-500 text-sm mt-1 font-medium">Cascaded Picks</p>
         </div>
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <p className="text-3xl font-bold text-blue-400">{data.summary.tradedPicks}</p>
-          <p className="text-gray-400 text-sm">Traded Picks</p>
+        <div className="card-premium rounded-2xl p-6">
+          <p className="text-4xl font-extrabold text-blue-400">{data.summary.tradedPicks}</p>
+          <p className="text-gray-500 text-sm mt-1 font-medium">Traded Picks</p>
         </div>
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <p className="text-3xl font-bold text-green-400">
+        <div className="card-premium rounded-2xl p-6">
+          <p className="text-4xl font-extrabold text-green-400">
             {teamStatuses.filter(t => t.status === "ready").length}/{teamStatuses.length}
           </p>
-          <p className="text-gray-400 text-sm">Teams Ready</p>
+          <p className="text-gray-500 text-sm mt-1 font-medium">Teams Ready</p>
         </div>
       </div>
 
       {/* Position Scarcity Overview */}
-      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium text-gray-400">Position Breakdown</h3>
-          <span className="text-xs text-gray-500">Keepers by position league-wide</span>
+      <div className="card-premium rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <span className="w-1 h-5 bg-green-500 rounded-full"></span>
+            Position Breakdown
+          </h3>
+          <span className="text-xs text-gray-500 font-medium">Keepers by position league-wide</span>
         </div>
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
           {(["QB", "RB", "WR", "TE", "K", "DEF"] as const).map((pos) => (
-            <div key={pos} className="text-center">
-              <PositionBadge position={pos} />
-              <p className="text-xl font-bold text-white mt-1">{overallPositions[pos]}</p>
-              <p className="text-xs text-gray-500">
+            <div key={pos} className="text-center p-4 rounded-xl bg-gray-800/30">
+              <PositionBadge position={pos} size="md" />
+              <p className="text-2xl font-extrabold text-white mt-3">{overallPositions[pos]}</p>
+              <p className="text-xs text-gray-500 mt-1">
                 {data.totalRosters > 0
                   ? `${((overallPositions[pos] / data.totalRosters) * 100).toFixed(0)}%`
                   : "0%"}
@@ -339,21 +323,24 @@ export default function DraftBoardPage() {
       </div>
 
       {/* Team Status Indicators */}
-      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-400 mb-3">Teams</h3>
-        <div className="flex flex-wrap gap-2">
+      <div className="card-premium rounded-2xl p-6">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
+          Teams
+        </h3>
+        <div className="flex flex-wrap gap-3">
           {teamStatuses.map((team) => {
             const teamInfo = teamColorMap.get(team.rosterId);
             const teamColor = teamInfo?.color || TEAM_COLORS[0];
             return (
               <div
                 key={team.rosterId}
-                className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${teamColor.bg} border ${teamColor.border}`}
+                className={`px-4 py-2 rounded-xl text-sm flex items-center gap-3 ${teamColor.bg} border ${teamColor.border}`}
               >
-                <span className={`truncate max-w-[100px] font-medium ${teamColor.text}`}>
+                <span className={`truncate max-w-[120px] font-semibold ${teamColor.text}`}>
                   {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
                 </span>
-                <span className={`text-xs ${teamColor.accent}`}>
+                <span className={`text-xs font-bold ${teamColor.accent} bg-black/20 px-2 py-0.5 rounded`}>
                   {team.keeperCount}/{team.maxKeepers}
                 </span>
               </div>
@@ -364,17 +351,17 @@ export default function DraftBoardPage() {
 
       {viewMode === "grid" ? (
         /* Grid View */
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
+        <div className="card-premium rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-gray-900">
-                  <th className="sticky left-0 bg-gray-900 z-10 px-3 py-3 text-left text-gray-400 text-sm font-medium border-b border-gray-700 w-16">
+                <tr className="bg-gray-900/80">
+                  <th className="sticky left-0 bg-gray-900 z-10 px-4 py-4 text-left text-gray-400 text-sm font-semibold border-b border-gray-800 w-16">
                     Rd
                   </th>
                   {showPositionSummary && (
-                    <th className="px-2 py-3 text-center text-gray-400 text-xs font-medium border-b border-gray-700 min-w-[100px] bg-gray-900/80">
-                      Pos Summary
+                    <th className="px-3 py-4 text-center text-gray-400 text-xs font-semibold border-b border-gray-800 min-w-[110px] bg-gray-900/80">
+                      Positions
                     </th>
                   )}
                   {rosters.map((roster) => {
@@ -384,15 +371,15 @@ export default function DraftBoardPage() {
                     return (
                       <th
                         key={roster.rosterId}
-                        className={`px-2 py-3 text-center text-xs font-medium border-b border-gray-700 min-w-[120px] ${teamColor.bg}`}
+                        className={`px-2 py-4 text-center text-xs font-semibold border-b border-gray-800 min-w-[130px] ${teamColor.bg}`}
                       >
-                        <div className="flex flex-col items-center gap-1">
-                          <span className={`truncate block max-w-[100px] font-semibold ${teamColor.text}`}>
+                        <div className="flex flex-col items-center gap-1.5">
+                          <span className={`truncate block max-w-[110px] font-bold ${teamColor.text}`}>
                             {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
                           </span>
                           {teamStatus && (
                             <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded ${teamColor.bg} ${teamColor.border} border`}
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${teamColor.bg} ${teamColor.border} border`}
                             >
                               {teamStatus.keeperCount}/{teamStatus.maxKeepers}
                             </span>
@@ -408,19 +395,19 @@ export default function DraftBoardPage() {
                   const positionCounts = getPositionCountsByRound(row.round);
                   const hasKeepers = Object.values(positionCounts).some(c => c > 0);
                   return (
-                    <tr key={row.round} className="border-b border-gray-700/50">
-                      <td className="sticky left-0 bg-gray-800 z-10 px-3 py-2 text-gray-400 font-medium border-r border-gray-700">
+                    <tr key={row.round} className="border-b border-gray-800/50">
+                      <td className="sticky left-0 bg-gray-900 z-10 px-4 py-3 text-white font-bold border-r border-gray-800">
                         {row.round}
                       </td>
                       {showPositionSummary && (
-                        <td className="px-1 py-1 bg-gray-800/50">
+                        <td className="px-2 py-2 bg-gray-800/30">
                           {hasKeepers ? (
-                            <div className="flex flex-wrap gap-0.5 justify-center">
+                            <div className="flex flex-wrap gap-1 justify-center">
                               {(["QB", "RB", "WR", "TE"] as const).map((pos) =>
                                 positionCounts[pos] > 0 ? (
                                   <span
                                     key={pos}
-                                    className={`text-[10px] px-1 rounded ${
+                                    className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
                                       pos === "QB"
                                         ? "bg-red-500/30 text-red-400"
                                         : pos === "RB"
@@ -436,12 +423,12 @@ export default function DraftBoardPage() {
                               )}
                             </div>
                           ) : (
-                            <span className="text-gray-600 text-xs">-</span>
+                            <span className="text-gray-600 text-xs">—</span>
                           )}
                         </td>
                       )}
                       {row.slots.map((slot) => (
-                        <td key={slot.rosterId} className="px-1 py-1">
+                        <td key={slot.rosterId} className="px-1.5 py-2">
                           <DraftCell
                             slot={slot}
                             teamColorMap={teamColorMap}
@@ -458,99 +445,106 @@ export default function DraftBoardPage() {
         </div>
       ) : (
         /* List View - By Team */
-        <div className="space-y-4">
-          {data.cascade.map((team) => (
-            <div
-              key={team.rosterId}
-              className="bg-gray-800/50 rounded-xl p-6 border border-gray-700"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">
-                  {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
-                </h3>
-                <span className="text-gray-400 text-sm">
-                  {team.results.length} keeper{team.results.length !== 1 ? "s" : ""}
-                </span>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data.cascade.map((team) => {
+            const teamInfo = teamColorMap.get(team.rosterId);
+            const teamColor = teamInfo?.color || TEAM_COLORS[0];
+            return (
+              <div
+                key={team.rosterId}
+                className="card-premium rounded-2xl p-6"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className={`text-lg font-bold ${teamColor.text}`}>
+                    {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
+                  </h3>
+                  <span className={`text-sm font-bold px-3 py-1 rounded-lg ${teamColor.bg} ${teamColor.accent}`}>
+                    {team.results.length} keeper{team.results.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
 
-              {team.results.length > 0 ? (
-                <div className="space-y-2">
-                  {team.results.map((keeper) => (
-                    <div
-                      key={keeper.playerId}
-                      className="flex items-center justify-between bg-gray-700/30 rounded-lg px-4 py-2"
-                    >
-                      <div className="flex items-center gap-3">
-                        <PositionBadge position={keeper.position} />
-                        <div>
-                          <p className="text-white">{keeper.playerName}</p>
-                          <p className="text-gray-500 text-sm">{keeper.team || "FA"}</p>
+                {team.results.length > 0 ? (
+                  <div className="space-y-2">
+                    {team.results.map((keeper) => (
+                      <div
+                        key={keeper.playerId}
+                        className="flex items-center justify-between bg-gray-800/30 rounded-xl px-4 py-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <PositionBadge position={keeper.position} size="sm" />
+                          <div>
+                            <p className="text-white font-medium">{keeper.playerName}</p>
+                            <p className="text-gray-500 text-sm">{keeper.team || "FA"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {keeper.cascaded ? (
+                            <div className="text-right">
+                              <p className="text-white font-medium">
+                                Rd{" "}
+                                <span className="line-through text-gray-600">
+                                  {keeper.baseCost}
+                                </span>{" "}
+                                <span className="text-amber-400 font-bold">{keeper.finalCost}</span>
+                              </p>
+                              <p className="text-amber-400/70 text-xs font-medium">Cascaded</p>
+                            </div>
+                          ) : (
+                            <p className="text-white font-bold">Rd {keeper.finalCost}</p>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        {keeper.cascaded ? (
-                          <div className="text-right">
-                            <p className="text-white">
-                              Round{" "}
-                              <span className="line-through text-gray-500">
-                                {keeper.baseCost}
-                              </span>{" "}
-                              <span className="text-yellow-400">{keeper.finalCost}</span>
-                            </p>
-                            <p className="text-yellow-400/70 text-xs">Cascaded</p>
-                          </div>
-                        ) : (
-                          <p className="text-white">Round {keeper.finalCost}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">No keepers selected</p>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No keepers selected</p>
+                )}
 
-              {/* Traded Picks Info */}
-              {(team.tradedAwayPicks.length > 0 || team.acquiredPicks.length > 0) && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  {team.tradedAwayPicks.length > 0 && (
-                    <p className="text-red-400 text-sm">
-                      Traded Away: Rounds {team.tradedAwayPicks.join(", ")}
-                    </p>
-                  )}
-                  {team.acquiredPicks.length > 0 && (
-                    <p className="text-green-400 text-sm">
-                      Acquired: Rounds {team.acquiredPicks.map((p) => p.round).join(", ")}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                {/* Traded Picks Info */}
+                {(team.tradedAwayPicks.length > 0 || team.acquiredPicks.length > 0) && (
+                  <div className="mt-4 pt-4 border-t border-gray-800">
+                    {team.tradedAwayPicks.length > 0 && (
+                      <p className="text-red-400 text-sm font-medium">
+                        Traded Away: Rounds {team.tradedAwayPicks.join(", ")}
+                      </p>
+                    )}
+                    {team.acquiredPicks.length > 0 && (
+                      <p className="text-green-400 text-sm font-medium mt-1">
+                        Acquired: Rounds {team.acquiredPicks.map((p) => p.round).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Legend */}
-      <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-400 mb-3">Legend</h3>
-        <div className="flex flex-wrap gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-purple-500/20 border border-purple-500/60 flex items-center justify-center">
-              <span className="text-purple-300 text-[10px]">K</span>
+      <div className="card-premium rounded-2xl p-6">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <span className="w-1 h-5 bg-gray-500 rounded-full"></span>
+          Legend
+        </h3>
+        <div className="flex flex-wrap gap-8 text-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/60 flex items-center justify-center">
+              <span className="text-purple-300 text-xs font-bold">K</span>
             </div>
-            <span className="text-gray-300">Keeper (solid border = team&apos;s pick)</span>
+            <span className="text-gray-300">Keeper (team&apos;s pick)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-blue-500/20 border-2 border-dashed border-blue-500/60 flex items-center justify-center">
-              <span className="text-blue-300 text-[10px]">→</span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/20 border-2 border-dashed border-blue-500/60 flex items-center justify-center">
+              <span className="text-blue-300 text-xs">&rarr;</span>
             </div>
-            <span className="text-gray-300">Traded pick (shows new owner)</span>
+            <span className="text-gray-300">Traded pick</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gray-500/20 border border-dashed border-gray-500/40 opacity-50 flex items-center justify-center">
-              <span className="text-gray-400 text-[10px]">—</span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gray-500/20 border border-dashed border-gray-500/40 opacity-50 flex items-center justify-center">
+              <span className="text-gray-400 text-xs">—</span>
             </div>
-            <span className="text-gray-300">Available (faded = open slot)</span>
+            <span className="text-gray-300">Available slot</span>
           </div>
         </div>
       </div>
@@ -561,7 +555,7 @@ export default function DraftBoardPage() {
 interface DraftCellProps {
   slot: DraftSlot;
   teamColorMap: Map<string, { color: ReturnType<typeof getTeamColor>; name: string }>;
-  columnRosterId: string; // The team whose column this is
+  columnRosterId: string;
 }
 
 function DraftCell({ slot, teamColorMap, columnRosterId }: DraftCellProps) {
@@ -575,9 +569,9 @@ function DraftCell({ slot, teamColorMap, columnRosterId }: DraftCellProps) {
     const newOwnerName = newOwner?.name || slot.tradedTo.slice(0, 6);
 
     return (
-      <div className={`${newOwnerColor.bg} ${newOwnerColor.border} border-2 border-dashed rounded px-2 py-1.5 text-center min-h-[50px] flex flex-col justify-center`}>
-        <p className={`${newOwnerColor.accent} text-[10px] font-medium`}>
-          → {newOwnerName}
+      <div className={`${newOwnerColor.bg} ${newOwnerColor.border} border-2 border-dashed rounded-xl px-2 py-2 text-center min-h-[56px] flex flex-col justify-center`}>
+        <p className={`${newOwnerColor.accent} text-[10px] font-bold`}>
+          &rarr; {newOwnerName}
         </p>
         <p className="text-gray-500 text-[9px]">owns pick</p>
       </div>
@@ -587,11 +581,11 @@ function DraftCell({ slot, teamColorMap, columnRosterId }: DraftCellProps) {
   // Keeper in this slot
   if (slot.status === "keeper" && slot.keeper) {
     return (
-      <div className={`${columnColor.bg} ${columnColor.border} border rounded px-2 py-1.5 text-center min-h-[50px] flex flex-col justify-center`}>
+      <div className={`${columnColor.bg} ${columnColor.border} border rounded-xl px-2 py-2 text-center min-h-[56px] flex flex-col justify-center`}>
         <div className="flex items-center justify-center gap-1">
           <PositionBadge position={slot.keeper.position} size="xs" />
         </div>
-        <p className={`${columnColor.text} text-xs font-medium truncate mt-1`}>
+        <p className={`${columnColor.text} text-[11px] font-semibold truncate mt-1`}>
           {slot.keeper.playerName}
         </p>
       </div>
@@ -600,7 +594,7 @@ function DraftCell({ slot, teamColorMap, columnRosterId }: DraftCellProps) {
 
   // Available pick - show in team's color but muted
   return (
-    <div className={`${columnColor.bg} opacity-40 border ${columnColor.border} border-dashed rounded px-2 py-1.5 text-center min-h-[50px] flex items-center justify-center`}>
+    <div className={`${columnColor.bg} opacity-30 border ${columnColor.border} border-dashed rounded-xl px-2 py-2 text-center min-h-[56px] flex items-center justify-center`}>
       <span className={`${columnColor.text} text-xs`}>—</span>
     </div>
   );

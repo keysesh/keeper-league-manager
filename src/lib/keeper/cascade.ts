@@ -273,9 +273,9 @@ export async function recalculateAndApplyCascade(
     return { success: true, updatedCount: 0, errors: [] };
   }
 
-  // Prepare keeper inputs
+  // Prepare keeper inputs (use database playerId for consistency)
   const keeperInputs: KeeperInput[] = keepers.map((k) => ({
-    playerId: k.player.sleeperId,
+    playerId: k.playerId,
     rosterId: k.rosterId,
     playerName: k.player.fullName,
     type: k.type as "FRANCHISE" | "REGULAR",
@@ -296,7 +296,7 @@ export async function recalculateAndApplyCascade(
   let updatedCount = 0;
   for (const result of cascadeResult.keepers) {
     const keeper = keepers.find(
-      (k) => k.player.sleeperId === result.playerId && k.rosterId === result.rosterId
+      (k) => k.playerId === result.playerId && k.rosterId === result.rosterId
     );
 
     if (keeper && keeper.finalCost !== result.finalCost) {
@@ -343,7 +343,7 @@ export async function previewTeamCascade(
   }
 
   const keeperInputs: KeeperInput[] = roster.keepers.map((k) => ({
-    playerId: k.player.sleeperId,
+    playerId: k.playerId,
     rosterId: k.rosterId,
     playerName: k.player.fullName,
     type: k.type,
@@ -403,7 +403,7 @@ export async function getDraftBoardWithKeepers(
   for (const roster of league.rosters) {
     for (const keeper of roster.keepers) {
       allKeepers.push({
-        playerId: keeper.player.sleeperId,
+        playerId: keeper.playerId,
         rosterId: roster.id,
         playerName: keeper.player.fullName,
         type: keeper.type,

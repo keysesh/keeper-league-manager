@@ -272,9 +272,9 @@ async function getPlayerAcquisition(
   rosterId: string,
   targetSeason: number
 ): Promise<PlayerAcquisition> {
-  // First, get the player record
+  // First, get the player record (playerId is the database ID)
   const player = await prisma.player.findUnique({
-    where: { sleeperId: playerId },
+    where: { id: playerId },
   });
 
   if (!player) {
@@ -377,9 +377,9 @@ async function getTradeInheritedCost(
 ): Promise<number> {
   const undraftedRound = settings?.undraftedRound ?? DEFAULT_KEEPER_RULES.UNDRAFTED_ROUND;
 
-  // Find the trade transaction
+  // Find the trade transaction (playerId is the database ID)
   const player = await prisma.player.findUnique({
-    where: { sleeperId: playerId },
+    where: { id: playerId },
   });
 
   if (!player) {
