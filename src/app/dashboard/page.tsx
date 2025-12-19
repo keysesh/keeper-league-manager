@@ -38,7 +38,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/leagues");
       if (res.ok) {
         const data = await res.json();
-        setLeagues(data);
+        setLeagues(data.leagues || []);
       }
     } catch (err) {
       console.error("Failed to fetch leagues:", err);
