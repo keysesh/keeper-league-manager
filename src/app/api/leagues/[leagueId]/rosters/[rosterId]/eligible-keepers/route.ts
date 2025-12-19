@@ -62,14 +62,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Get all player IDs on this roster
     const playerIds = roster.rosterPlayers.map(rp => rp.playerId);
 
-    // BATCH QUERY 2: Get all draft picks for all players at once
+    // BATCH QUERY 2: Get all draft picks for all players (including historical for original draft info)
     const draftPicks = await prisma.draftPick.findMany({
       where: {
         playerId: { in: playerIds },
-        draft: { season: { gte: season - 1, lte: season } },
       },
       include: { draft: true },
-      orderBy: { draft: { season: "desc" } },
+      orderBy: { draft: { season: "asc" } }, // Oldest first to get original draft
     });
 
     // BATCH QUERY 3: Get all transactions for all players at once
@@ -83,10 +82,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     // Build lookup maps for O(1) access
-    const draftPickMap = new Map<string, typeof draftPicks[0]>();
+    // Store the ORIGINAL (oldest) draft pick for each player
+    const originalDraftMap = new Map<string, typeof draftPicks[0]>();
+    // Store the MOST RECENT draft pick (for current roster check)
+    const recentDraftMap = new Map<string, typeof draftPicks[0]>();
     for (const pick of draftPicks) {
-      if (pick.playerId && !draftPickMap.has(pick.playerId)) {
-        draftPickMap.set(pick.playerId, pick);
+      if (pick.playerId) {
+        // First occurrence is the original (oldest due to asc order)
+        if (!originalDraftMap.has(pick.playerId)) {
+          originalDraftMap.set(pick.playerId, pick);
+        }
+        // Always update recent to get the latest
+        recentDraftMap.set(pick.playerId, pick);
       }
     }
 
@@ -111,22 +118,34 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const regularCount = currentSeasonKeepers.filter(k => k.type === KeeperType.REGULAR).length;
     const canAddFranchise = franchiseCount < settings.maxFranchiseTags;
 
+    // Helper: Get original draft info for a player
+    function getOriginalDraft(playerId: string): { draftYear: number; draftRound: number } | null {
+      const originalPick = originalDraftMap.get(playerId);
+      if (originalPick) {
+        return {
+          draftYear: originalPick.draft.season,
+          draftRound: originalPick.round,
+        };
+      }
+      return null;
+    }
+
     // Helper: Get acquisition type for a player (pure function, no DB calls)
     function getAcquisition(playerId: string): { type: AcquisitionType; draftRound?: number } {
-      const draftPick = draftPickMap.get(playerId);
+      const recentPick = recentDraftMap.get(playerId);
       const transaction = transactionMap.get(playerId);
 
-      if (draftPick) {
+      if (recentPick) {
         // Check if drafted by current roster or picked up same season
-        if (draftPick.rosterId === rosterId) {
-          return { type: AcquisitionType.DRAFTED, draftRound: draftPick.round };
+        if (recentPick.rosterId === rosterId) {
+          return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round };
         }
         // Picked up from another team - check if same season
         if (transaction) {
           const txYear = transaction.transaction.createdAt.getFullYear();
-          const draftYear = draftPick.draft.season;
+          const draftYear = recentPick.draft.season;
           if (txYear <= draftYear + 1) {
-            return { type: AcquisitionType.DRAFTED, draftRound: draftPick.round };
+            return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round };
           }
         }
       }
@@ -162,12 +181,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return Math.max(minRound, baseCost);
     }
 
-    // Helper: Calculate eligibility (pure function, no DB calls)
+    // Helper: Calculate eligibility with cost escalation (pure function, no DB calls)
     function calculateEligibility(playerId: string) {
       const playerKeepers = keepersByPlayer.get(playerId) || [];
       const previousKeepers = playerKeepers.filter(k => k.season < season);
 
-      // Count consecutive years kept
+      // Count consecutive years kept by this owner
       let consecutiveYears = 0;
       let checkSeason = season - 1;
       for (const keeper of previousKeepers.sort((a, b) => b.season - a.season)) {
@@ -179,30 +198,42 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
       }
 
-      const yearsKept = consecutiveYears + 1;
+      const yearsKept = consecutiveYears + 1; // Including this season if kept
       const atMaxYears = consecutiveYears >= maxYears;
       const acquisition = getAcquisition(playerId);
+      const originalDraft = getOriginalDraft(playerId);
       const baseCost = calculateBaseCost(playerId);
 
-      // Check if cost exceeds max rounds
-      if (baseCost > undraftedRound && !atMaxYears) {
+      // COST ESCALATION: Cost increases by 1 round for each consecutive year kept
+      // Year 1: baseCost, Year 2: baseCost + 1, Year 3: baseCost + 2, etc.
+      const escalatedCost = baseCost + consecutiveYears;
+
+      // Check if escalated cost exceeds max draft rounds (not undraftedRound)
+      const maxDraftRounds = DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
+      if (escalatedCost > maxDraftRounds) {
         return {
           isEligible: false,
-          reason: `Keeper cost (Round ${baseCost}) exceeds maximum`,
+          reason: `Keeper cost (R${escalatedCost}) exceeds max draft rounds`,
           yearsKept,
+          consecutiveYears,
           acquisitionType: acquisition.type,
           atMaxYears: false,
           baseCost,
+          escalatedCost,
+          originalDraft,
         };
       }
 
       return {
         isEligible: true,
         yearsKept,
+        consecutiveYears,
         acquisitionType: acquisition.type,
         atMaxYears,
         reason: atMaxYears ? "At max years - Franchise Tag only" : undefined,
         baseCost,
+        escalatedCost,
+        originalDraft,
       };
     }
 
@@ -225,12 +256,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         };
 
         if (!eligibility.atMaxYears) {
-          // Regular keeper cost
+          // Regular keeper cost with escalation
           const baseCost = eligibility.baseCost;
+          const finalCost = eligibility.escalatedCost;
+          const escalation = eligibility.consecutiveYears;
+
+          let costBreakdown = `R${baseCost}`;
+          if (escalation > 0) {
+            costBreakdown = `R${baseCost} + ${escalation}yr = R${finalCost}`;
+          }
+
           regularCost = {
             baseCost,
-            finalCost: baseCost,
-            costBreakdown: `Base cost = Round ${baseCost}`,
+            finalCost,
+            costBreakdown,
           };
         } else {
           // At max years - check if FT is available
@@ -259,7 +298,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           isEligible: effectivelyEligible,
           reason,
           yearsKept: eligibility.yearsKept,
+          consecutiveYears: eligibility.consecutiveYears,
           acquisitionType: eligibility.acquisitionType,
+          originalDraft: eligibility.originalDraft,
         },
         costs: {
           franchise: franchiseCost,

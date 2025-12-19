@@ -23,7 +23,12 @@ interface Eligibility {
   isEligible: boolean;
   reason: string | null;
   yearsKept: number;
+  consecutiveYears?: number;
   acquisitionType: string;
+  originalDraft?: {
+    draftYear: number;
+    draftRound: number;
+  } | null;
 }
 
 interface Costs {
@@ -163,14 +168,24 @@ export function PremiumPlayerCard({
       {/* Keeper Status Section */}
       {eligibility && (
         <div className="mt-3 pt-3 border-t border-gray-700/30">
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-4 gap-1 text-center">
             <div>
-              <div className="text-[9px] text-gray-500 uppercase">Years Kept</div>
-              <div className="text-[10px] font-semibold text-white">{getYearsKeptLabel(eligibility.yearsKept)}</div>
+              <div className="text-[9px] text-gray-500 uppercase">Drafted</div>
+              <div className="text-[10px] font-semibold text-white">
+                {eligibility.originalDraft
+                  ? `'${String(eligibility.originalDraft.draftYear).slice(-2)} R${eligibility.originalDraft.draftRound}`
+                  : "Undrafted"}
+              </div>
             </div>
             <div>
               <div className="text-[9px] text-gray-500 uppercase">Acquired</div>
               <div className="text-[10px] font-semibold text-white">{getAcquisitionLabel(eligibility.acquisitionType)}</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-gray-500 uppercase">Kept</div>
+              <div className="text-[10px] font-semibold text-white">
+                {eligibility.consecutiveYears === 0 ? "New" : `${eligibility.consecutiveYears}yr`}
+              </div>
             </div>
             <div>
               <div className="text-[9px] text-gray-500 uppercase">Cost</div>
@@ -180,8 +195,8 @@ export function PremiumPlayerCard({
             </div>
           </div>
 
-          {/* Cost Breakdown */}
-          {costs?.regular && !isKeeper && (
+          {/* Cost Breakdown - shows escalation */}
+          {costs?.regular && !isKeeper && (eligibility.consecutiveYears ?? 0) > 0 && (
             <div className="mt-2 text-[9px] text-gray-500 text-center">
               {costs.regular.costBreakdown}
             </div>

@@ -34,7 +34,12 @@ interface EligiblePlayer {
     isEligible: boolean;
     reason: string | null;
     yearsKept: number;
+    consecutiveYears: number;
     acquisitionType: string;
+    originalDraft: {
+      draftYear: number;
+      draftRound: number;
+    } | null;
   };
   costs: {
     franchise: {
