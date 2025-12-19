@@ -82,7 +82,7 @@ export default function DashboardPage() {
           </h1>
           <div className="flex items-center gap-4">
             <span className="text-gray-400">
-              {session?.user?.name || session?.user?.email}
+              {session?.user?.name || session?.user?.username}
             </span>
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
