@@ -246,9 +246,9 @@ async function syncDraft(leagueId: string, draftData: {
   season: string;
   status: string;
   type: string;
-  start_time?: number;
-  settings?: Record<string, unknown>;
-  slot_to_roster_id?: Record<string, number>;
+  start_time?: number | null;
+  settings?: Record<string, unknown> | null;
+  slot_to_roster_id?: Record<string, number> | null;
 }): Promise<number> {
   const picks = await sleeper.getDraftPicks(draftData.draft_id);
 
