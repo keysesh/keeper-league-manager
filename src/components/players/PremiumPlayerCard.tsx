@@ -193,14 +193,14 @@ export function PremiumPlayerCard({
         ) : null}
       </div>
 
-      {/* Action Buttons - Square */}
+      {/* Action Buttons - Compact */}
       {!isKeeper && isEligible && costs && onAddKeeper && (
-        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700/30">
+        <div className="flex items-center gap-1 mt-auto pt-2 border-t border-gray-700/30">
           {costs.regular && (
             <button
               onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "REGULAR"))}
               disabled={!canAddRegular || isLoading}
-              className="flex-1 aspect-[2/1] flex items-center justify-center rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
+              className="px-3 py-1 rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : `R${costs.regular.finalCost}`}
             </button>
@@ -209,7 +209,7 @@ export function PremiumPlayerCard({
             <button
               onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "FRANCHISE"))}
               disabled={!canAddFranchise || isLoading}
-              className="aspect-square h-6 flex items-center justify-center rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
+              className="px-2 py-1 rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : "FT"}
             </button>

@@ -238,7 +238,7 @@ export default function TeamRosterPage() {
       </div>
 
       {/* Current Keepers */}
-      <div className="bg-purple-500/5 rounded-xl p-4 border border-purple-500/10">
+      <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-500/20">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-purple-400 uppercase">Current Keepers ({currentKeepers.length})</span>
         </div>
