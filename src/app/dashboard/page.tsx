@@ -51,7 +51,11 @@ export default function DashboardPage() {
     setSyncing(true);
     setError("");
     try {
-      const res = await fetch("/api/sleeper/sync", { method: "POST" });
+      const res = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "user-leagues" }),
+      });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Sync failed");
