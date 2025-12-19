@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: "🏠" },
-  { name: "Leagues", href: "/leagues", icon: "🏆" },
 ];
 
 export function Sidebar() {
