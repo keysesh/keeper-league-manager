@@ -249,19 +249,21 @@ export default function TeamRosterPage() {
         <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded">{data.season}</span>
       </div>
 
-      {/* Keeper Summary - Compact Row */}
-      <div className="flex gap-2">
-        <div className="stat-card flex-1">
-          <p className="text-xl font-bold text-white">{data.currentKeepers.total}<span className="text-xs text-gray-500">/{data.limits.maxKeepers}</span></p>
-          <p className="text-[10px] text-gray-500 uppercase">Total</p>
+      {/* Keeper Summary - Inline Stats */}
+      <div className="flex items-center gap-4 px-3 py-2 rounded-lg bg-gray-800/40">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-white">{data.currentKeepers.total}<span className="text-xs text-gray-500">/{data.limits.maxKeepers}</span></span>
+          <span className="text-[10px] text-gray-500 uppercase">Total</span>
         </div>
-        <div className="stat-card flex-1">
-          <p className="text-xl font-bold text-amber-400">{data.currentKeepers.franchise}<span className="text-xs text-gray-500">/{data.limits.maxFranchiseTags}</span></p>
-          <p className="text-[10px] text-gray-500 uppercase">FT</p>
+        <div className="w-px h-4 bg-gray-700" />
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-amber-400">{data.currentKeepers.franchise}<span className="text-xs text-gray-500">/{data.limits.maxFranchiseTags}</span></span>
+          <span className="text-[10px] text-gray-500 uppercase">FT</span>
         </div>
-        <div className="stat-card flex-1">
-          <p className="text-xl font-bold text-purple-400">{data.currentKeepers.regular}<span className="text-xs text-gray-500">/{data.limits.maxRegularKeepers}</span></p>
-          <p className="text-[10px] text-gray-500 uppercase">Reg</p>
+        <div className="w-px h-4 bg-gray-700" />
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-purple-400">{data.currentKeepers.regular}<span className="text-xs text-gray-500">/{data.limits.maxRegularKeepers}</span></span>
+          <span className="text-[10px] text-gray-500 uppercase">Reg</span>
         </div>
       </div>
 
@@ -271,7 +273,7 @@ export default function TeamRosterPage() {
           <span className="text-xs font-semibold text-gray-400 uppercase">Current Keepers ({currentKeepers.length})</span>
         </div>
         {currentKeepers.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="flex flex-wrap gap-2">
             {currentKeepers.map((p) => {
               const posColors = {
                 QB: { bg: "bg-red-500/10", border: "border-l-red-500", text: "text-red-400" },
@@ -286,7 +288,7 @@ export default function TeamRosterPage() {
               return (
                 <div
                   key={p.player.id}
-                  className={`player-card flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg}`}
+                  className={`player-card inline-flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg}`}
                 >
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                     p.existingKeeper?.type === "FRANCHISE"
@@ -296,22 +298,17 @@ export default function TeamRosterPage() {
                     {p.existingKeeper?.type === "FRANCHISE" ? "FT" : "K"}
                   </span>
                   <PositionBadge position={p.player.position} size="xs" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-white font-medium truncate">{p.player.fullName}</p>
-                    <p className="text-[10px] text-gray-500">{p.player.team || "FA"}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-bold ${colors.text}`}>R{p.existingKeeper?.finalCost}</p>
-                    {!p.existingKeeper?.isLocked && (
-                      <button
-                        onClick={() => removeKeeper(p.existingKeeper!.id, p.player.fullName)}
-                        disabled={actionLoading === p.existingKeeper?.id}
-                        className="text-[10px] text-red-400 hover:text-red-300"
-                      >
-                        {actionLoading === p.existingKeeper?.id ? "..." : "×"}
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-xs text-white font-medium">{p.player.fullName}</span>
+                  <span className={`text-xs font-bold ${colors.text}`}>R{p.existingKeeper?.finalCost}</span>
+                  {!p.existingKeeper?.isLocked && (
+                    <button
+                      onClick={() => removeKeeper(p.existingKeeper!.id, p.player.fullName)}
+                      disabled={actionLoading === p.existingKeeper?.id}
+                      className="text-xs text-red-400 hover:text-red-300 ml-1"
+                    >
+                      {actionLoading === p.existingKeeper?.id ? "..." : "×"}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -332,7 +329,7 @@ export default function TeamRosterPage() {
         </div>
 
         {eligiblePlayers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {eligiblePlayers.map((p) => {
               const regularCost = p.costs.regular;
               const franchiseCost = p.costs.franchise;
@@ -353,30 +350,30 @@ export default function TeamRosterPage() {
               return (
                 <div
                   key={p.player.id}
-                  className={`player-card flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg} hover:bg-gray-800/50`}
+                  className={`player-card flex items-center gap-1.5 border-l-2 ${colors.border} ${colors.bg} hover:bg-gray-800/50`}
                 >
                   <PositionBadge position={p.player.position} size="xs" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-white font-medium truncate">{p.player.fullName}</p>
-                    <p className="text-[10px] text-gray-500">{p.player.team || "FA"}</p>
+                    <p className="text-[11px] text-white font-medium truncate">{p.player.fullName}</p>
+                    <p className="text-[9px] text-gray-500">{p.player.team || "FA"}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     {regularCost && (
                       <button
                         onClick={() => addKeeper(p.player.id, "REGULAR", p.player.fullName)}
                         disabled={!canAddRegular || isLoading}
-                        className="px-2 py-1 rounded text-[10px] font-bold bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 text-white disabled:opacity-40 transition-all"
+                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40"
                       >
-                        {isLoading ? "..." : `R${regularCost.finalCost}`}
+                        {isLoading ? ".." : `R${regularCost.finalCost}`}
                       </button>
                     )}
                     {franchiseCost && (
                       <button
                         onClick={() => addKeeper(p.player.id, "FRANCHISE", p.player.fullName)}
                         disabled={!canAddFranchise || isLoading}
-                        className="px-2 py-1 rounded text-[10px] font-bold bg-gradient-to-r from-amber-400 to-amber-600 text-black disabled:opacity-40 transition-all"
+                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500 text-black disabled:opacity-40"
                       >
-                        {isLoading ? "..." : "FT"}
+                        {isLoading ? ".." : "FT"}
                       </button>
                     )}
                   </div>
