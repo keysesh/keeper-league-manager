@@ -47,7 +47,11 @@ export interface CascadeResult {
  * Key fixes:
  * 1. Properly handles traded picks - marks traded rounds as unavailable
  * 2. Respects draft pick ownership when assigning slots
- * 3. Cascades keepers to next available slot team actually owns
+ * 3. CASCADE DIRECTION: Goes UP toward BETTER rounds (lower numbers)
+ *    - Round 5 + Round 5 → Round 5 and Round 4
+ *    - Round 8 + Round 8 + Round 8 → Round 8, Round 7, Round 6
+ *    - This REWARDS teams for finding late-round value
+ *    - Cannot cascade to worse rounds (higher numbers)
  */
 export async function calculateCascade(
   leagueId: string,
@@ -75,6 +79,7 @@ export async function calculateCascade(
 
   const settings = league.keeperSettings;
   const maxRounds = settings?.undraftedRound ?? DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
+  const minRound = DEFAULT_KEEPER_RULES.MINIMUM_ROUND; // Round 1
 
   // FIXED: Build map of which picks each roster actually owns
   const rosterOwnedPicks = await buildPickOwnershipMap(leagueId, season, league.tradedPicks);
@@ -92,8 +97,9 @@ export async function calculateCascade(
     })
   );
 
-  // Sort by base cost (ascending) to process cheapest keepers first
-  const sortedKeepers = [...keepersWithCosts].sort((a, b) => a.baseCost - b.baseCost);
+  // Sort by base cost DESCENDING (highest/worst cost first)
+  // This way we fill the later round slots first, then cascade UP to better rounds
+  const sortedKeepers = [...keepersWithCosts].sort((a, b) => b.baseCost - a.baseCost);
 
   const result: CascadeResult = {
     keepers: [],
@@ -120,17 +126,18 @@ export async function calculateCascade(
     let cascadeSteps = 0;
     const conflictsWith: string[] = [];
 
-    // FIXED: Find next available slot that the team actually OWNS
+    // FIXED: Cascade UP toward better rounds (lower numbers)
+    // Stop at Round 1 (minRound) - cannot go lower than that
     while (
       (rosterUsedSlots.has(finalCost) || !ownedPicks.has(finalCost)) &&
-      finalCost <= maxRounds
+      finalCost >= minRound
     ) {
       // Find which keeper is causing the conflict
       const conflictingKeeper = sortedKeepers.find(
         (k) =>
           k.rosterId === keeper.rosterId &&
           k !== keeper &&
-          k.baseCost === keeper.baseCost + cascadeSteps
+          k.baseCost === keeper.baseCost - cascadeSteps
       );
 
       if (conflictingKeeper) {
@@ -143,15 +150,16 @@ export async function calculateCascade(
       }
 
       cascadeSteps++;
-      finalCost++;
+      finalCost--; // FIXED: Decrement to go UP toward better rounds
     }
 
-    // Check if we exceeded max rounds
-    if (finalCost > maxRounds) {
+    // Check if we went below minimum round (should not happen normally)
+    if (finalCost < minRound) {
       result.hasErrors = true;
       result.errors.push(
-        `${keeper.playerName}: Cannot assign slot - all rounds exhausted`
+        `${keeper.playerName}: Cannot assign slot - all better rounds exhausted (cascaded to Round ${finalCost})`
       );
+      finalCost = minRound; // Cap at Round 1
     }
 
     // Mark slot as used

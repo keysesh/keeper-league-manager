@@ -6,6 +6,26 @@ import Link from "next/link";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 
+// Team color palette - distinct colors for each team
+const TEAM_COLORS = [
+  { bg: "bg-purple-500/20", border: "border-purple-500/60", text: "text-purple-300", accent: "text-purple-400" },
+  { bg: "bg-blue-500/20", border: "border-blue-500/60", text: "text-blue-300", accent: "text-blue-400" },
+  { bg: "bg-green-500/20", border: "border-green-500/60", text: "text-green-300", accent: "text-green-400" },
+  { bg: "bg-orange-500/20", border: "border-orange-500/60", text: "text-orange-300", accent: "text-orange-400" },
+  { bg: "bg-pink-500/20", border: "border-pink-500/60", text: "text-pink-300", accent: "text-pink-400" },
+  { bg: "bg-cyan-500/20", border: "border-cyan-500/60", text: "text-cyan-300", accent: "text-cyan-400" },
+  { bg: "bg-yellow-500/20", border: "border-yellow-500/60", text: "text-yellow-300", accent: "text-yellow-400" },
+  { bg: "bg-red-500/20", border: "border-red-500/60", text: "text-red-300", accent: "text-red-400" },
+  { bg: "bg-indigo-500/20", border: "border-indigo-500/60", text: "text-indigo-300", accent: "text-indigo-400" },
+  { bg: "bg-teal-500/20", border: "border-teal-500/60", text: "text-teal-300", accent: "text-teal-400" },
+  { bg: "bg-lime-500/20", border: "border-lime-500/60", text: "text-lime-300", accent: "text-lime-400" },
+  { bg: "bg-fuchsia-500/20", border: "border-fuchsia-500/60", text: "text-fuchsia-300", accent: "text-fuchsia-400" },
+];
+
+function getTeamColor(index: number) {
+  return TEAM_COLORS[index % TEAM_COLORS.length];
+}
+
 interface DraftSlot {
   rosterId: string;
   rosterName: string | null;
@@ -150,6 +170,18 @@ export default function DraftBoardPage() {
 
   const teamStatuses = getTeamStatuses();
   const overallPositions = getOverallPositionSummary();
+
+  // Create team color map
+  const teamColorMap = new Map<string, { color: ReturnType<typeof getTeamColor>; name: string }>();
+  if (data) {
+    const rosters = data.draftBoard[0]?.slots || [];
+    rosters.forEach((roster, index) => {
+      teamColorMap.set(roster.rosterId, {
+        color: getTeamColor(index),
+        name: roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`,
+      });
+    });
+  }
 
   if (loading) {
     return (
@@ -308,27 +340,25 @@ export default function DraftBoardPage() {
 
       {/* Team Status Indicators */}
       <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-400 mb-3">Team Status</h3>
+        <h3 className="text-sm font-medium text-gray-400 mb-3">Teams</h3>
         <div className="flex flex-wrap gap-2">
-          {teamStatuses.map((team) => (
-            <div
-              key={team.rosterId}
-              className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${
-                team.status === "ready"
-                  ? "bg-green-500/20 border border-green-500/40 text-green-400"
-                  : team.status === "planning"
-                  ? "bg-yellow-500/20 border border-yellow-500/40 text-yellow-400"
-                  : "bg-gray-700/50 border border-gray-600/40 text-gray-400"
-              }`}
-            >
-              <span className="truncate max-w-[100px]">
-                {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
-              </span>
-              <span className="text-xs opacity-75">
-                {team.keeperCount}/{team.maxKeepers}
-              </span>
-            </div>
-          ))}
+          {teamStatuses.map((team) => {
+            const teamInfo = teamColorMap.get(team.rosterId);
+            const teamColor = teamInfo?.color || TEAM_COLORS[0];
+            return (
+              <div
+                key={team.rosterId}
+                className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${teamColor.bg} border ${teamColor.border}`}
+              >
+                <span className={`truncate max-w-[100px] font-medium ${teamColor.text}`}>
+                  {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
+                </span>
+                <span className={`text-xs ${teamColor.accent}`}>
+                  {team.keeperCount}/{team.maxKeepers}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -349,24 +379,20 @@ export default function DraftBoardPage() {
                   )}
                   {rosters.map((roster) => {
                     const teamStatus = teamStatuses.find(t => t.rosterId === roster.rosterId);
+                    const teamInfo = teamColorMap.get(roster.rosterId);
+                    const teamColor = teamInfo?.color || TEAM_COLORS[0];
                     return (
                       <th
                         key={roster.rosterId}
-                        className="px-2 py-3 text-center text-gray-400 text-xs font-medium border-b border-gray-700 min-w-[120px]"
+                        className={`px-2 py-3 text-center text-xs font-medium border-b border-gray-700 min-w-[120px] ${teamColor.bg}`}
                       >
                         <div className="flex flex-col items-center gap-1">
-                          <span className="truncate block max-w-[100px]">
+                          <span className={`truncate block max-w-[100px] font-semibold ${teamColor.text}`}>
                             {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
                           </span>
                           {teamStatus && (
                             <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                teamStatus.status === "ready"
-                                  ? "bg-green-500/30 text-green-400"
-                                  : teamStatus.status === "planning"
-                                  ? "bg-yellow-500/30 text-yellow-400"
-                                  : "bg-gray-600/30 text-gray-500"
-                              }`}
+                              className={`text-[10px] px-1.5 py-0.5 rounded ${teamColor.bg} ${teamColor.border} border`}
                             >
                               {teamStatus.keeperCount}/{teamStatus.maxKeepers}
                             </span>
@@ -416,7 +442,11 @@ export default function DraftBoardPage() {
                       )}
                       {row.slots.map((slot) => (
                         <td key={slot.rosterId} className="px-1 py-1">
-                          <DraftCell slot={slot} />
+                          <DraftCell
+                            slot={slot}
+                            teamColorMap={teamColorMap}
+                            columnRosterId={slot.rosterId}
+                          />
                         </td>
                       ))}
                     </tr>
@@ -503,22 +533,24 @@ export default function DraftBoardPage() {
       {/* Legend */}
       <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
         <h3 className="text-sm font-medium text-gray-400 mb-3">Legend</h3>
-        <div className="flex flex-wrap gap-4 text-sm">
+        <div className="flex flex-wrap gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-purple-500/30 border border-purple-500" />
-            <span className="text-gray-300">Keeper</span>
+            <div className="w-6 h-6 rounded bg-purple-500/20 border border-purple-500/60 flex items-center justify-center">
+              <span className="text-purple-300 text-[10px]">K</span>
+            </div>
+            <span className="text-gray-300">Keeper (solid border = team&apos;s pick)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-yellow-500/30 border border-yellow-500" />
-            <span className="text-gray-300">Cascaded</span>
+            <div className="w-6 h-6 rounded bg-blue-500/20 border-2 border-dashed border-blue-500/60 flex items-center justify-center">
+              <span className="text-blue-300 text-[10px]">→</span>
+            </div>
+            <span className="text-gray-300">Traded pick (shows new owner)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-500/30 border border-red-500" />
-            <span className="text-gray-300">Traded Away</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-gray-700 border border-gray-600" />
-            <span className="text-gray-300">Available</span>
+            <div className="w-6 h-6 rounded bg-gray-500/20 border border-dashed border-gray-500/40 opacity-50 flex items-center justify-center">
+              <span className="text-gray-400 text-[10px]">—</span>
+            </div>
+            <span className="text-gray-300">Available (faded = open slot)</span>
           </div>
         </div>
       </div>
@@ -526,30 +558,50 @@ export default function DraftBoardPage() {
   );
 }
 
-function DraftCell({ slot }: { slot: DraftSlot }) {
-  if (slot.status === "traded") {
+interface DraftCellProps {
+  slot: DraftSlot;
+  teamColorMap: Map<string, { color: ReturnType<typeof getTeamColor>; name: string }>;
+  columnRosterId: string; // The team whose column this is
+}
+
+function DraftCell({ slot, teamColorMap, columnRosterId }: DraftCellProps) {
+  const columnTeam = teamColorMap.get(columnRosterId);
+  const columnColor = columnTeam?.color || TEAM_COLORS[0];
+
+  // Traded away - show who now owns this pick
+  if (slot.status === "traded" && slot.tradedTo) {
+    const newOwner = teamColorMap.get(slot.tradedTo);
+    const newOwnerColor = newOwner?.color || TEAM_COLORS[0];
+    const newOwnerName = newOwner?.name || slot.tradedTo.slice(0, 6);
+
     return (
-      <div className="bg-red-500/20 border border-red-500/40 rounded px-2 py-1.5 text-center min-h-[50px] flex flex-col justify-center">
-        <p className="text-red-400 text-xs truncate">Traded to</p>
-        <p className="text-red-300 text-xs truncate">{slot.tradedTo}</p>
+      <div className={`${newOwnerColor.bg} ${newOwnerColor.border} border-2 border-dashed rounded px-2 py-1.5 text-center min-h-[50px] flex flex-col justify-center`}>
+        <p className={`${newOwnerColor.accent} text-[10px] font-medium`}>
+          → {newOwnerName}
+        </p>
+        <p className="text-gray-500 text-[9px]">owns pick</p>
       </div>
     );
   }
 
+  // Keeper in this slot
   if (slot.status === "keeper" && slot.keeper) {
     return (
-      <div className="bg-purple-500/20 border border-purple-500/40 rounded px-2 py-1.5 text-center min-h-[50px] flex flex-col justify-center">
+      <div className={`${columnColor.bg} ${columnColor.border} border rounded px-2 py-1.5 text-center min-h-[50px] flex flex-col justify-center`}>
         <div className="flex items-center justify-center gap-1">
           <PositionBadge position={slot.keeper.position} size="xs" />
         </div>
-        <p className="text-white text-xs truncate mt-1">{slot.keeper.playerName}</p>
+        <p className={`${columnColor.text} text-xs font-medium truncate mt-1`}>
+          {slot.keeper.playerName}
+        </p>
       </div>
     );
   }
 
+  // Available pick - show in team's color but muted
   return (
-    <div className="bg-gray-700/30 border border-gray-600/30 rounded px-2 py-1.5 text-center min-h-[50px] flex items-center justify-center">
-      <span className="text-gray-600 text-xs">Open</span>
+    <div className={`${columnColor.bg} opacity-40 border ${columnColor.border} border-dashed rounded px-2 py-1.5 text-center min-h-[50px] flex items-center justify-center`}>
+      <span className={`${columnColor.text} text-xs`}>—</span>
     </div>
   );
 }

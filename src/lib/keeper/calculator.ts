@@ -259,32 +259,20 @@ export async function calculateKeeperCost(
 
 /**
  * Get how a player was acquired by a roster
+ *
+ * FIXED: Per league rules:
+ * - If a player was drafted in the CURRENT season's draft (or picked up same season
+ *   after being dropped), they retain their draft round cost
+ * - If a player was dropped for a FULL season and picked up AFTER the next draft,
+ *   they lose their draft value and become waiver cost (Round 10)
+ * - Only players who were never drafted get the undrafted/waiver cost
  */
 async function getPlayerAcquisition(
   playerId: string,
   rosterId: string,
   targetSeason: number
 ): Promise<PlayerAcquisition> {
-  // Check if player was drafted by this team
-  const draftPick = await prisma.draftPick.findFirst({
-    where: {
-      player: { sleeperId: playerId },
-      rosterId,
-      draft: { season: { lte: targetSeason } },
-    },
-    include: { draft: true },
-    orderBy: { draft: { season: "desc" } },
-  });
-
-  if (draftPick) {
-    return {
-      type: AcquisitionType.DRAFTED,
-      date: draftPick.pickedAt || undefined,
-      draftRound: draftPick.round,
-    };
-  }
-
-  // Check transactions for waiver/FA/trade
+  // First, get the player record
   const player = await prisma.player.findUnique({
     where: { sleeperId: playerId },
   });
@@ -293,6 +281,69 @@ async function getPlayerAcquisition(
     return { type: AcquisitionType.WAIVER };
   }
 
+  // Check if player was drafted in the CURRENT season's draft
+  // Draft for 2025 season happens in 2024, so we check for season = targetSeason - 1
+  // or the same season if drafted mid-season
+  const draftPick = await prisma.draftPick.findFirst({
+    where: {
+      playerId: player.id,
+      draft: {
+        season: {
+          gte: targetSeason - 1, // Draft from previous year (for this season)
+          lte: targetSeason
+        }
+      },
+    },
+    include: { draft: true },
+    orderBy: { draft: { season: "desc" } },
+  });
+
+  if (draftPick) {
+    // Player was drafted in the relevant season - check if they were on a roster
+    // continuously or picked up after being dropped within the same season
+
+    // Get when the player joined the current roster
+    const rosterTransaction = await prisma.transactionPlayer.findFirst({
+      where: {
+        playerId: player.id,
+        toRosterId: rosterId,
+      },
+      include: { transaction: true },
+      orderBy: { transaction: { createdAt: "desc" } },
+    });
+
+    // If player was drafted by current roster OR picked up same season as draft
+    // they retain draft value
+    if (draftPick.rosterId === rosterId) {
+      // Drafted by current roster - use draft round
+      return {
+        type: AcquisitionType.DRAFTED,
+        date: draftPick.pickedAt || undefined,
+        draftRound: draftPick.round,
+      };
+    }
+
+    // Player was drafted by another team - check if picked up same season
+    if (rosterTransaction) {
+      const transactionYear = rosterTransaction.transaction.createdAt.getFullYear();
+      const draftYear = draftPick.draft.season;
+
+      // If picked up in the same year as drafted (or year after for late-season drafts),
+      // they retain draft value
+      if (transactionYear <= draftYear + 1) {
+        return {
+          type: AcquisitionType.DRAFTED,
+          date: rosterTransaction.transaction.createdAt,
+          draftRound: draftPick.round,
+        };
+      }
+    }
+
+    // Player was drafted but dropped for a full season and picked up after next draft
+    // They lose draft value - fall through to waiver logic
+  }
+
+  // Check transactions for how undrafted player joined roster
   const transaction = await prisma.transactionPlayer.findFirst({
     where: {
       playerId: player.id,
@@ -311,7 +362,7 @@ async function getPlayerAcquisition(
     };
   }
 
-  // Default to waiver if no record found
+  // Default to waiver if no record found (undrafted player)
   return { type: AcquisitionType.WAIVER };
 }
 
