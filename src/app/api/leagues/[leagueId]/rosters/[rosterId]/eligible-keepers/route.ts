@@ -156,7 +156,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const franchiseCount = roster.keepers.filter((k) => k.type === KeeperType.FRANCHISE).length;
     const regularCount = roster.keepers.filter((k) => k.type === KeeperType.REGULAR).length;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       rosterId,
       season,
       players: eligiblePlayers,
@@ -176,6 +176,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         any: roster.keepers.length < league.keeperSettings.maxKeepers,
       },
     });
+
+    // Cache for 15 seconds, stale-while-revalidate for 30 seconds
+    response.headers.set('Cache-Control', 'private, s-maxage=15, stale-while-revalidate=30');
+    return response;
   } catch (error) {
     console.error("Error fetching eligible keepers:", error);
     return NextResponse.json(

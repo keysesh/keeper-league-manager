@@ -128,7 +128,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const isCommissioner = league.commissionerId === session.user.id;
 
-    return NextResponse.json({
+    // Add cache headers for faster subsequent loads
+    const response = NextResponse.json({
       id: league.id,
       sleeperId: league.sleeperId,
       name: league.name,
@@ -173,6 +174,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })),
       counts: league._count,
     });
+
+    // Cache for 30 seconds, stale-while-revalidate for 60 seconds
+    response.headers.set('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
+    return response;
   } catch (error) {
     console.error("Error fetching league:", error);
     return NextResponse.json(

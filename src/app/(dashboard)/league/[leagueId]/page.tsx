@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
+import { useState } from "react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+});
 
 interface Roster {
   id: string;
@@ -72,30 +78,14 @@ export default function LeaguePage() {
   const router = useRouter();
   const leagueId = params.leagueId as string;
   const { success, error: showError } = useToast();
-
-  const [league, setLeague] = useState<League | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    fetchLeague();
-  }, [leagueId]);
-
-  const fetchLeague = async () => {
-    try {
-      const res = await fetch(`/api/leagues/${leagueId}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch league");
-      }
-      const data = await res.json();
-      setLeague(data);
-    } catch {
-      setError("Failed to load league");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use SWR for faster data loading with caching
+  const { data: league, error, mutate, isLoading } = useSWR<League>(
+    `/api/leagues/${leagueId}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 5000 }
+  );
 
   const handleSync = async () => {
     setSyncing(true);
@@ -103,26 +93,21 @@ export default function LeaguePage() {
       const res = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "quick",
-          leagueId,
-        }),
+        body: JSON.stringify({ action: "quick", leagueId }),
       });
 
-      if (!res.ok) {
-        throw new Error("Sync failed");
-      }
+      if (!res.ok) throw new Error("Sync failed");
 
-      await fetchLeague();
-      success("League synced successfully");
+      mutate(); // Revalidate data
+      success("Synced");
     } catch {
-      showError("Failed to sync league");
+      showError("Sync failed");
     } finally {
       setSyncing(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex items-start justify-between">
@@ -277,24 +262,35 @@ export default function LeaguePage() {
           </div>
           {userRoster.currentKeepers.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {userRoster.currentKeepers.map((keeper) => (
-                <div
-                  key={keeper.id}
-                  className={`player-card flex items-center gap-2 border-l-2 ${
-                    keeper.player.position === "QB" ? "border-l-red-500" :
-                    keeper.player.position === "RB" ? "border-l-green-500" :
-                    keeper.player.position === "WR" ? "border-l-blue-500" :
-                    keeper.player.position === "TE" ? "border-l-orange-500" : "border-l-gray-500"
-                  }`}
-                >
-                  <span className={`text-[10px] font-bold px-1 rounded ${keeper.type === "FRANCHISE" ? "bg-amber-500 text-black" : "bg-purple-600 text-white"}`}>
-                    {keeper.type === "FRANCHISE" ? "FT" : "K"}
-                  </span>
-                  <PositionBadge position={keeper.player.position} size="xs" />
-                  <span className="text-xs text-white font-medium truncate max-w-[100px]">{keeper.player.fullName}</span>
-                  <span className="text-xs text-gray-400">R{keeper.finalCost}</span>
-                </div>
-              ))}
+              {userRoster.currentKeepers.map((keeper) => {
+                const posColors = {
+                  QB: { bg: "bg-red-500/10", border: "border-l-red-500", text: "text-red-400" },
+                  RB: { bg: "bg-green-500/10", border: "border-l-green-500", text: "text-green-400" },
+                  WR: { bg: "bg-blue-500/10", border: "border-l-blue-500", text: "text-blue-400" },
+                  TE: { bg: "bg-orange-500/10", border: "border-l-orange-500", text: "text-orange-400" },
+                  K: { bg: "bg-purple-500/10", border: "border-l-purple-500", text: "text-purple-400" },
+                  DEF: { bg: "bg-gray-500/10", border: "border-l-gray-500", text: "text-gray-400" },
+                };
+                const colors = posColors[keeper.player.position as keyof typeof posColors] || posColors.DEF;
+
+                return (
+                  <div
+                    key={keeper.id}
+                    className={`player-card flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg}`}
+                  >
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      keeper.type === "FRANCHISE"
+                        ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
+                        : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
+                    }`}>
+                      {keeper.type === "FRANCHISE" ? "FT" : "K"}
+                    </span>
+                    <PositionBadge position={keeper.player.position} size="xs" />
+                    <span className="text-xs text-white font-medium truncate max-w-[100px]">{keeper.player.fullName}</span>
+                    <span className={`text-xs font-semibold ${colors.text}`}>R{keeper.finalCost}</span>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-gray-500">No keepers yet</p>
@@ -302,36 +298,72 @@ export default function LeaguePage() {
         </div>
       )}
 
-      {/* Standings - Compact Table */}
+      {/* Standings - Premium Table */}
       <div className="card-compact rounded-xl overflow-hidden">
-        <div className="px-3 py-2 border-b border-gray-800/50">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800/50">
           <span className="text-xs font-semibold text-gray-400 uppercase">Standings</span>
+          <div className="flex gap-3 text-[10px] text-gray-500">
+            <span>W-L</span>
+            <span>PF</span>
+            <span>K</span>
+          </div>
         </div>
-        <div className="divide-y divide-gray-800/30">
-          {league.rosters.map((roster, index) => (
-            <Link
-              key={roster.id}
-              href={`/league/${leagueId}/team/${roster.id}`}
-              className={`flex items-center gap-3 px-3 py-2 hover:bg-gray-800/30 ${
-                roster.isUserRoster ? "bg-purple-500/5" : ""
-              }`}
-            >
-              <span className={`w-5 text-xs font-bold ${index < 3 ? "text-amber-400" : "text-gray-600"}`}>
-                {index + 1}
-              </span>
-              <span className="flex-1 text-sm text-white font-medium truncate">
-                {roster.teamName || "Team " + roster.sleeperId}
-                {roster.isUserRoster && <span className="ml-1 text-purple-400 text-[10px]">•</span>}
-              </span>
-              <span className="text-xs text-gray-400 w-12 text-center">{roster.wins}-{roster.losses}</span>
-              <span className="text-xs text-gray-500 w-12 text-right">{roster.pointsFor.toFixed(0)}</span>
-              <span className={`text-[10px] font-bold w-8 text-center ${
-                roster.keeperCount >= (league.keeperSettings?.maxKeepers || 7) ? "text-green-400" : "text-gray-500"
-              }`}>
-                {roster.keeperCount}/{league.keeperSettings?.maxKeepers || 7}
-              </span>
-            </Link>
-          ))}
+        <div className="divide-y divide-gray-800/20">
+          {league.rosters.map((roster, index) => {
+            const isPlayoff = index < 6;
+            const isTop3 = index < 3;
+
+            return (
+              <Link
+                key={roster.id}
+                href={`/league/${leagueId}/team/${roster.id}`}
+                className={`flex items-center gap-2 px-3 py-2.5 transition-all hover:bg-gray-800/40 ${
+                  roster.isUserRoster
+                    ? "bg-gradient-to-r from-purple-500/10 to-transparent border-l-2 border-purple-500"
+                    : isTop3
+                    ? "bg-gradient-to-r from-amber-500/5 to-transparent"
+                    : ""
+                }`}
+              >
+                <span className={`w-6 h-6 flex items-center justify-center text-xs font-bold rounded ${
+                  index === 0 ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black" :
+                  index === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400 text-black" :
+                  index === 2 ? "bg-gradient-to-br from-orange-400 to-orange-600 text-black" :
+                  isPlayoff ? "bg-green-500/20 text-green-400" :
+                  "bg-gray-800 text-gray-500"
+                }`}>
+                  {index + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className={`text-sm font-medium truncate block ${
+                    roster.isUserRoster ? "text-purple-300" : "text-white"
+                  }`}>
+                    {roster.teamName || "Team " + roster.sleeperId}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-semibold w-10 text-center ${
+                    roster.wins > roster.losses ? "text-green-400" :
+                    roster.wins < roster.losses ? "text-red-400" : "text-gray-400"
+                  }`}>
+                    {roster.wins}-{roster.losses}
+                  </span>
+                  <span className="text-xs text-gray-500 w-10 text-right font-mono">
+                    {roster.pointsFor.toFixed(0)}
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                    roster.keeperCount >= (league.keeperSettings?.maxKeepers || 7)
+                      ? "bg-green-500/20 text-green-400"
+                      : roster.keeperCount > 0
+                      ? "bg-purple-500/20 text-purple-400"
+                      : "bg-gray-800 text-gray-500"
+                  }`}>
+                    {roster.keeperCount}/{league.keeperSettings?.maxKeepers || 7}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

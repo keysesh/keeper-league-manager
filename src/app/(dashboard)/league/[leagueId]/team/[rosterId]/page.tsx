@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+
+// SWR fetcher
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+});
 
 // Years kept badge with color coding
 function YearsKeptBadge({ years, maxYears = 2 }: { years: number; maxYears?: number }) {
@@ -107,30 +114,17 @@ export default function TeamRosterPage() {
   const leagueId = params.leagueId as string;
   const rosterId = params.rosterId as string;
   const { success, error: showError } = useToast();
-
-  const [data, setData] = useState<RosterData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [leagueId, rosterId]);
-
-  const fetchData = async () => {
-    try {
-      const res = await fetch(
-        `/api/leagues/${leagueId}/rosters/${rosterId}/eligible-keepers`
-      );
-      if (!res.ok) throw new Error("Failed to fetch data");
-      const result = await res.json();
-      setData(result);
-    } catch {
-      setError("Failed to load roster data");
-    } finally {
-      setLoading(false);
+  // Use SWR for faster data loading with caching
+  const { data, error, mutate, isLoading } = useSWR<RosterData>(
+    `/api/leagues/${leagueId}/rosters/${rosterId}/eligible-keepers`,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
     }
-  };
+  );
 
   const addKeeper = async (playerId: string, type: "FRANCHISE" | "REGULAR", playerName: string) => {
     setActionLoading(playerId);
@@ -138,11 +132,7 @@ export default function TeamRosterPage() {
       const res = await fetch(`/api/leagues/${leagueId}/keepers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rosterId,
-          playerId,
-          type,
-        }),
+        body: JSON.stringify({ rosterId, playerId, type }),
       });
 
       if (!res.ok) {
@@ -150,8 +140,8 @@ export default function TeamRosterPage() {
         throw new Error(err.error || "Failed to add keeper");
       }
 
-      success(`${playerName} added as ${type === "FRANCHISE" ? "Franchise Tag" : "Regular Keeper"}`);
-      await fetchData();
+      success(`${playerName} added as ${type === "FRANCHISE" ? "FT" : "Keeper"}`);
+      mutate(); // Revalidate data - counters will update
     } catch (err) {
       showError(err instanceof Error ? err.message : "Failed to add keeper");
     } finally {
@@ -172,8 +162,8 @@ export default function TeamRosterPage() {
         throw new Error(err.error || "Failed to remove keeper");
       }
 
-      success(`${playerName} removed from keepers`);
-      await fetchData();
+      success(`${playerName} removed`);
+      mutate(); // Revalidate data - counters will update
     } catch (err) {
       showError(err instanceof Error ? err.message : "Failed to remove keeper");
     } finally {
@@ -181,9 +171,9 @@ export default function TeamRosterPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-4">
         <div>
           <Skeleton className="h-4 w-24 mb-2" />
           <Skeleton className="h-8 w-48 mb-1" />
@@ -221,16 +211,12 @@ export default function TeamRosterPage() {
 
   if (error || !data) {
     return (
-      <div className="p-6">
+      <div className="p-4">
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <p className="text-red-400">{error || "Failed to load data"}</p>
+          <p className="text-red-400 text-sm">Failed to load data</p>
           <button
-            onClick={() => {
-              setError("");
-              setLoading(true);
-              fetchData();
-            }}
-            className="mt-2 text-sm text-purple-400 hover:text-purple-300"
+            onClick={() => mutate()}
+            className="mt-2 text-xs text-purple-400 hover:text-purple-300"
           >
             Try again
           </button>
@@ -286,38 +272,49 @@ export default function TeamRosterPage() {
         </div>
         {currentKeepers.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {currentKeepers.map((p) => (
-              <div
-                key={p.player.id}
-                className={`player-card flex items-center gap-2 border-l-2 ${
-                  p.player.position === "QB" ? "border-l-red-500" :
-                  p.player.position === "RB" ? "border-l-green-500" :
-                  p.player.position === "WR" ? "border-l-blue-500" :
-                  p.player.position === "TE" ? "border-l-orange-500" : "border-l-gray-500"
-                }`}
-              >
-                <span className={`text-[10px] font-bold px-1 rounded ${p.existingKeeper?.type === "FRANCHISE" ? "bg-amber-500 text-black" : "bg-purple-600 text-white"}`}>
-                  {p.existingKeeper?.type === "FRANCHISE" ? "FT" : "K"}
-                </span>
-                <PositionBadge position={p.player.position} size="xs" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-white font-medium truncate">{p.player.fullName}</p>
-                  <p className="text-[10px] text-gray-500">{p.player.team || "FA"}</p>
+            {currentKeepers.map((p) => {
+              const posColors = {
+                QB: { bg: "bg-red-500/10", border: "border-l-red-500", text: "text-red-400" },
+                RB: { bg: "bg-green-500/10", border: "border-l-green-500", text: "text-green-400" },
+                WR: { bg: "bg-blue-500/10", border: "border-l-blue-500", text: "text-blue-400" },
+                TE: { bg: "bg-orange-500/10", border: "border-l-orange-500", text: "text-orange-400" },
+                K: { bg: "bg-purple-500/10", border: "border-l-purple-500", text: "text-purple-400" },
+                DEF: { bg: "bg-gray-500/10", border: "border-l-gray-500", text: "text-gray-400" },
+              };
+              const colors = posColors[p.player.position as keyof typeof posColors] || posColors.DEF;
+
+              return (
+                <div
+                  key={p.player.id}
+                  className={`player-card flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg}`}
+                >
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                    p.existingKeeper?.type === "FRANCHISE"
+                      ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
+                      : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
+                  }`}>
+                    {p.existingKeeper?.type === "FRANCHISE" ? "FT" : "K"}
+                  </span>
+                  <PositionBadge position={p.player.position} size="xs" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white font-medium truncate">{p.player.fullName}</p>
+                    <p className="text-[10px] text-gray-500">{p.player.team || "FA"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-bold ${colors.text}`}>R{p.existingKeeper?.finalCost}</p>
+                    {!p.existingKeeper?.isLocked && (
+                      <button
+                        onClick={() => removeKeeper(p.existingKeeper!.id, p.player.fullName)}
+                        disabled={actionLoading === p.existingKeeper?.id}
+                        className="text-[10px] text-red-400 hover:text-red-300"
+                      >
+                        {actionLoading === p.existingKeeper?.id ? "..." : "×"}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-white">R{p.existingKeeper?.finalCost}</p>
-                  {!p.existingKeeper?.isLocked && (
-                    <button
-                      onClick={() => removeKeeper(p.existingKeeper!.id, p.player.fullName)}
-                      disabled={actionLoading === p.existingKeeper?.id}
-                      className="text-[10px] text-red-400 hover:text-red-300"
-                    >
-                      {actionLoading === p.existingKeeper?.id ? "..." : "×"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-xs text-gray-500 py-2">No keepers selected</p>
@@ -343,15 +340,20 @@ export default function TeamRosterPage() {
               const canAddFranchise = data.canAddMore.any && data.canAddMore.franchise;
               const isLoading = actionLoading === p.player.id;
 
+              const posColors = {
+                QB: { bg: "bg-red-500/5", border: "border-l-red-500" },
+                RB: { bg: "bg-green-500/5", border: "border-l-green-500" },
+                WR: { bg: "bg-blue-500/5", border: "border-l-blue-500" },
+                TE: { bg: "bg-orange-500/5", border: "border-l-orange-500" },
+                K: { bg: "bg-purple-500/5", border: "border-l-purple-500" },
+                DEF: { bg: "bg-gray-500/5", border: "border-l-gray-500" },
+              };
+              const colors = posColors[p.player.position as keyof typeof posColors] || posColors.DEF;
+
               return (
                 <div
                   key={p.player.id}
-                  className={`player-card flex items-center gap-2 border-l-2 ${
-                    p.player.position === "QB" ? "border-l-red-500" :
-                    p.player.position === "RB" ? "border-l-green-500" :
-                    p.player.position === "WR" ? "border-l-blue-500" :
-                    p.player.position === "TE" ? "border-l-orange-500" : "border-l-gray-500"
-                  }`}
+                  className={`player-card flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg} hover:bg-gray-800/50`}
                 >
                   <PositionBadge position={p.player.position} size="xs" />
                   <div className="flex-1 min-w-0">
@@ -363,7 +365,7 @@ export default function TeamRosterPage() {
                       <button
                         onClick={() => addKeeper(p.player.id, "REGULAR", p.player.fullName)}
                         disabled={!canAddRegular || isLoading}
-                        className="px-2 py-1 rounded text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40"
+                        className="px-2 py-1 rounded text-[10px] font-bold bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 text-white disabled:opacity-40 transition-all"
                       >
                         {isLoading ? "..." : `R${regularCost.finalCost}`}
                       </button>
@@ -372,7 +374,7 @@ export default function TeamRosterPage() {
                       <button
                         onClick={() => addKeeper(p.player.id, "FRANCHISE", p.player.fullName)}
                         disabled={!canAddFranchise || isLoading}
-                        className="px-2 py-1 rounded text-[10px] font-bold bg-amber-500 text-black disabled:opacity-40"
+                        className="px-2 py-1 rounded text-[10px] font-bold bg-gradient-to-r from-amber-400 to-amber-600 text-black disabled:opacity-40 transition-all"
                       >
                         {isLoading ? "..." : "FT"}
                       </button>
