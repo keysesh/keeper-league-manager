@@ -5,6 +5,9 @@ import { syncLeague, syncUserLeagues, quickSyncLeague } from "@/lib/sleeper/sync
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
+// Extend timeout for sync operations (requires Vercel Pro for >10s)
+export const maxDuration = 60;
+
 /**
  * POST /api/sleeper/sync
  * Sync league data from Sleeper

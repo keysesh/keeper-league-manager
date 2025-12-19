@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { PositionBadge } from "@/components/ui/PositionBadge";
+import { PlayerAvatar } from "@/components/players/PlayerAvatar";
+import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 
 interface Player {
   id: string;
@@ -245,8 +248,31 @@ export default function TradeAnalyzerPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+      <div className="p-6 space-y-6">
+        <div>
+          <Skeleton className="h-4 w-24 mb-2" />
+          <Skeleton className="h-8 w-48 mb-1" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+              <Skeleton className="h-6 w-24 mb-4" />
+              <Skeleton className="h-10 w-full mb-4" />
+              <Skeleton className="h-4 w-40 mb-2" />
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((j) => (
+                  <div key={j} className="flex items-center gap-3 p-2 bg-gray-700/30 rounded">
+                    <SkeletonAvatar size="sm" />
+                    <Skeleton className="h-5 w-10" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -336,7 +362,8 @@ export default function TradeAnalyzerPage() {
                       onChange={() => togglePlayer(player.id, "team1")}
                       className="hidden"
                     />
-                    <PositionBadge position={player.position} />
+                    <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
+                    <PositionBadge position={player.position} size="xs" />
                     <span className="text-white">{player.fullName}</span>
                     <span className="text-gray-500 text-sm">{player.team}</span>
                   </label>
@@ -421,7 +448,8 @@ export default function TradeAnalyzerPage() {
                       onChange={() => togglePlayer(player.id, "team2")}
                       className="hidden"
                     />
-                    <PositionBadge position={player.position} />
+                    <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
+                    <PositionBadge position={player.position} size="xs" />
                     <span className="text-white">{player.fullName}</span>
                     <span className="text-gray-500 text-sm">{player.team}</span>
                   </label>
@@ -607,26 +635,5 @@ export default function TradeAnalyzerPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function PositionBadge({ position }: { position: string | null }) {
-  const colors: Record<string, string> = {
-    QB: "bg-red-500/30 text-red-400",
-    RB: "bg-green-500/30 text-green-400",
-    WR: "bg-blue-500/30 text-blue-400",
-    TE: "bg-orange-500/30 text-orange-400",
-    K: "bg-purple-500/30 text-purple-400",
-    DEF: "bg-gray-500/30 text-gray-400",
-  };
-
-  return (
-    <span
-      className={`w-10 text-center px-2 py-0.5 rounded text-xs font-medium ${
-        colors[position || ""] || "bg-gray-500/30 text-gray-400"
-      }`}
-    >
-      {position || "?"}
-    </span>
   );
 }

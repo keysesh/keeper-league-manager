@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
+import { PlayerAvatar } from "@/components/players/PlayerAvatar";
+import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 
 interface Player {
   id: string;
@@ -71,6 +75,7 @@ export default function TeamRosterPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
   const rosterId = params.rosterId as string;
+  const { success, error: showError } = useToast();
 
   const [data, setData] = useState<RosterData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +102,7 @@ export default function TeamRosterPage() {
     }
   };
 
-  const addKeeper = async (playerId: string, type: "FRANCHISE" | "REGULAR") => {
+  const addKeeper = async (playerId: string, type: "FRANCHISE" | "REGULAR", playerName: string) => {
     setActionLoading(playerId);
     try {
       const res = await fetch(`/api/leagues/${leagueId}/keepers`, {
@@ -115,15 +120,16 @@ export default function TeamRosterPage() {
         throw new Error(err.error || "Failed to add keeper");
       }
 
+      success(`${playerName} added as ${type === "FRANCHISE" ? "Franchise Tag" : "Regular Keeper"}`);
       await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add keeper");
+      showError(err instanceof Error ? err.message : "Failed to add keeper");
     } finally {
       setActionLoading(null);
     }
   };
 
-  const removeKeeper = async (keeperId: string) => {
+  const removeKeeper = async (keeperId: string, playerName: string) => {
     setActionLoading(keeperId);
     try {
       const res = await fetch(
@@ -136,9 +142,10 @@ export default function TeamRosterPage() {
         throw new Error(err.error || "Failed to remove keeper");
       }
 
+      success(`${playerName} removed from keepers`);
       await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove keeper");
+      showError(err instanceof Error ? err.message : "Failed to remove keeper");
     } finally {
       setActionLoading(null);
     }
@@ -146,8 +153,38 @@ export default function TeamRosterPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+      <div className="p-6 space-y-6">
+        <div>
+          <Skeleton className="h-4 w-24 mb-2" />
+          <Skeleton className="h-8 w-48 mb-1" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+          <Skeleton className="h-6 w-32 mb-4" />
+          <div className="grid grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="text-center">
+                <Skeleton className="h-10 w-16 mx-auto mb-2" />
+                <Skeleton className="h-4 w-20 mx-auto" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+          <Skeleton className="h-6 w-40 mb-4" />
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 bg-gray-700/50 rounded-lg px-4 py-3">
+                <SkeletonAvatar size="sm" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 mb-1" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-8 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -236,7 +273,8 @@ export default function TeamRosterPage() {
                 key={p.player.id}
                 className="flex items-center justify-between bg-gray-700/50 rounded-lg px-4 py-3"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <PlayerAvatar sleeperId={p.player.sleeperId} name={p.player.fullName} size="sm" />
                   <span
                     className={`px-2 py-1 rounded text-xs font-medium ${
                       p.existingKeeper?.type === "FRANCHISE"
@@ -244,13 +282,16 @@ export default function TeamRosterPage() {
                         : "bg-blue-500/20 text-blue-400"
                     }`}
                   >
-                    {p.existingKeeper?.type === "FRANCHISE" ? "FRANCHISE" : "REGULAR"}
+                    {p.existingKeeper?.type === "FRANCHISE" ? "FT" : "REG"}
                   </span>
+                  <PositionBadge position={p.player.position} size="xs" variant="subtle" />
                   <div>
-                    <p className="text-white font-medium">{p.player.fullName}</p>
+                    <p className="text-white font-medium flex items-center gap-2">
+                      {p.player.fullName}
+                      {p.player.yearsExp === 0 && <RookieBadge size="xs" />}
+                    </p>
                     <p className="text-gray-400 text-sm">
-                      {p.player.position} - {p.player.team || "FA"} &bull; Year{" "}
-                      {p.eligibility.yearsKept} &bull; {p.eligibility.acquisitionType}
+                      {p.player.team || "FA"} &bull; Year {p.eligibility.yearsKept} &bull; {p.eligibility.acquisitionType}
                     </p>
                   </div>
                 </div>
@@ -263,7 +304,7 @@ export default function TeamRosterPage() {
                   </div>
                   {!p.existingKeeper?.isLocked && (
                     <button
-                      onClick={() => removeKeeper(p.existingKeeper!.id)}
+                      onClick={() => removeKeeper(p.existingKeeper!.id, p.player.fullName)}
                       disabled={actionLoading === p.existingKeeper?.id}
                       className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-sm transition-colors disabled:opacity-50"
                     >
@@ -331,13 +372,15 @@ export default function TeamRosterPage() {
                   key={p.player.id}
                   className="flex items-center justify-between bg-gray-700/30 hover:bg-gray-700/50 rounded-lg px-4 py-3 transition-colors"
                 >
-                  <div className="flex items-center gap-4">
-                    <PositionBadge position={p.player.position} />
+                  <div className="flex items-center gap-3">
+                    <PlayerAvatar sleeperId={p.player.sleeperId} name={p.player.fullName} size="sm" />
+                    <PositionBadge position={p.player.position} size="sm" variant="subtle" />
                     <div>
-                      <p className="text-white font-medium">
+                      <p className="text-white font-medium flex items-center gap-2">
                         {p.player.fullName}
+                        {p.player.yearsExp === 0 && <RookieBadge size="xs" />}
                         {p.player.injuryStatus && (
-                          <span className="ml-2 text-xs text-red-400">
+                          <span className="text-xs text-red-400">
                             ({p.player.injuryStatus})
                           </span>
                         )}
@@ -356,7 +399,7 @@ export default function TeamRosterPage() {
                       </div>
                     )}
                     <button
-                      onClick={() => addKeeper(p.player.id, selectedType)}
+                      onClick={() => addKeeper(p.player.id, selectedType, p.player.fullName)}
                       disabled={!canAdd || actionLoading === p.player.id}
                       className={`px-3 py-1.5 rounded text-sm transition-colors disabled:opacity-50 ${
                         selectedType === "FRANCHISE"
@@ -390,12 +433,13 @@ export default function TeamRosterPage() {
                 key={p.player.id}
                 className="flex items-center justify-between bg-gray-700/20 rounded-lg px-4 py-3 opacity-60"
               >
-                <div className="flex items-center gap-4">
-                  <PositionBadge position={p.player.position} />
+                <div className="flex items-center gap-3">
+                  <PlayerAvatar sleeperId={p.player.sleeperId} name={p.player.fullName} size="sm" />
+                  <PositionBadge position={p.player.position} size="sm" variant="subtle" />
                   <div>
                     <p className="text-white">{p.player.fullName}</p>
                     <p className="text-gray-400 text-sm">
-                      {p.player.position} - {p.player.team || "FA"}
+                      {p.player.team || "FA"}
                     </p>
                   </div>
                 </div>
@@ -408,26 +452,5 @@ export default function TeamRosterPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function PositionBadge({ position }: { position: string | null }) {
-  const colors: Record<string, string> = {
-    QB: "bg-red-500/20 text-red-400",
-    RB: "bg-green-500/20 text-green-400",
-    WR: "bg-blue-500/20 text-blue-400",
-    TE: "bg-orange-500/20 text-orange-400",
-    K: "bg-purple-500/20 text-purple-400",
-    DEF: "bg-gray-500/20 text-gray-400",
-  };
-
-  return (
-    <span
-      className={`w-10 text-center px-2 py-1 rounded text-xs font-medium ${
-        colors[position || ""] || "bg-gray-500/20 text-gray-400"
-      }`}
-    >
-      {position || "?"}
-    </span>
   );
 }

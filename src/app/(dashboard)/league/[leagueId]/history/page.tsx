@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { PositionBadge } from "@/components/ui/PositionBadge";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface KeeperHistory {
   id: string;
@@ -88,8 +90,42 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+      <div className="p-6 space-y-6">
+        <div>
+          <Skeleton className="h-4 w-24 mb-2" />
+          <Skeleton className="h-8 w-48 mb-1" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+              <Skeleton className="h-6 w-32 mb-4" />
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((j) => (
+                  <div key={j} className="flex justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <div className="flex gap-4">
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-40" />
+          </div>
+        </div>
+        <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
+          <div className="p-4">
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -369,26 +405,5 @@ export default function HistoryPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function PositionBadge({ position }: { position: string | null }) {
-  const colors: Record<string, string> = {
-    QB: "bg-red-500/30 text-red-400",
-    RB: "bg-green-500/30 text-green-400",
-    WR: "bg-blue-500/30 text-blue-400",
-    TE: "bg-orange-500/30 text-orange-400",
-    K: "bg-purple-500/30 text-purple-400",
-    DEF: "bg-gray-500/30 text-gray-400",
-  };
-
-  return (
-    <span
-      className={`inline-block w-10 text-center px-2 py-1 rounded text-xs font-medium ${
-        colors[position || ""] || "bg-gray-500/30 text-gray-400"
-      }`}
-    >
-      {position || "?"}
-    </span>
   );
 }

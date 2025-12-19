@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canManageLeague } from "@/lib/permissions";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -26,6 +27,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
       include: {
+        commissioner: {
+          select: {
+            id: true,
+            displayName: true,
+            sleeperUsername: true,
+            avatar: true,
+          },
+        },
         rosters: {
           include: {
             teamMembers: {
@@ -117,6 +126,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       roster.teamMembers.some(member => member.userId === session.user.id)
     );
 
+    const isCommissioner = league.commissionerId === session.user.id;
+
     return NextResponse.json({
       id: league.id,
       sleeperId: league.sleeperId,
@@ -127,6 +138,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       draftRounds: league.draftRounds,
       lastSyncedAt: league.lastSyncedAt,
       keeperSettings: league.keeperSettings,
+      commissioner: league.commissioner ? {
+        id: league.commissioner.id,
+        displayName: league.commissioner.displayName || league.commissioner.sleeperUsername,
+        avatar: league.commissioner.avatar,
+      } : null,
+      isCommissioner,
       rosters: league.rosters.map(roster => ({
         id: roster.id,
         sleeperId: roster.sleeperId,
@@ -184,22 +201,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const { keeperSettings } = body;
 
-    // Verify user is an owner in this league
-    const userRoster = await prisma.roster.findFirst({
-      where: {
-        leagueId,
-        teamMembers: {
-          some: {
-            userId: session.user.id,
-            role: "OWNER",
-          },
-        },
-      },
-    });
+    // Verify user is the commissioner or app admin
+    const hasPermission = await canManageLeague(session.user.id, leagueId);
 
-    if (!userRoster) {
+    if (!hasPermission) {
       return NextResponse.json(
-        { error: "Only league owners can update settings" },
+        { error: "Only the commissioner can update league settings" },
         { status: 403 }
       );
     }

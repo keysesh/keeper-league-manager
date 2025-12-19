@@ -26,8 +26,9 @@ model User {
   updatedAt       DateTime  @updatedAt @map("updated_at")
   lastLoginAt     DateTime? @map("last_login_at")
 
-  teamMemberships TeamMember[]
-  sessions        Session[]
+  teamMemberships  TeamMember[]
+  sessions         Session[]
+  commissionerOf   League[]
 
   @@map("users")
 }
@@ -57,10 +58,12 @@ model League {
   totalRosters     Int          @default(12) @map("total_rosters")
   draftRounds      Int          @default(16) @map("draft_rounds")
   settings         Json?
+  commissionerId   String?      @map("commissioner_id")
   createdAt        DateTime     @default(now()) @map("created_at")
   updatedAt        DateTime     @updatedAt @map("updated_at")
   lastSyncedAt     DateTime?    @map("last_synced_at")
 
+  commissioner   User?          @relation(fields: [commissionerId], references: [id])
   rosters        Roster[]
   drafts         Draft[]
   transactions   Transaction[]
@@ -69,6 +72,7 @@ model League {
   draftPlans     DraftPlan[]
 
   @@index([season])
+  @@index([commissionerId])
   @@map("leagues")
 }
 

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { PositionBadge } from "@/components/ui/PositionBadge";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface DraftSlot {
   rosterId: string;
@@ -151,8 +153,51 @@ export default function DraftBoardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+      <div className="p-6 space-y-6">
+        <div>
+          <Skeleton className="h-4 w-24 mb-2" />
+          <Skeleton className="h-8 w-48 mb-1" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+          <Skeleton className="h-5 w-40 mb-3" />
+          <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="text-center">
+                <Skeleton className="h-6 w-10 mx-auto mb-1" />
+                <Skeleton className="h-6 w-6 mx-auto mb-1" />
+                <Skeleton className="h-3 w-8 mx-auto" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
+          <div className="p-4">
+            <div className="flex gap-2 mb-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-12 w-24" />
+              ))}
+            </div>
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((row) => (
+                <div key={row} className="flex gap-2">
+                  <Skeleton className="h-10 w-12" />
+                  {[1, 2, 3, 4, 5, 6].map((col) => (
+                    <Skeleton key={col} className="h-10 w-24" />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -495,7 +540,7 @@ function DraftCell({ slot }: { slot: DraftSlot }) {
     return (
       <div className="bg-purple-500/20 border border-purple-500/40 rounded px-2 py-1.5 text-center min-h-[50px] flex flex-col justify-center">
         <div className="flex items-center justify-center gap-1">
-          <PositionBadge position={slot.keeper.position} small />
+          <PositionBadge position={slot.keeper.position} size="xs" />
         </div>
         <p className="text-white text-xs truncate mt-1">{slot.keeper.playerName}</p>
       </div>
@@ -506,26 +551,5 @@ function DraftCell({ slot }: { slot: DraftSlot }) {
     <div className="bg-gray-700/30 border border-gray-600/30 rounded px-2 py-1.5 text-center min-h-[50px] flex items-center justify-center">
       <span className="text-gray-600 text-xs">Open</span>
     </div>
-  );
-}
-
-function PositionBadge({ position, small = false }: { position: string | null; small?: boolean }) {
-  const colors: Record<string, string> = {
-    QB: "bg-red-500/30 text-red-400",
-    RB: "bg-green-500/30 text-green-400",
-    WR: "bg-blue-500/30 text-blue-400",
-    TE: "bg-orange-500/30 text-orange-400",
-    K: "bg-purple-500/30 text-purple-400",
-    DEF: "bg-gray-500/30 text-gray-400",
-  };
-
-  return (
-    <span
-      className={`inline-block rounded font-medium ${
-        small ? "px-1 py-0.5 text-[10px]" : "px-2 py-0.5 text-xs"
-      } ${colors[position || ""] || "bg-gray-500/30 text-gray-400"}`}
-    >
-      {position || "?"}
-    </span>
   );
 }

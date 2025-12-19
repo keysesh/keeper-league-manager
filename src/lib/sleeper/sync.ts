@@ -83,16 +83,29 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
     sleeper.getTradedPicks(sleeperLeagueId),
   ]);
 
+  // Find commissioner (user with is_owner: true)
+  const commissionerSleeperUser = users.find((u) => u.is_owner);
+  let commissionerId: string | null = null;
+
+  if (commissionerSleeperUser) {
+    const commissionerDbUser = await prisma.user.findUnique({
+      where: { sleeperId: commissionerSleeperUser.user_id },
+    });
+    commissionerId = commissionerDbUser?.id || null;
+  }
+
   // Upsert league
   const league = await prisma.league.upsert({
     where: { sleeperId: sleeperLeagueId },
     update: {
       ...mapSleeperLeague(leagueData),
+      commissionerId,
       lastSyncedAt: new Date(),
     },
     create: {
       sleeperId: sleeperLeagueId,
       ...mapSleeperLeague(leagueData),
+      commissionerId,
       lastSyncedAt: new Date(),
     },
   });
@@ -115,6 +128,17 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
 
   // Create user map for team names
   const userMap = new Map(users.map((u) => [u.user_id, u]));
+
+  // Batch fetch all players we'll need (optimization: 1 query instead of ~200)
+  const allPlayerIds = new Set<string>();
+  for (const roster of rosters) {
+    roster.players?.forEach(id => allPlayerIds.add(id));
+  }
+  const existingPlayers = await prisma.player.findMany({
+    where: { sleeperId: { in: Array.from(allPlayerIds) } },
+    select: { id: true, sleeperId: true },
+  });
+  const playerMap = new Map(existingPlayers.map(p => [p.sleeperId, p.id]));
 
   // Sync rosters
   let rosterCount = 0;
@@ -165,29 +189,28 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
       }
     }
 
-    // Sync roster players
+    // Sync roster players using batch operations
     if (roster.players && roster.players.length > 0) {
-      // Clear existing roster players
       await prisma.rosterPlayer.deleteMany({
         where: { rosterId: dbRoster.id },
       });
 
-      // Add current players
-      for (const playerId of roster.players) {
-        const player = await prisma.player.findUnique({
-          where: { sleeperId: playerId },
-        });
+      // Build batch insert data using pre-fetched player map
+      const rosterPlayerData = roster.players
+        .map(playerId => {
+          const dbPlayerId = playerMap.get(playerId);
+          if (!dbPlayerId) return null;
+          return {
+            rosterId: dbRoster.id,
+            playerId: dbPlayerId,
+            isStarter: roster.starters?.includes(playerId) || false,
+          };
+        })
+        .filter((d): d is NonNullable<typeof d> => d !== null);
 
-        if (player) {
-          await prisma.rosterPlayer.create({
-            data: {
-              rosterId: dbRoster.id,
-              playerId: player.id,
-              isStarter: roster.starters?.includes(playerId) || false,
-            },
-          });
-          playerCount++;
-        }
+      if (rosterPlayerData.length > 0) {
+        await prisma.rosterPlayer.createMany({ data: rosterPlayerData });
+        playerCount += rosterPlayerData.length;
       }
     }
   }
@@ -290,29 +313,28 @@ async function syncDraft(leagueId: string, draftData: {
     },
   });
 
-  // Sync draft picks
+  // Batch fetch all rosters for this league
+  const rosters = await prisma.roster.findMany({
+    where: { leagueId },
+    select: { id: true, sleeperId: true },
+  });
+  const rosterMap = new Map(rosters.map(r => [r.sleeperId, r.id]));
+
+  // Batch fetch all players we need
+  const playerSleeperIds = picks.filter(p => p.player_id).map(p => p.player_id!);
+  const players = await prisma.player.findMany({
+    where: { sleeperId: { in: playerSleeperIds } },
+    select: { id: true, sleeperId: true },
+  });
+  const playerMap = new Map(players.map(p => [p.sleeperId, p.id]));
+
+  // Sync draft picks with batch-fetched data
   let pickCount = 0;
   for (const pick of picks) {
-    // Find roster by sleeper roster_id
-    const roster = await prisma.roster.findUnique({
-      where: {
-        leagueId_sleeperId: {
-          leagueId,
-          sleeperId: String(pick.roster_id),
-        },
-      },
-    });
+    const rosterId = rosterMap.get(String(pick.roster_id));
+    if (!rosterId) continue;
 
-    if (!roster) continue;
-
-    // Find player if drafted
-    let playerId: string | null = null;
-    if (pick.player_id) {
-      const player = await prisma.player.findUnique({
-        where: { sleeperId: pick.player_id },
-      });
-      playerId = player?.id || null;
-    }
+    const playerId = pick.player_id ? playerMap.get(pick.player_id) || null : null;
 
     await prisma.draftPick.upsert({
       where: {
@@ -323,7 +345,7 @@ async function syncDraft(leagueId: string, draftData: {
         },
       },
       update: {
-        rosterId: roster.id,
+        rosterId,
         playerId,
         pickNumber: pick.pick_no,
         metadata: pick.metadata
@@ -332,7 +354,7 @@ async function syncDraft(leagueId: string, draftData: {
       },
       create: {
         draftId: draft.id,
-        rosterId: roster.id,
+        rosterId,
         playerId,
         round: pick.round,
         pickNumber: pick.pick_no,
@@ -438,6 +460,185 @@ export async function syncTransactions(leagueId: string): Promise<number> {
   }
 
   return count;
+}
+
+// ============================================
+// FAST SYNC (optimized for serverless timeouts)
+// ============================================
+
+/**
+ * Fast sync - syncs league and rosters only
+ * Skips: transactions (18 API calls), draft picks, traded picks
+ * Use this for initial sync on Vercel serverless (10s limit)
+ */
+export async function syncLeagueFast(sleeperLeagueId: string): Promise<{
+  league: { id: string; name: string };
+  rosters: number;
+  players: number;
+}> {
+  console.log(`Fast syncing league ${sleeperLeagueId}...`);
+
+  // Fetch essential league data in parallel
+  const [leagueData, rosters, users] = await Promise.all([
+    sleeper.getLeague(sleeperLeagueId),
+    sleeper.getRosters(sleeperLeagueId),
+    sleeper.getUsers(sleeperLeagueId),
+  ]);
+
+  // Find commissioner
+  const commissionerSleeperUser = users.find((u) => u.is_owner);
+  let commissionerId: string | null = null;
+  if (commissionerSleeperUser) {
+    const commissionerDbUser = await prisma.user.findUnique({
+      where: { sleeperId: commissionerSleeperUser.user_id },
+    });
+    commissionerId = commissionerDbUser?.id || null;
+  }
+
+  // Upsert league
+  const league = await prisma.league.upsert({
+    where: { sleeperId: sleeperLeagueId },
+    update: {
+      ...mapSleeperLeague(leagueData),
+      commissionerId,
+      lastSyncedAt: new Date(),
+    },
+    create: {
+      sleeperId: sleeperLeagueId,
+      ...mapSleeperLeague(leagueData),
+      commissionerId,
+      lastSyncedAt: new Date(),
+    },
+  });
+
+  // Ensure keeper settings exist
+  await prisma.keeperSettings.upsert({
+    where: { leagueId: league.id },
+    update: {},
+    create: {
+      leagueId: league.id,
+      maxKeepers: 7,
+      maxFranchiseTags: 2,
+      maxRegularKeepers: 5,
+      regularKeeperMaxYears: 2,
+      undraftedRound: 8,
+      minimumRound: 1,
+      costReductionPerYear: 1,
+    },
+  });
+
+  const userMap = new Map(users.map((u) => [u.user_id, u]));
+
+  // Batch fetch all players we need
+  const allPlayerIds = new Set<string>();
+  for (const roster of rosters) {
+    roster.players?.forEach(id => allPlayerIds.add(id));
+  }
+
+  const existingPlayers = await prisma.player.findMany({
+    where: { sleeperId: { in: Array.from(allPlayerIds) } },
+    select: { id: true, sleeperId: true },
+  });
+  const playerMap = new Map(existingPlayers.map(p => [p.sleeperId, p.id]));
+
+  let rosterCount = 0;
+  let playerCount = 0;
+
+  for (const roster of rosters) {
+    const user = userMap.get(roster.owner_id);
+    const rosterData = mapSleeperRoster(roster, user);
+
+    const dbRoster = await prisma.roster.upsert({
+      where: {
+        leagueId_sleeperId: {
+          leagueId: league.id,
+          sleeperId: String(roster.roster_id),
+        },
+      },
+      update: rosterData,
+      create: {
+        leagueId: league.id,
+        sleeperId: String(roster.roster_id),
+        ...rosterData,
+      },
+    });
+    rosterCount++;
+
+    // Link user to roster
+    if (roster.owner_id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { sleeperId: roster.owner_id },
+      });
+      if (dbUser) {
+        await prisma.teamMember.upsert({
+          where: { userId_rosterId: { userId: dbUser.id, rosterId: dbRoster.id } },
+          update: {},
+          create: { userId: dbUser.id, rosterId: dbRoster.id, role: "OWNER" },
+        });
+      }
+    }
+
+    // Batch sync roster players using createMany
+    if (roster.players && roster.players.length > 0) {
+      await prisma.rosterPlayer.deleteMany({ where: { rosterId: dbRoster.id } });
+
+      const rosterPlayerData = roster.players
+        .map(playerId => {
+          const dbPlayerId = playerMap.get(playerId);
+          if (!dbPlayerId) return null;
+          return {
+            rosterId: dbRoster.id,
+            playerId: dbPlayerId,
+            isStarter: roster.starters?.includes(playerId) || false,
+          };
+        })
+        .filter((d): d is NonNullable<typeof d> => d !== null);
+
+      if (rosterPlayerData.length > 0) {
+        await prisma.rosterPlayer.createMany({ data: rosterPlayerData });
+        playerCount += rosterPlayerData.length;
+      }
+    }
+  }
+
+  console.log(`Fast sync complete: ${league.name}`);
+  return {
+    league: { id: league.id, name: league.name },
+    rosters: rosterCount,
+    players: playerCount,
+  };
+}
+
+/**
+ * Fast sync all leagues for a user
+ */
+export async function syncUserLeaguesFast(
+  userId: string,
+  season: number
+): Promise<{
+  leagues: Array<{ id: string; name: string }>;
+  totalRosters: number;
+  totalPlayers: number;
+}> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("User not found");
+
+  const sleeperLeagues = await sleeper.getUserLeagues(user.sleeperId, season);
+
+  const results = {
+    leagues: [] as Array<{ id: string; name: string }>,
+    totalRosters: 0,
+    totalPlayers: 0,
+  };
+
+  for (const league of sleeperLeagues) {
+    const syncResult = await syncLeagueFast(league.league_id);
+    results.leagues.push(syncResult.league);
+    results.totalRosters += syncResult.rosters;
+    results.totalPlayers += syncResult.players;
+  }
+
+  return results;
 }
 
 // ============================================
