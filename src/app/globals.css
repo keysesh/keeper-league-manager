@@ -321,3 +321,22 @@ body {
   color: #fff;
   font-weight: 600;
 }
+
+/* Premium player card */
+.premium-player-card {
+  background: linear-gradient(145deg, rgba(26, 26, 30, 0.95), rgba(20, 20, 22, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.premium-player-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.premium-player-card:active {
+  transform: translateY(0);
+}

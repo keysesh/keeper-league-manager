@@ -4,47 +4,15 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
-import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
-import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
 
 // SWR fetcher
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 });
-
-// Years kept badge with color coding
-function YearsKeptBadge({ years, maxYears = 2 }: { years: number; maxYears?: number }) {
-  const isFirstYear = years === 0;
-  const isFinalYear = years === maxYears - 1;
-  const isMaxed = years >= maxYears;
-
-  let bgColor = "bg-green-500/20";
-  let textColor = "text-green-400";
-  let label = `Year ${years + 1}`;
-
-  if (isFirstYear) {
-    bgColor = "bg-cyan-500/20";
-    textColor = "text-cyan-400";
-    label = "New";
-  } else if (isMaxed) {
-    bgColor = "bg-red-500/20";
-    textColor = "text-red-400";
-    label = "Max";
-  } else if (isFinalYear) {
-    bgColor = "bg-yellow-500/20";
-    textColor = "text-yellow-400";
-    label = `Year ${years + 1} (Final)`;
-  }
-
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${bgColor} ${textColor}`}>
-      {label}
-    </span>
-  );
-}
 
 interface Player {
   id: string;
@@ -267,137 +235,77 @@ export default function TeamRosterPage() {
         </div>
       </div>
 
-      {/* Current Keepers - Compact */}
-      <div className="card-compact rounded-xl p-3">
-        <div className="flex items-center justify-between mb-2">
+      {/* Current Keepers */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-gray-400 uppercase">Current Keepers ({currentKeepers.length})</span>
         </div>
         {currentKeepers.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {currentKeepers.map((p) => {
-              const posColors = {
-                QB: { bg: "bg-red-500/10", border: "border-l-red-500", text: "text-red-400" },
-                RB: { bg: "bg-green-500/10", border: "border-l-green-500", text: "text-green-400" },
-                WR: { bg: "bg-blue-500/10", border: "border-l-blue-500", text: "text-blue-400" },
-                TE: { bg: "bg-orange-500/10", border: "border-l-orange-500", text: "text-orange-400" },
-                K: { bg: "bg-purple-500/10", border: "border-l-purple-500", text: "text-purple-400" },
-                DEF: { bg: "bg-gray-500/10", border: "border-l-gray-500", text: "text-gray-400" },
-              };
-              const colors = posColors[p.player.position as keyof typeof posColors] || posColors.DEF;
-
-              return (
-                <div
-                  key={p.player.id}
-                  className={`player-card inline-flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg}`}
-                >
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                    p.existingKeeper?.type === "FRANCHISE"
-                      ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
-                      : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
-                  }`}>
-                    {p.existingKeeper?.type === "FRANCHISE" ? "FT" : "K"}
-                  </span>
-                  <PositionBadge position={p.player.position} size="xs" />
-                  <span className="text-xs text-white font-medium">{p.player.fullName}</span>
-                  <span className={`text-xs font-bold ${colors.text}`}>R{p.existingKeeper?.finalCost}</span>
-                  {!p.existingKeeper?.isLocked && (
-                    <button
-                      onClick={() => removeKeeper(p.existingKeeper!.id, p.player.fullName)}
-                      disabled={actionLoading === p.existingKeeper?.id}
-                      className="text-xs text-red-400 hover:text-red-300 ml-1"
-                    >
-                      {actionLoading === p.existingKeeper?.id ? "..." : "×"}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {currentKeepers.map((p) => (
+              <PremiumPlayerCard
+                key={p.player.id}
+                player={p.player}
+                eligibility={p.eligibility}
+                existingKeeper={p.existingKeeper}
+                onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
+                isLoading={actionLoading === p.existingKeeper?.id}
+              />
+            ))}
           </div>
         ) : (
-          <p className="text-xs text-gray-500 py-2">No keepers selected</p>
+          <div className="card-compact rounded-xl p-4 text-center">
+            <p className="text-sm text-gray-500">No keepers selected yet</p>
+            <p className="text-xs text-gray-600 mt-1">Add players from the eligible list below</p>
+          </div>
         )}
       </div>
 
-      {/* Available Players - Compact Grid */}
-      <div className="card-compact rounded-xl p-3">
-        <div className="flex items-center justify-between mb-2">
+      {/* Eligible Players */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-gray-400 uppercase">Eligible ({eligiblePlayers.length})</span>
-          <div className="flex gap-2 text-[10px] text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-purple-600"></span>Reg</span>
+          <div className="flex gap-3 text-[10px] text-gray-500">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-purple-600"></span>Keep</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-500"></span>FT</span>
           </div>
         </div>
 
         {eligiblePlayers.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {eligiblePlayers.map((p) => {
-              const regularCost = p.costs.regular;
-              const franchiseCost = p.costs.franchise;
-              const canAddRegular = data.canAddMore.any && data.canAddMore.regular;
-              const canAddFranchise = data.canAddMore.any && data.canAddMore.franchise;
-              const isLoading = actionLoading === p.player.id;
-
-              const posColors = {
-                QB: { bg: "bg-red-500/5", border: "border-l-red-500" },
-                RB: { bg: "bg-green-500/5", border: "border-l-green-500" },
-                WR: { bg: "bg-blue-500/5", border: "border-l-blue-500" },
-                TE: { bg: "bg-orange-500/5", border: "border-l-orange-500" },
-                K: { bg: "bg-purple-500/5", border: "border-l-purple-500" },
-                DEF: { bg: "bg-gray-500/5", border: "border-l-gray-500" },
-              };
-              const colors = posColors[p.player.position as keyof typeof posColors] || posColors.DEF;
-
-              return (
-                <div
-                  key={p.player.id}
-                  className={`player-card flex items-center gap-1.5 border-l-2 ${colors.border} ${colors.bg} hover:bg-gray-800/50`}
-                >
-                  <PositionBadge position={p.player.position} size="xs" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-white font-medium truncate">{p.player.fullName}</p>
-                    <p className="text-[9px] text-gray-500">{p.player.team || "FA"}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {regularCost && (
-                      <button
-                        onClick={() => addKeeper(p.player.id, "REGULAR", p.player.fullName)}
-                        disabled={!canAddRegular || isLoading}
-                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40"
-                      >
-                        {isLoading ? ".." : `R${regularCost.finalCost}`}
-                      </button>
-                    )}
-                    {franchiseCost && (
-                      <button
-                        onClick={() => addKeeper(p.player.id, "FRANCHISE", p.player.fullName)}
-                        disabled={!canAddFranchise || isLoading}
-                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500 text-black disabled:opacity-40"
-                      >
-                        {isLoading ? ".." : "FT"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {eligiblePlayers.map((p) => (
+              <PremiumPlayerCard
+                key={p.player.id}
+                player={p.player}
+                eligibility={p.eligibility}
+                costs={p.costs}
+                onAddKeeper={(playerId, type) => addKeeper(playerId, type, p.player.fullName)}
+                isLoading={actionLoading === p.player.id}
+                canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
+                canAddRegular={data.canAddMore.any && data.canAddMore.regular}
+              />
+            ))}
           </div>
         ) : (
-          <p className="text-xs text-gray-500 py-2">No eligible players</p>
+          <div className="card-compact rounded-xl p-4 text-center">
+            <p className="text-sm text-gray-500">No eligible players</p>
+          </div>
         )}
       </div>
 
-      {/* Ineligible Players - Compact */}
+      {/* Ineligible Players */}
       {ineligiblePlayers.length > 0 && (
-        <details className="card-compact rounded-xl p-3">
-          <summary className="text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-400">
+        <details>
+          <summary className="text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-400 mb-3">
             Ineligible ({ineligiblePlayers.length})
           </summary>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {ineligiblePlayers.map((p) => (
-              <div key={p.player.id} className="player-card opacity-50 flex items-center gap-2">
-                <PositionBadge position={p.player.position} size="xs" />
-                <span className="text-xs text-gray-400 truncate flex-1">{p.player.fullName}</span>
-              </div>
+              <PremiumPlayerCard
+                key={p.player.id}
+                player={p.player}
+                eligibility={p.eligibility}
+              />
             ))}
           </div>
         </details>
