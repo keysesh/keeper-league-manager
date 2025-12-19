@@ -144,7 +144,9 @@ export function PremiumPlayerCard({
               <span className="text-[10px] text-gray-400">{player.team || "FA"}</span>
             </div>
             {player.age && (
-              <span className="text-[10px] text-gray-500">Age {player.age}</span>
+              <span className="text-[10px] text-gray-500">
+                {player.age}yo{player.yearsExp ? `, ${player.yearsExp}yr` : ''}
+              </span>
             )}
           </div>
         </div>
@@ -180,7 +182,10 @@ export function PremiumPlayerCard({
         ) : isEligible && costs ? (
           <>
             {costs.regular && (
-              <StatPill value={`R${costs.regular.finalCost}`} variant="primary" />
+              <StatPill
+                value={`R${costs.regular.finalCost}${costs.regular.finalCost > costs.regular.baseCost ? ` (+${costs.regular.finalCost - costs.regular.baseCost})` : ''}`}
+                variant="primary"
+              />
             )}
             {eligibility && (
               <StatPill
@@ -199,21 +204,21 @@ export function PremiumPlayerCard({
 
       {/* Action Row */}
       {!isKeeper && isEligible && costs && onAddKeeper && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-700/30">
+        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-gray-700/30">
           {costs.regular && (
             <button
               onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "REGULAR"))}
               disabled={!canAddRegular || isLoading}
-              className="flex-1 px-2 py-1.5 rounded text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
+              className="flex-1 px-1.5 py-1 rounded text-[9px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
             >
-              {isLoading ? "..." : `Keep R${costs.regular.finalCost}`}
+              {isLoading ? "..." : `R${costs.regular.finalCost}`}
             </button>
           )}
           {costs.franchise && (
             <button
               onClick={(e) => handleActionClick(e, () => onAddKeeper(player.id, "FRANCHISE"))}
               disabled={!canAddFranchise || isLoading}
-              className="px-3 py-1.5 rounded text-[10px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
+              className="px-2 py-1 rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-400 text-black disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : "FT"}
             </button>
@@ -223,11 +228,11 @@ export function PremiumPlayerCard({
 
       {/* Remove Keeper Button */}
       {isKeeper && !existingKeeper.isLocked && onRemoveKeeper && (
-        <div className="flex items-center justify-end mt-3 pt-3 border-t border-gray-700/30">
+        <div className="flex items-center justify-end mt-2 pt-2 border-t border-gray-700/30">
           <button
             onClick={(e) => handleActionClick(e, () => onRemoveKeeper(existingKeeper.id))}
             disabled={isLoading}
-            className="text-[10px] text-red-400 hover:text-red-300 font-medium"
+            className="text-[9px] text-red-400 hover:text-red-300 font-medium"
           >
             {isLoading ? "..." : "Remove"}
           </button>

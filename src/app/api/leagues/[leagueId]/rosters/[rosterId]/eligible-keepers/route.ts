@@ -63,6 +63,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Get current keeper counts first (needed for FT-only eligibility check)
+    const franchiseCount = roster.keepers.filter((k) => k.type === KeeperType.FRANCHISE).length;
+    const regularCount = roster.keepers.filter((k) => k.type === KeeperType.REGULAR).length;
+    const canAddFranchise = franchiseCount < league.keeperSettings.maxFranchiseTags;
+
     // Check eligibility for each player
     const eligiblePlayers = await Promise.all(
       roster.rosterPlayers.map(async (rp) => {
@@ -73,17 +78,34 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           season
         );
 
-        // Calculate costs for both keeper types if eligible
+        // Calculate costs for both keeper types
         let franchiseCost = null;
         let regularCost = null;
+        let effectivelyEligible = eligibility.isEligible;
+        let reason = eligibility.reason;
 
         if (eligibility.isEligible) {
-          const [fc, rc] = await Promise.all([
-            calculateKeeperCost(rp.playerId, rosterId, leagueId, season, KeeperType.FRANCHISE),
-            calculateKeeperCost(rp.playerId, rosterId, leagueId, season, KeeperType.REGULAR),
-          ]);
-          franchiseCost = fc;
-          regularCost = rc;
+          // Always calculate franchise cost
+          franchiseCost = await calculateKeeperCost(
+            rp.playerId, rosterId, leagueId, season, KeeperType.FRANCHISE
+          );
+
+          // Only calculate regular cost if NOT at max years
+          if (!eligibility.atMaxYears) {
+            regularCost = await calculateKeeperCost(
+              rp.playerId, rosterId, leagueId, season, KeeperType.REGULAR
+            );
+          } else {
+            // At max years - check if FT is available
+            if (!canAddFranchise) {
+              // No FT available = truly ineligible
+              effectivelyEligible = false;
+              reason = `At max years and no Franchise Tags available`;
+            } else {
+              // FT available = eligible for FT only
+              reason = `At max years - Franchise Tag only`;
+            }
+          }
         }
 
         // Check if already a keeper
@@ -104,8 +126,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           },
           isStarter: rp.isStarter,
           eligibility: {
-            isEligible: eligibility.isEligible,
-            reason: eligibility.reason,
+            isEligible: effectivelyEligible,
+            reason: reason,
             yearsKept: eligibility.yearsKept,
             acquisitionType: eligibility.acquisitionType,
           },
@@ -151,10 +173,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       // Then alphabetically
       return (a.player.fullName || "").localeCompare(b.player.fullName || "");
     });
-
-    // Get current keeper counts
-    const franchiseCount = roster.keepers.filter((k) => k.type === KeeperType.FRANCHISE).length;
-    const regularCount = roster.keepers.filter((k) => k.type === KeeperType.REGULAR).length;
 
     const response = NextResponse.json({
       rosterId,

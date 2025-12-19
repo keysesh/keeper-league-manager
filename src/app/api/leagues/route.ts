@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       leagues: dbLeagues.map(league => ({
         id: league.id,
         sleeperId: league.sleeperId,
@@ -120,6 +120,10 @@ export async function GET(request: NextRequest) {
       })),
       sleeperLeagues: sleeperLeagues.filter(l => l.isNew),
     });
+
+    // Cache for 30 seconds, stale-while-revalidate for 60 seconds
+    response.headers.set('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
+    return response;
   } catch (error) {
     console.error("Error fetching leagues:", error);
     return NextResponse.json(

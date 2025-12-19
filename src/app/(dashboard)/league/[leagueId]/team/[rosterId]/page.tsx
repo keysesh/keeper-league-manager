@@ -238,9 +238,9 @@ export default function TeamRosterPage() {
       </div>
 
       {/* Current Keepers */}
-      <div>
+      <div className="bg-purple-500/5 rounded-xl p-4 border border-purple-500/10">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-gray-400 uppercase">Current Keepers ({currentKeepers.length})</span>
+          <span className="text-xs font-semibold text-purple-400 uppercase">Current Keepers ({currentKeepers.length})</span>
         </div>
         {currentKeepers.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -257,7 +257,7 @@ export default function TeamRosterPage() {
             ))}
           </div>
         ) : (
-          <div className="card-compact rounded-xl p-4 text-center">
+          <div className="text-center py-4">
             <p className="text-sm text-gray-500">No keepers selected yet</p>
             <p className="text-xs text-gray-600 mt-1">Add players from the eligible list below</p>
           </div>

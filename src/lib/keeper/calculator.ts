@@ -13,6 +13,7 @@ export interface EligibilityResult {
   acquisitionType: AcquisitionType;
   acquisitionDate?: Date;
   originalDraftRound?: number;
+  atMaxYears?: boolean; // True if player has hit max regular keeper years
 }
 
 export interface KeeperCostResult {
@@ -86,16 +87,10 @@ export async function calculateKeeperEligibility(
 
   const yearsKept = consecutiveYears + 1; // +1 for current season if kept
 
-  // FIXED: Use > not >= for eligibility check
-  // If max is 2, they can be kept year 1 and year 2, but NOT year 3
-  if (consecutiveYears >= maxYears) {
-    return {
-      isEligible: false,
-      reason: `Player has been kept ${consecutiveYears} consecutive years. Maximum is ${maxYears} years.`,
-      yearsKept,
-      acquisitionType: previousKeepers[0]?.acquisitionType || AcquisitionType.DRAFTED,
-    };
-  }
+  // Check if at max years for regular keeper
+  // Instead of marking as ineligible, we flag atMaxYears so the API can determine
+  // if they're still eligible for Franchise Tag
+  const atMaxYears = consecutiveYears >= maxYears;
 
   // Get acquisition details
   const acquisition = await getPlayerAcquisition(playerId, rosterId, targetSeason);
@@ -104,21 +99,27 @@ export async function calculateKeeperEligibility(
   const baseCost = await calculateBaseCost(playerId, rosterId, targetSeason, settings);
   const maxRounds = settings?.undraftedRound ?? DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
 
-  if (baseCost > maxRounds) {
+  // If cost exceeds max rounds AND at max years, they're truly ineligible (even for FT)
+  // If cost exceeds max rounds but NOT at max years, still allow FT
+  if (baseCost > maxRounds && !atMaxYears) {
     return {
       isEligible: false,
       reason: `Keeper cost (Round ${baseCost}) exceeds maximum draft round (${maxRounds})`,
       yearsKept,
       acquisitionType: acquisition.type,
+      atMaxYears: false,
     };
   }
 
+  // Player is eligible (possibly FT-only if atMaxYears)
   return {
     isEligible: true,
     yearsKept,
     acquisitionType: acquisition.type,
     acquisitionDate: acquisition.date,
     originalDraftRound: acquisition.draftRound,
+    atMaxYears,
+    reason: atMaxYears ? `At max years - Franchise Tag only` : undefined,
   };
 }
 
