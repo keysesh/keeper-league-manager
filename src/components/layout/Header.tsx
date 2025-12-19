@@ -2,6 +2,7 @@
 
 import { signOut } from "next-auth/react";
 import Image from "next/image";
+import { LogoFull, LogoMark } from "@/components/ui/Logo";
 
 interface HeaderProps {
   user: {
@@ -13,21 +14,14 @@ interface HeaderProps {
 
 export function Header({ user }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-800/50 bg-[#0c0c0e]/95 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-gray-800/50 bg-[#0d0c0a]/95 backdrop-blur-xl">
       <div className="flex h-16 items-center justify-between px-4 lg:px-8">
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <span className="text-xl">🏈</span>
-          </div>
-          <div className="hidden sm:block">
-            <span className="font-bold text-lg text-white tracking-tight">
-              E Pluribus
-            </span>
-            <span className="text-xs text-gray-500 block -mt-0.5 font-medium">
-              Keeper Tracker
-            </span>
-          </div>
+        <div className="hidden sm:block">
+          <LogoFull size="sm" />
+        </div>
+        <div className="sm:hidden">
+          <LogoMark size="sm" />
         </div>
 
         {/* User Menu */}
@@ -39,10 +33,10 @@ export function Header({ user }: HeaderProps) {
                 alt={user.name || "User"}
                 width={28}
                 height={28}
-                className="rounded-full ring-2 ring-purple-500/30"
+                className="rounded-full ring-2 ring-amber-500/30"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-xs font-bold text-white">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white">
                 {user.name?.[0] || user.username?.[0] || "?"}
               </div>
             )}

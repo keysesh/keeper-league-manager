@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Logo } from "@/components/ui/Logo";
 
 function LoginForm() {
   const router = useRouter();
@@ -62,7 +63,7 @@ function LoginForm() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your Sleeper username"
-            className="w-full px-4 py-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium"
+            className="w-full px-4 py-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all font-medium"
             required
             autoComplete="username"
             autoFocus
@@ -72,7 +73,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isLoading || !username.trim()}
-          className="w-full py-3.5 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/40"
+          className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/40"
         >
           {isLoading ? (
             <>
@@ -121,22 +122,22 @@ function LoginFormFallback() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0c0c0e] relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#0d0c0a] relative overflow-hidden">
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-purple-900/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-900/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-amber-900/20 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-orange-900/20 to-transparent rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-md px-6 relative z-10">
         <div className="card-premium rounded-3xl shadow-2xl p-8">
           {/* Logo/Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 mb-5 shadow-xl shadow-purple-500/30">
-              <span className="text-4xl">🏈</span>
+            <div className="flex justify-center mb-5">
+              <Logo size="xl" />
             </div>
             <h1 className="text-3xl font-extrabold text-white tracking-tight">E Pluribus</h1>
-            <p className="text-purple-400 font-semibold text-sm mt-1">Keeper Tracker</p>
+            <p className="text-amber-400 font-semibold text-sm mt-1">Keeper Tracker</p>
             <p className="text-gray-500 mt-4">
               Sign in with your Sleeper username
             </p>
@@ -154,7 +155,7 @@ export default function LoginPage() {
                 href="https://sleeper.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-purple-400 hover:text-purple-300 transition-colors font-semibold"
+                className="text-amber-400 hover:text-amber-300 transition-colors font-semibold"
               >
                 Download Sleeper
               </a>

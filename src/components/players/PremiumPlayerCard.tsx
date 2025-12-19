@@ -133,7 +133,7 @@ export function PremiumPlayerCard({
             className={`text-[10px] font-bold px-2 py-1 rounded ${
               existingKeeper.type === "FRANCHISE"
                 ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
-                : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
+                : "bg-gradient-to-r from-amber-500 to-orange-600 text-white"
             }`}
           >
             {existingKeeper.type === "FRANCHISE" ? "FT" : "Keeper"}
@@ -189,7 +189,7 @@ export function PremiumPlayerCard({
             </div>
             <div>
               <div className="text-[9px] text-gray-500 uppercase">Cost</div>
-              <div className="text-[10px] font-semibold text-purple-400">
+              <div className="text-[10px] font-semibold text-amber-400">
                 {isKeeper ? `R${existingKeeper.finalCost}` : costs?.regular ? `R${costs.regular.finalCost}` : "—"}
               </div>
             </div>
@@ -218,7 +218,7 @@ export function PremiumPlayerCard({
             <button
               onClick={() => onAddKeeper(player.id, "REGULAR")}
               disabled={!canAddRegular || isLoading}
-              className="flex-1 py-1.5 rounded text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
+              className="flex-1 py-1.5 rounded text-[10px] font-bold bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : `Keep as R${costs.regular.finalCost}`}
             </button>

@@ -200,7 +200,7 @@ export default function TeamRosterPage() {
           </Link>
           <h1 className="text-xl font-bold text-white">Manage Keepers</h1>
         </div>
-        <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded">{data.season}</span>
+        <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-400 rounded">{data.season}</span>
       </div>
 
       {/* Keeper Summary */}
@@ -216,15 +216,15 @@ export default function TeamRosterPage() {
         </div>
         <div className="w-px h-4 bg-gray-700" />
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-purple-400">{data.currentKeepers.regular}<span className="text-xs text-gray-500">/{data.limits.maxRegularKeepers}</span></span>
+          <span className="text-lg font-bold text-amber-400">{data.currentKeepers.regular}<span className="text-xs text-gray-500">/{data.limits.maxRegularKeepers}</span></span>
           <span className="text-[10px] text-gray-500 uppercase">Reg</span>
         </div>
       </div>
 
       {/* Current Keepers */}
-      <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-500/20">
+      <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-purple-400 uppercase">Current Keepers ({currentKeepers.length})</span>
+          <span className="text-xs font-semibold text-amber-400 uppercase">Current Keepers ({currentKeepers.length})</span>
         </div>
         {currentKeepers.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -252,8 +252,8 @@ export default function TeamRosterPage() {
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-gray-400 uppercase">Eligible ({eligiblePlayers.length})</span>
           <div className="flex gap-3 text-[10px] text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-purple-600"></span>Keep</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-500"></span>FT</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-600"></span>Keep</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-400"></span>FT</span>
           </div>
         </div>
 
