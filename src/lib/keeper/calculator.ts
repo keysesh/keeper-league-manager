@@ -134,6 +134,7 @@ export async function calculateKeeperEligibility(
  * - Drafted players: Draft Round - 1 (minimum Round 1)
  * - Undrafted/Waiver/FA: Round 8 (configurable)
  * - Traded players: Inherit original cost from previous owner
+ * - Cost IMPROVES by 1 round for each consecutive year kept
  */
 export async function calculateBaseCost(
   playerId: string,
@@ -171,8 +172,45 @@ export async function calculateBaseCost(
       baseCost = undraftedRound;
   }
 
-  // Ensure we never go below minimum round
-  return Math.max(minRound, baseCost);
+  // Get consecutive years kept and apply cost improvement
+  // Cost IMPROVES (lower round = better) by 1 for each consecutive year kept
+  const consecutiveYears = await getConsecutiveYearsKept(playerId, rosterId, targetSeason);
+  const effectiveCost = Math.max(minRound, baseCost - consecutiveYears);
+
+  return effectiveCost;
+}
+
+/**
+ * Get the number of consecutive years a player has been kept by this roster
+ */
+async function getConsecutiveYearsKept(
+  playerId: string,
+  rosterId: string,
+  targetSeason: number
+): Promise<number> {
+  const previousKeepers = await prisma.keeper.findMany({
+    where: {
+      playerId,
+      rosterId,
+      season: { lt: targetSeason },
+    },
+    orderBy: { season: "desc" },
+  });
+
+  // Count consecutive years (must be consecutive seasons)
+  let consecutiveYears = 0;
+  let checkSeason = targetSeason - 1;
+
+  for (const keeper of previousKeepers) {
+    if (keeper.season === checkSeason) {
+      consecutiveYears++;
+      checkSeason--;
+    } else {
+      break; // Not consecutive - stop counting
+    }
+  }
+
+  return consecutiveYears;
 }
 
 /**

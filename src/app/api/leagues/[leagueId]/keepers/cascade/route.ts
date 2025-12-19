@@ -77,8 +77,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     // Prepare keeper inputs for cascade calculation
+    // IMPORTANT: Use database player ID (k.playerId), not Sleeper ID
     const keeperInputs = keepers.map((k) => ({
-      playerId: k.player.sleeperId,
+      playerId: k.playerId, // Database ID, not k.player.sleeperId
       rosterId: k.rosterId,
       playerName: k.player.fullName,
       type: k.type as "FRANCHISE" | "REGULAR",
@@ -135,9 +136,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         rosterId: roster.id,
         rosterName: roster.teamName,
         results: rosterKeepers.map(r => {
-          const keeper = keepers.find(k => k.player.sleeperId === r.playerId);
+          const keeper = keepers.find(k => k.playerId === r.playerId);
           return {
-            playerId: r.playerId,
+            playerId: keeper?.player.sleeperId || r.playerId, // Return Sleeper ID for UI
             playerName: r.playerName,
             position: keeper?.player.position || null,
             team: keeper?.player.team || null,
@@ -194,13 +195,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const keeperInSlot = rosterKeepers.find(k => k.finalCost === round);
 
         if (keeperInSlot) {
-          const keeper = keepers.find(k => k.player.sleeperId === keeperInSlot.playerId);
+          const keeper = keepers.find(k => k.playerId === keeperInSlot.playerId);
           return {
             rosterId: roster.id,
             rosterName: roster.teamName,
             status: "keeper" as const,
             keeper: {
-              playerId: keeperInSlot.playerId,
+              playerId: keeper?.player.sleeperId || keeperInSlot.playerId,
               playerName: keeperInSlot.playerName,
               position: keeper?.player.position || null,
             },
@@ -283,8 +284,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
 
     // Prepare keeper inputs
+    // IMPORTANT: Use database player ID (k.playerId), not Sleeper ID
     const keeperInputs = keepers.map((k) => ({
-      playerId: k.player.sleeperId,
+      playerId: k.playerId, // Database ID
       rosterId: k.rosterId,
       playerName: k.player.fullName,
       type: k.type as "FRANCHISE" | "REGULAR",
@@ -304,7 +306,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let updatedCount = 0;
     for (const result of cascadeResult.keepers) {
       const keeper = keepers.find(
-        k => k.player.sleeperId === result.playerId && k.rosterId === result.rosterId
+        k => k.playerId === result.playerId && k.rosterId === result.rosterId
       );
 
       if (keeper) {

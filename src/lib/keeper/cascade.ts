@@ -97,9 +97,10 @@ export async function calculateCascade(
     })
   );
 
-  // Sort by base cost DESCENDING (highest/worst cost first)
-  // This way we fill the later round slots first, then cascade UP to better rounds
-  const sortedKeepers = [...keepersWithCosts].sort((a, b) => b.baseCost - a.baseCost);
+  // Sort by base cost ASCENDING (lowest/best cost first)
+  // This ensures players with the best keeper value get priority for their preferred slots
+  // Players with worse costs (higher round numbers) will cascade up if needed
+  const sortedKeepers = [...keepersWithCosts].sort((a, b) => a.baseCost - b.baseCost);
 
   const result: CascadeResult = {
     keepers: [],
