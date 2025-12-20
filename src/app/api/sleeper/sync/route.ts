@@ -163,9 +163,59 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "debug-keepers": {
+        // Debug: Show all keeper records and draft picks with isKeeper flag
+        if (!leagueId) {
+          return NextResponse.json(
+            { error: "leagueId is required" },
+            { status: 400 }
+          );
+        }
+
+        const keepers = await prisma.keeper.findMany({
+          where: { roster: { leagueId } },
+          include: { player: true, roster: true },
+          orderBy: [{ season: "asc" }, { roster: { teamName: "asc" } }],
+        });
+
+        const keeperDraftPicks = await prisma.draftPick.findMany({
+          where: {
+            isKeeper: true,
+            draft: { league: { id: leagueId } },
+          },
+          include: { player: true, roster: true, draft: true },
+          orderBy: [{ draft: { season: "asc" } }],
+        });
+
+        return NextResponse.json({
+          keeperRecords: keepers.map(k => ({
+            id: k.id,
+            playerName: k.player?.fullName,
+            rosterId: k.rosterId,
+            rosterName: k.roster?.teamName,
+            season: k.season,
+            yearsKept: k.yearsKept,
+            baseCost: k.baseCost,
+            finalCost: k.finalCost,
+          })),
+          draftPicksMarkedAsKeeper: keeperDraftPicks.map(p => ({
+            playerName: p.player?.fullName,
+            rosterId: p.rosterId,
+            rosterName: p.roster?.teamName,
+            season: p.draft.season,
+            round: p.round,
+            isKeeper: p.isKeeper,
+          })),
+          summary: {
+            totalKeeperRecords: keepers.length,
+            totalKeeperDraftPicks: keeperDraftPicks.length,
+          },
+        });
+      }
+
       default:
         return NextResponse.json(
-          { error: "Invalid action. Use 'league', 'user-leagues', 'quick', 'populate-keepers', or 'recalculate-keeper-years'" },
+          { error: "Invalid action. Use 'league', 'user-leagues', 'quick', 'populate-keepers', 'recalculate-keeper-years', or 'debug-keepers'" },
           { status: 400 }
         );
     }
