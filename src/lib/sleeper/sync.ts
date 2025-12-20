@@ -893,8 +893,9 @@ export async function populateKeepersFromDraftPicks(
   let skipped = 0;
 
   for (const pick of keeperPicks) {
-    if (!pick.playerId || !pick.player) continue;
+    if (!pick.playerId || !pick.player || !pick.rosterId) continue;
 
+    try {
     const season = pick.draft.season;
 
     // Count previous consecutive years this player was kept by this roster
@@ -962,6 +963,9 @@ export async function populateKeepersFromDraftPicks(
     });
 
     created++;
+    } catch (err) {
+      console.error(`Error processing keeper pick for ${pick.player?.fullName}:`, err);
+    }
   }
 
   console.log(`Populated ${created} Keeper records from draft picks (${skipped} already existed)`);
@@ -995,42 +999,52 @@ export async function recalculateKeeperYears(
 
   // Process each keeper
   for (const keeper of keepers) {
-    // Count previous consecutive years this player was kept by this roster
-    const previousKeepers = await prisma.keeper.findMany({
-      where: {
-        playerId: keeper.playerId,
-        rosterId: keeper.rosterId,
-        season: { lt: keeper.season },
-      },
-      orderBy: { season: "desc" },
-    });
-
-    let consecutiveYears = 0;
-    let checkSeason = keeper.season - 1;
-    for (const prev of previousKeepers) {
-      if (prev.season === checkSeason) {
-        consecutiveYears++;
-        checkSeason--;
-      } else {
-        break;
-      }
+    // Skip if player doesn't exist
+    if (!keeper.player) {
+      console.warn(`Keeper ${keeper.id} has no player, skipping`);
+      continue;
     }
 
-    const correctYearsKept = consecutiveYears + 1;
-
-    // Update if different
-    if (keeper.yearsKept !== correctYearsKept) {
-      await prisma.keeper.update({
-        where: { id: keeper.id },
-        data: {
-          yearsKept: correctYearsKept,
-          finalCost: Math.max(1, keeper.baseCost - consecutiveYears),
+    try {
+      // Count previous consecutive years this player was kept by this roster
+      const previousKeepers = await prisma.keeper.findMany({
+        where: {
+          playerId: keeper.playerId,
+          rosterId: keeper.rosterId,
+          season: { lt: keeper.season },
         },
+        orderBy: { season: "desc" },
       });
-      console.log(
-        `Fixed ${keeper.player.fullName} (${keeper.season}): yearsKept ${keeper.yearsKept} -> ${correctYearsKept}`
-      );
-      updated++;
+
+      let consecutiveYears = 0;
+      let checkSeason = keeper.season - 1;
+      for (const prev of previousKeepers) {
+        if (prev.season === checkSeason) {
+          consecutiveYears++;
+          checkSeason--;
+        } else {
+          break;
+        }
+      }
+
+      const correctYearsKept = consecutiveYears + 1;
+
+      // Update if different
+      if (keeper.yearsKept !== correctYearsKept) {
+        await prisma.keeper.update({
+          where: { id: keeper.id },
+          data: {
+            yearsKept: correctYearsKept,
+            finalCost: Math.max(1, keeper.baseCost - consecutiveYears),
+          },
+        });
+        console.log(
+          `Fixed ${keeper.player.fullName} (${keeper.season}): yearsKept ${keeper.yearsKept} -> ${correctYearsKept}`
+        );
+        updated++;
+      }
+    } catch (err) {
+      console.error(`Error processing keeper ${keeper.id}:`, err);
     }
   }
 
