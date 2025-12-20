@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { calculateKeeperEligibility, calculateKeeperCost } from "@/lib/keeper/calculator";
-import { recalculateAndApplyCascade } from "@/lib/keeper/cascade";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 
@@ -138,6 +136,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 /**
  * POST /api/leagues/[leagueId]/keepers
  * Add a keeper for a roster
+ *
+ * OPTIMIZED: Single query to fetch all needed data, minimal DB writes
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const { rosterId, playerId, type, notes } = body;
+    const { rosterId, playerId, type, notes, baseCost, finalCost, yearsKept } = body;
 
     if (!rosterId || !playerId || !type) {
       return NextResponse.json(
@@ -161,47 +161,54 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify user owns this roster
-    const roster = await prisma.roster.findFirst({
-      where: {
-        id: rosterId,
-        leagueId,
-        teamMembers: {
-          some: { userId: session.user.id },
+    // OPTIMIZED: Single query to get roster, league settings, existing keepers, and player
+    const [rosterWithData, player] = await Promise.all([
+      prisma.roster.findFirst({
+        where: {
+          id: rosterId,
+          leagueId,
+          teamMembers: {
+            some: { userId: session.user.id },
+          },
         },
-      },
-    });
+        include: {
+          league: {
+            include: { keeperSettings: true },
+          },
+          keepers: {
+            where: { season: getCurrentSeason() },
+          },
+        },
+      }),
+      prisma.player.findUnique({
+        where: { id: playerId },
+      }),
+    ]);
 
-    if (!roster) {
+    if (!rosterWithData) {
       return NextResponse.json(
         { error: "You don't own this roster" },
         { status: 403 }
       );
     }
 
-    // Get league settings
-    const league = await prisma.league.findUnique({
-      where: { id: leagueId },
-      include: { keeperSettings: true },
-    });
+    if (!player) {
+      return NextResponse.json(
+        { error: "Player not found" },
+        { status: 404 }
+      );
+    }
 
-    if (!league?.keeperSettings) {
+    const settings = rosterWithData.league.keeperSettings;
+    if (!settings) {
       return NextResponse.json(
         { error: "League keeper settings not configured" },
         { status: 400 }
       );
     }
 
-    const settings = league.keeperSettings;
     const season = getCurrentSeason();
-
-    // Check current keeper counts
-    const existingKeepers = await prisma.keeper.findMany({
-      where: {
-        rosterId,
-        season,
-      },
-    });
+    const existingKeepers = rosterWithData.keepers;
 
     const franchiseCount = existingKeepers.filter(k => k.type === KeeperType.FRANCHISE).length;
     const regularCount = existingKeepers.filter(k => k.type === KeeperType.REGULAR).length;
@@ -229,41 +236,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check player eligibility
-    const eligibility = await calculateKeeperEligibility(
-      playerId,
-      rosterId,
-      leagueId,
-      season
-    );
-
-    if (!eligibility.isEligible) {
+    // Check if already a keeper
+    if (existingKeepers.some(k => k.playerId === playerId)) {
       return NextResponse.json(
-        { error: eligibility.reason },
+        { error: "Player is already a keeper" },
         { status: 400 }
       );
     }
 
-    // Calculate cost
-    const cost = await calculateKeeperCost(
-      playerId,
-      rosterId,
-      leagueId,
-      season,
-      type === "FRANCHISE" ? KeeperType.FRANCHISE : KeeperType.REGULAR
-    );
+    // Use client-provided cost data (calculated in eligible-keepers route)
+    // This avoids expensive recalculation
+    const keeperType = type === "FRANCHISE" ? KeeperType.FRANCHISE : KeeperType.REGULAR;
+    const effectiveBaseCost = keeperType === KeeperType.FRANCHISE ? 1 : (baseCost || settings.undraftedRound);
+    const effectiveFinalCost = keeperType === KeeperType.FRANCHISE ? 1 : (finalCost || effectiveBaseCost);
+    const effectiveYearsKept = yearsKept || 1;
 
-    // Create keeper
+    // Create keeper with provided or default values
     const keeper = await prisma.keeper.create({
       data: {
         rosterId,
         playerId,
         season,
-        type: type === "FRANCHISE" ? KeeperType.FRANCHISE : KeeperType.REGULAR,
-        baseCost: cost.baseCost,
-        finalCost: cost.finalCost,
-        yearsKept: eligibility.yearsKept,
-        acquisitionType: eligibility.acquisitionType,
+        type: keeperType,
+        baseCost: effectiveBaseCost,
+        finalCost: effectiveFinalCost,
+        yearsKept: effectiveYearsKept,
+        acquisitionType: AcquisitionType.DRAFTED, // Default, will be corrected by sync
         notes,
       },
       include: {
@@ -271,19 +269,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Auto-recalculate cascade for all keepers in the league
-    const cascadeResult = await recalculateAndApplyCascade(leagueId, season);
-
-    // Fetch the updated keeper with the recalculated finalCost
-    const updatedKeeper = await prisma.keeper.findUnique({
-      where: { id: keeper.id },
-      include: { player: true },
-    });
+    // Skip cascade recalculation for speed - cascade is calculated on-demand when viewing draft board
 
     return NextResponse.json({
       success: true,
       keeper: {
-        id: updatedKeeper?.id || keeper.id,
+        id: keeper.id,
         player: {
           id: keeper.player.id,
           fullName: keeper.player.fullName,
@@ -292,10 +283,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
         type: keeper.type,
         baseCost: keeper.baseCost,
-        finalCost: updatedKeeper?.finalCost || keeper.finalCost,
+        finalCost: keeper.finalCost,
         yearsKept: keeper.yearsKept,
       },
-      cascadeUpdated: cascadeResult.updatedCount,
     });
   } catch (error) {
     console.error("Error creating keeper:", error);
@@ -309,6 +299,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 /**
  * DELETE /api/leagues/[leagueId]/keepers
  * Remove a keeper
+ *
+ * OPTIMIZED: Single query, skip cascade recalculation
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
@@ -332,13 +324,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Get keeper and verify ownership
+    // Get keeper and verify ownership in single query
     const keeper = await prisma.keeper.findUnique({
       where: { id: keeperId },
       include: {
         roster: {
-          include: {
-            teamMembers: true,
+          select: {
+            leagueId: true,
+            teamMembers: {
+              where: { userId: session.user.id },
+              select: { id: true },
+            },
           },
         },
       },
@@ -358,11 +354,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const userIsMember = keeper.roster.teamMembers.some(
-      tm => tm.userId === session.user.id
-    );
-
-    if (!userIsMember) {
+    if (keeper.roster.teamMembers.length === 0) {
       return NextResponse.json(
         { error: "You don't own this roster" },
         { status: 403 }
@@ -376,20 +368,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Store the season before deleting
-    const keeperSeason = keeper.season;
-
     await prisma.keeper.delete({
       where: { id: keeperId },
     });
 
-    // Auto-recalculate cascade for all keepers in the league
-    const cascadeResult = await recalculateAndApplyCascade(leagueId, keeperSeason);
+    // Skip cascade recalculation for speed - cascade is calculated on-demand
 
     return NextResponse.json({
       success: true,
       message: "Keeper removed",
-      cascadeUpdated: cascadeResult.updatedCount,
     });
   } catch (error) {
     console.error("Error deleting keeper:", error);

@@ -100,13 +100,26 @@ export default function TeamRosterPage() {
     }
   );
 
-  const addKeeper = async (playerId: string, type: "FRANCHISE" | "REGULAR", playerName: string) => {
+  const addKeeper = async (
+    playerId: string,
+    type: "FRANCHISE" | "REGULAR",
+    playerName: string,
+    costData?: { baseCost: number; finalCost: number; yearsKept: number }
+  ) => {
     setActionLoading(playerId);
     try {
       const res = await fetch(`/api/leagues/${leagueId}/keepers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rosterId, playerId, type }),
+        body: JSON.stringify({
+          rosterId,
+          playerId,
+          type,
+          // Pass pre-calculated cost data to avoid server-side recalculation
+          baseCost: costData?.baseCost,
+          finalCost: costData?.finalCost,
+          yearsKept: costData?.yearsKept,
+        }),
       });
 
       if (!res.ok) {
@@ -330,7 +343,15 @@ export default function TeamRosterPage() {
                 player={p.player}
                 eligibility={p.eligibility}
                 costs={p.costs}
-                onAddKeeper={(playerId, type) => addKeeper(playerId, type, p.player.fullName)}
+                onAddKeeper={(playerId, type) => {
+                  // Pass pre-calculated cost data to speed up API
+                  const cost = type === "FRANCHISE" ? p.costs.franchise : p.costs.regular;
+                  addKeeper(playerId, type, p.player.fullName, cost ? {
+                    baseCost: cost.baseCost,
+                    finalCost: cost.finalCost,
+                    yearsKept: p.eligibility.yearsKept,
+                  } : undefined);
+                }}
                 isLoading={actionLoading === p.player.id}
                 canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
                 canAddRegular={data.canAddMore.any && data.canAddMore.regular}

@@ -6,6 +6,23 @@ import { getCurrentSeason, isTradeAfterDeadline } from "@/lib/constants/keeper-r
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { AcquisitionType, KeeperType } from "@prisma/client";
 
+/**
+ * Get the NFL season for a given date
+ * NFL season runs Sept-Feb: 2024 season = Sept 2024 - Feb 2025
+ */
+function getSeasonFromDate(date: Date): number {
+  const month = date.getMonth(); // 0-indexed
+  const year = date.getFullYear();
+
+  // January/February = still previous season
+  if (month < 2) {
+    return year - 1;
+  }
+  // March-August = preparing for current year's season
+  // September+ = current year's season
+  return year;
+}
+
 interface RouteParams {
   params: Promise<{ leagueId: string; rosterId: string }>;
 }
@@ -71,11 +88,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       orderBy: { draft: { season: "asc" } }, // Oldest first to get original draft
     });
 
-    // BATCH QUERY 3: Get all transactions for all players at once
+    // BATCH QUERY 3: Get ALL transactions for all players (to follow trade chains)
+    // We need transactions to/from any roster to trace origin back through trades
     const transactions = await prisma.transactionPlayer.findMany({
       where: {
         playerId: { in: playerIds },
-        toRosterId: rosterId,
       },
       include: { transaction: true },
       orderBy: { transaction: { createdAt: "desc" } },
@@ -130,54 +147,103 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return null;
     }
 
-    // Helper: Get acquisition type for a player (pure function, no DB calls)
-    // Also tracks if it was a post-deadline trade (keeper value resets)
+    /**
+     * NEW: Get Origin Season for a player on the current roster
+     *
+     * Origin Season is the "keeper start season" for eligibility calculation.
+     * - Drafted by this roster → origin = draft season
+     * - In-season trade → origin = inherited from previous owner
+     * - Offseason trade → origin = RESETS to trade season (next season)
+     * - Waiver/FA → origin = pickup season
+     */
+    function getOriginSeason(
+      playerId: string,
+      targetRosterId: string,
+      visited: Set<string> = new Set()
+    ): { originSeason: number; acquisitionType: AcquisitionType; draftRound?: number } {
+      // Prevent infinite loops in trade chains
+      const key = `${playerId}-${targetRosterId}`;
+      if (visited.has(key)) {
+        return { originSeason: season, acquisitionType: AcquisitionType.WAIVER };
+      }
+      visited.add(key);
+
+      // 1. Check if player was drafted by this roster
+      const draftPick = draftPicks.find(
+        (p) => p.playerId === playerId && p.rosterId === targetRosterId
+      );
+
+      if (draftPick) {
+        // Player was drafted by this roster - origin is draft season
+        return {
+          originSeason: draftPick.draft.season,
+          acquisitionType: AcquisitionType.DRAFTED,
+          draftRound: draftPick.round,
+        };
+      }
+
+      // 2. Find the most recent acquisition transaction for this roster
+      const acquisition = transactions.find(
+        (tx) => tx.playerId === playerId && tx.toRosterId === targetRosterId
+      );
+
+      if (!acquisition) {
+        // No transaction found - treat as current season (waiver pickup)
+        return { originSeason: season, acquisitionType: AcquisitionType.WAIVER };
+      }
+
+      const txDate = acquisition.transaction.createdAt;
+      const txType = acquisition.transaction.type;
+      const txSeason = getSeasonFromDate(txDate);
+
+      // 3. Handle non-trade acquisitions (waiver, FA)
+      if (txType !== "TRADE") {
+        const acqType = txType === "WAIVER" ? AcquisitionType.WAIVER : AcquisitionType.FREE_AGENT;
+        return { originSeason: txSeason, acquisitionType: acqType };
+      }
+
+      // 4. Handle trades - check if in-season or offseason
+      const isOffseasonTrade = isTradeAfterDeadline(txDate, txSeason);
+
+      if (isOffseasonTrade) {
+        // Offseason trade - origin RESETS to the next season
+        // Player is treated as a fresh acquisition for the new owner
+        return {
+          originSeason: txSeason + 1,
+          acquisitionType: AcquisitionType.TRADE,
+        };
+      }
+
+      // 5. In-season trade - follow chain to get origin from previous owner
+      if (acquisition.fromRosterId) {
+        const previousOrigin = getOriginSeason(playerId, acquisition.fromRosterId, visited);
+        return {
+          originSeason: previousOrigin.originSeason,
+          acquisitionType: AcquisitionType.TRADE,
+          draftRound: previousOrigin.draftRound, // Inherit draft round for cost calculation
+        };
+      }
+
+      // Fallback: treat as current season
+      return { originSeason: season, acquisitionType: AcquisitionType.TRADE };
+    }
+
+    // Legacy helper for acquisition type (for cost calculation)
     function getAcquisition(playerId: string): {
       type: AcquisitionType;
       draftRound?: number;
       isPostDeadlineTrade: boolean;
       tradeDate?: Date;
     } {
-      const recentPick = recentDraftMap.get(playerId);
+      const origin = getOriginSeason(playerId, rosterId);
       const transaction = transactionMap.get(playerId);
 
-      if (recentPick) {
-        // Check if drafted by current roster or picked up same season
-        if (recentPick.rosterId === rosterId) {
-          return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round, isPostDeadlineTrade: false };
-        }
-        // Picked up from another team - check if same season
-        if (transaction) {
-          const txYear = transaction.transaction.createdAt.getFullYear();
-          const draftYear = recentPick.draft.season;
-          if (txYear <= draftYear + 1) {
-            return { type: AcquisitionType.DRAFTED, draftRound: recentPick.round, isPostDeadlineTrade: false };
-          }
-        }
-      }
-
-      // Check transaction type
-      if (transaction) {
-        const txType = transaction.transaction.type;
-        const txDate = transaction.transaction.createdAt;
-
-        if (txType === "TRADE") {
-          // Check if trade was after the deadline
-          // Use the season before current to check trade timing
-          const tradeSeason = txDate.getMonth() >= 8 ? txDate.getFullYear() : txDate.getFullYear() - 1;
-          const isPostDeadline = isTradeAfterDeadline(txDate, tradeSeason);
-
-          return {
-            type: AcquisitionType.TRADE,
-            isPostDeadlineTrade: isPostDeadline,
-            tradeDate: txDate,
-          };
-        }
-        if (txType === "WAIVER") return { type: AcquisitionType.WAIVER, isPostDeadlineTrade: false };
-        if (txType === "FREE_AGENT") return { type: AcquisitionType.FREE_AGENT, isPostDeadlineTrade: false };
-      }
-
-      return { type: AcquisitionType.WAIVER, isPostDeadlineTrade: false };
+      return {
+        type: origin.acquisitionType,
+        draftRound: origin.draftRound,
+        isPostDeadlineTrade: origin.originSeason === season && origin.acquisitionType === AcquisitionType.TRADE,
+        tradeDate: transaction?.transaction.createdAt,
+      };
     }
 
     // Helper: Calculate base cost (pure function, no DB calls)
@@ -215,60 +281,52 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return { baseCost: Math.max(minRound, baseCost), isPostDeadlineTrade: false };
     }
 
-    // Helper: Calculate eligibility with cost escalation (pure function, no DB calls)
-    // Post-deadline trades reset consecutive years to 0
+    /**
+     * NEW: Calculate eligibility using Origin Season approach
+     *
+     * Core rule: Player may be kept for max 2 seasons total
+     * - years_kept = current_season - origin_season
+     * - 0 = draft year (eligible)
+     * - 1 = final keeper year (eligible)
+     * - 2+ = ineligible
+     */
     function calculateEligibility(playerId: string) {
-      const playerKeepers = keepersByPlayer.get(playerId) || [];
-      const previousKeepers = playerKeepers.filter(k => k.season < season);
-      const acquisition = getAcquisition(playerId);
+      const origin = getOriginSeason(playerId, rosterId);
+      const yearsKept = season - origin.originSeason;
+      const originalDraft = getOriginalDraft(playerId);
       const costResult = calculateBaseCost(playerId);
 
-      // Count consecutive years kept by this owner
-      // BUT: Post-deadline trades reset this to 0 (new acquisition)
-      let consecutiveYears = 0;
+      // Max years from settings (default 2 means: draft year + 1 keeper year)
+      // yearsKept: 0 = draft year, 1 = first keeper year, 2+ = ineligible
+      const isEligible = yearsKept < maxYears;
+      const atMaxYears = yearsKept >= maxYears - 1; // Final keeper year
 
-      if (!costResult.isPostDeadlineTrade) {
-        // Only count consecutive years if NOT a post-deadline trade
-        let checkSeason = season - 1;
-        for (const keeper of previousKeepers.sort((a, b) => b.season - a.season)) {
-          if (keeper.season === checkSeason) {
-            consecutiveYears++;
-            checkSeason--;
-          } else {
-            break;
-          }
-        }
+      // Build reason string
+      let reason: string | undefined;
+      if (!isEligible) {
+        reason = `Ineligible: Year ${yearsKept + 1} (max ${maxYears})`;
+      } else if (atMaxYears) {
+        reason = `Final year (Year ${yearsKept + 1} of ${maxYears})`;
+      } else if (yearsKept === 0) {
+        reason = "Draft year";
       }
 
-      const yearsKept = consecutiveYears + 1; // Including this season if kept
-      const atMaxYears = consecutiveYears >= maxYears;
-      const originalDraft = getOriginalDraft(playerId);
+      // Cost calculation: base cost improves by 1 for each year kept
       const baseCost = costResult.baseCost;
-
-      // COST ESCALATION: Cost improves (earlier round) by 1 for each consecutive year kept
-      // Year 1: baseCost (R3), Year 2: baseCost - 1 (R2), Year 3: baseCost - 2 (R1)
-      // Minimum is Round 1 (can't go lower)
-      // Post-deadline trades start fresh at undrafted round with 0 years
-      const escalatedCost = Math.max(minRound, baseCost - consecutiveYears);
-
-      // Eligibility is based on YEARS KEPT, not cost
-      // atMaxYears = true when consecutiveYears >= maxYears (default 2)
-      let reason = atMaxYears ? "At max years - Franchise Tag only" : undefined;
-      if (costResult.isPostDeadlineTrade) {
-        reason = reason || "Acquired via offseason trade - value reset";
-      }
+      const escalatedCost = Math.max(minRound, baseCost - yearsKept);
 
       return {
-        isEligible: true,
-        yearsKept,
-        consecutiveYears,
-        acquisitionType: acquisition.type,
+        isEligible,
+        yearsKept: yearsKept + 1, // Display as "Year 1", "Year 2" (1-indexed for UI)
+        consecutiveYears: yearsKept, // Keep for backwards compatibility
+        originSeason: origin.originSeason,
+        acquisitionType: origin.acquisitionType,
         atMaxYears,
         reason,
         baseCost,
         escalatedCost,
         originalDraft,
-        isPostDeadlineTrade: costResult.isPostDeadlineTrade,
+        isPostDeadlineTrade: origin.originSeason === season && origin.acquisitionType === AcquisitionType.TRADE,
       };
     }
 
@@ -336,6 +394,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           reason,
           yearsKept: eligibility.yearsKept,
           consecutiveYears: eligibility.consecutiveYears,
+          originSeason: eligibility.originSeason,
           acquisitionType: eligibility.acquisitionType,
           originalDraft: eligibility.originalDraft,
         },
