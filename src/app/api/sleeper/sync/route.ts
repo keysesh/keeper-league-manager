@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { syncLeague, syncUserLeagues, quickSyncLeague, populateKeepersFromDraftPicks } from "@/lib/sleeper/sync";
+import { syncLeague, syncUserLeagues, quickSyncLeague, populateKeepersFromDraftPicks, recalculateKeeperYears } from "@/lib/sleeper/sync";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
@@ -129,9 +129,43 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "recalculate-keeper-years": {
+        // Recalculate yearsKept for all keepers in a league
+        if (!leagueId) {
+          return NextResponse.json(
+            { error: "leagueId is required for recalculate-keeper-years" },
+            { status: 400 }
+          );
+        }
+
+        // Verify user has access to this league
+        const rosterCheck = await prisma.roster.findFirst({
+          where: {
+            leagueId,
+            teamMembers: {
+              some: { userId: session.user.id },
+            },
+          },
+        });
+
+        if (!rosterCheck) {
+          return NextResponse.json(
+            { error: "You don't have access to this league" },
+            { status: 403 }
+          );
+        }
+
+        const result = await recalculateKeeperYears(leagueId);
+        return NextResponse.json({
+          success: true,
+          message: `Updated ${result.updated} of ${result.total} keeper records`,
+          data: result,
+        });
+      }
+
       default:
         return NextResponse.json(
-          { error: "Invalid action. Use 'league', 'user-leagues', 'quick', or 'populate-keepers'" },
+          { error: "Invalid action. Use 'league', 'user-leagues', 'quick', 'populate-keepers', or 'recalculate-keeper-years'" },
           { status: 400 }
         );
     }

@@ -897,21 +897,8 @@ export async function populateKeepersFromDraftPicks(
 
     const season = pick.draft.season;
 
-    // Check if Keeper record already exists
-    const existingKeeper = await prisma.keeper.findFirst({
-      where: {
-        playerId: pick.playerId,
-        rosterId: pick.rosterId,
-        season: season,
-      },
-    });
-
-    if (existingKeeper) {
-      skipped++;
-      continue;
-    }
-
     // Count previous consecutive years this player was kept by this roster
+    // This must be calculated FIRST, even for existing records
     const previousKeepers = await prisma.keeper.findMany({
       where: {
         playerId: pick.playerId,
@@ -932,6 +919,33 @@ export async function populateKeepersFromDraftPicks(
       }
     }
 
+    const correctYearsKept = consecutiveYears + 1;
+
+    // Check if Keeper record already exists
+    const existingKeeper = await prisma.keeper.findFirst({
+      where: {
+        playerId: pick.playerId,
+        rosterId: pick.rosterId,
+        season: season,
+      },
+    });
+
+    if (existingKeeper) {
+      // Update yearsKept if it's incorrect
+      if (existingKeeper.yearsKept !== correctYearsKept) {
+        await prisma.keeper.update({
+          where: { id: existingKeeper.id },
+          data: {
+            yearsKept: correctYearsKept,
+            finalCost: Math.max(1, existingKeeper.baseCost - consecutiveYears),
+          },
+        });
+        console.log(`Updated ${pick.player?.fullName}: yearsKept ${existingKeeper.yearsKept} -> ${correctYearsKept}`);
+      }
+      skipped++;
+      continue;
+    }
+
     // Create Keeper record
     await prisma.keeper.create({
       data: {
@@ -941,7 +955,7 @@ export async function populateKeepersFromDraftPicks(
         type: "REGULAR", // Default to regular keeper
         baseCost: pick.round,
         finalCost: Math.max(1, pick.round - consecutiveYears), // Cost improves each year
-        yearsKept: consecutiveYears + 1,
+        yearsKept: correctYearsKept,
         acquisitionType: "DRAFTED",
         originalDraftRound: pick.round,
       },
@@ -952,4 +966,74 @@ export async function populateKeepersFromDraftPicks(
 
   console.log(`Populated ${created} Keeper records from draft picks (${skipped} already existed)`);
   return { created, skipped };
+}
+
+/**
+ * Recalculate yearsKept for all keepers in a league
+ * This fixes any keepers that have incorrect yearsKept values
+ */
+export async function recalculateKeeperYears(
+  leagueId: string
+): Promise<{ updated: number; total: number }> {
+  // Get all keepers for this league, ordered by player then season
+  const keepers = await prisma.keeper.findMany({
+    where: {
+      roster: { leagueId },
+    },
+    include: {
+      player: true,
+      roster: true,
+    },
+    orderBy: [
+      { playerId: "asc" },
+      { rosterId: "asc" },
+      { season: "asc" },
+    ],
+  });
+
+  let updated = 0;
+
+  // Process each keeper
+  for (const keeper of keepers) {
+    // Count previous consecutive years this player was kept by this roster
+    const previousKeepers = await prisma.keeper.findMany({
+      where: {
+        playerId: keeper.playerId,
+        rosterId: keeper.rosterId,
+        season: { lt: keeper.season },
+      },
+      orderBy: { season: "desc" },
+    });
+
+    let consecutiveYears = 0;
+    let checkSeason = keeper.season - 1;
+    for (const prev of previousKeepers) {
+      if (prev.season === checkSeason) {
+        consecutiveYears++;
+        checkSeason--;
+      } else {
+        break;
+      }
+    }
+
+    const correctYearsKept = consecutiveYears + 1;
+
+    // Update if different
+    if (keeper.yearsKept !== correctYearsKept) {
+      await prisma.keeper.update({
+        where: { id: keeper.id },
+        data: {
+          yearsKept: correctYearsKept,
+          finalCost: Math.max(1, keeper.baseCost - consecutiveYears),
+        },
+      });
+      console.log(
+        `Fixed ${keeper.player.fullName} (${keeper.season}): yearsKept ${keeper.yearsKept} -> ${correctYearsKept}`
+      );
+      updated++;
+    }
+  }
+
+  console.log(`Recalculated keeper years: ${updated} updated out of ${keepers.length} total`);
+  return { updated, total: keepers.length };
 }
