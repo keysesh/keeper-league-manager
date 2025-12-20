@@ -358,6 +358,141 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "sync-league-chain": {
+        // Sync drafts from multiple Sleeper league IDs (historical league chain)
+        // This handles Sleeper's annual league rollover where each year has a different league ID
+        const sleeperLeagueIds: string[] = body.sleeperLeagueIds;
+        if (!leagueId || !sleeperLeagueIds || !Array.isArray(sleeperLeagueIds)) {
+          return NextResponse.json(
+            { error: "leagueId and sleeperLeagueIds array are required" },
+            { status: 400 }
+          );
+        }
+
+        const league = await prisma.league.findUnique({
+          where: { id: leagueId },
+        });
+
+        if (!league) {
+          return NextResponse.json(
+            { error: "League not found" },
+            { status: 404 }
+          );
+        }
+
+        const { SleeperClient } = await import("@/lib/sleeper/client");
+        const { mapSleeperDraftStatus } = await import("@/lib/sleeper/mappers");
+        const sleeper = new SleeperClient();
+
+        // Get roster map from current league
+        const rosters = await prisma.roster.findMany({
+          where: { leagueId },
+          select: { id: true, sleeperId: true },
+        });
+        const rosterMap = new Map(rosters.map(r => [r.sleeperId, r.id]));
+
+        let totalDrafts = 0;
+        let totalPicks = 0;
+        let totalKeepers = 0;
+        const results: { sleeperLeagueId: string; season: string; picks: number; keepers: number }[] = [];
+
+        for (const sleeperLeagueId of sleeperLeagueIds) {
+          try {
+            const drafts = await sleeper.getDrafts(sleeperLeagueId);
+
+            for (const draftData of drafts) {
+              const picks = await sleeper.getDraftPicks(draftData.draft_id);
+
+              // Upsert draft
+              const draft = await prisma.draft.upsert({
+                where: { sleeperId: draftData.draft_id },
+                update: {
+                  status: mapSleeperDraftStatus(draftData.status),
+                },
+                create: {
+                  sleeperId: draftData.draft_id,
+                  leagueId,
+                  season: parseInt(draftData.season),
+                  type: draftData.type === "auction" ? "AUCTION" : draftData.type === "linear" ? "LINEAR" : "SNAKE",
+                  status: mapSleeperDraftStatus(draftData.status),
+                  rounds: typeof draftData.settings?.rounds === 'number' ? draftData.settings.rounds : 16,
+                },
+              });
+
+              // Get all players we need
+              const playerSleeperIds = picks.filter(p => p.player_id).map(p => p.player_id!);
+              const players = await prisma.player.findMany({
+                where: { sleeperId: { in: playerSleeperIds } },
+                select: { id: true, sleeperId: true },
+              });
+              const playerMap = new Map(players.map(p => [p.sleeperId, p.id]));
+
+              let draftPicks = 0;
+              let draftKeepers = 0;
+
+              for (const pick of picks) {
+                const rosterId = rosterMap.get(String(pick.roster_id));
+                if (!rosterId) continue;
+
+                const playerId = pick.player_id ? playerMap.get(pick.player_id) || null : null;
+
+                await prisma.draftPick.upsert({
+                  where: {
+                    draftId_round_draftSlot: {
+                      draftId: draft.id,
+                      round: pick.round,
+                      draftSlot: pick.draft_slot,
+                    },
+                  },
+                  update: {
+                    rosterId,
+                    playerId,
+                    pickNumber: pick.pick_no,
+                    isKeeper: pick.is_keeper || false,
+                  },
+                  create: {
+                    draftId: draft.id,
+                    rosterId,
+                    playerId,
+                    round: pick.round,
+                    pickNumber: pick.pick_no,
+                    draftSlot: pick.draft_slot,
+                    isKeeper: pick.is_keeper || false,
+                  },
+                });
+
+                draftPicks++;
+                if (pick.is_keeper) draftKeepers++;
+              }
+
+              totalDrafts++;
+              totalPicks += draftPicks;
+              totalKeepers += draftKeepers;
+              results.push({
+                sleeperLeagueId,
+                season: draftData.season,
+                picks: draftPicks,
+                keepers: draftKeepers,
+              });
+            }
+          } catch (err) {
+            console.error(`Error syncing league ${sleeperLeagueId}:`, err);
+            results.push({
+              sleeperLeagueId,
+              season: "error",
+              picks: 0,
+              keepers: 0,
+            });
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: `Synced ${totalDrafts} drafts, ${totalPicks} picks (${totalKeepers} keepers)`,
+          data: { drafts: totalDrafts, picks: totalPicks, keepers: totalKeepers, results },
+        });
+      }
+
       default:
         return NextResponse.json(
           { error: "Invalid action. Use 'league', 'user-leagues', 'quick', 'populate-keepers', 'recalculate-keeper-years', or 'debug-keepers'" },
