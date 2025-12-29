@@ -39,7 +39,7 @@ export default function AdminPlayersPage() {
       const data = await res.json();
       setPlayers(data.players || []);
       setTotal(data.total || 0);
-    } catch (e) {
+    } catch {
       error("Failed to fetch players");
     } finally {
       setLoading(false);
@@ -57,7 +57,7 @@ export default function AdminPlayersPage() {
       } else {
         error(data.error || "Sync failed");
       }
-    } catch (e) {
+    } catch {
       error("Sync failed");
     } finally {
       setSyncing(false);

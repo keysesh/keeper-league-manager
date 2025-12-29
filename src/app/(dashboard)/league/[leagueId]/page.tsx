@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
 import { useState } from "react";
@@ -75,7 +75,6 @@ interface League {
 
 export default function LeaguePage() {
   const params = useParams();
-  const router = useRouter();
   const leagueId = params.leagueId as string;
   const { success, error: showError } = useToast();
   const [syncing, setSyncing] = useState(false);

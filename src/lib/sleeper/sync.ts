@@ -5,12 +5,18 @@ import {
   mapSleeperPlayer,
   mapSleeperRoster,
   mapSleeperLeague,
-  mapSleeperLeagueStatus,
   mapSleeperDraftStatus,
   mapSleeperTransaction,
-  mapSleeperTransactionType,
   mapSleeperTradedPick,
 } from "./mappers";
+import { logger } from "@/lib/logger";
+import {
+  DB_BATCH_SIZE,
+  PROGRESS_LOG_INTERVAL,
+  DEFAULT_KEEPER_SETTINGS,
+  DEFAULT_DRAFT_ROUNDS,
+  MAX_HISTORICAL_SEASONS,
+} from "@/lib/constants";
 
 const sleeper = new SleeperClient();
 
@@ -26,17 +32,16 @@ export async function syncAllPlayers(): Promise<{
   created: number;
   updated: number;
 }> {
-  console.log("Starting player sync...");
+  logger.info("Starting player sync");
   const players = await sleeper.getAllPlayers();
   const playerEntries = Object.entries(players);
 
-  let created = 0;
-  let updated = 0;
+  const created = 0;
+  const updated = 0;
 
-  // Process in batches of 100 for performance
-  const batchSize = 100;
-  for (let i = 0; i < playerEntries.length; i += batchSize) {
-    const batch = playerEntries.slice(i, i + batchSize);
+  // Process in batches for performance
+  for (let i = 0; i < playerEntries.length; i += DB_BATCH_SIZE) {
+    const batch = playerEntries.slice(i, i + DB_BATCH_SIZE);
 
     await prisma.$transaction(
       batch.map(([playerId, player]) => {
@@ -49,13 +54,13 @@ export async function syncAllPlayers(): Promise<{
       })
     );
 
-    // Log progress every 1000 players
-    if ((i + batchSize) % 1000 === 0) {
-      console.log(`Processed ${i + batchSize} / ${playerEntries.length} players`);
+    // Log progress at intervals
+    if ((i + DB_BATCH_SIZE) % PROGRESS_LOG_INTERVAL === 0) {
+      logger.syncProgress("Player sync", i + DB_BATCH_SIZE, playerEntries.length);
     }
   }
 
-  console.log(`Player sync complete: ${playerEntries.length} players processed`);
+  logger.info("Player sync complete", { total: playerEntries.length });
   return { created, updated };
 }
 
@@ -72,7 +77,7 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
   players: number;
   draftPicks: number;
 }> {
-  console.log(`Syncing league ${sleeperLeagueId}...`);
+  logger.info("Syncing league", { sleeperLeagueId });
 
   // Fetch all league data in parallel
   const [leagueData, rosters, users, drafts, tradedPicks] = await Promise.all([
@@ -116,13 +121,7 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
     update: {},
     create: {
       leagueId: league.id,
-      maxKeepers: 7,
-      maxFranchiseTags: 2,
-      maxRegularKeepers: 5,
-      regularKeeperMaxYears: 2,
-      undraftedRound: 8,
-      minimumRound: 1,
-      costReductionPerYear: 1,
+      ...DEFAULT_KEEPER_SETTINGS,
     },
   });
 
@@ -244,19 +243,19 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
     try {
       draftPickCount += await syncDraft(league.id, draft);
     } catch (err) {
-      console.warn(`Failed to sync draft ${draft.draft_id}:`, err);
+      logger.warn("Failed to sync draft", { draftId: draft.draft_id, error: err instanceof Error ? err.message : err });
     }
   }
 
   // Sync transactions (waivers, trades, FA pickups)
   try {
     const transactionCount = await syncTransactions(league.id);
-    console.log(`Synced ${transactionCount} transactions for ${league.name}`);
+    logger.info("Synced transactions", { leagueName: league.name, count: transactionCount });
   } catch (err) {
-    console.warn(`Failed to sync transactions for ${league.name}:`, err);
+    logger.warn("Failed to sync transactions", { leagueName: league.name, error: err instanceof Error ? err.message : err });
   }
 
-  console.log(`League sync complete: ${league.name}`);
+  logger.info("League sync complete", { leagueName: league.name });
   return {
     league: { id: league.id, name: league.name },
     rosters: rosterCount,
@@ -303,7 +302,7 @@ async function syncDraft(leagueId: string, draftData: {
       type: draftData.type === "auction" ? "AUCTION" : draftData.type === "linear" ? "LINEAR" : "SNAKE",
       status: mapSleeperDraftStatus(draftData.status),
       startTime: draftData.start_time ? new Date(draftData.start_time) : null,
-      rounds: typeof draftData.settings?.rounds === 'number' ? draftData.settings.rounds : 16,
+      rounds: typeof draftData.settings?.rounds === 'number' ? draftData.settings.rounds : DEFAULT_DRAFT_ROUNDS,
       draftOrder: draftData.slot_to_roster_id
         ? (draftData.slot_to_roster_id as Prisma.InputJsonValue)
         : Prisma.JsonNull,
@@ -379,6 +378,7 @@ async function syncDraft(leagueId: string, draftData: {
 
 /**
  * Sync all transactions for a league
+ * Optimized with batch fetching to avoid N+1 queries
  */
 export async function syncTransactions(leagueId: string): Promise<number> {
   const league = await prisma.league.findUnique({
@@ -390,75 +390,97 @@ export async function syncTransactions(leagueId: string): Promise<number> {
   }
 
   const allTransactions = await sleeper.getAllTransactions(league.sleeperId);
-  let count = 0;
+
+  if (allTransactions.length === 0) {
+    return 0;
+  }
+
+  // Batch fetch all players and rosters we'll need (optimization: 2 queries instead of N*3)
+  const allPlayerIds = new Set<string>();
+  const allRosterSleeperIds = new Set<string>();
 
   for (const trans of allTransactions) {
-    const transData = mapSleeperTransaction(trans);
-
-    const transaction = await prisma.transaction.upsert({
-      where: { sleeperId: trans.transaction_id },
-      update: transData,
-      create: {
-        sleeperId: trans.transaction_id,
-        leagueId,
-        ...transData,
-      },
-    });
-
-    // Sync transaction players
     if (trans.adds) {
-      for (const [playerId, toRosterId] of Object.entries(trans.adds)) {
-        const player = await prisma.player.findUnique({
-          where: { sleeperId: playerId },
-        });
+      Object.keys(trans.adds).forEach(id => allPlayerIds.add(id));
+      Object.values(trans.adds).forEach(id => allRosterSleeperIds.add(String(id)));
+    }
+    if (trans.drops) {
+      Object.keys(trans.drops).forEach(id => allPlayerIds.add(id));
+      Object.values(trans.drops).forEach(id => allRosterSleeperIds.add(String(id)));
+    }
+  }
 
-        if (!player) continue;
+  const [players, rosters] = await Promise.all([
+    prisma.player.findMany({
+      where: { sleeperId: { in: Array.from(allPlayerIds) } },
+      select: { id: true, sleeperId: true },
+    }),
+    prisma.roster.findMany({
+      where: { leagueId, sleeperId: { in: Array.from(allRosterSleeperIds) } },
+      select: { id: true, sleeperId: true },
+    }),
+  ]);
 
-        // Find from roster (for trades)
-        let fromRosterId: string | null = null;
-        if (trans.drops && trans.drops[playerId]) {
-          const fromRoster = await prisma.roster.findUnique({
-            where: {
-              leagueId_sleeperId: {
-                leagueId,
-                sleeperId: String(trans.drops[playerId]),
-              },
-            },
-          });
-          fromRosterId = fromRoster?.id || null;
-        }
+  const playerMap = new Map(players.map(p => [p.sleeperId, p.id]));
+  const rosterMap = new Map(rosters.map(r => [r.sleeperId, r.id]));
 
-        const toRoster = await prisma.roster.findUnique({
-          where: {
-            leagueId_sleeperId: {
-              leagueId,
-              sleeperId: String(toRosterId),
-            },
+  let count = 0;
+
+  // Process transactions in batches with transaction wrapper for data consistency
+  for (let i = 0; i < allTransactions.length; i += DB_BATCH_SIZE) {
+    const batch = allTransactions.slice(i, i + DB_BATCH_SIZE);
+
+    await prisma.$transaction(async (tx) => {
+      for (const trans of batch) {
+        const transData = mapSleeperTransaction(trans);
+
+        const transaction = await tx.transaction.upsert({
+          where: { sleeperId: trans.transaction_id },
+          update: transData,
+          create: {
+            sleeperId: trans.transaction_id,
+            leagueId,
+            ...transData,
           },
         });
 
-        if (toRoster) {
-          await prisma.transactionPlayer.upsert({
-            where: {
-              id: `${transaction.id}-${player.id}`,
-            },
-            update: {
-              fromRosterId,
-              toRosterId: toRoster.id,
-            },
-            create: {
-              id: `${transaction.id}-${player.id}`,
-              transactionId: transaction.id,
-              playerId: player.id,
-              fromRosterId,
-              toRosterId: toRoster.id,
-            },
-          });
-        }
-      }
-    }
+        // Sync transaction players using pre-fetched maps
+        if (trans.adds) {
+          for (const [playerId, toRosterId] of Object.entries(trans.adds)) {
+            const dbPlayerId = playerMap.get(playerId);
+            if (!dbPlayerId) continue;
 
-    count++;
+            const toDbRosterId = rosterMap.get(String(toRosterId));
+            if (!toDbRosterId) continue;
+
+            // Find from roster (for trades)
+            let fromDbRosterId: string | null = null;
+            if (trans.drops && trans.drops[playerId]) {
+              fromDbRosterId = rosterMap.get(String(trans.drops[playerId])) || null;
+            }
+
+            await tx.transactionPlayer.upsert({
+              where: {
+                id: `${transaction.id}-${dbPlayerId}`,
+              },
+              update: {
+                fromRosterId: fromDbRosterId,
+                toRosterId: toDbRosterId,
+              },
+              create: {
+                id: `${transaction.id}-${dbPlayerId}`,
+                transactionId: transaction.id,
+                playerId: dbPlayerId,
+                fromRosterId: fromDbRosterId,
+                toRosterId: toDbRosterId,
+              },
+            });
+          }
+        }
+
+        count++;
+      }
+    });
   }
 
   return count;
@@ -478,7 +500,7 @@ export async function syncLeagueFast(sleeperLeagueId: string): Promise<{
   rosters: number;
   players: number;
 }> {
-  console.log(`Fast syncing league ${sleeperLeagueId}...`);
+  logger.info("Fast syncing league", { sleeperLeagueId });
 
   // Fetch essential league data in parallel
   const [leagueData, rosters, users] = await Promise.all([
@@ -519,13 +541,7 @@ export async function syncLeagueFast(sleeperLeagueId: string): Promise<{
     update: {},
     create: {
       leagueId: league.id,
-      maxKeepers: 7,
-      maxFranchiseTags: 2,
-      maxRegularKeepers: 5,
-      regularKeeperMaxYears: 2,
-      undraftedRound: 8,
-      minimumRound: 1,
-      costReductionPerYear: 1,
+      ...DEFAULT_KEEPER_SETTINGS,
     },
   });
 
@@ -603,7 +619,7 @@ export async function syncLeagueFast(sleeperLeagueId: string): Promise<{
     }
   }
 
-  console.log(`Fast sync complete: ${league.name}`);
+  logger.info("Fast sync complete", { leagueName: league.name });
   return {
     league: { id: league.id, name: league.name },
     rosters: rosterCount,
@@ -686,6 +702,7 @@ export async function syncUserLeagues(
 
 /**
  * Quick sync - just update rosters for a league
+ * Optimized with batch fetching to avoid N+1 queries
  */
 export async function quickSyncLeague(leagueId: string): Promise<{
   rosters: number;
@@ -706,59 +723,75 @@ export async function quickSyncLeague(leagueId: string): Promise<{
 
   const userMap = new Map(users.map((u) => [u.user_id, u]));
 
+  // Batch fetch all players we'll need (optimization: 1 query instead of N)
+  const allPlayerIds = new Set<string>();
+  for (const roster of rosters) {
+    roster.players?.forEach(id => allPlayerIds.add(id));
+  }
+
+  const existingPlayers = await prisma.player.findMany({
+    where: { sleeperId: { in: Array.from(allPlayerIds) } },
+    select: { id: true, sleeperId: true },
+  });
+  const playerMap = new Map(existingPlayers.map(p => [p.sleeperId, p.id]));
+
   let rosterCount = 0;
   let playerCount = 0;
 
-  for (const roster of rosters) {
-    const user = userMap.get(roster.owner_id);
-    const rosterData = mapSleeperRoster(roster, user);
+  // Use transaction for data consistency
+  await prisma.$transaction(async (tx) => {
+    for (const roster of rosters) {
+      const user = userMap.get(roster.owner_id);
+      const rosterData = mapSleeperRoster(roster, user);
 
-    const dbRoster = await prisma.roster.upsert({
-      where: {
-        leagueId_sleeperId: {
+      const dbRoster = await tx.roster.upsert({
+        where: {
+          leagueId_sleeperId: {
+            leagueId: league.id,
+            sleeperId: String(roster.roster_id),
+          },
+        },
+        update: rosterData,
+        create: {
           leagueId: league.id,
           sleeperId: String(roster.roster_id),
+          ...rosterData,
         },
-      },
-      update: rosterData,
-      create: {
-        leagueId: league.id,
-        sleeperId: String(roster.roster_id),
-        ...rosterData,
-      },
-    });
-
-    rosterCount++;
-
-    // Update roster players
-    if (roster.players) {
-      await prisma.rosterPlayer.deleteMany({
-        where: { rosterId: dbRoster.id },
       });
 
-      for (const playerId of roster.players) {
-        const player = await prisma.player.findUnique({
-          where: { sleeperId: playerId },
+      rosterCount++;
+
+      // Update roster players using batch operations
+      if (roster.players && roster.players.length > 0) {
+        await tx.rosterPlayer.deleteMany({
+          where: { rosterId: dbRoster.id },
         });
 
-        if (player) {
-          await prisma.rosterPlayer.create({
-            data: {
+        // Build batch insert data using pre-fetched player map
+        const rosterPlayerData = roster.players
+          .map(playerId => {
+            const dbPlayerId = playerMap.get(playerId);
+            if (!dbPlayerId) return null;
+            return {
               rosterId: dbRoster.id,
-              playerId: player.id,
+              playerId: dbPlayerId,
               isStarter: roster.starters?.includes(playerId) || false,
-            },
-          });
-          playerCount++;
+            };
+          })
+          .filter((d): d is NonNullable<typeof d> => d !== null);
+
+        if (rosterPlayerData.length > 0) {
+          await tx.rosterPlayer.createMany({ data: rosterPlayerData });
+          playerCount += rosterPlayerData.length;
         }
       }
     }
-  }
 
-  // Update last synced timestamp
-  await prisma.league.update({
-    where: { id: leagueId },
-    data: { lastSyncedAt: new Date() },
+    // Update last synced timestamp
+    await tx.league.update({
+      where: { id: leagueId },
+      data: { lastSyncedAt: new Date() },
+    });
   });
 
   return { rosters: rosterCount, players: playerCount };
@@ -773,12 +806,12 @@ export async function quickSyncLeague(leagueId: string): Promise<{
  */
 export async function syncLeagueWithHistory(
   sleeperLeagueId: string,
-  maxSeasons = 10
+  maxSeasons = MAX_HISTORICAL_SEASONS
 ): Promise<{
   seasons: Array<{ season: number; leagueId: string; name: string }>;
   totalTransactions: number;
 }> {
-  console.log(`Syncing league ${sleeperLeagueId} with history...`);
+  logger.info("Syncing league with history", { sleeperLeagueId, maxSeasons });
 
   const results = {
     seasons: [] as Array<{ season: number; leagueId: string; name: string }>,
@@ -810,22 +843,28 @@ export async function syncLeagueWithHistory(
 
       results.totalTransactions += league?._count.transactions || 0;
 
-      console.log(
-        `Synced ${leagueData.season} season: ${syncResult.league.name} (${syncResult.draftPicks} draft picks)`
-      );
+      logger.info("Synced historical season", {
+        season: leagueData.season,
+        leagueName: syncResult.league.name,
+        draftPicks: syncResult.draftPicks,
+      });
 
       // Move to previous season
       currentLeagueId = leagueData.previous_league_id || null;
       seasonsProcessed++;
     } catch (err) {
-      console.warn(`Failed to sync historical league ${currentLeagueId}:`, err);
+      logger.warn("Failed to sync historical league", {
+        leagueId: currentLeagueId,
+        error: err instanceof Error ? err.message : err,
+      });
       break;
     }
   }
 
-  console.log(
-    `Historical sync complete: ${results.seasons.length} seasons, ${results.totalTransactions} total transactions`
-  );
+  logger.info("Historical sync complete", {
+    seasons: results.seasons.length,
+    totalTransactions: results.totalTransactions,
+  });
 
   return results;
 }
@@ -941,7 +980,11 @@ export async function populateKeepersFromDraftPicks(
             finalCost: Math.max(1, existingKeeper.baseCost - consecutiveYears),
           },
         });
-        console.log(`Updated ${pick.player?.fullName}: yearsKept ${existingKeeper.yearsKept} -> ${correctYearsKept}`);
+        logger.debug("Updated keeper yearsKept", {
+          player: pick.player?.fullName,
+          oldYearsKept: existingKeeper.yearsKept,
+          newYearsKept: correctYearsKept,
+        });
       }
       skipped++;
       continue;
@@ -964,11 +1007,11 @@ export async function populateKeepersFromDraftPicks(
 
     created++;
     } catch (err) {
-      console.error(`Error processing keeper pick for ${pick.player?.fullName}:`, err);
+      logger.error("Error processing keeper pick", err, { player: pick.player?.fullName });
     }
   }
 
-  console.log(`Populated ${created} Keeper records from draft picks (${skipped} already existed)`);
+  logger.info("Populated keeper records from draft picks", { created, skipped });
   return { created, skipped };
 }
 
@@ -1001,7 +1044,7 @@ export async function recalculateKeeperYears(
   for (const keeper of keepers) {
     // Skip if player doesn't exist
     if (!keeper.player) {
-      console.warn(`Keeper ${keeper.id} has no player, skipping`);
+      logger.warn("Keeper has no player, skipping", { keeperId: keeper.id });
       continue;
     }
 
@@ -1038,16 +1081,19 @@ export async function recalculateKeeperYears(
             finalCost: Math.max(1, keeper.baseCost - consecutiveYears),
           },
         });
-        console.log(
-          `Fixed ${keeper.player.fullName} (${keeper.season}): yearsKept ${keeper.yearsKept} -> ${correctYearsKept}`
-        );
+        logger.debug("Fixed keeper yearsKept", {
+          player: keeper.player.fullName,
+          season: keeper.season,
+          oldYearsKept: keeper.yearsKept,
+          newYearsKept: correctYearsKept,
+        });
         updated++;
       }
     } catch (err) {
-      console.error(`Error processing keeper ${keeper.id}:`, err);
+      logger.error("Error processing keeper", err, { keeperId: keeper.id });
     }
   }
 
-  console.log(`Recalculated keeper years: ${updated} updated out of ${keepers.length} total`);
+  logger.info("Recalculated keeper years", { updated, total: keepers.length });
   return { updated, total: keepers.length };
 }

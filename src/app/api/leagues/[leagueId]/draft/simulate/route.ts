@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateCascade, KeeperInput } from "@/lib/keeper/cascade";
-import { calculateBaseCost } from "@/lib/keeper/calculator";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
 interface RouteParams {

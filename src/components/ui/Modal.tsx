@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, ReactNode } from "react";
+import { useEffect, useCallback, useRef, ReactNode } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -8,6 +8,10 @@ interface ModalProps {
   title?: string;
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  /** Optional ID for accessibility labeling */
+  labelledBy?: string;
+  /** Optional ID for accessibility description */
+  describedBy?: string;
 }
 
 const sizeClasses = {
@@ -17,7 +21,19 @@ const sizeClasses = {
   xl: "max-w-xl",
 };
 
-export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  size = "md",
+  labelledBy,
+  describedBy,
+}: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+  const titleId = labelledBy || (title ? "modal-title" : undefined);
+
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -25,27 +41,85 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
     [onClose]
   );
 
+  // Focus trap - keep focus within modal
+  const handleTabKey = useCallback((e: KeyboardEvent) => {
+    if (e.key !== "Tab" || !dialogRef.current) return;
+
+    const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault();
+      lastElement?.focus();
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault();
+      firstElement?.focus();
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
+      // Store currently focused element
+      previousActiveElement.current = document.activeElement as HTMLElement;
+
+      // Focus the dialog
+      dialogRef.current?.focus();
+
       document.addEventListener("keydown", handleEscape);
+      document.addEventListener("keydown", handleTabKey);
       document.body.style.overflow = "hidden";
     }
     return () => {
       document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleTabKey);
       document.body.style.overflow = "";
+
+      // Restore focus to previous element
+      if (previousActiveElement.current) {
+        previousActiveElement.current.focus();
+      }
     };
-  }, [isOpen, handleEscape]);
+  }, [isOpen, handleEscape, handleTabKey]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className={`relative bg-gray-800 rounded-lg shadow-xl w-full ${sizeClasses[size]}`}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="presentation"
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Dialog */}
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={describedBy}
+        tabIndex={-1}
+        className={`relative bg-gray-800 rounded-lg shadow-xl w-full max-w-[calc(100vw-2rem)] sm:${sizeClasses[size]} focus:outline-none`}
+      >
         {title && (
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+            <h3 id={titleId} className="text-lg font-semibold text-white">
+              {title}
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+              aria-label="Close dialog"
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
           </div>
         )}
         <div className="p-4">{children}</div>

@@ -4,28 +4,35 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: "🏠" },
+  { name: "Dashboard", href: "/", icon: "🏠", label: "Go to Dashboard" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-gray-800/50 bg-[#0d0c0a] min-h-[calc(100vh-4rem)]">
-      <nav className="flex-1 px-4 py-6 space-y-2">
+    <aside
+      className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-gray-800/50 bg-[#0d0c0a] min-h-[calc(100vh-4rem)]"
+      aria-label="Main navigation"
+    >
+      <nav className="flex-1 px-4 py-6 space-y-2" role="navigation">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                 isActive
                   ? "bg-gradient-to-r from-amber-600/20 to-amber-600/10 text-amber-400 border border-amber-500/20 shadow-lg shadow-amber-500/5"
                   : "text-gray-500 hover:text-white hover:bg-gray-800/50 border border-transparent"
               }`}
             >
-              <span className={`text-lg ${isActive ? "" : "opacity-70"}`}>{item.icon}</span>
+              <span className={`text-lg ${isActive ? "" : "opacity-70"}`} aria-hidden="true">
+                {item.icon}
+              </span>
               {item.name}
             </Link>
           );

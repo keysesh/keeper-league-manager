@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { calculateBaseCost } from "./calculator";
-import { KeeperSettings } from "@prisma/client";
 
 // ============================================
 // TYPES

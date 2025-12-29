@@ -191,6 +191,7 @@ model RosterPlayer {
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@unique([rosterId, playerId])
+  @@index([playerId])
   @@map("roster_players")
 }
 
@@ -278,6 +279,8 @@ model Keeper {
 
   @@unique([rosterId, playerId, season])
   @@index([season])
+  @@index([rosterId])
+  @@index([playerId])
   @@map("keepers")
 }
 
@@ -348,6 +351,7 @@ model Transaction {
 
   @@index([type])
   @@index([createdAt])
+  @@index([leagueId])
   @@map("transactions")
 }
 
@@ -368,6 +372,8 @@ model TransactionPlayer {
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   player      Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
+  @@index([playerId])
+  @@index([toRosterId])
   @@map("transaction_players")
 }
 

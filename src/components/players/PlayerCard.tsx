@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "../ui/PositionBadge";
 

@@ -10,8 +10,17 @@ import {
   SleeperTradedPick,
   SleeperNFLState,
 } from "./types";
+import { logger } from "@/lib/logger";
+import {
+  SLEEPER_RATE_LIMIT_PER_MINUTE,
+  RETRY_DELAY_MS,
+  MAX_RETRIES,
+  NFL_SEASON_WEEKS,
+  SLEEPER_CACHE_TTL_SECONDS,
+} from "@/lib/constants";
 
-const SLEEPER_BASE_URL = "https://api.sleeper.app/v1";
+const SLEEPER_BASE_URL =
+  process.env.SLEEPER_API_BASE_URL || "https://api.sleeper.app/v1";
 
 interface RateLimitConfig {
   maxRequestsPerMinute: number;
@@ -26,9 +35,9 @@ export class SleeperClient {
   private requestCount = 0;
   private windowStart = Date.now();
   private config: RateLimitConfig = {
-    maxRequestsPerMinute: 60, // Conservative limit
-    retryDelayMs: 1000,
-    maxRetries: 3,
+    maxRequestsPerMinute: SLEEPER_RATE_LIMIT_PER_MINUTE,
+    retryDelayMs: RETRY_DELAY_MS,
+    maxRetries: MAX_RETRIES,
   };
 
   /**
@@ -43,7 +52,7 @@ export class SleeperClient {
 
     if (this.requestCount >= this.config.maxRequestsPerMinute) {
       const waitTime = 60000 - (now - this.windowStart);
-      console.log(`Rate limit reached, waiting ${waitTime}ms`);
+      logger.debug("Rate limit reached, waiting", { waitTimeMs: waitTime });
       await new Promise((resolve) => setTimeout(resolve, waitTime));
       this.windowStart = Date.now();
       this.requestCount = 0;
@@ -67,7 +76,7 @@ export class SleeperClient {
           Accept: "application/json",
         },
         next: {
-          revalidate: 300, // Cache for 5 minutes in Next.js
+          revalidate: SLEEPER_CACHE_TTL_SECONDS,
         },
       });
 
@@ -75,7 +84,7 @@ export class SleeperClient {
         if (response.status === 429 && retryCount < this.config.maxRetries) {
           // Rate limited - wait and retry
           const delay = this.config.retryDelayMs * Math.pow(2, retryCount);
-          console.log(`Rate limited, retrying in ${delay}ms`);
+          logger.warn("Rate limited by Sleeper API, retrying", { delayMs: delay, attempt: retryCount + 1 });
           await new Promise((resolve) => setTimeout(resolve, delay));
           return this.fetch(endpoint, retryCount + 1);
         }
@@ -83,7 +92,7 @@ export class SleeperClient {
         if (response.status >= 500 && retryCount < this.config.maxRetries) {
           // Server error - retry with exponential backoff
           const delay = this.config.retryDelayMs * Math.pow(2, retryCount);
-          console.log(`Server error ${response.status}, retrying in ${delay}ms`);
+          logger.warn("Sleeper API server error, retrying", { status: response.status, delayMs: delay });
           await new Promise((resolve) => setTimeout(resolve, delay));
           return this.fetch(endpoint, retryCount + 1);
         }
@@ -100,7 +109,7 @@ export class SleeperClient {
         (error.message.includes("timeout") || error.message.includes("network"))
       ) {
         const delay = this.config.retryDelayMs * Math.pow(2, retryCount);
-        console.log(`Network error, retrying in ${delay}ms`);
+        logger.warn("Network error, retrying", { delayMs: delay, error: error.message });
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.fetch(endpoint, retryCount + 1);
       }
@@ -208,8 +217,8 @@ export class SleeperClient {
   async getAllTransactions(leagueId: string): Promise<SleeperTransaction[]> {
     const allTransactions: SleeperTransaction[] = [];
 
-    // Fetch weeks 1-18 (NFL regular season + playoffs)
-    for (let week = 1; week <= 18; week++) {
+    // Fetch all weeks in NFL season
+    for (let week = 1; week <= NFL_SEASON_WEEKS; week++) {
       try {
         const weekTransactions = await this.getTransactions(leagueId, week);
         if (weekTransactions && weekTransactions.length > 0) {

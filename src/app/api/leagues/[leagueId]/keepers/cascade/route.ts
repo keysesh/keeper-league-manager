@@ -88,9 +88,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Calculate cascade
     const cascadeResult = await calculateCascade(leagueId, keeperInputs, season);
 
-    // Build response grouped by roster
-    const rosterMap = new Map(league.rosters.map(r => [r.id, r]));
-
     // Group cascade results by roster
     const keepersByRoster = new Map<string, typeof cascadeResult.keepers>();
     for (const keeper of cascadeResult.keepers) {

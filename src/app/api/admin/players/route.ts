@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+import { logger } from "@/lib/logger";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "@/lib/constants";
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,11 +25,15 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100);
+    const limit = Math.min(
+      parseInt(searchParams.get("limit") || String(DEFAULT_PAGE_SIZE), 10),
+      MAX_PAGE_SIZE
+    );
     const search = searchParams.get("search") || "";
     const position = searchParams.get("position") || "";
 
-    const where: Record<string, unknown> = {};
+    // Build type-safe where clause
+    const where: Prisma.PlayerWhereInput = {};
 
     if (search) {
       where.OR = [
@@ -67,7 +74,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("Error fetching players:", error);
+    logger.error("Error fetching players", error);
     return NextResponse.json({ error: "Failed to fetch players" }, { status: 500 });
   }
 }

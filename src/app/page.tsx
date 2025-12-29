@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {

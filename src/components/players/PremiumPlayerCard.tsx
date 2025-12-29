@@ -2,7 +2,6 @@
 
 import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
-import { StatPill } from "@/components/ui/StatPill";
 import { InjuryIndicator } from "@/components/ui/InjuryIndicator";
 
 interface Player {
@@ -64,13 +63,6 @@ const positionColors: Record<string, { bg: string; border: string }> = {
   K: { bg: "bg-purple-500/10", border: "border-purple-500" },
   DEF: { bg: "bg-gray-500/10", border: "border-gray-500" },
 };
-
-function getYearsKeptLabel(yearsKept: number): string {
-  if (yearsKept === 0) return "New";
-  if (yearsKept === 1) return "Year 1";
-  if (yearsKept === 2) return "Year 2 (Final)";
-  return `Year ${yearsKept}`;
-}
 
 function getAcquisitionLabel(type: string): string {
   switch (type) {
