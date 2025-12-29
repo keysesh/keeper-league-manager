@@ -632,9 +632,154 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "sync-traded-picks": {
+        // Sync traded picks from Sleeper
+        if (!leagueId) {
+          return NextResponse.json(
+            { error: "leagueId is required" },
+            { status: 400 }
+          );
+        }
+
+        const league = await prisma.league.findUnique({
+          where: { id: leagueId },
+        });
+
+        if (!league) {
+          return NextResponse.json(
+            { error: "League not found" },
+            { status: 404 }
+          );
+        }
+
+        const { SleeperClient } = await import("@/lib/sleeper/client");
+        const { mapSleeperTradedPick } = await import("@/lib/sleeper/mappers");
+        const sleeper = new SleeperClient();
+
+        const tradedPicks = await sleeper.getTradedPicks(league.sleeperId);
+
+        // Get roster map for verification
+        const rosters = await prisma.roster.findMany({
+          where: { leagueId },
+          select: { id: true, sleeperId: true, teamName: true },
+        });
+        const rosterMap = new Map(rosters.map(r => [r.sleeperId, r]));
+
+        let synced = 0;
+        const details: Array<{
+          season: number;
+          round: number;
+          originalOwner: string | null;
+          currentOwner: string | null;
+        }> = [];
+
+        for (const pick of tradedPicks) {
+          const mappedPick = mapSleeperTradedPick(pick);
+          const originalRoster = rosterMap.get(mappedPick.originalOwnerId);
+          const currentRoster = rosterMap.get(mappedPick.currentOwnerId);
+
+          await prisma.tradedPick.upsert({
+            where: {
+              leagueId_season_round_originalOwnerId: {
+                leagueId,
+                season: mappedPick.season,
+                round: mappedPick.round,
+                originalOwnerId: mappedPick.originalOwnerId,
+              },
+            },
+            update: {
+              currentOwnerId: mappedPick.currentOwnerId,
+            },
+            create: {
+              leagueId,
+              ...mappedPick,
+            },
+          });
+
+          synced++;
+          details.push({
+            season: mappedPick.season,
+            round: mappedPick.round,
+            originalOwner: originalRoster?.teamName || mappedPick.originalOwnerId,
+            currentOwner: currentRoster?.teamName || mappedPick.currentOwnerId,
+          });
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: `Synced ${synced} traded picks`,
+          data: {
+            total: synced,
+            details,
+            rosters: rosters.map(r => ({ sleeperId: r.sleeperId, teamName: r.teamName })),
+          },
+        });
+      }
+
+      case "debug-traded-picks": {
+        // Debug: Show all traded picks from both Sleeper and DB
+        if (!leagueId) {
+          return NextResponse.json(
+            { error: "leagueId is required" },
+            { status: 400 }
+          );
+        }
+
+        const league = await prisma.league.findUnique({
+          where: { id: leagueId },
+        });
+
+        if (!league) {
+          return NextResponse.json(
+            { error: "League not found" },
+            { status: 404 }
+          );
+        }
+
+        const { SleeperClient } = await import("@/lib/sleeper/client");
+        const sleeper = new SleeperClient();
+
+        // Get from Sleeper
+        const sleeperPicks = await sleeper.getTradedPicks(league.sleeperId);
+
+        // Get from DB
+        const dbPicks = await prisma.tradedPick.findMany({
+          where: { leagueId },
+          orderBy: [{ season: "asc" }, { round: "asc" }],
+        });
+
+        // Get roster map
+        const rosters = await prisma.roster.findMany({
+          where: { leagueId },
+          select: { id: true, sleeperId: true, teamName: true },
+        });
+        const rosterMap = new Map(rosters.map(r => [r.sleeperId, r.teamName]));
+
+        return NextResponse.json({
+          sleeperPicks: sleeperPicks.map(p => ({
+            season: p.season,
+            round: p.round,
+            originalOwner: rosterMap.get(String(p.owner_id)) || String(p.owner_id),
+            currentOwner: rosterMap.get(String(p.roster_id)) || String(p.roster_id),
+            raw: { owner_id: p.owner_id, roster_id: p.roster_id, previous_owner_id: p.previous_owner_id },
+          })),
+          dbPicks: dbPicks.map(p => ({
+            season: p.season,
+            round: p.round,
+            originalOwner: rosterMap.get(p.originalOwnerId) || p.originalOwnerId,
+            currentOwner: rosterMap.get(p.currentOwnerId) || p.currentOwnerId,
+          })),
+          rosters: rosters.map(r => ({ sleeperId: r.sleeperId, teamName: r.teamName })),
+          summary: {
+            sleeperCount: sleeperPicks.length,
+            dbCount: dbPicks.length,
+          },
+        });
+      }
+
       default:
         return NextResponse.json(
-          { error: "Invalid action. Use 'league', 'user-leagues', 'quick', 'populate-keepers', 'recalculate-keeper-years', or 'debug-keepers'" },
+          { error: "Invalid action. Use 'league', 'user-leagues', 'quick', 'populate-keepers', 'recalculate-keeper-years', 'sync-traded-picks', 'debug-traded-picks', or 'debug-keepers'" },
           { status: 400 }
         );
     }
