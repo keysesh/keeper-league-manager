@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef, ReactNode } from "react";
+import { X, AlertTriangle, AlertCircle, Info } from "lucide-react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -8,9 +9,7 @@ interface ModalProps {
   title?: string;
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
-  /** Optional ID for accessibility labeling */
   labelledBy?: string;
-  /** Optional ID for accessibility description */
   describedBy?: string;
 }
 
@@ -41,7 +40,6 @@ export function Modal({
     [onClose]
   );
 
-  // Focus trap - keep focus within modal
   const handleTabKey = useCallback((e: KeyboardEvent) => {
     if (e.key !== "Tab" || !dialogRef.current) return;
 
@@ -62,12 +60,8 @@ export function Modal({
 
   useEffect(() => {
     if (isOpen) {
-      // Store currently focused element
       previousActiveElement.current = document.activeElement as HTMLElement;
-
-      // Focus the dialog
       dialogRef.current?.focus();
-
       document.addEventListener("keydown", handleEscape);
       document.addEventListener("keydown", handleTabKey);
       document.body.style.overflow = "hidden";
@@ -76,8 +70,6 @@ export function Modal({
       document.removeEventListener("keydown", handleEscape);
       document.removeEventListener("keydown", handleTabKey);
       document.body.style.overflow = "";
-
-      // Restore focus to previous element
       if (previousActiveElement.current) {
         previousActiveElement.current.focus();
       }
@@ -93,7 +85,7 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -106,23 +98,30 @@ export function Modal({
         aria-labelledby={titleId}
         aria-describedby={describedBy}
         tabIndex={-1}
-        className={`relative bg-gray-800 rounded-lg shadow-xl w-full max-w-[calc(100vw-2rem)] sm:${sizeClasses[size]} focus:outline-none`}
+        className={`
+          relative w-full ${sizeClasses[size]} max-w-[calc(100vw-2rem)]
+          bg-gradient-to-b from-gray-800 to-gray-850
+          rounded-2xl shadow-2xl shadow-black/50
+          border border-gray-700/50
+          focus:outline-none
+          animate-in zoom-in-95 fade-in duration-200
+        `}
       >
         {title && (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-            <h3 id={titleId} className="text-lg font-semibold text-white">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/50">
+            <h3 id={titleId} className="text-lg font-semibold text-white tracking-tight">
               {title}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
               aria-label="Close dialog"
             >
-              <span aria-hidden="true">✕</span>
+              <X size={18} strokeWidth={2} />
             </button>
           </div>
         )}
-        <div className="p-4">{children}</div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   );
@@ -139,6 +138,27 @@ interface ConfirmDialogProps {
   variant?: "danger" | "warning" | "info";
 }
 
+const variantConfig = {
+  danger: {
+    icon: AlertCircle,
+    iconBg: "bg-red-500/20",
+    iconColor: "text-red-400",
+    button: "bg-red-600 hover:bg-red-500 focus-visible:ring-red-500/70",
+  },
+  warning: {
+    icon: AlertTriangle,
+    iconBg: "bg-amber-500/20",
+    iconColor: "text-amber-400",
+    button: "bg-amber-600 hover:bg-amber-500 focus-visible:ring-amber-500/70",
+  },
+  info: {
+    icon: Info,
+    iconBg: "bg-blue-500/20",
+    iconColor: "text-blue-400",
+    button: "bg-blue-600 hover:bg-blue-500 focus-visible:ring-blue-500/70",
+  },
+};
+
 export function ConfirmDialog({
   isOpen,
   onClose,
@@ -149,25 +169,31 @@ export function ConfirmDialog({
   cancelText = "Cancel",
   variant = "info",
 }: ConfirmDialogProps) {
-  const variantStyles = {
-    danger: "bg-red-600 hover:bg-red-700",
-    warning: "bg-yellow-600 hover:bg-yellow-700",
-    info: "bg-blue-600 hover:bg-blue-700",
-  };
+  const config = variantConfig[variant];
+  const Icon = config.icon;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
-      <p className="text-gray-300 mb-6">{message}</p>
-      <div className="flex justify-end gap-3">
-        <button onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-white">
-          {cancelText}
-        </button>
-        <button
-          onClick={() => { onConfirm(); onClose(); }}
-          className={`px-4 py-2 rounded-md text-white ${variantStyles[variant]}`}
-        >
-          {confirmText}
-        </button>
+    <Modal isOpen={isOpen} onClose={onClose} size="sm">
+      <div className="flex flex-col items-center text-center">
+        <div className={`flex items-center justify-center w-14 h-14 rounded-2xl ${config.iconBg} ${config.iconColor} mb-5`}>
+          <Icon size={28} strokeWidth={1.5} />
+        </div>
+        <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+        <p className="text-gray-400 text-sm mb-8 max-w-xs">{message}</p>
+        <div className="flex gap-3 w-full">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 rounded-xl text-sm font-medium text-gray-200 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/70"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={() => { onConfirm(); onClose(); }}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-150 focus:outline-none focus-visible:ring-2 ${config.button}`}
+          >
+            {confirmText}
+          </button>
+        </div>
       </div>
     </Modal>
   );
