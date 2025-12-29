@@ -1,338 +1,470 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
+import {
+  ArrowLeft,
+  Settings,
+  Save,
+  Shield,
+  Users,
+  Star,
+  Clock,
+  Hash,
+  Lock,
+  Unlock,
+  AlertTriangle,
+  Info,
+  TrendingUp,
+  Loader2,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 
-interface KeeperSettings {
-  maxKeepers: number;
-  maxFranchiseTags: number;
-  maxRegularKeepers: number;
-  regularKeeperMaxYears: number;
-  undraftedRound: number;
-  minimumRound: number;
-  costReductionPerYear: number;
-}
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+});
 
-interface League {
-  id: string;
-  name: string;
+interface SettingsData {
+  leagueId: string;
+  leagueName: string;
   season: number;
-  totalRosters: number;
-  draftRounds: number;
-  keeperSettings: KeeperSettings | null;
+  status: string;
+  isCommissioner: boolean;
+  commissioner: {
+    id: string;
+    name: string;
+  } | null;
+  keeperSettings: {
+    maxKeepers: number;
+    maxFranchiseTags: number;
+    maxRegularKeepers: number;
+    regularKeeperMaxYears: number;
+    undraftedRound: number;
+    minimumRound: number;
+    costReductionPerYear: number;
+  };
+  draftSettings: {
+    draftRounds: number;
+    totalRosters: number;
+  };
 }
 
 export default function SettingsPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
+  const { success, error: showError } = useToast();
 
-  const [league, setLeague] = useState<League | null>(null);
-  const [settings, setSettings] = useState<KeeperSettings>({
+  const { data, error, isLoading, mutate } = useSWR<SettingsData>(
+    `/api/leagues/${leagueId}/settings`,
+    fetcher
+  );
+
+  const [formData, setFormData] = useState({
     maxKeepers: 7,
     maxFranchiseTags: 2,
     maxRegularKeepers: 5,
     regularKeeperMaxYears: 2,
-    undraftedRound: 10,
+    undraftedRound: 8,
     minimumRound: 1,
     costReductionPerYear: 1,
   });
-  const [loading, setLoading] = useState(true);
+
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [lockingKeepers, setLockingKeepers] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    fetchLeague();
-  }, [leagueId]);
-
-  const fetchLeague = async () => {
-    try {
-      const res = await fetch(`/api/leagues/${leagueId}`);
-      if (!res.ok) throw new Error("Failed to fetch league");
-      const data = await res.json();
-      setLeague(data);
-      if (data.keeperSettings) {
-        setSettings(data.keeperSettings);
-      }
-    } catch {
-      setError("Failed to load league settings");
-    } finally {
-      setLoading(false);
+    if (data?.keeperSettings) {
+      setFormData(data.keeperSettings);
     }
+  }, [data]);
+
+  useEffect(() => {
+    if (data?.keeperSettings) {
+      const changed = Object.keys(formData).some(
+        (key) => formData[key as keyof typeof formData] !== data.keeperSettings[key as keyof typeof data.keeperSettings]
+      );
+      setHasChanges(changed);
+    }
+  }, [formData, data]);
+
+  const handleChange = (field: keyof typeof formData, value: number) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    setError("");
-    setSuccess("");
+    if (!data?.isCommissioner) return;
 
+    // Validate
+    if (formData.maxFranchiseTags + formData.maxRegularKeepers > formData.maxKeepers) {
+      showError("Franchise tags + regular keepers cannot exceed max keepers");
+      return;
+    }
+
+    setSaving(true);
     try {
-      const res = await fetch(`/api/leagues/${leagueId}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/leagues/${leagueId}/settings`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keeperSettings: settings }),
+        body: JSON.stringify({ keeperSettings: formData }),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save settings");
+        const err = await res.json();
+        throw new Error(err.error || "Failed to save");
       }
 
-      setSuccess("Settings saved successfully!");
-      setTimeout(() => setSuccess(""), 3000);
+      mutate();
+      success("Settings saved successfully");
+      setHasChanges(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save settings");
+      showError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
     }
   };
 
-  const updateSetting = (key: keyof KeeperSettings, value: number) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+  const handleLockKeepers = async (lock: boolean) => {
+    if (!data?.isCommissioner) return;
+
+    setLockingKeepers(true);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: lock ? "lock" : "unlock" }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update keepers");
+      }
+
+      const result = await res.json();
+      success(result.message);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Failed to update keepers");
+    } finally {
+      setLockingKeepers(false);
+    }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-2 border-purple-500 border-t-transparent" />
-          <p className="text-gray-500 font-medium">Loading settings...</p>
-        </div>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
-  if (!league) {
+  if (error || !data) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto p-6">
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-          <p className="text-red-400 font-medium">League not found</p>
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <p className="text-red-400 font-medium">Failed to load settings</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div>
-        <Link
-          href={`/league/${leagueId}`}
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
-        >
-          <span>&larr;</span>
-          <span>Back to League</span>
-        </Link>
-        <h1 className="text-4xl font-extrabold text-white tracking-tight">League Settings</h1>
-        <p className="text-gray-500 mt-2 text-lg">
-          {league.name} &bull; <span className="text-purple-400">{league.season}</span> Season
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <Link
+            href={`/league/${leagueId}`}
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-3 transition-colors group"
+          >
+            <ArrowLeft size={16} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to League</span>
+          </Link>
+          <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+            <Settings size={28} className="text-gray-500" />
+            League Settings
+          </h1>
+          <p className="text-gray-500 mt-1">{data.leagueName} - {data.season} Season</p>
+        </div>
+
+        {data.isCommissioner && hasChanges && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold rounded-xl transition-all disabled:opacity-50"
+          >
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        )}
       </div>
 
-      {/* Messages */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
-              <span className="text-red-400 text-lg">!</span>
-            </div>
-            <p className="text-red-400 font-medium">{error}</p>
+      {/* Commissioner Info */}
+      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl p-5 border border-gray-700/40">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/20">
+            <Shield size={20} className="text-purple-400" />
           </div>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <span className="text-green-400 text-lg">&#10003;</span>
-            </div>
-            <p className="text-green-400 font-medium">{success}</p>
+          <div>
+            <p className="text-sm text-gray-400">Commissioner</p>
+            <p className="text-white font-medium">{data.commissioner?.name || "Not assigned"}</p>
           </div>
+          {data.isCommissioner && (
+            <span className="ml-auto px-3 py-1 bg-purple-500/20 text-purple-400 text-xs font-medium rounded-lg">
+              You
+            </span>
+          )}
         </div>
-      )}
+        {!data.isCommissioner && (
+          <div className="mt-4 flex items-center gap-2 text-amber-400 text-sm">
+            <Info size={16} />
+            <span>Only the commissioner can modify settings</span>
+          </div>
+        )}
+      </div>
 
-      {/* Keeper Limits */}
-      <div className="card-premium rounded-2xl p-6">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <span className="w-1 h-5 bg-purple-500 rounded-full"></span>
-          Keeper Limits
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <SettingInput
-            label="Max Total Keepers"
-            description="Maximum keepers each team can have"
-            value={settings.maxKeepers}
-            onChange={(v) => updateSetting("maxKeepers", v)}
+      {/* Keeper Settings */}
+      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700/40">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Star size={20} className="text-amber-400" />
+            Keeper Rules
+          </h2>
+        </div>
+
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SettingField
+            label="Maximum Keepers"
+            description="Total keepers allowed per team"
+            icon={<Users size={18} />}
+            value={formData.maxKeepers}
+            onChange={(v) => handleChange("maxKeepers", v)}
             min={1}
-            max={15}
+            max={20}
+            disabled={!data.isCommissioner}
           />
-          <SettingInput
-            label="Max Franchise Tags"
-            description="Maximum franchise-tagged players"
-            value={settings.maxFranchiseTags}
-            onChange={(v) => updateSetting("maxFranchiseTags", v)}
+
+          <SettingField
+            label="Franchise Tags"
+            description="Max franchise tags per team"
+            icon={<Star size={18} />}
+            value={formData.maxFranchiseTags}
+            onChange={(v) => handleChange("maxFranchiseTags", v)}
             min={0}
             max={5}
+            disabled={!data.isCommissioner}
           />
-          <SettingInput
-            label="Max Regular Keepers"
-            description="Maximum regular keepers (non-franchise)"
-            value={settings.maxRegularKeepers}
-            onChange={(v) => updateSetting("maxRegularKeepers", v)}
-            min={0}
-            max={15}
-          />
-        </div>
-      </div>
 
-      {/* Keeper Rules */}
-      <div className="card-premium rounded-2xl p-6">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
-          Keeper Rules
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <SettingInput
-            label="Regular Keeper Max Years"
-            description="How many consecutive years a regular keeper can be kept"
-            value={settings.regularKeeperMaxYears}
-            onChange={(v) => updateSetting("regularKeeperMaxYears", v)}
+          <SettingField
+            label="Regular Keepers"
+            description="Max regular keepers per team"
+            icon={<Users size={18} />}
+            value={formData.maxRegularKeepers}
+            onChange={(v) => handleChange("maxRegularKeepers", v)}
+            min={0}
+            max={20}
+            disabled={!data.isCommissioner}
+          />
+
+          <SettingField
+            label="Max Years"
+            description="Years a player can be kept (regular)"
+            icon={<Clock size={18} />}
+            value={formData.regularKeeperMaxYears}
+            onChange={(v) => handleChange("regularKeeperMaxYears", v)}
             min={1}
             max={10}
+            disabled={!data.isCommissioner}
           />
-          <SettingInput
-            label="Cost Reduction Per Year"
-            description="How many rounds earlier the keeper costs each year"
-            value={settings.costReductionPerYear}
-            onChange={(v) => updateSetting("costReductionPerYear", v)}
-            min={0}
-            max={3}
-          />
-        </div>
-      </div>
 
-      {/* Draft Cost Settings */}
-      <div className="card-premium rounded-2xl p-6">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <span className="w-1 h-5 bg-green-500 rounded-full"></span>
-          Draft Cost Settings
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <SettingInput
-            label="Undrafted Player Round"
-            description="Default round for waiver/FA pickups"
-            value={settings.undraftedRound}
-            onChange={(v) => updateSetting("undraftedRound", v)}
+          <SettingField
+            label="Undrafted Round"
+            description="Cost for undrafted players"
+            icon={<Hash size={18} />}
+            value={formData.undraftedRound}
+            onChange={(v) => handleChange("undraftedRound", v)}
             min={1}
-            max={16}
+            max={20}
+            suffix="Round"
+            disabled={!data.isCommissioner}
           />
-          <SettingInput
+
+          <SettingField
             label="Minimum Round"
-            description="Earliest round a keeper can cost (usually 1)"
-            value={settings.minimumRound}
-            onChange={(v) => updateSetting("minimumRound", v)}
+            description="Lowest round cost possible"
+            icon={<Hash size={18} />}
+            value={formData.minimumRound}
+            onChange={(v) => handleChange("minimumRound", v)}
             min={1}
             max={5}
+            suffix="Round"
+            disabled={!data.isCommissioner}
           />
+
+          <SettingField
+            label="Cost Reduction"
+            description="Rounds improved per year kept"
+            icon={<TrendingUp size={18} />}
+            value={formData.costReductionPerYear}
+            onChange={(v) => handleChange("costReductionPerYear", v)}
+            min={0}
+            max={3}
+            suffix="per year"
+            disabled={!data.isCommissioner}
+          />
+        </div>
+
+        {/* Validation Warning */}
+        {formData.maxFranchiseTags + formData.maxRegularKeepers > formData.maxKeepers && (
+          <div className="mx-6 mb-6 flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            <AlertTriangle size={16} />
+            <span>Franchise tags ({formData.maxFranchiseTags}) + regular keepers ({formData.maxRegularKeepers}) cannot exceed max keepers ({formData.maxKeepers})</span>
+          </div>
+        )}
+      </div>
+
+      {/* Draft Info */}
+      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700/40">
+          <h2 className="text-lg font-semibold text-white">Draft Settings</h2>
+          <p className="text-gray-500 text-sm mt-1">Synced from Sleeper</p>
+        </div>
+
+        <div className="p-6 grid grid-cols-2 gap-6">
+          <div>
+            <p className="text-gray-400 text-sm">Draft Rounds</p>
+            <p className="text-white text-2xl font-bold mt-1">{data.draftSettings.draftRounds}</p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-sm">Total Teams</p>
+            <p className="text-white text-2xl font-bold mt-1">{data.draftSettings.totalRosters}</p>
+          </div>
         </div>
       </div>
 
       {/* Rules Summary */}
-      <div className="card-premium rounded-2xl p-6">
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <span className="w-1 h-5 bg-amber-500 rounded-full"></span>
-          Rules Summary
-        </h2>
-        <div className="space-y-4">
+      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700/40">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Info size={20} className="text-blue-400" />
+            Rules Summary
+          </h2>
+        </div>
+
+        <div className="p-6 space-y-3">
           <RuleSummaryItem
-            icon="&#128101;"
-            text={`Each team can keep up to ${settings.maxKeepers} players total`}
+            icon={<Users size={16} className="text-gray-400" />}
+            text={`Each team can keep up to ${formData.maxKeepers} players total`}
           />
           <RuleSummaryItem
-            icon="&#11088;"
-            text={`Up to ${settings.maxFranchiseTags} can be franchise tags (cost Round 1, no year limit)`}
-            highlight="franchise"
+            icon={<Star size={16} className="text-amber-400" />}
+            text={`Up to ${formData.maxFranchiseTags} can be franchise tags (Round 1, no year limit)`}
           />
           <RuleSummaryItem
-            icon="&#128100;"
-            text={`Up to ${settings.maxRegularKeepers} can be regular keepers (max ${settings.regularKeeperMaxYears} consecutive years)`}
-            highlight="keeper"
+            icon={<Clock size={16} className="text-purple-400" />}
+            text={`Regular keepers can be kept max ${formData.regularKeeperMaxYears} consecutive years`}
           />
           <RuleSummaryItem
-            icon="&#128200;"
-            text={`Drafted players cost their draft round minus ${settings.costReductionPerYear} per year (minimum Round ${settings.minimumRound})`}
+            icon={<TrendingUp size={16} className="text-emerald-400" />}
+            text={`Keeper cost improves ${formData.costReductionPerYear} round per year (min Round ${formData.minimumRound})`}
           />
           <RuleSummaryItem
-            icon="&#128203;"
-            text={`Waiver/FA pickups cost Round ${settings.undraftedRound}`}
-          />
-          <RuleSummaryItem
-            icon="&#8644;"
-            text="Traded players inherit their original acquisition cost"
+            icon={<Hash size={16} className="text-blue-400" />}
+            text={`Waiver/FA pickups cost Round ${formData.undraftedRound}`}
           />
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end pt-4">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-white font-bold text-lg transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/40 hover:scale-[1.02] flex items-center gap-2"
-        >
-          {saving ? (
-            <>
-              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Saving...
-            </>
-          ) : (
-            "Save Settings"
-          )}
-        </button>
-      </div>
+      {/* Commissioner Actions */}
+      {data.isCommissioner && (
+        <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-700/40">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Shield size={20} className="text-purple-400" />
+              Commissioner Actions
+            </h2>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-900/50 rounded-xl border border-gray-700/30">
+              <div>
+                <p className="text-white font-medium">Lock All Keepers</p>
+                <p className="text-gray-500 text-sm mt-1">Prevent changes to keeper selections league-wide</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleLockKeepers(true)}
+                  disabled={lockingKeepers}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <Lock size={16} />
+                  Lock
+                </button>
+                <button
+                  onClick={() => handleLockKeepers(false)}
+                  disabled={lockingKeepers}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <Unlock size={16} />
+                  Unlock
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function SettingInput({
+function SettingField({
   label,
   description,
+  icon,
   value,
   onChange,
   min,
   max,
+  suffix,
+  disabled,
 }: {
   label: string;
   description: string;
+  icon: React.ReactNode;
   value: number;
   onChange: (value: number) => void;
   min: number;
   max: number;
+  suffix?: string;
+  disabled?: boolean;
 }) {
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-semibold text-white">
-        {label}
-      </label>
-      <p className="text-xs text-gray-500">{description}</p>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => {
-          const v = parseInt(e.target.value);
-          if (!isNaN(v) && v >= min && v <= max) {
-            onChange(v);
-          }
-        }}
-        min={min}
-        max={max}
-        className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
-      />
+    <div className={`space-y-2 ${disabled ? "opacity-60" : ""}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-gray-400">{icon}</span>
+        <label className="text-white font-medium">{label}</label>
+      </div>
+      <p className="text-gray-500 text-xs">{description}</p>
+      <div className="flex items-center gap-3">
+        <input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Math.max(min, Math.min(max, parseInt(e.target.value) || min)))}
+          min={min}
+          max={max}
+          disabled={disabled}
+          className="w-24 px-3 py-2 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-center font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 disabled:cursor-not-allowed"
+        />
+        {suffix && <span className="text-gray-500 text-sm">{suffix}</span>}
+      </div>
     </div>
   );
 }
@@ -340,32 +472,14 @@ function SettingInput({
 function RuleSummaryItem({
   icon,
   text,
-  highlight,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   text: string;
-  highlight?: "franchise" | "keeper";
 }) {
   return (
-    <div className="flex items-start gap-4 p-4 rounded-xl bg-gray-800/30">
-      <span className="text-xl">{icon}</span>
-      <p className="text-gray-300 leading-relaxed">
-        {highlight === "franchise" ? (
-          <span>
-            {text.split("franchise tags")[0]}
-            <span className="badge-franchise mx-1">FT</span>
-            {text.split("franchise tags")[1]}
-          </span>
-        ) : highlight === "keeper" ? (
-          <span>
-            {text.split("regular keepers")[0]}
-            <span className="badge-keeper mx-1">K</span>
-            {text.split("regular keepers")[1]}
-          </span>
-        ) : (
-          text
-        )}
-      </p>
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-900/30">
+      <span className="mt-0.5">{icon}</span>
+      <p className="text-gray-300 text-sm leading-relaxed">{text}</p>
     </div>
   );
 }

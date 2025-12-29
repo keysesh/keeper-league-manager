@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { getCurrentSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 
 interface RouteParams {
@@ -159,6 +159,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { error: "rosterId, playerId, and type are required" },
         { status: 400 }
       );
+    }
+
+    // Check keeper deadline - only commissioners can bypass
+    const deadlineInfo = getKeeperDeadlineInfo();
+    if (!deadlineInfo.isActive) {
+      // Check if user is commissioner
+      const league = await prisma.league.findUnique({
+        where: { id: leagueId },
+        select: { commissionerId: true },
+      });
+
+      if (league?.commissionerId !== session.user.id) {
+        return NextResponse.json(
+          {
+            error: "Keeper deadline has passed",
+            message: deadlineInfo.message,
+            deadlinePassed: true
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // OPTIMIZED: Single query to get roster, league settings, existing keepers, and player
@@ -322,6 +343,27 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         { error: "keeperId is required" },
         { status: 400 }
       );
+    }
+
+    // Check keeper deadline - only commissioners can bypass
+    const deadlineInfo = getKeeperDeadlineInfo();
+    if (!deadlineInfo.isActive) {
+      // Check if user is commissioner
+      const league = await prisma.league.findUnique({
+        where: { id: leagueId },
+        select: { commissionerId: true },
+      });
+
+      if (league?.commissionerId !== session.user.id) {
+        return NextResponse.json(
+          {
+            error: "Keeper deadline has passed",
+            message: deadlineInfo.message,
+            deadlinePassed: true
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Get keeper and verify ownership in single query

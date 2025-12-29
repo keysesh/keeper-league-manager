@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { CacheControls } from "@/components/admin/CacheControls";
+import { Database, Server, HardDrive, RefreshCw } from "lucide-react";
 
 async function getSystemStats() {
   const [playerCount, userCount, leagueCount, keeperCount, rosterCount] = await Promise.all([
@@ -63,22 +65,54 @@ export default async function AdminSystemPage() {
         </div>
       </div>
 
-      <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Environment</h2>
-        <div className="space-y-2 font-mono text-sm">
-          <div className="flex">
-            <span className="text-gray-500 w-40">NODE_ENV</span>
-            <span className="text-green-400">{process.env.NODE_ENV}</span>
-          </div>
-          <div className="flex">
-            <span className="text-gray-500 w-40">Database</span>
-            <span className="text-green-400">PostgreSQL (Railway)</span>
-          </div>
-          <div className="flex">
-            <span className="text-gray-500 w-40">Runtime</span>
-            <span className="text-green-400">Next.js Edge/Node</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Environment</h2>
+          <div className="space-y-2 font-mono text-sm">
+            <div className="flex">
+              <span className="text-gray-500 w-40">NODE_ENV</span>
+              <span className="text-green-400">{process.env.NODE_ENV}</span>
+            </div>
+            <div className="flex">
+              <span className="text-gray-500 w-40">Database</span>
+              <span className="text-green-400">PostgreSQL (Railway)</span>
+            </div>
+            <div className="flex">
+              <span className="text-gray-500 w-40">Runtime</span>
+              <span className="text-green-400">Next.js Edge/Node</span>
+            </div>
           </div>
         </div>
+
+        <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <HardDrive className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-semibold text-white">Memory Cache</h2>
+          </div>
+          <CacheControls />
+        </div>
+      </div>
+
+      <div className="bg-gray-900 rounded-lg border border-gray-800 p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Performance Tips</h2>
+        <ul className="space-y-2 text-gray-400 text-sm">
+          <li className="flex items-start gap-2">
+            <span className="text-amber-400 mt-1">•</span>
+            <span>Server-side caching reduces database load for frequently accessed data</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-amber-400 mt-1">•</span>
+            <span>Client-side React Query caching minimizes redundant API requests</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-amber-400 mt-1">•</span>
+            <span>Clear cache after major data changes to ensure fresh data</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-amber-400 mt-1">•</span>
+            <span>Cache automatically expires based on TTL settings (1-15 minutes depending on data type)</span>
+          </li>
+        </ul>
       </div>
     </div>
   );

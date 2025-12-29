@@ -1,11 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, LayoutGrid, List, Users, TrendingUp, ArrowLeftRight, Trophy } from "lucide-react";
+import {
+  ArrowLeft,
+  LayoutGrid,
+  List,
+  Users,
+  TrendingUp,
+  ArrowLeftRight,
+  Trophy,
+  Clock,
+  Lock,
+  Unlock,
+  Download,
+  RefreshCw,
+  Star,
+  AlertTriangle,
+  ChevronDown,
+  Filter,
+  FlaskConical,
+} from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getKeeperDeadlineInfo, getCurrentSeason } from "@/lib/constants/keeper-rules";
 
 const TEAM_COLORS = [
   { bg: "bg-rose-500", bgMuted: "bg-rose-500/20", border: "border-rose-500", text: "text-rose-300", accent: "text-rose-400" },
@@ -26,6 +45,20 @@ function getTeamColor(index: number) {
   return TEAM_COLORS[index % TEAM_COLORS.length];
 }
 
+interface KeeperResult {
+  playerId: string;
+  playerName: string;
+  position: string | null;
+  team: string | null;
+  baseCost: number;
+  finalCost: number;
+  cascaded: boolean;
+  cascadeReason: string | null;
+  yearsKept?: number;
+  keeperType?: "FRANCHISE" | "REGULAR";
+  isLocked?: boolean;
+}
+
 interface DraftSlot {
   rosterId: string;
   rosterName: string | null;
@@ -34,8 +67,18 @@ interface DraftSlot {
     playerId: string;
     playerName: string;
     position: string | null;
+    yearsKept?: number;
+    keeperType?: string;
   };
   tradedTo?: string;
+}
+
+interface CascadeResult {
+  rosterId: string;
+  rosterName: string | null;
+  results: KeeperResult[];
+  tradedAwayPicks: number[];
+  acquiredPicks: Array<{ round: number; fromRosterId: string }>;
 }
 
 interface DraftBoardData {
@@ -43,22 +86,7 @@ interface DraftBoardData {
   leagueId: string;
   totalRosters: number;
   draftRounds: number;
-  cascade: Array<{
-    rosterId: string;
-    rosterName: string | null;
-    results: Array<{
-      playerId: string;
-      playerName: string;
-      position: string | null;
-      team: string | null;
-      baseCost: number;
-      finalCost: number;
-      cascaded: boolean;
-      cascadeReason: string | null;
-    }>;
-    tradedAwayPicks: number[];
-    acquiredPicks: Array<{ round: number; fromRosterId: string }>;
-  }>;
+  cascade: CascadeResult[];
   draftBoard: Array<{
     round: number;
     slots: DraftSlot[];
@@ -87,22 +115,56 @@ export default function DraftBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filterPosition, setFilterPosition] = useState<string | null>(null);
+  const [showProjections, setShowProjections] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [leagueId]);
+  const deadlineInfo = getKeeperDeadlineInfo();
+  const currentSeason = getCurrentSeason();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsRefreshing(true);
     try {
       const res = await fetch(`/api/leagues/${leagueId}/keepers/cascade`);
       if (!res.ok) throw new Error("Failed to fetch draft board");
       const result = await res.json();
       setData(result);
+      setLastUpdated(new Date());
+      setError("");
     } catch {
       setError("Failed to load draft board");
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  }, [leagueId]);
+
+  useEffect(() => {
+    fetchData();
+
+    // Set up polling for real-time updates (every 30 seconds)
+    pollIntervalRef.current = setInterval(() => {
+      fetchData(false);
+    }, 30000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [fetchData]);
+
+  const handleExport = async (format: "png" | "pdf") => {
+    // For now, just trigger print for PDF
+    if (format === "pdf") {
+      window.print();
+      return;
+    }
+
+    // PNG export using html2canvas (would need to be added as dependency)
+    alert("PNG export coming soon! Use browser print for now.");
   };
 
   const getOverallPositionSummary = (): PositionCount => {
@@ -142,9 +204,17 @@ export default function DraftBoardPage() {
     });
   }
 
+  // Filter keepers by position if filter is active
+  const filteredCascade = data?.cascade.map(team => ({
+    ...team,
+    results: filterPosition
+      ? team.results.filter(k => k.position === filterPosition)
+      : team.results,
+  }));
+
   if (loading) {
     return (
-      <div className="max-w-full mx-auto space-y-6">
+      <div className="max-w-full mx-auto space-y-6 p-4">
         <div>
           <Skeleton className="h-4 w-24 mb-2" />
           <Skeleton className="h-10 w-48 mb-2" />
@@ -171,9 +241,18 @@ export default function DraftBoardPage() {
 
   if (error || !data) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto p-4">
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-          <p className="text-red-400 font-medium">{error || "Failed to load data"}</p>
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <p className="text-red-400 font-medium">{error || "Failed to load data"}</p>
+          </div>
+          <button
+            onClick={() => fetchData()}
+            className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -182,9 +261,9 @@ export default function DraftBoardPage() {
   const rosters = data.draftBoard[0]?.slots || [];
 
   return (
-    <div className="max-w-full mx-auto space-y-6">
+    <div className="max-w-full mx-auto space-y-6 p-4">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div>
           <Link
             href={`/league/${leagueId}`}
@@ -194,36 +273,108 @@ export default function DraftBoardPage() {
             <span>Back to League</span>
           </Link>
           <h1 className="text-3xl font-bold text-white tracking-tight">Draft Board</h1>
-          <p className="text-gray-500 mt-1">{data.season} Season</p>
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-gray-500">{data.season} Season</span>
+            <span className="text-gray-700">•</span>
+            {/* Keeper Status Badge */}
+            <div
+              className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-medium ${
+                deadlineInfo.isActive
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                  : "bg-red-500/10 text-red-400 border border-red-500/20"
+              }`}
+            >
+              {deadlineInfo.isActive ? (
+                <>
+                  <Unlock size={12} />
+                  Keepers Open
+                </>
+              ) : (
+                <>
+                  <Lock size={12} />
+                  Keepers Locked
+                </>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-              viewMode === "grid"
-                ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600"
-            }`}
+
+        {/* Controls */}
+        <div className="flex flex-wrap gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex rounded-xl overflow-hidden border border-gray-700/50">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all ${
+                viewMode === "grid"
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "bg-gray-800/50 text-gray-400 hover:text-white"
+              }`}
+            >
+              <LayoutGrid size={16} strokeWidth={2} />
+              <span className="hidden sm:inline">Grid</span>
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all ${
+                viewMode === "list"
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "bg-gray-800/50 text-gray-400 hover:text-white"
+              }`}
+            >
+              <List size={16} strokeWidth={2} />
+              <span className="hidden sm:inline">By Team</span>
+            </button>
+          </div>
+
+          {/* Simulation Link */}
+          <Link
+            href={`/league/${leagueId}/simulation`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-500/50 text-sm font-medium transition-all"
           >
-            <LayoutGrid size={16} strokeWidth={2} />
-            Grid
-          </button>
+            <FlaskConical size={16} strokeWidth={2} />
+            <span className="hidden sm:inline">Simulate</span>
+          </Link>
+
+          {/* Refresh Button */}
           <button
-            onClick={() => setViewMode("list")}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-              viewMode === "list"
-                ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600"
-            }`}
+            onClick={() => fetchData()}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600 text-sm font-medium transition-all disabled:opacity-50"
           >
-            <List size={16} strokeWidth={2} />
-            By Team
+            <RefreshCw size={16} strokeWidth={2} className={isRefreshing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
+
+          {/* Export Button */}
+          <div className="relative group">
+            <button
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600 text-sm font-medium transition-all"
+            >
+              <Download size={16} strokeWidth={2} />
+              <span className="hidden sm:inline">Export</span>
+              <ChevronDown size={14} />
+            </button>
+            <div className="absolute right-0 mt-2 w-40 bg-gray-800 border border-gray-700 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <button
+                onClick={() => handleExport("pdf")}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 rounded-t-xl"
+              >
+                Export as PDF
+              </button>
+              <button
+                onClick={() => handleExport("png")}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 rounded-b-xl"
+              >
+                Export as PNG
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={<Trophy size={20} strokeWidth={2} />}
           value={data.summary.totalKeepers}
@@ -248,6 +399,13 @@ export default function DraftBoardPage() {
           label="Teams"
           color="emerald"
         />
+        <StatCard
+          icon={<Clock size={20} strokeWidth={2} />}
+          value={lastUpdated ? lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--"}
+          label="Last Updated"
+          color="purple"
+          isText
+        />
       </div>
 
       {/* Team Color Legend */}
@@ -262,7 +420,7 @@ export default function DraftBoardPage() {
                 key={roster.rosterId}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-900/50 border border-gray-700/30"
               >
-                <div className={`w-3 h-3 rounded-full ${color.bg} shadow-lg`} style={{ boxShadow: `0 0 8px ${color.bg.replace('bg-', '').replace('-500', '')}` }} />
+                <div className={`w-3 h-3 rounded-full ${color.bg} shadow-lg`} />
                 <span className="text-gray-200 text-sm font-medium truncate max-w-[100px]">
                   {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
                 </span>
@@ -273,16 +431,37 @@ export default function DraftBoardPage() {
         </div>
       </div>
 
-      {/* Position Summary */}
+      {/* Position Summary & Filter */}
       <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl p-5 border border-gray-700/40">
-        <div className="flex items-center gap-6 flex-wrap">
-          <span className="text-gray-500 text-sm font-medium">Keepers by Position:</span>
-          <div className="flex gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-gray-500" />
+            <span className="text-gray-500 text-sm font-medium">Filter by Position:</span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setFilterPosition(null)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filterPosition === null
+                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                  : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50"
+              }`}
+            >
+              All ({data.summary.totalKeepers})
+            </button>
             {(["QB", "RB", "WR", "TE"] as const).map((pos) => (
-              <div key={pos} className="flex items-center gap-2">
+              <button
+                key={pos}
+                onClick={() => setFilterPosition(filterPosition === pos ? null : pos)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  filterPosition === pos
+                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                    : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50"
+                }`}
+              >
                 <PositionBadge position={pos} size="xs" />
-                <span className="text-white font-semibold">{overallPositions[pos]}</span>
-              </div>
+                <span>{overallPositions[pos]}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -290,7 +469,7 @@ export default function DraftBoardPage() {
 
       {viewMode === "grid" ? (
         /* Grid View - Clean Table */
-        <div className="bg-gradient-to-b from-gray-900/60 to-gray-900/40 rounded-2xl border border-gray-700/40 overflow-hidden">
+        <div className="bg-gradient-to-b from-gray-900/60 to-gray-900/40 rounded-2xl border border-gray-700/40 overflow-hidden print:bg-white print:text-black">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -327,13 +506,18 @@ export default function DraftBoardPage() {
                     </td>
                     {row.slots.map((slot, slotIndex) => {
                       const columnColor = getTeamColor(slotIndex);
+                      // Check if keeper should be shown based on filter
+                      const keeper = slot.keeper;
+                      const shouldShow = !filterPosition || (keeper?.position === filterPosition);
+
                       return (
                         <td key={slot.rosterId} className="px-1 py-1.5">
                           <DraftCell
-                            slot={slot}
+                            slot={shouldShow ? slot : { ...slot, status: slot.status === "keeper" ? "available" : slot.status, keeper: undefined }}
                             columnColor={columnColor}
                             teamInfoMap={teamInfoMap}
                             teamNameToInfo={teamNameToInfo}
+                            showProjections={showProjections}
                           />
                         </td>
                       );
@@ -347,7 +531,7 @@ export default function DraftBoardPage() {
       ) : (
         /* List View - By Team */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.cascade.map((team, index) => {
+          {(filteredCascade || data.cascade).map((team, index) => {
             const color = getTeamColor(index);
             return (
               <div
@@ -381,10 +565,20 @@ export default function DraftBoardPage() {
                             className="flex items-center justify-between bg-gray-900/50 rounded-xl px-4 py-3 border border-gray-700/30"
                           >
                             <div className="flex items-center gap-3 min-w-0">
+                              {keeper.keeperType === "FRANCHISE" && (
+                                <Star size={14} className="text-amber-400 shrink-0" />
+                              )}
                               <PositionBadge position={keeper.position} size="xs" />
-                              <span className="text-white text-sm font-medium truncate">
-                                {keeper.playerName}
-                              </span>
+                              <div className="min-w-0">
+                                <span className="text-white text-sm font-medium truncate block">
+                                  {keeper.playerName}
+                                </span>
+                                {keeper.yearsKept && (
+                                  <span className="text-gray-500 text-xs">
+                                    Year {keeper.yearsKept}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {keeper.cascaded ? (
@@ -395,24 +589,30 @@ export default function DraftBoardPage() {
                               ) : (
                                 <span className="text-white text-sm font-bold">R{keeper.finalCost}</span>
                               )}
+                              {keeper.isLocked && <Lock size={12} className="text-gray-500" />}
                             </div>
                           </div>
                         ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm text-center py-6">No keepers selected</p>
+                    <div className="text-center py-8">
+                      <Users size={24} className="mx-auto text-gray-600 mb-2" />
+                      <p className="text-gray-500 text-sm">No keepers selected</p>
+                    </div>
                   )}
 
                   {/* Traded Picks */}
                   {(team.tradedAwayPicks.length > 0 || team.acquiredPicks.length > 0) && (
                     <div className="mt-4 pt-4 border-t border-gray-700/40 space-y-1.5">
                       {team.tradedAwayPicks.length > 0 && (
-                        <p className="text-red-400/80 text-xs font-medium">
+                        <p className="text-red-400/80 text-xs font-medium flex items-center gap-2">
+                          <ArrowLeftRight size={12} />
                           Traded away: R{team.tradedAwayPicks.join(", R")}
                         </p>
                       )}
                       {team.acquiredPicks.length > 0 && (
-                        <p className="text-emerald-400/80 text-xs font-medium">
+                        <p className="text-emerald-400/80 text-xs font-medium flex items-center gap-2">
+                          <ArrowLeftRight size={12} />
                           Acquired: R{team.acquiredPicks.map((p) => p.round).join(", R")}
                         </p>
                       )}
@@ -426,18 +626,26 @@ export default function DraftBoardPage() {
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-6 text-sm text-gray-400">
+      <div className="flex flex-wrap items-center gap-6 text-sm text-gray-400">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40" />
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+            <Trophy size={12} className="text-emerald-400" />
+          </div>
           <span>Keeper</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg border-2 border-dashed border-sky-500/50 bg-sky-500/10" />
+          <div className="w-7 h-7 rounded-lg border-2 border-dashed border-sky-500/50 bg-sky-500/10 flex items-center justify-center">
+            <ArrowLeftRight size={12} className="text-sky-400" />
+          </div>
           <span>Traded Pick</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-gray-800/30 border border-gray-700/40" />
           <span>Available</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Star size={14} className="text-amber-400" />
+          <span>Franchise Tag</span>
         </div>
       </div>
     </div>
@@ -449,17 +657,20 @@ function StatCard({
   value,
   label,
   color,
+  isText = false,
 }: {
   icon: React.ReactNode;
-  value: number;
+  value: number | string;
   label: string;
-  color: "white" | "amber" | "blue" | "emerald";
+  color: "white" | "amber" | "blue" | "emerald" | "purple";
+  isText?: boolean;
 }) {
   const colorClasses = {
     white: { bg: "from-gray-700/30 to-gray-800/30", border: "border-gray-600/30", text: "text-white", icon: "bg-gray-700/50 text-gray-300" },
     amber: { bg: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/20", text: "text-amber-400", icon: "bg-amber-500/20 text-amber-400" },
     blue: { bg: "from-blue-500/20 to-blue-500/5", border: "border-blue-500/20", text: "text-blue-400", icon: "bg-blue-500/20 text-blue-400" },
     emerald: { bg: "from-emerald-500/20 to-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-400", icon: "bg-emerald-500/20 text-emerald-400" },
+    purple: { bg: "from-purple-500/20 to-purple-500/5", border: "border-purple-500/20", text: "text-purple-400", icon: "bg-purple-500/20 text-purple-400" },
   };
 
   const styles = colorClasses[color];
@@ -471,7 +682,7 @@ function StatCard({
           {icon}
         </span>
       </div>
-      <p className={`text-3xl font-bold ${styles.text} tracking-tight`}>{value}</p>
+      <p className={`${isText ? "text-xl" : "text-3xl"} font-bold ${styles.text} tracking-tight`}>{value}</p>
       <p className="text-gray-500 text-xs mt-1 font-medium">{label}</p>
     </div>
   );
@@ -482,9 +693,10 @@ interface DraftCellProps {
   columnColor: ReturnType<typeof getTeamColor>;
   teamInfoMap: Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>;
   teamNameToInfo: Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>;
+  showProjections?: boolean;
 }
 
-function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
+function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, showProjections }: DraftCellProps) {
   if (slot.status === "traded" && slot.tradedTo) {
     let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
 
@@ -513,16 +725,24 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCell
   }
 
   if (slot.status === "keeper" && slot.keeper) {
+    const isFranchise = slot.keeper.keeperType === "FRANCHISE";
+
     return (
       <div
-        className={`${columnColor.bgMuted} border ${columnColor.border}/40 rounded-xl px-2 py-2 h-[56px] flex flex-col justify-center`}
+        className={`${columnColor.bgMuted} border ${isFranchise ? "border-amber-500/60" : columnColor.border + "/40"} rounded-xl px-2 py-2 h-[56px] flex flex-col justify-center relative`}
       >
+        {isFranchise && (
+          <Star size={10} className="absolute top-1.5 right-1.5 text-amber-400" />
+        )}
         <div className="flex items-center justify-center">
           <PositionBadge position={slot.keeper.position} size="xs" />
         </div>
         <p className={`${columnColor.text} text-[10px] font-medium truncate text-center mt-1`}>
           {slot.keeper.playerName}
         </p>
+        {showProjections && slot.keeper.yearsKept && (
+          <p className="text-gray-500 text-[8px] text-center">Yr {slot.keeper.yearsKept}</p>
+        )}
       </div>
     );
   }

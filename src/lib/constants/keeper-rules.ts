@@ -92,29 +92,40 @@ export function isDraftSeason(): boolean {
 }
 
 /**
- * Get the keeper deadline description
+ * Get the keeper deadline description and date
  */
 export function getKeeperDeadlineInfo(): {
   isActive: boolean;
   message: string;
+  deadline: Date | null;
+  deadlineLabel: string | null;
 } {
-  const month = new Date().getMonth();
+  const now = new Date();
+  const month = now.getMonth();
   const season = getCurrentSeason();
 
   if (month >= 1 && month <= 7) {
+    // Keeper deadline is typically August 31st before the season starts
+    const deadline = new Date(now.getFullYear(), 7, 31, 23, 59, 59); // August 31st
     return {
       isActive: true,
       message: `${season} Keeper selections are open`,
+      deadline,
+      deadlineLabel: "August 31st",
     };
   } else if (month >= 8 && month <= 11) {
     return {
       isActive: false,
       message: `${season} Season in progress - keepers locked`,
+      deadline: null,
+      deadlineLabel: null,
     };
   } else {
     return {
       isActive: false,
       message: `${season} Playoffs - keepers locked`,
+      deadline: null,
+      deadlineLabel: null,
     };
   }
 }

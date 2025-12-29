@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
+import { Share2, Save, FileText, Check, Copy, X } from "lucide-react";
 
 interface Player {
   id: string;
@@ -137,6 +138,14 @@ export default function TradeAnalyzerPage() {
   const [analysis, setAnalysis] = useState<TradeAnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
+  // Save/Share state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [proposalTitle, setProposalTitle] = useState("");
+  const [proposalNotes, setProposalNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedProposal, setSavedProposal] = useState<{ id: string; shareUrl: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     fetchLeagueData();
   }, [leagueId]);
@@ -263,6 +272,56 @@ export default function TradeAnalyzerPage() {
     setTeam1Picks([]);
     setTeam2Picks([]);
     setAnalysis(null);
+    setSavedProposal(null);
+  };
+
+  const saveProposal = async () => {
+    if (!team1 || !team2 || !proposalTitle.trim()) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/trade-proposals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: proposalTitle,
+          team1: {
+            rosterId: team1,
+            players: team1Players,
+            picks: team1Picks,
+          },
+          team2: {
+            rosterId: team2,
+            players: team2Players,
+            picks: team2Picks,
+          },
+          analysis: analysis ? {
+            fairnessScore: analysis.summary.fairnessScore,
+            team1NetValue: analysis.team1.netValue,
+            team2NetValue: analysis.team2.netValue,
+          } : undefined,
+          notes: proposalNotes,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to save");
+
+      const data = await res.json();
+      setSavedProposal({ id: data.proposal.id, shareUrl: data.shareUrl });
+      setShowSaveModal(false);
+    } catch {
+      setError("Failed to save proposal");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyShareLink = () => {
+    if (!savedProposal) return;
+    const fullUrl = `${window.location.origin}${savedProposal.shareUrl}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
@@ -552,26 +611,142 @@ export default function TradeAnalyzerPage() {
         </div>
       </div>
 
-      {/* Analyze Button */}
+      {/* Analyze Button & Actions */}
       {team1 && team2 && (team1Players.length > 0 || team2Players.length > 0 || team1Picks.length > 0 || team2Picks.length > 0) && (
-        <div className="flex justify-center">
-          <button
-            onClick={analyzeTrade}
-            disabled={analyzing}
-            className="px-10 py-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 rounded-xl text-white font-bold text-lg transition-all shadow-lg shadow-amber-500/30 hover:shadow-amber-500/40 hover:scale-[1.02]"
-          >
-            {analyzing ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Analyzing...
-              </span>
-            ) : (
-              "Analyze Trade"
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex gap-3">
+            <button
+              onClick={analyzeTrade}
+              disabled={analyzing}
+              className="px-10 py-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 rounded-xl text-white font-bold text-lg transition-all shadow-lg shadow-amber-500/30 hover:shadow-amber-500/40 hover:scale-[1.02]"
+            >
+              {analyzing ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Analyzing...
+                </span>
+              ) : (
+                "Analyze Trade"
+              )}
+            </button>
+
+            {analysis && (
+              <button
+                onClick={() => setShowSaveModal(true)}
+                className="px-6 py-4 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-white font-medium transition-all hover:scale-[1.02] flex items-center gap-2"
+              >
+                <Save className="w-5 h-5" />
+                Save & Share
+              </button>
             )}
-          </button>
+          </div>
+
+          {/* Saved Proposal Link */}
+          {savedProposal && (
+            <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+              <Check className="w-5 h-5 text-green-400" />
+              <span className="text-green-400 font-medium">Proposal saved!</span>
+              <button
+                onClick={copyShareLink}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-lg text-green-400 font-medium transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? "Copied!" : "Copy Link"}
+              </button>
+              <Link
+                href={savedProposal.shareUrl}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg text-gray-300 font-medium transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                View
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Save Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="card-premium rounded-2xl p-6 w-full max-w-md animate-scale-in">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Save Trade Proposal</h2>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Proposal Title *
+                </label>
+                <input
+                  type="text"
+                  value={proposalTitle}
+                  onChange={(e) => setProposalTitle(e.target.value)}
+                  placeholder="e.g., Big Trade Proposal"
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  maxLength={100}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={proposalNotes}
+                  onChange={(e) => setProposalNotes(e.target.value)}
+                  placeholder="Add context or reasoning..."
+                  rows={3}
+                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
+                  maxLength={500}
+                />
+              </div>
+
+              <div className="p-4 bg-gray-800/30 rounded-xl">
+                <p className="text-gray-400 text-sm">
+                  Saving this trade will create a shareable link that league members can vote on.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-white font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveProposal}
+                  disabled={saving || !proposalTitle.trim()}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 rounded-xl text-white font-medium transition-all flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-4 h-4" />
+                      Save & Get Link
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentSeason, isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { AcquisitionType, KeeperType } from "@prisma/client";
+import { cache, cacheKeys, cacheTTL } from "@/lib/cache";
 
 /**
  * Get the NFL season for a given date

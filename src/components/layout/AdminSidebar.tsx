@@ -9,6 +9,8 @@ import {
   Settings,
   ArrowLeft,
   Shield,
+  FileText,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import { FootballIcon } from "@/components/ui/Icons";
@@ -24,6 +26,8 @@ const navItems: NavItem[] = [
   { href: "/admin/players", label: "Players", icon: FootballIcon as unknown as LucideIcon },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/leagues", label: "Leagues", icon: Trophy },
+  { href: "/admin/errors", label: "Errors", icon: AlertTriangle },
+  { href: "/admin/audit", label: "Audit Log", icon: FileText },
   { href: "/admin/system", label: "System", icon: Settings },
 ];
 
