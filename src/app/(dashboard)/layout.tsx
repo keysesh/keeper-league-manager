@@ -17,13 +17,19 @@ export default async function DashboardLayout({
   }
 
   // Check if user has completed onboarding
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { onboardingComplete: true },
-  });
+  // Wrapped in try-catch to handle case where onboardingComplete column doesn't exist yet
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { onboardingComplete: true },
+    });
 
-  if (user && !user.onboardingComplete) {
-    redirect("/onboarding");
+    if (user && !user.onboardingComplete) {
+      redirect("/onboarding");
+    }
+  } catch {
+    // Column may not exist yet - skip onboarding check for existing users
+    console.warn("onboardingComplete field not available - skipping onboarding check");
   }
 
   return (
