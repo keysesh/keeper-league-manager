@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SeasonComparison } from "@/components/history/SeasonComparison";
+import { ArrowRightLeft, List, BarChart3 } from "lucide-react";
 
 interface KeeperHistory {
   id: string;
@@ -44,6 +46,7 @@ export default function HistoryPage() {
   const [error, setError] = useState("");
   const [selectedSeason, setSelectedSeason] = useState<number | "all">("all");
   const [selectedTeam, setSelectedTeam] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"list" | "comparison">("list");
 
   const [teams, setTeams] = useState<{ id: string; teamName: string | null }[]>([]);
 
@@ -121,23 +124,57 @@ export default function HistoryPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div>
-        <Link
-          href={`/league/${leagueId}`}
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
-        >
-          <span>&larr;</span>
-          <span>Back to League</span>
-        </Link>
-        <h1 className="text-4xl font-extrabold text-white tracking-tight">Keeper History</h1>
-        <p className="text-gray-500 mt-2 text-lg">
-          View historical keeper data and trends
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <Link
+            href={`/league/${leagueId}`}
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
+          >
+            <span>&larr;</span>
+            <span>Back to League</span>
+          </Link>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight">Keeper History</h1>
+          <p className="text-gray-500 mt-2 text-lg">
+            View historical keeper data and trends
+          </p>
+        </div>
+        <div className="flex bg-gray-800/50 rounded-xl p-1">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              viewMode === "list"
+                ? "bg-purple-500 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <List className="w-4 h-4" />
+            List View
+          </button>
+          <button
+            onClick={() => setViewMode("comparison")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              viewMode === "comparison"
+                ? "bg-purple-500 text-white"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+            Compare
+          </button>
+        </div>
       </div>
 
-      {/* Season Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
+      {/* Comparison View */}
+      {viewMode === "comparison" && (
+        <SeasonComparison keepers={history} seasons={seasons} />
+      )}
+
+      {/* List View */}
+      {viewMode === "list" && (
+        <>
+          {/* Season Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((s) => (
           <div
             key={s.season}
             className="card-premium rounded-2xl p-6"
@@ -408,6 +445,8 @@ export default function HistoryPage() {
             )}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

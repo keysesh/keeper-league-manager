@@ -3,36 +3,64 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
-import { CheckCircle, Clock, RefreshCw, LayoutGrid, Settings, ChevronRight, Lock } from "lucide-react";
+import { LayoutGrid, ArrowLeftRight, ChevronRight, Lock, AlertTriangle } from "lucide-react";
+import { KeeperDeadlineCountdown } from "@/components/KeeperDeadlineCountdown";
+import { SyncButton } from "@/components/SyncButton";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const currentSeason = getCurrentSeason();
   const deadlineInfo = getKeeperDeadlineInfo();
 
-  const leagues = session?.user?.id
-    ? await prisma.league.findMany({
-        where: {
-          season: currentSeason,
-          rosters: {
-            some: {
-              teamMembers: {
-                some: { userId: session.user.id },
+  const [leagues, pendingProposals] = await Promise.all([
+    session?.user?.id
+      ? prisma.league.findMany({
+          where: {
+            season: currentSeason,
+            rosters: {
+              some: {
+                teamMembers: {
+                  some: { userId: session.user.id },
+                },
               },
             },
           },
-        },
-        include: {
-          keeperSettings: true,
-        },
-        orderBy: { name: "asc" },
-      })
-    : [];
+          include: {
+            keeperSettings: true,
+            _count: {
+              select: {
+                tradeProposals: {
+                  where: { status: "PENDING" },
+                },
+              },
+            },
+          },
+          orderBy: { name: "asc" },
+        })
+      : [],
+    session?.user?.id
+      ? prisma.tradeProposal.count({
+          where: {
+            status: "PENDING",
+            parties: {
+              some: {
+                status: "PENDING",
+                roster: {
+                  teamMembers: {
+                    some: { userId: session.user.id },
+                  },
+                },
+              },
+            },
+          },
+        })
+      : 0,
+  ]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Welcome Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             Welcome, {session?.user?.name || session?.user?.username}
@@ -41,21 +69,26 @@ export default async function DashboardPage() {
             {currentSeason} Season
           </p>
         </div>
-        <div
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${
-            deadlineInfo.isActive
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-              : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-          }`}
-        >
-          {deadlineInfo.isActive ? (
-            <CheckCircle size={16} strokeWidth={2} />
-          ) : (
-            <Clock size={16} strokeWidth={2} />
-          )}
-          <span>{deadlineInfo.isActive ? "Keepers Open" : "Locked"}</span>
-        </div>
+        <KeeperDeadlineCountdown />
       </div>
+
+      {/* Pending Actions Alert */}
+      {pendingProposals > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-amber-400 font-medium">
+              You have {pendingProposals} pending trade proposal{pendingProposals > 1 ? "s" : ""} to review
+            </p>
+          </div>
+          <Link
+            href={leagues[0] ? `/league/${leagues[0].id}/trade-proposals` : "#"}
+            className="text-sm text-amber-400 hover:text-amber-300 font-medium"
+          >
+            View
+          </Link>
+        </div>
+      )}
 
       {/* Leagues Section */}
       <div>
@@ -108,59 +141,42 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div>
-        <h2 className="text-xs font-semibold text-gray-500 mb-4 uppercase tracking-[0.2em]">
-          Quick Actions
-        </h2>
-        <div className="flex gap-3">
-          <QuickActionButton
-            icon={<RefreshCw size={18} strokeWidth={2} />}
-            label="Sync"
-            color="blue"
-          />
-          <QuickActionButton
-            icon={<LayoutGrid size={18} strokeWidth={2} />}
-            label="Draft Board"
-            color="amber"
-          />
-          <QuickActionButton
-            icon={<Settings size={18} strokeWidth={2} />}
-            label="Settings"
-            color="gray"
-          />
+      {leagues.length > 0 && (
+        <div>
+          <h2 className="text-xs font-semibold text-gray-500 mb-4 uppercase tracking-[0.2em]">
+            Quick Actions
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            <QuickSyncButton />
+            {leagues[0] && (
+              <>
+                <Link
+                  href={`/league/${leagues[0].id}/draft-board`}
+                  className="group flex items-center gap-3 px-5 py-3 rounded-xl border border-gray-700/50 bg-gray-800/30 transition-all duration-150 hover:border-amber-500/30 hover:bg-amber-500/5"
+                >
+                  <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400">
+                    <LayoutGrid size={18} strokeWidth={2} />
+                  </span>
+                  <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Draft Board</span>
+                </Link>
+                <Link
+                  href={`/league/${leagues[0].id}/trade-analyzer`}
+                  className="group flex items-center gap-3 px-5 py-3 rounded-xl border border-gray-700/50 bg-gray-800/30 transition-all duration-150 hover:border-emerald-500/30 hover:bg-emerald-500/5"
+                >
+                  <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <ArrowLeftRight size={18} strokeWidth={2} />
+                  </span>
+                  <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Trade Analyzer</span>
+                </Link>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function QuickActionButton({
-  icon,
-  label,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  color: "blue" | "amber" | "gray";
-}) {
-  const colorClasses = {
-    blue: "hover:border-blue-500/30 hover:bg-blue-500/5 group-hover:text-blue-400",
-    amber: "hover:border-amber-500/30 hover:bg-amber-500/5 group-hover:text-amber-400",
-    gray: "hover:border-gray-500/30 hover:bg-gray-700/30 group-hover:text-gray-200",
-  };
-
-  const iconClasses = {
-    blue: "bg-blue-500/20 text-blue-400",
-    amber: "bg-amber-500/20 text-amber-400",
-    gray: "bg-gray-700/50 text-gray-400",
-  };
-
-  return (
-    <button className={`group flex items-center gap-3 px-5 py-3 rounded-xl border border-gray-700/50 bg-gray-800/30 transition-all duration-150 ${colorClasses[color]}`}>
-      <span className={`flex items-center justify-center w-9 h-9 rounded-lg ${iconClasses[color]}`}>
-        {icon}
-      </span>
-      <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{label}</span>
-    </button>
-  );
+function QuickSyncButton() {
+  return <SyncButton />;
 }

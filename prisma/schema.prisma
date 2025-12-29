@@ -15,20 +15,22 @@ datasource db {
 // ============================================
 
 model User {
-  id              String    @id @default(cuid())
-  sleeperId       String    @unique @map("sleeper_id")
-  sleeperUsername String    @map("sleeper_username")
-  displayName     String?   @map("display_name")
-  avatar          String?
-  email           String?   @unique
-  isAdmin         Boolean   @default(false) @map("is_admin")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  lastLoginAt     DateTime? @map("last_login_at")
+  id                  String    @id @default(cuid())
+  sleeperId           String    @unique @map("sleeper_id")
+  sleeperUsername     String    @map("sleeper_username")
+  displayName         String?   @map("display_name")
+  avatar              String?
+  email               String?   @unique
+  isAdmin             Boolean   @default(false) @map("is_admin")
+  onboardingComplete  Boolean   @default(false) @map("onboarding_complete")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  lastLoginAt         DateTime? @map("last_login_at")
 
   teamMemberships  TeamMember[]
   sessions         Session[]
   commissionerOf   League[]
+  notifications    Notification[]
 
   @@map("users")
 }
@@ -70,6 +72,7 @@ model League {
   keeperSettings KeeperSettings?
   tradedPicks    TradedPick[]
   draftPlans     DraftPlan[]
+  tradeProposals TradeProposal[]
 
   @@index([season])
   @@index([commissionerId])
@@ -123,6 +126,13 @@ model Roster {
   teamMembers   TeamMember[]
   draftPlans    DraftPlan[]
 
+  // Trade proposal relations
+  proposedTrades      TradeProposal[]      @relation("ProposedTrades")
+  tradeParties        TradeProposalParty[]
+  sentAssets          TradeProposalAsset[] @relation("SentAssets")
+  receivedAssets      TradeProposalAsset[] @relation("ReceivedAssets")
+  tradeVotes          TradeProposalVote[]
+
   @@unique([leagueId, sleeperId])
   @@map("rosters")
 }
@@ -168,11 +178,12 @@ model Player {
   metadata         Json?
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  rosterPlayers      RosterPlayer[]
-  draftPicks         DraftPick[]
-  keeperHistory      Keeper[]
-  transactionPlayers TransactionPlayer[]
-  draftPlanKeepers   DraftPlanKeeper[]
+  rosterPlayers       RosterPlayer[]
+  draftPicks          DraftPick[]
+  keeperHistory       Keeper[]
+  transactionPlayers  TransactionPlayer[]
+  draftPlanKeepers    DraftPlanKeeper[]
+  tradeProposalAssets TradeProposalAsset[]
 
   @@index([position])
   @@index([team])
@@ -294,6 +305,7 @@ enum AcquisitionType {
   WAIVER
   TRADE
   FREE_AGENT
+  COMMISSIONER
 }
 
 // ============================================
@@ -393,6 +405,148 @@ model TradedPick {
 
   @@unique([leagueId, season, round, originalOwnerId])
   @@map("traded_picks")
+}
+
+// ============================================
+// TRADE PROPOSALS
+// ============================================
+
+model TradeProposal {
+  id              String              @id @default(cuid())
+  leagueId        String              @map("league_id")
+  proposerId      String              @map("proposer_id")
+  status          TradeProposalStatus @default(PENDING)
+  title           String?
+  notes           String?
+  expiresAt       DateTime?           @map("expires_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  respondedAt     DateTime?           @map("responded_at")
+  tradeAnalysis   Json?               @map("trade_analysis")
+
+  league    League               @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  proposer  Roster               @relation("ProposedTrades", fields: [proposerId], references: [id], onDelete: Cascade)
+  assets    TradeProposalAsset[]
+  votes     TradeProposalVote[]
+  parties   TradeProposalParty[]
+
+  @@index([leagueId])
+  @@index([status])
+  @@index([proposerId])
+  @@map("trade_proposals")
+}
+
+model TradeProposalParty {
+  id         String                   @id @default(cuid())
+  proposalId String                   @map("proposal_id")
+  rosterId   String                   @map("roster_id")
+  status     TradeProposalPartyStatus @default(PENDING)
+  respondedAt DateTime?               @map("responded_at")
+
+  proposal TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  roster   Roster        @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, rosterId])
+  @@map("trade_proposal_parties")
+}
+
+model TradeProposalAsset {
+  id           String                 @id @default(cuid())
+  proposalId   String                 @map("proposal_id")
+  fromRosterId String                 @map("from_roster_id")
+  toRosterId   String                 @map("to_roster_id")
+  assetType    TradeProposalAssetType @map("asset_type")
+  playerId     String?                @map("player_id")
+  pickSeason   Int?                   @map("pick_season")
+  pickRound    Int?                   @map("pick_round")
+  pickOriginalOwner String?           @map("pick_original_owner")
+
+  proposal   TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  fromRoster Roster        @relation("SentAssets", fields: [fromRosterId], references: [id], onDelete: Cascade)
+  toRoster   Roster        @relation("ReceivedAssets", fields: [toRosterId], references: [id], onDelete: Cascade)
+  player     Player?       @relation(fields: [playerId], references: [id])
+
+  @@index([proposalId])
+  @@map("trade_proposal_assets")
+}
+
+model TradeProposalVote {
+  id         String   @id @default(cuid())
+  proposalId String   @map("proposal_id")
+  rosterId   String   @map("roster_id")
+  vote       VoteType
+  comment    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  proposal TradeProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  roster   Roster        @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, rosterId])
+  @@map("trade_proposal_votes")
+}
+
+enum TradeProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  EXPIRED
+  CANCELLED
+  VETOED
+}
+
+enum TradeProposalPartyStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum TradeProposalAssetType {
+  PLAYER
+  DRAFT_PICK
+}
+
+enum VoteType {
+  APPROVE
+  VETO
+  ABSTAIN
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String           @map("user_id")
+  type       NotificationType
+  title      String
+  message    String
+  link       String?
+  isRead     Boolean          @default(false) @map("is_read")
+  entityType String?          @map("entity_type")
+  entityId   String?          @map("entity_id")
+  metadata   Json?
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  TRADE_PROPOSED
+  TRADE_ACCEPTED
+  TRADE_REJECTED
+  TRADE_COUNTERED
+  TRADE_EXPIRED
+  TRADE_VOTE
+  KEEPER_DEADLINE
+  KEEPER_LOCKED
+  LEAGUE_SYNC
+  SYSTEM
 }
 
 // ============================================

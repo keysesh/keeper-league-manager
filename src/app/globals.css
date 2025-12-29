@@ -449,6 +449,8 @@ body {
   body {
     background: white !important;
     color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .no-print {
@@ -465,5 +467,71 @@ body {
     background: white !important;
     border: 1px solid #ddd !important;
     box-shadow: none !important;
+  }
+
+  /* Draft board print styles */
+  .printing-draft-board {
+    background: white !important;
+  }
+
+  .printing-draft-board table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+  }
+
+  .printing-draft-board th,
+  .printing-draft-board td {
+    border: 1px solid #ccc !important;
+    padding: 4px 6px !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .printing-draft-board th {
+    background: #f5f5f5 !important;
+    font-weight: bold !important;
+  }
+
+  /* Team color indicators in print */
+  .printing-draft-board [class*="bg-rose"] { background: #f43f5e !important; }
+  .printing-draft-board [class*="bg-sky"] { background: #0ea5e9 !important; }
+  .printing-draft-board [class*="bg-emerald"] { background: #10b981 !important; }
+  .printing-draft-board [class*="bg-amber"] { background: #f59e0b !important; }
+  .printing-draft-board [class*="bg-violet"] { background: #8b5cf6 !important; }
+
+  /* Position badges in print */
+  .printing-draft-board [class*="text-red"] { color: #dc2626 !important; }
+  .printing-draft-board [class*="text-green"] { color: #16a34a !important; }
+  .printing-draft-board [class*="text-blue"] { color: #2563eb !important; }
+  .printing-draft-board [class*="text-orange"] { color: #ea580c !important; }
+
+  /* Hide interactive elements */
+  .printing-draft-board button,
+  .printing-draft-board [role="button"] {
+    display: none !important;
+  }
+
+  /* Show keeper cells clearly */
+  .printing-draft-board .keeper-cell {
+    background: #f0f9ff !important;
+    border: 2px solid #0284c7 !important;
+  }
+
+  /* Traded pick styling */
+  .printing-draft-board .traded-cell {
+    background: #fef3c7 !important;
+    border: 1px dashed #d97706 !important;
+  }
+
+  /* Open slot styling */
+  .printing-draft-board .open-cell {
+    background: #f9fafb !important;
+  }
+
+  /* Page layout */
+  @page {
+    size: landscape;
+    margin: 0.5in;
   }
 }

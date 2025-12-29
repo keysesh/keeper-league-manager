@@ -21,10 +21,20 @@ import {
   ChevronDown,
   Filter,
   FlaskConical,
+  FileSpreadsheet,
+  Printer,
+  Copy,
+  Check,
 } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getKeeperDeadlineInfo, getCurrentSeason } from "@/lib/constants/keeper-rules";
+import {
+  exportKeepersToCSV,
+  exportDraftBoardToCSV,
+  printDraftBoard,
+  copyDraftBoardToClipboard,
+} from "@/lib/export";
 
 const TEAM_COLORS = [
   { bg: "bg-rose-500", bgMuted: "bg-rose-500/20", border: "border-rose-500", text: "text-rose-300", accent: "text-rose-400" },
@@ -119,6 +129,7 @@ export default function DraftBoardPage() {
   const [showProjections, setShowProjections] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const deadlineInfo = getKeeperDeadlineInfo();
@@ -156,15 +167,51 @@ export default function DraftBoardPage() {
     };
   }, [fetchData]);
 
-  const handleExport = async (format: "png" | "pdf") => {
-    // For now, just trigger print for PDF
-    if (format === "pdf") {
-      window.print();
-      return;
-    }
+  const handleExport = async (format: "csv-keepers" | "csv-board" | "print" | "copy") => {
+    if (!data) return;
 
-    // PNG export using html2canvas (would need to be added as dependency)
-    alert("PNG export coming soon! Use browser print for now.");
+    switch (format) {
+      case "csv-keepers": {
+        const keepers = data.cascade.flatMap((team) =>
+          team.results.map((k) => ({
+            playerName: k.playerName,
+            position: k.position,
+            team: k.team,
+            rosterName: team.rosterName,
+            finalCost: k.finalCost,
+            baseCost: k.baseCost,
+            cascaded: k.cascaded,
+            yearsKept: k.yearsKept,
+            keeperType: k.keeperType,
+          }))
+        );
+        exportKeepersToCSV(keepers, `keepers-${data.season}`);
+        break;
+      }
+      case "csv-board": {
+        const rosters = data.draftBoard[0]?.slots || [];
+        exportDraftBoardToCSV(
+          data.draftBoard,
+          rosters.map((r) => ({ rosterName: r.rosterName })),
+          `draft-board-${data.season}`
+        );
+        break;
+      }
+      case "print": {
+        printDraftBoard();
+        break;
+      }
+      case "copy": {
+        const rosters = data.draftBoard[0]?.slots || [];
+        await copyDraftBoardToClipboard(
+          data.draftBoard,
+          rosters.map((r) => ({ rosterName: r.rosterName }))
+        );
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        break;
+      }
+    }
   };
 
   const getOverallPositionSummary = (): PositionCount => {
@@ -355,18 +402,34 @@ export default function DraftBoardPage() {
               <span className="hidden sm:inline">Export</span>
               <ChevronDown size={14} />
             </button>
-            <div className="absolute right-0 mt-2 w-40 bg-gray-800 border border-gray-700 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
               <button
-                onClick={() => handleExport("pdf")}
-                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 rounded-t-xl"
+                onClick={() => handleExport("print")}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 rounded-t-xl flex items-center gap-2"
               >
-                Export as PDF
+                <Printer size={14} />
+                Print / PDF
               </button>
               <button
-                onClick={() => handleExport("png")}
-                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 rounded-b-xl"
+                onClick={() => handleExport("csv-board")}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 flex items-center gap-2"
               >
-                Export as PNG
+                <FileSpreadsheet size={14} />
+                Draft Board CSV
+              </button>
+              <button
+                onClick={() => handleExport("csv-keepers")}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 flex items-center gap-2"
+              >
+                <FileSpreadsheet size={14} />
+                Keepers CSV
+              </button>
+              <button
+                onClick={() => handleExport("copy")}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700/50 rounded-b-xl flex items-center gap-2"
+              >
+                {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                {copied ? "Copied!" : "Copy to Clipboard"}
               </button>
             </div>
           </div>
