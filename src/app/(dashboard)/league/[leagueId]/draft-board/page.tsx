@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, LayoutGrid, List, Users, TrendingUp, ArrowLeftRight, Trophy } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-// Team color palette - distinct colors for each team
 const TEAM_COLORS = [
   { bg: "bg-rose-500", bgMuted: "bg-rose-500/20", border: "border-rose-500", text: "text-rose-300", accent: "text-rose-400" },
   { bg: "bg-sky-500", bgMuted: "bg-sky-500/20", border: "border-sky-500", text: "text-sky-300", accent: "text-sky-400" },
@@ -105,7 +105,6 @@ export default function DraftBoardPage() {
     }
   };
 
-  // Calculate overall position summary
   const getOverallPositionSummary = (): PositionCount => {
     const counts: PositionCount = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DEF: 0 };
     if (!data) return counts;
@@ -125,7 +124,6 @@ export default function DraftBoardPage() {
 
   const overallPositions = getOverallPositionSummary();
 
-  // Create comprehensive team info map - by rosterId AND by team name for traded picks
   const teamInfoMap = new Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>();
   const teamNameToInfo = new Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>();
 
@@ -138,7 +136,6 @@ export default function DraftBoardPage() {
         rosterId: roster.rosterId,
       };
       teamInfoMap.set(roster.rosterId, info);
-      // Also map by team name for traded picks lookup
       if (roster.rosterName) {
         teamNameToInfo.set(roster.rosterName, info);
       }
@@ -155,11 +152,18 @@ export default function DraftBoardPage() {
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card-premium rounded-xl p-4">
+            <div key={i} className="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50">
               <Skeleton className="h-10 w-16 mb-2" />
               <Skeleton className="h-4 w-24" />
             </div>
           ))}
+        </div>
+        <div className="bg-gray-800/40 rounded-2xl p-5 border border-gray-700/50">
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -168,7 +172,7 @@ export default function DraftBoardPage() {
   if (error || !data) {
     return (
       <div className="max-w-7xl mx-auto">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
           <p className="text-red-400 font-medium">{error || "Failed to load data"}</p>
         </div>
       </div>
@@ -184,9 +188,9 @@ export default function DraftBoardPage() {
         <div>
           <Link
             href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-3 transition-colors"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-3 transition-colors group"
           >
-            <span>&larr;</span>
+            <ArrowLeft size={16} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform" />
             <span>Back to League</span>
           </Link>
           <h1 className="text-3xl font-bold text-white tracking-tight">Draft Board</h1>
@@ -195,49 +199,59 @@ export default function DraftBoardPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setViewMode("grid")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
               viewMode === "grid"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
+                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600"
             }`}
           >
+            <LayoutGrid size={16} strokeWidth={2} />
             Grid
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
               viewMode === "list"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700"
+                : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600"
             }`}
           >
+            <List size={16} strokeWidth={2} />
             By Team
           </button>
         </div>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
-          <p className="text-3xl font-bold text-white">{data.summary.totalKeepers}</p>
-          <p className="text-gray-500 text-xs mt-1">Total Keepers</p>
-        </div>
-        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
-          <p className="text-3xl font-bold text-amber-400">{data.summary.cascadedKeepers}</p>
-          <p className="text-gray-500 text-xs mt-1">Cascaded</p>
-        </div>
-        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
-          <p className="text-3xl font-bold text-blue-400">{data.summary.tradedPicks}</p>
-          <p className="text-gray-500 text-xs mt-1">Traded Picks</p>
-        </div>
-        <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
-          <p className="text-3xl font-bold text-white">{data.totalRosters}</p>
-          <p className="text-gray-500 text-xs mt-1">Teams</p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<Trophy size={20} strokeWidth={2} />}
+          value={data.summary.totalKeepers}
+          label="Total Keepers"
+          color="white"
+        />
+        <StatCard
+          icon={<TrendingUp size={20} strokeWidth={2} />}
+          value={data.summary.cascadedKeepers}
+          label="Cascaded"
+          color="amber"
+        />
+        <StatCard
+          icon={<ArrowLeftRight size={20} strokeWidth={2} />}
+          value={data.summary.tradedPicks}
+          label="Traded Picks"
+          color="blue"
+        />
+        <StatCard
+          icon={<Users size={20} strokeWidth={2} />}
+          value={data.totalRosters}
+          label="Teams"
+          color="emerald"
+        />
       </div>
 
       {/* Team Color Legend */}
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
+      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl p-5 border border-gray-700/40">
         <div className="flex flex-wrap gap-2">
           {rosters.map((roster, index) => {
             const color = getTeamColor(index);
@@ -246,13 +260,13 @@ export default function DraftBoardPage() {
             return (
               <div
                 key={roster.rosterId}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900/50"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-900/50 border border-gray-700/30"
               >
-                <div className={`w-3 h-3 rounded-full ${color.bg}`} />
-                <span className="text-gray-300 text-sm font-medium truncate max-w-[100px]">
+                <div className={`w-3 h-3 rounded-full ${color.bg} shadow-lg`} style={{ boxShadow: `0 0 8px ${color.bg.replace('bg-', '').replace('-500', '')}` }} />
+                <span className="text-gray-200 text-sm font-medium truncate max-w-[100px]">
                   {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
                 </span>
-                <span className="text-gray-500 text-xs">({keeperCount})</span>
+                <span className="text-gray-500 text-xs font-medium">({keeperCount})</span>
               </div>
             );
           })}
@@ -260,10 +274,10 @@ export default function DraftBoardPage() {
       </div>
 
       {/* Position Summary */}
-      <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
-        <div className="flex items-center gap-6">
+      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl p-5 border border-gray-700/40">
+        <div className="flex items-center gap-6 flex-wrap">
           <span className="text-gray-500 text-sm font-medium">Keepers by Position:</span>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             {(["QB", "RB", "WR", "TE"] as const).map((pos) => (
               <div key={pos} className="flex items-center gap-2">
                 <PositionBadge position={pos} size="xs" />
@@ -276,12 +290,12 @@ export default function DraftBoardPage() {
 
       {viewMode === "grid" ? (
         /* Grid View - Clean Table */
-        <div className="bg-gray-900/50 rounded-xl border border-gray-700/50 overflow-hidden">
+        <div className="bg-gradient-to-b from-gray-900/60 to-gray-900/40 rounded-2xl border border-gray-700/40 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-20 bg-gray-900 px-3 py-3 text-left text-gray-400 text-sm font-semibold border-b border-gray-700 w-12">
+                  <th className="sticky left-0 z-20 bg-gradient-to-r from-gray-900 to-gray-900/95 px-4 py-4 text-left text-gray-400 text-sm font-semibold border-b border-gray-700/50 w-14">
                     Rd
                   </th>
                   {rosters.map((roster, index) => {
@@ -289,11 +303,11 @@ export default function DraftBoardPage() {
                     return (
                       <th
                         key={roster.rosterId}
-                        className="px-1 py-3 text-center border-b border-gray-700 min-w-[100px]"
+                        className="px-1 py-4 text-center border-b border-gray-700/50 min-w-[110px]"
                       >
-                        <div className="flex flex-col items-center gap-1">
-                          <div className={`w-2.5 h-2.5 rounded-full ${color.bg}`} />
-                          <span className="text-gray-300 text-xs font-medium truncate max-w-[90px]">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className={`w-3 h-3 rounded-full ${color.bg}`} />
+                          <span className="text-gray-300 text-xs font-medium truncate max-w-[100px]">
                             {roster.rosterName || `Team ${roster.rosterId.slice(0, 4)}`}
                           </span>
                         </div>
@@ -306,9 +320,9 @@ export default function DraftBoardPage() {
                 {data.draftBoard.map((row, rowIndex) => (
                   <tr
                     key={row.round}
-                    className={rowIndex % 2 === 0 ? "bg-gray-800/20" : "bg-transparent"}
+                    className={rowIndex % 2 === 0 ? "bg-gray-800/10" : "bg-transparent"}
                   >
-                    <td className="sticky left-0 z-10 bg-gray-900 px-3 py-2 text-white font-bold text-sm border-r border-gray-800">
+                    <td className="sticky left-0 z-10 bg-gradient-to-r from-gray-900 to-gray-900/95 px-4 py-2 text-white font-bold text-sm border-r border-gray-800/50">
                       {row.round}
                     </td>
                     {row.slots.map((slot, slotIndex) => {
@@ -338,25 +352,25 @@ export default function DraftBoardPage() {
             return (
               <div
                 key={team.rosterId}
-                className="bg-gray-800/30 rounded-xl border border-gray-700/50 overflow-hidden"
+                className="bg-gradient-to-b from-gray-800/40 to-gray-900/40 rounded-2xl border border-gray-700/40 overflow-hidden"
               >
                 {/* Team Header */}
-                <div className={`${color.bgMuted} px-4 py-3 border-b ${color.border}/30`}>
+                <div className={`${color.bgMuted} px-5 py-4 border-b ${color.border}/20`}>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${color.bg}`} />
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3.5 h-3.5 rounded-full ${color.bg}`} />
                       <span className={`font-semibold ${color.text}`}>
                         {team.rosterName || `Team ${team.rosterId.slice(0, 4)}`}
                       </span>
                     </div>
-                    <span className="text-gray-400 text-sm">
+                    <span className="text-gray-400 text-sm font-medium">
                       {team.results.length} keeper{team.results.length !== 1 ? "s" : ""}
                     </span>
                   </div>
                 </div>
 
                 {/* Keepers List */}
-                <div className="p-3">
+                <div className="p-4">
                   {team.results.length > 0 ? (
                     <div className="space-y-2">
                       {team.results
@@ -364,9 +378,9 @@ export default function DraftBoardPage() {
                         .map((keeper) => (
                           <div
                             key={keeper.playerId}
-                            className="flex items-center justify-between bg-gray-900/50 rounded-lg px-3 py-2"
+                            className="flex items-center justify-between bg-gray-900/50 rounded-xl px-4 py-3 border border-gray-700/30"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-3 min-w-0">
                               <PositionBadge position={keeper.position} size="xs" />
                               <span className="text-white text-sm font-medium truncate">
                                 {keeper.playerName}
@@ -386,19 +400,19 @@ export default function DraftBoardPage() {
                         ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-sm text-center py-4">No keepers selected</p>
+                    <p className="text-gray-500 text-sm text-center py-6">No keepers selected</p>
                   )}
 
                   {/* Traded Picks */}
                   {(team.tradedAwayPicks.length > 0 || team.acquiredPicks.length > 0) && (
-                    <div className="mt-3 pt-3 border-t border-gray-700/50 space-y-1">
+                    <div className="mt-4 pt-4 border-t border-gray-700/40 space-y-1.5">
                       {team.tradedAwayPicks.length > 0 && (
-                        <p className="text-red-400/80 text-xs">
-                          Traded: R{team.tradedAwayPicks.join(", R")}
+                        <p className="text-red-400/80 text-xs font-medium">
+                          Traded away: R{team.tradedAwayPicks.join(", R")}
                         </p>
                       )}
                       {team.acquiredPicks.length > 0 && (
-                        <p className="text-green-400/80 text-xs">
+                        <p className="text-emerald-400/80 text-xs font-medium">
                           Acquired: R{team.acquiredPicks.map((p) => p.round).join(", R")}
                         </p>
                       )}
@@ -414,18 +428,51 @@ export default function DraftBoardPage() {
       {/* Legend */}
       <div className="flex items-center gap-6 text-sm text-gray-400">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-emerald-500/30 border border-emerald-500/50" />
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40" />
           <span>Keeper</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded border-2 border-dashed border-sky-500/50 bg-sky-500/10" />
+          <div className="w-7 h-7 rounded-lg border-2 border-dashed border-sky-500/50 bg-sky-500/10" />
           <span>Traded Pick</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gray-700/30 border border-gray-600/30" />
+          <div className="w-7 h-7 rounded-lg bg-gray-800/30 border border-gray-700/40" />
           <span>Available</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  value,
+  label,
+  color,
+}: {
+  icon: React.ReactNode;
+  value: number;
+  label: string;
+  color: "white" | "amber" | "blue" | "emerald";
+}) {
+  const colorClasses = {
+    white: { bg: "from-gray-700/30 to-gray-800/30", border: "border-gray-600/30", text: "text-white", icon: "bg-gray-700/50 text-gray-300" },
+    amber: { bg: "from-amber-500/20 to-amber-500/5", border: "border-amber-500/20", text: "text-amber-400", icon: "bg-amber-500/20 text-amber-400" },
+    blue: { bg: "from-blue-500/20 to-blue-500/5", border: "border-blue-500/20", text: "text-blue-400", icon: "bg-blue-500/20 text-blue-400" },
+    emerald: { bg: "from-emerald-500/20 to-emerald-500/5", border: "border-emerald-500/20", text: "text-emerald-400", icon: "bg-emerald-500/20 text-emerald-400" },
+  };
+
+  const styles = colorClasses[color];
+
+  return (
+    <div className={`bg-gradient-to-b ${styles.bg} rounded-2xl p-5 border ${styles.border}`}>
+      <div className="flex items-center justify-between mb-3">
+        <span className={`flex items-center justify-center w-10 h-10 rounded-xl ${styles.icon}`}>
+          {icon}
+        </span>
+      </div>
+      <p className={`text-3xl font-bold ${styles.text} tracking-tight`}>{value}</p>
+      <p className="text-gray-500 text-xs mt-1 font-medium">{label}</p>
     </div>
   );
 }
@@ -438,12 +485,9 @@ interface DraftCellProps {
 }
 
 function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
-  // Traded away - show who now owns this pick with THEIR color
   if (slot.status === "traded" && slot.tradedTo) {
-    // Try to find the new owner by name first, then by rosterId
     let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
 
-    // If still not found, try to find by partial match
     if (!newOwnerInfo) {
       for (const [name, info] of teamNameToInfo) {
         if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
@@ -458,38 +502,36 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCell
 
     return (
       <div
-        className={`${ownerColor.bgMuted} border-2 border-dashed ${ownerColor.border}/50 rounded-lg px-1.5 py-2 text-center h-[52px] flex flex-col justify-center`}
+        className={`${ownerColor.bgMuted} border-2 border-dashed ${ownerColor.border}/50 rounded-xl px-2 py-2.5 text-center h-[56px] flex flex-col justify-center`}
       >
         <p className={`${ownerColor.accent} text-[10px] font-semibold truncate`}>
           {ownerName}
         </p>
-        <p className="text-gray-500 text-[9px]">owns pick</p>
+        <p className="text-gray-500 text-[9px] mt-0.5">owns pick</p>
       </div>
     );
   }
 
-  // Keeper in this slot - use column team's color
   if (slot.status === "keeper" && slot.keeper) {
     return (
       <div
-        className={`${columnColor.bgMuted} border ${columnColor.border}/50 rounded-lg px-1.5 py-1.5 h-[52px] flex flex-col justify-center`}
+        className={`${columnColor.bgMuted} border ${columnColor.border}/40 rounded-xl px-2 py-2 h-[56px] flex flex-col justify-center`}
       >
         <div className="flex items-center justify-center">
           <PositionBadge position={slot.keeper.position} size="xs" />
         </div>
-        <p className={`${columnColor.text} text-[10px] font-medium truncate text-center mt-0.5`}>
+        <p className={`${columnColor.text} text-[10px] font-medium truncate text-center mt-1`}>
           {slot.keeper.playerName}
         </p>
       </div>
     );
   }
 
-  // Available pick - muted version of column team's color
   return (
     <div
-      className="bg-gray-800/20 border border-gray-700/30 rounded-lg h-[52px] flex items-center justify-center"
+      className="bg-gray-800/20 border border-gray-700/20 rounded-xl h-[56px] flex items-center justify-center"
     >
-      <span className="text-gray-600 text-xs">—</span>
+      <span className="text-gray-600 text-[10px] font-medium uppercase tracking-wider">Open</span>
     </div>
   );
 }
