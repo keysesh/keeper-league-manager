@@ -6,7 +6,8 @@ import Link from "next/link";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
-import { Share2, Save, FileText, Check, Copy, X } from "lucide-react";
+import { BackLink } from "@/components/ui/BackLink";
+import { Share2, Save, FileText, Check, Copy, X, ArrowLeftRight } from "lucide-react";
 
 interface Player {
   id: string;
@@ -373,23 +374,24 @@ export default function TradeAnalyzerPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-4 transition-colors"
-          >
-            <span>&larr;</span>
-            <span>Back to League</span>
-          </Link>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">Trade Analyzer</h1>
-          <p className="text-gray-500 mt-2 text-lg">
-            Comprehensive trade analysis with keeper value projections
-          </p>
+          <BackLink href={`/league/${leagueId}`} label="Back to League" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 ring-1 ring-emerald-500/20 flex items-center justify-center">
+              <ArrowLeftRight className="w-6 h-6 text-emerald-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Trade Analyzer</h1>
+              <p className="text-gray-500 mt-0.5">
+                Comprehensive trade analysis with keeper value projections
+              </p>
+            </div>
+          </div>
         </div>
         <button
           onClick={clearTrade}
-          className="px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
         >
           Clear Trade
         </button>

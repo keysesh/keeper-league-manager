@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
-import { LayoutGrid, ArrowLeftRight, ChevronRight, Lock, AlertTriangle } from "lucide-react";
+import { LayoutGrid, ArrowLeftRight, ChevronRight, Lock, AlertTriangle, Trophy, Users, TrendingUp } from "lucide-react";
 import { KeeperDeadlineCountdown } from "@/components/KeeperDeadlineCountdown";
 import { SyncButton } from "@/components/SyncButton";
 
@@ -58,16 +58,19 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-6">
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Welcome, {session?.user?.name || session?.user?.username}
+          <p className="text-gray-500 text-sm mb-1">Welcome back</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight">
+            {session?.user?.name || session?.user?.username}
           </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {currentSeason} Season
-          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="px-3 py-1 rounded-lg bg-purple-500/20 text-purple-400 text-sm font-semibold">
+              {currentSeason} Season
+            </span>
+          </div>
         </div>
         <KeeperDeadlineCountdown />
       </div>
@@ -97,43 +100,72 @@ export default async function DashboardPage() {
         </h2>
 
         {leagues.length === 0 ? (
-          <div className="rounded-2xl p-8 text-center bg-gray-800/30 border border-gray-700/50">
-            <p className="text-gray-400 text-sm">No leagues found</p>
-            <p className="text-xs text-gray-600 mt-1">Join a league on Sleeper</p>
+          <div className="card-premium rounded-2xl p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gray-800/50 flex items-center justify-center mx-auto mb-4">
+              <Trophy className="w-8 h-8 text-gray-600" />
+            </div>
+            <p className="text-gray-400 font-medium">No leagues found</p>
+            <p className="text-sm text-gray-600 mt-1">Join a league on Sleeper to get started</p>
           </div>
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {leagues.map((league) => (
               <Link
                 key={league.id}
                 href={`/league/${league.id}`}
-                className="group relative bg-gradient-to-b from-gray-800/50 to-gray-900/50 rounded-2xl p-5 border border-gray-700/40 hover:border-amber-500/30 transition-all duration-200 hover:scale-[1.02]"
+                className="group relative card-premium rounded-2xl p-5 transition-all duration-300"
               >
-                <div className="flex items-center justify-between mb-3">
+                {/* Status badge */}
+                <div className="flex items-center justify-between mb-4">
                   <span
-                    className={`text-[10px] px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wide ${
+                    className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-wide ${
                       league.status === "IN_SEASON"
-                        ? "bg-emerald-500/20 text-emerald-400"
+                        ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
                         : league.status === "COMPLETE"
-                        ? "bg-gray-700/50 text-gray-400"
-                        : "bg-amber-500/20 text-amber-400"
+                        ? "bg-gray-700/50 text-gray-400 ring-1 ring-gray-600/30"
+                        : "bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30"
                     }`}
                   >
-                    {league.status === "IN_SEASON" ? "Live" : league.status === "COMPLETE" ? "Done" : "Pre"}
+                    {league.status === "IN_SEASON" ? "Live" : league.status === "COMPLETE" ? "Done" : "Pre-Season"}
                   </span>
-                  {league.keeperSettings && (
-                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-500/20">
-                      <Lock size={12} className="text-amber-400" />
+                  {league._count.tradeProposals > 0 && (
+                    <span className="flex items-center justify-center px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold">
+                      {league._count.tradeProposals} pending
                     </span>
                   )}
                 </div>
-                <h3 className="font-semibold text-white group-hover:text-amber-400 truncate transition-colors">
-                  {league.name}
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  {league.totalRosters} teams
-                </p>
-                <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 group-hover:text-amber-400 transition-colors" />
+
+                {/* League info */}
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 ring-1 ring-purple-500/20 flex items-center justify-center flex-shrink-0">
+                    <Trophy className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-white group-hover:text-purple-400 truncate transition-colors text-lg">
+                      {league.name}
+                    </h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <Users size={12} />
+                        {league.totalRosters} teams
+                      </span>
+                      {league.keeperSettings && (
+                        <span className="flex items-center gap-1 text-xs text-amber-500/80">
+                          <Lock size={10} />
+                          Keepers
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Arrow indicator */}
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <ChevronRight
+                    size={20}
+                    className="text-gray-600 group-hover:text-purple-400 group-hover:translate-x-1 transition-all"
+                  />
+                </div>
               </Link>
             ))}
           </div>
@@ -146,27 +178,33 @@ export default async function DashboardPage() {
           <h2 className="text-xs font-semibold text-gray-500 mb-4 uppercase tracking-[0.2em]">
             Quick Actions
           </h2>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <QuickSyncButton />
             {leagues[0] && (
               <>
                 <Link
                   href={`/league/${leagues[0].id}/draft-board`}
-                  className="group flex items-center gap-3 px-5 py-3 rounded-xl border border-gray-700/50 bg-gray-800/30 transition-all duration-150 hover:border-amber-500/30 hover:bg-amber-500/5"
+                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-white/[0.06] hover:border-purple-500/30 transition-all duration-300 hover:scale-[1.02]"
                 >
-                  <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400">
-                    <LayoutGrid size={18} strokeWidth={2} />
+                  <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/20 ring-1 ring-purple-500/20">
+                    <LayoutGrid size={20} className="text-purple-400" />
                   </span>
-                  <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Draft Board</span>
+                  <div>
+                    <span className="text-sm font-semibold text-white block">Draft Board</span>
+                    <span className="text-xs text-gray-500">View keeper costs</span>
+                  </div>
                 </Link>
                 <Link
                   href={`/league/${leagues[0].id}/trade-analyzer`}
-                  className="group flex items-center gap-3 px-5 py-3 rounded-xl border border-gray-700/50 bg-gray-800/30 transition-all duration-150 hover:border-emerald-500/30 hover:bg-emerald-500/5"
+                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-white/[0.06] hover:border-emerald-500/30 transition-all duration-300 hover:scale-[1.02]"
                 >
-                  <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400">
-                    <ArrowLeftRight size={18} strokeWidth={2} />
+                  <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/20 ring-1 ring-emerald-500/20">
+                    <ArrowLeftRight size={20} className="text-emerald-400" />
                   </span>
-                  <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Trade Analyzer</span>
+                  <div>
+                    <span className="text-sm font-semibold text-white block">Trade Analyzer</span>
+                    <span className="text-xs text-gray-500">Analyze trades</span>
+                  </div>
                 </Link>
               </>
             )}

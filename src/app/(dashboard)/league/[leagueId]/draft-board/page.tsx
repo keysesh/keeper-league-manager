@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
   LayoutGrid,
   List,
   Users,
@@ -28,6 +27,7 @@ import {
 } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { BackLink } from "@/components/ui/BackLink";
 import { getKeeperDeadlineInfo, getCurrentSeason } from "@/lib/constants/keeper-rules";
 import {
   exportKeepersToCSV,
@@ -312,13 +312,7 @@ export default function DraftBoardPage() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-3 transition-colors group"
-          >
-            <ArrowLeft size={16} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back to League</span>
-          </Link>
+          <BackLink href={`/league/${leagueId}`} label="Back to League" />
           <h1 className="text-3xl font-bold text-white tracking-tight">Draft Board</h1>
           <div className="flex items-center gap-3 mt-2">
             <span className="text-gray-500">{data.season} Season</span>

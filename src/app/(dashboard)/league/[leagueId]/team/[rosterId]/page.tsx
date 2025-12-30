@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import useSWR from "swr";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
+import { BackLink } from "@/components/ui/BackLink";
+import { Trophy, Star, Users, RefreshCw } from "lucide-react";
 
 // SWR fetcher
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -200,16 +201,17 @@ export default function TeamRosterPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 space-y-4">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         <div>
-          <Skeleton className="h-4 w-24 mb-2" />
-          <Skeleton className="h-8 w-48 mb-1" />
+          <Skeleton className="h-4 w-24 mb-3" />
+          <Skeleton className="h-10 w-64 mb-2" />
+          <Skeleton className="h-5 w-48" />
         </div>
-        <div className="bg-gray-800/50 rounded-xl p-4">
+        <div className="card-premium rounded-2xl p-6">
           <Skeleton className="h-6 w-32 mb-4" />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-48 rounded-xl" />
+              <Skeleton key={i} className="h-56 rounded-xl" />
             ))}
           </div>
         </div>
@@ -219,14 +221,14 @@ export default function TeamRosterPage() {
 
   if (error || !data) {
     return (
-      <div className="p-4">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <p className="text-red-400 text-sm">Failed to load data</p>
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+          <p className="text-red-400 font-medium">Failed to load roster data</p>
           <button
             onClick={() => mutate()}
-            className="mt-2 text-xs text-purple-400 hover:text-purple-300"
+            className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-colors"
           >
-            Try again
+            Try Again
           </button>
         </div>
       </div>
@@ -242,136 +244,173 @@ export default function TeamRosterPage() {
   );
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="text-gray-500 hover:text-white text-xs mb-1 inline-flex items-center gap-1"
-          >
-            &larr; Back
-          </Link>
-          <h1 className="text-xl font-bold text-white">Manage Keepers</h1>
+          <BackLink href={`/league/${leagueId}`} label="Back to League" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 ring-1 ring-purple-500/20 flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Manage Keepers</h1>
+              <p className="text-gray-500 mt-0.5">{data.season} Season</p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={syncKeepers}
-            disabled={syncingKeepers}
-            className="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-300 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            {syncingKeepers ? (
-              <>
-                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Syncing...
-              </>
-            ) : (
-              <>
-                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Sync Keepers
-              </>
-            )}
-          </button>
-          <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-400 rounded">{data.season}</span>
-        </div>
+        <button
+          onClick={syncKeepers}
+          disabled={syncingKeepers}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-800/50 text-gray-300 hover:text-white border border-gray-700/50 hover:border-gray-600 text-sm font-medium transition-all disabled:opacity-50"
+        >
+          <RefreshCw size={16} className={syncingKeepers ? "animate-spin" : ""} />
+          {syncingKeepers ? "Syncing..." : "Sync Keepers"}
+        </button>
       </div>
 
-      {/* Keeper Summary */}
-      <div className="flex items-center gap-4 px-3 py-2 rounded-lg bg-gray-800/40">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-white">{data.currentKeepers.total}<span className="text-xs text-gray-500">/{data.limits.maxKeepers}</span></span>
-          <span className="text-[10px] text-gray-500 uppercase">Total</span>
+      {/* Keeper Summary Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="card-premium rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+              <Users size={18} className="text-purple-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white">{data.currentKeepers.total}<span className="text-sm text-gray-500">/{data.limits.maxKeepers}</span></p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Total Keepers</p>
+            </div>
+          </div>
         </div>
-        <div className="w-px h-4 bg-gray-700" />
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-amber-400">{data.currentKeepers.franchise}<span className="text-xs text-gray-500">/{data.limits.maxFranchiseTags}</span></span>
-          <span className="text-[10px] text-gray-500 uppercase">FT</span>
+        <div className="card-premium rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <Star size={18} className="text-amber-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-amber-400">{data.currentKeepers.franchise}<span className="text-sm text-gray-500">/{data.limits.maxFranchiseTags}</span></p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Franchise Tags</p>
+            </div>
+          </div>
         </div>
-        <div className="w-px h-4 bg-gray-700" />
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-amber-400">{data.currentKeepers.regular}<span className="text-xs text-gray-500">/{data.limits.maxRegularKeepers}</span></span>
-          <span className="text-[10px] text-gray-500 uppercase">Reg</span>
+        <div className="card-premium rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+              <Trophy size={18} className="text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-emerald-400">{data.currentKeepers.regular}<span className="text-sm text-gray-500">/{data.limits.maxRegularKeepers}</span></p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Regular Keepers</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Current Keepers */}
-      <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/20">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-amber-400 uppercase">Current Keepers ({currentKeepers.length})</span>
+      <div className="card-premium rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <Star size={16} className="text-amber-400" />
+            </div>
+            <h2 className="text-lg font-semibold text-white">Current Keepers</h2>
+            <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-bold">
+              {currentKeepers.length}
+            </span>
+          </div>
         </div>
-        {currentKeepers.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {currentKeepers.map((p) => (
-              <PremiumPlayerCard
-                key={p.player.id}
-                player={p.player}
-                eligibility={p.eligibility}
-                existingKeeper={p.existingKeeper}
-                onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
-                isLoading={actionLoading === p.existingKeeper?.id}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-sm text-gray-500">No keepers selected yet</p>
-            <p className="text-xs text-gray-600 mt-1">Add players from the eligible list below</p>
-          </div>
-        )}
+        <div className="p-5">
+          {currentKeepers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {currentKeepers.map((p) => (
+                <PremiumPlayerCard
+                  key={p.player.id}
+                  player={p.player}
+                  eligibility={p.eligibility}
+                  existingKeeper={p.existingKeeper}
+                  onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
+                  isLoading={actionLoading === p.existingKeeper?.id}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 rounded-2xl bg-gray-800/50 flex items-center justify-center mx-auto mb-4">
+                <Trophy className="w-8 h-8 text-gray-600" />
+              </div>
+              <p className="text-gray-400 font-medium">No keepers selected yet</p>
+              <p className="text-sm text-gray-600 mt-1">Add players from the eligible list below</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Eligible Players */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-semibold text-gray-400 uppercase">Eligible ({eligiblePlayers.length})</span>
-          <div className="flex gap-3 text-[10px] text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-600"></span>Keep</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-400"></span>FT</span>
+      <div className="card-premium rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-700/40">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <Users size={16} className="text-emerald-400" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">Eligible Players</h2>
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-bold">
+                {eligiblePlayers.length}
+              </span>
+            </div>
+            <div className="flex gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
+                Keep
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                Franchise Tag
+              </span>
+            </div>
           </div>
         </div>
-
-        {eligiblePlayers.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {eligiblePlayers.map((p) => (
-              <PremiumPlayerCard
-                key={p.player.id}
-                player={p.player}
-                eligibility={p.eligibility}
-                costs={p.costs}
-                onAddKeeper={(playerId, type) => {
-                  // Pass pre-calculated cost data to speed up API
-                  const cost = type === "FRANCHISE" ? p.costs.franchise : p.costs.regular;
-                  addKeeper(playerId, type, p.player.fullName, cost ? {
-                    baseCost: cost.baseCost,
-                    finalCost: cost.finalCost,
-                    yearsKept: p.eligibility.yearsKept,
-                  } : undefined);
-                }}
-                isLoading={actionLoading === p.player.id}
-                canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
-                canAddRegular={data.canAddMore.any && data.canAddMore.regular}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="card-compact rounded-xl p-4 text-center">
-            <p className="text-sm text-gray-500">No eligible players</p>
-          </div>
-        )}
+        <div className="p-5">
+          {eligiblePlayers.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {eligiblePlayers.map((p) => (
+                <PremiumPlayerCard
+                  key={p.player.id}
+                  player={p.player}
+                  eligibility={p.eligibility}
+                  costs={p.costs}
+                  onAddKeeper={(playerId, type) => {
+                    const cost = type === "FRANCHISE" ? p.costs.franchise : p.costs.regular;
+                    addKeeper(playerId, type, p.player.fullName, cost ? {
+                      baseCost: cost.baseCost,
+                      finalCost: cost.finalCost,
+                      yearsKept: p.eligibility.yearsKept,
+                    } : undefined);
+                  }}
+                  isLoading={actionLoading === p.player.id}
+                  canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
+                  canAddRegular={data.canAddMore.any && data.canAddMore.regular}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No eligible players available</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Ineligible Players */}
       {ineligiblePlayers.length > 0 && (
-        <details>
-          <summary className="text-xs font-semibold text-gray-500 uppercase cursor-pointer hover:text-gray-400 mb-3">
-            Ineligible ({ineligiblePlayers.length})
+        <details className="group">
+          <summary className="flex items-center gap-3 cursor-pointer hover:text-gray-300 transition-colors text-gray-500">
+            <span className="text-xs font-semibold uppercase tracking-wide">
+              Ineligible Players ({ineligiblePlayers.length})
+            </span>
+            <span className="text-xs text-gray-600 group-open:hidden">Click to expand</span>
           </summary>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {ineligiblePlayers.map((p) => (
               <PremiumPlayerCard
                 key={p.player.id}

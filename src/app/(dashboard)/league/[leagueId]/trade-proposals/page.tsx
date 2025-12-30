@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ThumbsUp, ThumbsDown, MessageCircle, Clock, User, ArrowRight, Plus } from "lucide-react";
+import { BackLink } from "@/components/ui/BackLink";
 
 interface TradeProposal {
   id: string;
@@ -107,23 +108,24 @@ export default function TradeProposalsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-4 transition-colors"
-          >
-            <span>&larr;</span>
-            <span>Back to League</span>
-          </Link>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">Trade Proposals</h1>
-          <p className="text-gray-500 mt-2 text-lg">
-            Review and vote on proposed trades from league members
-          </p>
+          <BackLink href={`/league/${leagueId}`} label="Back to League" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-blue-500/20 flex items-center justify-center">
+              <MessageCircle className="w-6 h-6 text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Trade Proposals</h1>
+              <p className="text-gray-500 mt-0.5">
+                Review and vote on proposed trades
+              </p>
+            </div>
+          </div>
         </div>
         <Link
           href={`/league/${leagueId}/trade-analyzer`}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 rounded-xl text-white font-medium transition-all hover:scale-[1.02] shadow-lg shadow-amber-500/30"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 rounded-xl text-white font-medium transition-all hover:scale-[1.02] shadow-lg shadow-amber-500/30"
         >
           <Plus className="w-5 h-5" />
           Create Proposal

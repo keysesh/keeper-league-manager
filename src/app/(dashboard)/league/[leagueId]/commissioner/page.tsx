@@ -9,9 +9,7 @@ import {
   Lock,
   Unlock,
   Trash2,
-  Plus,
   RefreshCw,
-  AlertTriangle,
   ChevronLeft,
   Check,
   X,
@@ -19,6 +17,7 @@ import {
   Users,
   History,
 } from "lucide-react";
+import { BackLink } from "@/components/ui/BackLink";
 
 interface KeeperData {
   id: string;
@@ -138,9 +137,11 @@ export default function CommissionerPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-800 rounded w-48 mb-4"></div>
+          <div className="h-4 bg-gray-800 rounded w-24 mb-3"></div>
+          <div className="h-10 bg-gray-800 rounded w-64 mb-2"></div>
+          <div className="h-5 bg-gray-800 rounded w-48 mb-8"></div>
           <div className="h-64 bg-gray-800 rounded-2xl"></div>
         </div>
       </div>
@@ -149,14 +150,16 @@ export default function CommissionerPage() {
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
-          <Shield className="w-12 h-12 text-red-400 mx-auto mb-4" />
+      <div className="max-w-6xl mx-auto p-4 md:p-6">
+        <div className="card-premium rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-8 h-8 text-red-400" />
+          </div>
           <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
           <p className="text-red-400">{error}</p>
           <Link
             href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 mt-6 text-amber-400 hover:text-amber-300"
+            className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-amber-400 hover:text-amber-300 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to League
@@ -167,22 +170,18 @@ export default function CommissionerPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-2 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back to League
-          </Link>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Shield className="w-8 h-8 text-amber-400" />
-            Commissioner Tools
-          </h1>
-          <p className="text-gray-500 mt-1">{leagueName}</p>
+      <div>
+        <BackLink href={`/league/${leagueId}`} label="Back to League" />
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center">
+            <Shield className="w-6 h-6 text-amber-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Commissioner Tools</h1>
+            <p className="text-gray-500 mt-0.5">{leagueName}</p>
+          </div>
         </div>
       </div>
 
@@ -229,21 +228,21 @@ export default function CommissionerPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => handleLockAll(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl border border-red-500/20 transition-colors"
             >
               <Lock className="w-4 h-4" />
               Lock All Keepers
             </button>
             <button
               onClick={() => handleLockAll(false)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-xl border border-emerald-500/20 transition-colors"
             >
               <Unlock className="w-4 h-4" />
               Unlock All Keepers
             </button>
             <button
               onClick={fetchData}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 rounded-xl border border-gray-700/50 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
@@ -255,7 +254,7 @@ export default function CommissionerPage() {
             {rosters.map((roster) => (
               <div
                 key={roster.id}
-                className="bg-gray-800/50 border border-gray-700/50 rounded-xl overflow-hidden"
+                className="card-premium rounded-2xl overflow-hidden"
               >
                 <button
                   onClick={() => setSelectedRoster(selectedRoster === roster.id ? null : roster.id)}
@@ -358,7 +357,7 @@ export default function CommissionerPage() {
       )}
 
       {activeTab === "settings" && settings && (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 space-y-6">
+        <div className="card-premium rounded-2xl p-6 space-y-6">
           <h2 className="text-lg font-semibold text-white">Keeper Rules</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -402,7 +401,7 @@ export default function CommissionerPage() {
       )}
 
       {activeTab === "activity" && (
-        <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6">
+        <div className="card-premium rounded-2xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
 
           {activity.length === 0 ? (

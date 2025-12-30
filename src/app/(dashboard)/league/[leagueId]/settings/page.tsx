@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import useSWR from "swr";
 import {
-  ArrowLeft,
   Settings,
   Save,
   Shield,
@@ -21,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { BackLink } from "@/components/ui/BackLink";
 import { useToast } from "@/components/ui/Toast";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -177,22 +176,20 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-3 transition-colors group"
-          >
-            <ArrowLeft size={16} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back to League</span>
-          </Link>
-          <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-            <Settings size={28} className="text-gray-500" />
-            League Settings
-          </h1>
-          <p className="text-gray-500 mt-1">{data.leagueName} - {data.season} Season</p>
+          <BackLink href={`/league/${leagueId}`} label="Back to League" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500/20 to-gray-600/10 ring-1 ring-gray-500/20 flex items-center justify-center">
+              <Settings className="w-6 h-6 text-gray-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">League Settings</h1>
+              <p className="text-gray-500 mt-0.5">{data.leagueName} - {data.season} Season</p>
+            </div>
+          </div>
         </div>
 
         {data.isCommissioner && hasChanges && (

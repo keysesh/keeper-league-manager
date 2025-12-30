@@ -5,8 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { BackLink } from "@/components/ui/BackLink";
 import { SeasonComparison } from "@/components/history/SeasonComparison";
-import { ArrowRightLeft, List, BarChart3 } from "lucide-react";
+import { ArrowRightLeft, List, TrendingUp } from "lucide-react";
 
 interface KeeperHistory {
   id: string;
@@ -122,21 +123,20 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-purple-400 text-sm mb-4 transition-colors"
-          >
-            <span>&larr;</span>
-            <span>Back to League</span>
-          </Link>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">Keeper History</h1>
-          <p className="text-gray-500 mt-2 text-lg">
-            View historical keeper data and trends
-          </p>
+          <BackLink href={`/league/${leagueId}`} label="Back to League" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 ring-1 ring-cyan-500/20 flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Keeper History</h1>
+              <p className="text-gray-500 mt-0.5">View historical keeper data and trends</p>
+            </div>
+          </div>
         </div>
         <div className="flex bg-gray-800/50 rounded-xl p-1">
           <button

@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Activity,
   Trophy,
   ArrowLeftRight,
@@ -18,6 +16,7 @@ import {
 } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { BackLink } from "@/components/ui/BackLink";
 
 interface ActivityItem {
   id: string;
@@ -153,28 +152,22 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 p-4">
+    <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div>
-          <Link
-            href={`/league/${leagueId}`}
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-3 transition-colors group"
-          >
-            <ArrowLeft
-              size={16}
-              strokeWidth={2}
-              className="group-hover:-translate-x-0.5 transition-transform"
-            />
-            <span>Back to League</span>
-          </Link>
+          <BackLink href={`/league/${leagueId}`} label="Back to League" />
           <div className="flex items-center gap-3">
-            <Activity className="w-8 h-8 text-purple-400" />
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-              Activity Feed
-            </h1>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 ring-1 ring-orange-500/20 flex items-center justify-center">
+              <Activity className="w-6 h-6 text-orange-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                Activity Feed
+              </h1>
+              <p className="text-gray-500 mt-0.5">Recent keeper and league activity</p>
+            </div>
           </div>
-          <p className="text-gray-500 mt-2">Recent keeper and league activity</p>
         </div>
 
         <div className="flex gap-2">
