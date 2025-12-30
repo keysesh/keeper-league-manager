@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { LayoutGrid, ArrowLeftRight, TrendingUp, Settings, Activity, MessageCircle } from "lucide-react";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { RecordCard, PointsCard, KeepersCard, SyncedCard } from "@/components/ui/StatCard";
+import { StandingsTable } from "@/components/ui/StandingsTable";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -299,73 +300,12 @@ export default function LeaguePage() {
       )}
 
       {/* Standings - Premium Table */}
-      <div className="card-compact rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800/50">
-          <span className="text-xs font-semibold text-gray-400 uppercase">Standings</span>
-          <div className="flex gap-3 text-[10px] text-gray-500">
-            <span>W-L</span>
-            <span>PF</span>
-            <span>K</span>
-          </div>
-        </div>
-        <div className="divide-y divide-gray-800/20">
-          {league.rosters.map((roster, index) => {
-            const isPlayoff = index < 6;
-            const isTop3 = index < 3;
-
-            return (
-              <Link
-                key={roster.id}
-                href={`/league/${leagueId}/team/${roster.id}`}
-                className={`flex items-center gap-2 px-3 py-2.5 transition-all hover:bg-gray-800/40 ${
-                  roster.isUserRoster
-                    ? "bg-gradient-to-r from-purple-500/10 to-transparent border-l-2 border-purple-500"
-                    : isTop3
-                    ? "bg-gradient-to-r from-amber-500/5 to-transparent"
-                    : ""
-                }`}
-              >
-                <span className={`w-6 h-6 flex items-center justify-center text-xs font-bold rounded ${
-                  index === 0 ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black" :
-                  index === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400 text-black" :
-                  index === 2 ? "bg-gradient-to-br from-orange-400 to-orange-600 text-black" :
-                  isPlayoff ? "bg-green-500/20 text-green-400" :
-                  "bg-gray-800 text-gray-500"
-                }`}>
-                  {index + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <span className={`text-sm font-medium truncate block ${
-                    roster.isUserRoster ? "text-purple-300" : "text-white"
-                  }`}>
-                    {roster.teamName || "Team " + roster.sleeperId}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-semibold w-10 text-center ${
-                    roster.wins > roster.losses ? "text-green-400" :
-                    roster.wins < roster.losses ? "text-red-400" : "text-gray-400"
-                  }`}>
-                    {roster.wins}-{roster.losses}
-                  </span>
-                  <span className="text-xs text-gray-500 w-10 text-right font-mono">
-                    {roster.pointsFor.toFixed(0)}
-                  </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                    roster.keeperCount >= (league.keeperSettings?.maxKeepers || 7)
-                      ? "bg-green-500/20 text-green-400"
-                      : roster.keeperCount > 0
-                      ? "bg-purple-500/20 text-purple-400"
-                      : "bg-gray-800 text-gray-500"
-                  }`}>
-                    {roster.keeperCount}/{league.keeperSettings?.maxKeepers || 7}
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+      <StandingsTable
+        rosters={league.rosters}
+        leagueId={leagueId}
+        maxKeepers={league.keeperSettings?.maxKeepers || 7}
+        playoffSpots={6}
+      />
 
       {/* Quick Links - Compact Row */}
       <div className="flex gap-2 flex-wrap">
