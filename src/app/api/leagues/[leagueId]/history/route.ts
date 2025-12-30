@@ -8,8 +8,42 @@ interface RouteParams {
 }
 
 /**
+ * Get all league IDs in the historical chain (current + all previous seasons)
+ */
+async function getLeagueChain(startLeagueId: string): Promise<string[]> {
+  const leagueIds: string[] = [];
+
+  // Recursively build the chain
+  async function addToChain(leagueId: string, depth: number): Promise<void> {
+    if (depth >= 10) return; // Max 10 seasons to prevent infinite loops
+
+    leagueIds.push(leagueId);
+
+    const leagueData = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { previousLeagueId: true },
+    });
+
+    if (!leagueData?.previousLeagueId) return;
+
+    // Find the previous league by its sleeper ID
+    const prevLeague = await prisma.league.findUnique({
+      where: { sleeperId: leagueData.previousLeagueId },
+      select: { id: true },
+    });
+
+    if (prevLeague?.id) {
+      await addToChain(prevLeague.id, depth + 1);
+    }
+  }
+
+  await addToChain(startLeagueId, 0);
+  return leagueIds;
+}
+
+/**
  * GET /api/leagues/[leagueId]/history
- * Get all available keeper seasons and keeper history for a league
+ * Get all available keeper seasons and keeper history for a league (including historical seasons)
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -23,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Get league
+    // Get current league
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
       include: {
@@ -43,10 +77,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Get all unique seasons that have keepers
+    // Get all leagues in the historical chain
+    const leagueChain = await getLeagueChain(leagueId);
+
+    // Get all rosters from all leagues in the chain (for team name lookup)
+    const allRosters = await prisma.roster.findMany({
+      where: { leagueId: { in: leagueChain } },
+      select: {
+        id: true,
+        teamName: true,
+        sleeperId: true,
+        leagueId: true,
+      },
+    });
+
+    // Get all unique seasons that have keepers across the league chain
     const keeperSeasons = await prisma.keeper.findMany({
       where: {
-        roster: { leagueId },
+        roster: { leagueId: { in: leagueChain } },
       },
       select: {
         season: true,
@@ -57,10 +105,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const seasons = keeperSeasons.map((k) => k.season);
 
-    // If no keeper seasons found, check for draft seasons
+    // If no keeper seasons found, check for draft seasons across the chain
     if (seasons.length === 0) {
       const draftSeasons = await prisma.draft.findMany({
-        where: { leagueId },
+        where: { leagueId: { in: leagueChain } },
         select: { season: true },
         distinct: ["season"],
         orderBy: { season: "desc" },
@@ -68,10 +116,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       seasons.push(...draftSeasons.map((d) => d.season));
     }
 
-    // Get all keepers across all seasons
+    // Get all keepers across all seasons in the league chain
     const allKeepers = await prisma.keeper.findMany({
       where: {
-        roster: { leagueId },
+        roster: { leagueId: { in: leagueChain } },
       },
       include: {
         player: true,
@@ -79,6 +127,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           select: {
             id: true,
             teamName: true,
+            sleeperId: true,
           },
         },
       },
@@ -165,18 +214,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })
       .sort((a, b) => b.yearsKept - a.yearsKept);
 
+    // Get unique teams by sleeperId (same team across seasons)
+    const uniqueTeams = new Map<string, { id: string; teamName: string | null }>();
+    for (const roster of allRosters) {
+      if (!uniqueTeams.has(roster.sleeperId)) {
+        uniqueTeams.set(roster.sleeperId, {
+          id: roster.id,
+          teamName: roster.teamName,
+        });
+      }
+    }
+
     return NextResponse.json({
       leagueId,
+      leagueChain, // Include for debugging/transparency
       seasons,
       seasonStats,
       keepers,
       multiYearKeepers,
-      teams: league.rosters,
+      teams: Array.from(uniqueTeams.values()),
       summary: {
         totalSeasons: seasons.length,
         totalKeepers: keepers.length,
         oldestSeason: seasons.length > 0 ? Math.min(...seasons) : null,
         newestSeason: seasons.length > 0 ? Math.max(...seasons) : null,
+        leaguesInChain: leagueChain.length,
       },
     });
   } catch (error) {

@@ -18,13 +18,46 @@ async function verifyLeagueAccess(leagueId: string, userId: string) {
 }
 
 /**
+ * Get all league IDs in the historical chain (current + all previous seasons)
+ */
+async function getLeagueChain(startLeagueId: string): Promise<string[]> {
+  const leagueIds: string[] = [];
+
+  async function addToChain(leagueId: string, depth: number): Promise<void> {
+    if (depth >= 10) return;
+
+    leagueIds.push(leagueId);
+
+    const leagueData = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { previousLeagueId: true },
+    });
+
+    if (!leagueData?.previousLeagueId) return;
+
+    const prevLeague = await prisma.league.findUnique({
+      where: { sleeperId: leagueData.previousLeagueId },
+      select: { id: true },
+    });
+
+    if (prevLeague?.id) {
+      await addToChain(prevLeague.id, depth + 1);
+    }
+  }
+
+  await addToChain(startLeagueId, 0);
+  return leagueIds;
+}
+
+/**
  * Populate keeper records from historical draft picks with is_keeper=true
+ * Now supports populating across the entire league chain (all historical seasons)
  */
 export async function handlePopulateKeepers(
   context: SyncContext,
   body: Record<string, unknown>
 ) {
-  const { leagueId } = body;
+  const { leagueId, includeHistory = true } = body;
 
   if (!leagueId || typeof leagueId !== "string") {
     return createSyncError("leagueId is required for populate-keepers", 400);
@@ -34,22 +67,42 @@ export async function handlePopulateKeepers(
     return createSyncError("You don't have access to this league", 403);
   }
 
-  const result = await populateKeepersFromDraftPicks(leagueId);
+  // Get all leagues in the chain if includeHistory is true
+  const leagueIds = includeHistory ? await getLeagueChain(leagueId) : [leagueId];
+
+  let totalCreated = 0;
+  let totalSkipped = 0;
+  const results: Array<{ leagueId: string; created: number; skipped: number }> = [];
+
+  // Populate keepers for each league in the chain (oldest first for correct yearsKept)
+  for (const id of leagueIds.reverse()) {
+    const result = await populateKeepersFromDraftPicks(id);
+    totalCreated += result.created;
+    totalSkipped += result.skipped;
+    results.push({ leagueId: id, ...result });
+  }
+
   return createSyncResponse({
     success: true,
-    message: `Created ${result.created} keeper records, skipped ${result.skipped} (already exist)`,
-    data: result,
+    message: `Created ${totalCreated} keeper records across ${leagueIds.length} season(s), skipped ${totalSkipped} (already exist)`,
+    data: {
+      totalCreated,
+      totalSkipped,
+      seasonsProcessed: leagueIds.length,
+      details: results,
+    },
   });
 }
 
 /**
  * Recalculate yearsKept for all keepers in a league
+ * Now supports recalculating across the entire league chain
  */
 export async function handleRecalculateKeeperYears(
   context: SyncContext,
   body: Record<string, unknown>
 ) {
-  const { leagueId } = body;
+  const { leagueId, includeHistory = true } = body;
 
   if (!leagueId || typeof leagueId !== "string") {
     return createSyncError("leagueId is required for recalculate-keeper-years", 400);
@@ -59,10 +112,29 @@ export async function handleRecalculateKeeperYears(
     return createSyncError("You don't have access to this league", 403);
   }
 
-  const result = await recalculateKeeperYears(leagueId);
+  // Get all leagues in the chain if includeHistory is true
+  const leagueIds = includeHistory ? await getLeagueChain(leagueId) : [leagueId];
+
+  let totalUpdated = 0;
+  let totalRecords = 0;
+  const results: Array<{ leagueId: string; updated: number; total: number }> = [];
+
+  // Recalculate for each league (oldest first)
+  for (const id of leagueIds.reverse()) {
+    const result = await recalculateKeeperYears(id);
+    totalUpdated += result.updated;
+    totalRecords += result.total;
+    results.push({ leagueId: id, ...result });
+  }
+
   return createSyncResponse({
     success: true,
-    message: `Updated ${result.updated} of ${result.total} keeper records`,
-    data: result,
+    message: `Updated ${totalUpdated} of ${totalRecords} keeper records across ${leagueIds.length} season(s)`,
+    data: {
+      totalUpdated,
+      totalRecords,
+      seasonsProcessed: leagueIds.length,
+      details: results,
+    },
   });
 }
