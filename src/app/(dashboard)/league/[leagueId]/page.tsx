@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { LayoutGrid, ArrowLeftRight, TrendingUp, Settings, Activity, MessageCircle } from "lucide-react";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
+import { RecordCard, PointsCard, KeepersCard, SyncedCard } from "@/components/ui/StatCard";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -211,32 +212,28 @@ export default function LeaguePage() {
         </div>
       </div>
 
-      {/* Quick Stats - Compact Square Grid */}
-      <div className="grid grid-cols-4 gap-2">
-        <div className="stat-card">
-          <p className="text-xl font-bold text-white">
-            {userRoster ? `${userRoster.wins}-${userRoster.losses}` : "—"}
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1 uppercase">Record</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xl font-bold text-green-400">
-            {userRoster?.pointsFor.toFixed(0) || "0"}
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1 uppercase">PF</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xl font-bold text-purple-400">
-            {userRoster?.keeperCount || 0}/{league.keeperSettings?.maxKeepers || 7}
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1 uppercase">Keepers</p>
-        </div>
-        <div className="stat-card">
-          <p className="text-xl font-bold text-gray-400">
-            {league.lastSyncedAt ? new Date(league.lastSyncedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
-          </p>
-          <p className="text-[10px] text-gray-500 mt-1 uppercase">Synced</p>
-        </div>
+      {/* Quick Stats - Premium Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <RecordCard
+          wins={userRoster?.wins || 0}
+          losses={userRoster?.losses || 0}
+          ties={userRoster?.ties || 0}
+        />
+        <PointsCard
+          points={Math.round(userRoster?.pointsFor || 0)}
+          rank={userRoster ? league.rosters
+            .sort((a, b) => b.pointsFor - a.pointsFor)
+            .findIndex(r => r.id === userRoster.id) + 1 : undefined}
+        />
+        <KeepersCard
+          current={userRoster?.keeperCount || 0}
+          max={league.keeperSettings?.maxKeepers || 7}
+          franchiseTags={userRoster?.currentKeepers.filter(k => k.type === "FRANCHISE").length || 0}
+        />
+        <SyncedCard
+          date={league.lastSyncedAt}
+          isStale={league.lastSyncedAt ? (Date.now() - new Date(league.lastSyncedAt).getTime()) > 86400000 : true}
+        />
       </div>
 
       {/* Keeper Rules - Compact Inline */}
