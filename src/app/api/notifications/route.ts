@@ -60,6 +60,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching notifications:", error);
+    // If table doesn't exist, return empty results
+    if (error instanceof Error && error.message.includes("does not exist")) {
+      return NextResponse.json({
+        notifications: [],
+        pagination: { total: 0, unread: 0, limit: 50, offset: 0, hasMore: false },
+      });
+    }
     return createApiError(
       "Failed to fetch notifications",
       500,
