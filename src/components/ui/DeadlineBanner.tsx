@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, X, AlertTriangle, Bell, Lock, Unlock } from "lucide-react";
+import { Clock, X, AlertTriangle, Bell, Lock, Unlock, ChevronRight, Sparkles } from "lucide-react";
 import { getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
 
@@ -69,24 +69,38 @@ export function DeadlineBanner({ leagueId }: DeadlineBannerProps) {
   if (!deadlineInfo.isActive) {
     // Keepers are locked
     return (
-      <div className="bg-gradient-to-r from-red-500/10 to-red-600/10 border-b border-red-500/20">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-red-500/20">
-              <Lock size={16} className="text-red-400" />
+      <div className="relative overflow-hidden">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-red-950/80 via-red-900/60 to-red-950/80" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-500/10 via-transparent to-transparent" />
+
+        {/* Bottom border glow */}
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
+
+        <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/20 ring-1 ring-red-500/30">
+                <Lock size={18} className="text-red-400" />
+              </div>
+              {/* Pulse effect */}
+              <div className="absolute inset-0 rounded-xl bg-red-500/20 animate-ping opacity-20" />
             </div>
             <div>
-              <p className="text-red-300 font-medium text-sm">
+              <p className="text-red-200 font-semibold text-sm flex items-center gap-2">
                 Keeper selections are locked
+                <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wide">
+                  Closed
+                </span>
               </p>
-              <p className="text-red-400/70 text-xs">{deadlineInfo.message}</p>
+              <p className="text-red-400/70 text-xs mt-0.5">{deadlineInfo.message}</p>
             </div>
           </div>
           <button
             onClick={handleDismiss}
-            className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors"
+            className="p-2 hover:bg-red-500/20 rounded-lg text-red-400/70 hover:text-red-400 transition-all"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
       </div>
@@ -101,34 +115,76 @@ export function DeadlineBanner({ leagueId }: DeadlineBannerProps) {
 
     if (diffDays <= 7) {
       const isUrgent = diffDays <= 3;
-      const bgClass = isUrgent
-        ? "bg-gradient-to-r from-amber-500/20 to-red-500/20 border-amber-500/30"
-        : "bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/20";
-      const iconClass = isUrgent ? "bg-amber-500/20" : "bg-purple-500/20";
-      const textClass = isUrgent ? "text-amber-300" : "text-purple-300";
-      const subTextClass = isUrgent ? "text-amber-400/70" : "text-purple-400/70";
-      const timeClass = isUrgent ? "text-amber-400" : "text-purple-400";
 
       return (
-        <div className={`${bgClass} border-b`}>
-          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full ${iconClass}`}>
-                {isUrgent ? (
-                  <AlertTriangle size={16} className="text-amber-400" />
-                ) : (
-                  <Bell size={16} className="text-purple-400" />
+        <div className="relative overflow-hidden">
+          {/* Animated gradient background */}
+          <div className={`absolute inset-0 ${
+            isUrgent
+              ? "bg-gradient-to-r from-amber-950/80 via-orange-900/60 to-red-950/80"
+              : "bg-gradient-to-r from-purple-950/80 via-indigo-900/60 to-purple-950/80"
+          }`} />
+          <div className={`absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] ${
+            isUrgent
+              ? "from-amber-500/10 via-transparent to-transparent"
+              : "from-purple-500/10 via-transparent to-transparent"
+          }`} />
+
+          {/* Animated shimmer effect for urgent */}
+          {isUrgent && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/5 to-transparent animate-shimmer" />
+          )}
+
+          {/* Bottom border glow */}
+          <div className={`absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${
+            isUrgent ? "via-amber-500/50" : "via-purple-500/40"
+          } to-transparent`} />
+
+          <div className="relative max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-xl ring-1 ${
+                  isUrgent
+                    ? "bg-amber-500/20 ring-amber-500/30"
+                    : "bg-purple-500/20 ring-purple-500/30"
+                }`}>
+                  {isUrgent ? (
+                    <AlertTriangle size={18} className="text-amber-400" />
+                  ) : (
+                    <Bell size={18} className="text-purple-400" />
+                  )}
+                </div>
+                {/* Pulse effect for urgent */}
+                {isUrgent && (
+                  <div className="absolute inset-0 rounded-xl bg-amber-500/20 animate-ping opacity-30" />
                 )}
               </div>
               <div>
-                <p className={`font-medium text-sm ${textClass}`}>
+                <p className={`font-semibold text-sm flex items-center gap-2 ${
+                  isUrgent ? "text-amber-200" : "text-purple-200"
+                }`}>
                   {isUrgent ? "Keeper deadline approaching!" : "Keeper deadline reminder"}
+                  {isUrgent && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wide animate-pulse">
+                      Urgent
+                    </span>
+                  )}
                 </p>
-                <div className="flex items-center gap-2">
-                  <Clock size={12} className={timeClass} />
-                  <span className={`text-xs font-medium ${timeClass}`}>{timeRemaining}</span>
-                  <span className={`text-xs ${subTextClass}`}>
-                    to finalize your keeper selections
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${
+                    isUrgent ? "bg-amber-500/10" : "bg-purple-500/10"
+                  }`}>
+                    <Clock size={12} className={isUrgent ? "text-amber-400" : "text-purple-400"} />
+                    <span className={`text-xs font-bold tabular-nums ${
+                      isUrgent ? "text-amber-400" : "text-purple-400"
+                    }`}>
+                      {timeRemaining}
+                    </span>
+                  </div>
+                  <span className={`text-xs ${
+                    isUrgent ? "text-amber-400/60" : "text-purple-400/60"
+                  }`}>
+                    to finalize selections
                   </span>
                 </div>
               </div>
@@ -136,21 +192,24 @@ export function DeadlineBanner({ leagueId }: DeadlineBannerProps) {
             <div className="flex items-center gap-2">
               <Link
                 href={`/league/${leagueId}/draft-board`}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`group flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
                   isUrgent
-                    ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300"
-                    : "bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black shadow-lg shadow-amber-500/20"
+                    : "bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 ring-1 ring-purple-500/30"
                 }`}
               >
                 View Draft Board
+                <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <button
                 onClick={handleDismiss}
-                className={`p-1.5 hover:bg-gray-700/50 rounded-lg transition-colors ${
-                  isUrgent ? "text-amber-400" : "text-purple-400"
+                className={`p-2 rounded-lg transition-all ${
+                  isUrgent
+                    ? "hover:bg-amber-500/20 text-amber-400/70 hover:text-amber-400"
+                    : "hover:bg-purple-500/20 text-purple-400/70 hover:text-purple-400"
                 }`}
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
           </div>
@@ -161,24 +220,34 @@ export function DeadlineBanner({ leagueId }: DeadlineBannerProps) {
 
   // Show open status banner (non-urgent)
   return (
-    <div className="bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 border-b border-emerald-500/20">
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Unlock size={14} className="text-emerald-400" />
-          <span className="text-emerald-300 text-sm">
-            Keeper selections are open
-          </span>
-          {timeRemaining && (
-            <span className="text-emerald-400/70 text-xs">
-              ({timeRemaining})
+    <div className="relative overflow-hidden">
+      {/* Gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/60 via-emerald-900/40 to-emerald-950/60" />
+
+      {/* Bottom border glow */}
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+
+      <div className="relative max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-500/20 ring-1 ring-emerald-500/20">
+            <Sparkles size={14} className="text-emerald-400" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-200 text-sm font-medium">
+              Keeper selections are open
             </span>
-          )}
+            {timeRemaining && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400/80 text-xs">
+                {timeRemaining}
+              </span>
+            )}
+          </div>
         </div>
         <button
           onClick={handleDismiss}
-          className="p-1 hover:bg-emerald-500/20 rounded text-emerald-400 transition-colors"
+          className="p-1.5 hover:bg-emerald-500/20 rounded-lg text-emerald-400/60 hover:text-emerald-400 transition-all"
         >
-          <X size={14} />
+          <X size={16} />
         </button>
       </div>
     </div>

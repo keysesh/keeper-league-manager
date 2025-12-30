@@ -1,16 +1,17 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import useSWR from "swr";
 import { useState } from "react";
-import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-import { LayoutGrid, ArrowLeftRight, TrendingUp, Settings, Activity, MessageCircle } from "lucide-react";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { RecordCard, PointsCard, KeepersCard, SyncedCard } from "@/components/ui/StatCard";
 import { StandingsTable } from "@/components/ui/StandingsTable";
+import { KeepersSection } from "@/components/ui/KeeperCard";
+import { RulesBar } from "@/components/ui/RulesBar";
+import { QuickLinks } from "@/components/ui/QuickLinks";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -184,34 +185,19 @@ export default function LeaguePage() {
   return (
     <>
       <DeadlineBanner leagueId={leagueId} />
-      <div className="p-4 space-y-4">
-        {/* Header - Compact */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">{league.name}</h1>
-          <div className="flex items-center gap-2 mt-1 text-xs">
-            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 font-semibold rounded">
-              {league.season}
-            </span>
-            <span className="text-gray-500">{league.totalRosters} teams</span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 rounded-lg text-xs font-medium text-white border border-gray-700"
-          >
-            {syncing ? "..." : "Sync"}
-          </button>
-          <Link
-            href={`/league/${leagueId}/draft-board`}
-            className="btn-premium px-3 py-1.5 rounded-lg text-xs text-white"
-          >
-            Draft Board
-          </Link>
-        </div>
-      </div>
+      <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+        {/* Header */}
+        <PageHeader
+          title={league.name}
+          badge={{ label: String(league.season), color: "purple" }}
+          teamCount={league.totalRosters}
+          syncing={syncing}
+          onSync={handleSync}
+          primaryAction={{
+            label: "Draft Board",
+            href: `/league/${leagueId}/draft-board`,
+          }}
+        />
 
       {/* Quick Stats - Premium Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -237,66 +223,22 @@ export default function LeaguePage() {
         />
       </div>
 
-      {/* Keeper Rules - Compact Inline */}
+      {/* Keeper Rules */}
       {league.keeperSettings && (
-        <div className="flex items-center gap-4 px-3 py-2 rounded-lg bg-gray-800/40 text-xs">
-          <span className="text-gray-500">Rules:</span>
-          <span className="text-white"><b>{league.keeperSettings.maxKeepers}</b> max</span>
-          <span className="text-amber-400"><b>{league.keeperSettings.maxFranchiseTags}</b> FT</span>
-          <span className="text-purple-400"><b>{league.keeperSettings.maxRegularKeepers}</b> reg</span>
-          <span className="text-gray-400"><b>{league.keeperSettings.regularKeeperMaxYears}</b>yr limit</span>
-          <span className="text-gray-500">Undrafted: Rd{league.keeperSettings.undraftedRound}</span>
-        </div>
+        <RulesBar settings={league.keeperSettings} />
       )}
 
-      {/* Your Keepers - Compact */}
+      {/* Your Keepers */}
       {userRoster && (
-        <div className="card-compact rounded-xl p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-gray-400 uppercase">Your Keepers</span>
-            <Link
-              href={`/league/${leagueId}/team/${userRoster.id}`}
-              className="text-xs text-purple-400 hover:text-purple-300"
-            >
-              Manage &rarr;
-            </Link>
-          </div>
-          {userRoster.currentKeepers.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {userRoster.currentKeepers.map((keeper) => {
-                const posColors = {
-                  QB: { bg: "bg-red-500/10", border: "border-l-red-500", text: "text-red-400" },
-                  RB: { bg: "bg-green-500/10", border: "border-l-green-500", text: "text-green-400" },
-                  WR: { bg: "bg-blue-500/10", border: "border-l-blue-500", text: "text-blue-400" },
-                  TE: { bg: "bg-orange-500/10", border: "border-l-orange-500", text: "text-orange-400" },
-                  K: { bg: "bg-purple-500/10", border: "border-l-purple-500", text: "text-purple-400" },
-                  DEF: { bg: "bg-gray-500/10", border: "border-l-gray-500", text: "text-gray-400" },
-                };
-                const colors = posColors[keeper.player.position as keyof typeof posColors] || posColors.DEF;
-
-                return (
-                  <div
-                    key={keeper.id}
-                    className={`player-card flex items-center gap-2 border-l-2 ${colors.border} ${colors.bg}`}
-                  >
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      keeper.type === "FRANCHISE"
-                        ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black"
-                        : "bg-gradient-to-r from-purple-500 to-purple-700 text-white"
-                    }`}>
-                      {keeper.type === "FRANCHISE" ? "FT" : "K"}
-                    </span>
-                    <PositionBadge position={keeper.player.position} size="xs" />
-                    <span className="text-xs text-white font-medium truncate max-w-[100px]">{keeper.player.fullName}</span>
-                    <span className={`text-xs font-semibold ${colors.text}`}>R{keeper.finalCost}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-gray-500">No keepers yet</p>
-          )}
-        </div>
+        <KeepersSection
+          keepers={userRoster.currentKeepers.map(k => ({
+            ...k,
+            type: k.type as "REGULAR" | "FRANCHISE",
+          }))}
+          leagueId={leagueId}
+          rosterId={userRoster.id}
+          maxKeepers={league.keeperSettings?.maxKeepers || 7}
+        />
       )}
 
       {/* Standings - Premium Table */}
@@ -307,45 +249,8 @@ export default function LeaguePage() {
         playoffSpots={6}
       />
 
-      {/* Quick Links - Compact Row */}
-      <div className="flex gap-2 flex-wrap">
-        <Link
-          href={`/league/${leagueId}/draft-board`}
-          className="card-compact rounded-lg px-3 py-2 flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-purple-400 hover:border-purple-500/30"
-        >
-          <LayoutGrid size={14} /> Draft Board
-        </Link>
-        <Link
-          href={`/league/${leagueId}/trade-analyzer`}
-          className="card-compact rounded-lg px-3 py-2 flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-purple-400 hover:border-purple-500/30"
-        >
-          <ArrowLeftRight size={14} /> Trade
-        </Link>
-        <Link
-          href={`/league/${leagueId}/trade-proposals`}
-          className="card-compact rounded-lg px-3 py-2 flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-purple-400 hover:border-purple-500/30"
-        >
-          <MessageCircle size={14} /> Proposals
-        </Link>
-        <Link
-          href={`/league/${leagueId}/activity`}
-          className="card-compact rounded-lg px-3 py-2 flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-purple-400 hover:border-purple-500/30"
-        >
-          <Activity size={14} /> Activity
-        </Link>
-        <Link
-          href={`/league/${leagueId}/history`}
-          className="card-compact rounded-lg px-3 py-2 flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-purple-400 hover:border-purple-500/30"
-        >
-          <TrendingUp size={14} /> History
-        </Link>
-        <Link
-          href={`/league/${leagueId}/settings`}
-          className="card-compact rounded-lg px-3 py-2 flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-purple-400 hover:border-purple-500/30"
-        >
-          <Settings size={14} /> Settings
-        </Link>
-      </div>
+      {/* Quick Links */}
+      <QuickLinks leagueId={leagueId} />
       </div>
     </>
   );
