@@ -1016,13 +1016,63 @@ export async function populateKeepersFromDraftPicks(
 }
 
 /**
+ * Get all league IDs in the historical chain (current + all previous seasons)
+ */
+async function getLeagueChainForSync(startLeagueId: string): Promise<string[]> {
+  const leagueIds: string[] = [];
+
+  async function addToChain(leagueId: string, depth: number): Promise<void> {
+    if (depth >= 10) return;
+
+    leagueIds.push(leagueId);
+
+    const leagueData = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { previousLeagueId: true },
+    });
+
+    if (!leagueData?.previousLeagueId) return;
+
+    const prevLeague = await prisma.league.findUnique({
+      where: { sleeperId: leagueData.previousLeagueId },
+      select: { id: true },
+    });
+
+    if (prevLeague?.id) {
+      await addToChain(prevLeague.id, depth + 1);
+    }
+  }
+
+  await addToChain(startLeagueId, 0);
+  return leagueIds;
+}
+
+/**
  * Recalculate yearsKept for all keepers in a league
- * This fixes any keepers that have incorrect yearsKept values
+ * Now looks across the entire league chain to find consecutive years
  */
 export async function recalculateKeeperYears(
   leagueId: string
 ): Promise<{ updated: number; total: number }> {
-  // Get all keepers for this league, ordered by player then season
+  // Get all leagues in the chain
+  const leagueChain = await getLeagueChainForSync(leagueId);
+
+  // Get all rosters across the chain, mapped by sleeperId for cross-season matching
+  const allRosters = await prisma.roster.findMany({
+    where: { leagueId: { in: leagueChain } },
+    select: { id: true, sleeperId: true, leagueId: true },
+  });
+
+  // Map roster sleeperId to all roster IDs for that team across seasons
+  const rosterChainMap = new Map<string, string[]>();
+  for (const roster of allRosters) {
+    if (!rosterChainMap.has(roster.sleeperId)) {
+      rosterChainMap.set(roster.sleeperId, []);
+    }
+    rosterChainMap.get(roster.sleeperId)!.push(roster.id);
+  }
+
+  // Get all keepers for this specific league (not the chain)
   const keepers = await prisma.keeper.findMany({
     where: {
       roster: { leagueId },
@@ -1033,7 +1083,6 @@ export async function recalculateKeeperYears(
     },
     orderBy: [
       { playerId: "asc" },
-      { rosterId: "asc" },
       { season: "asc" },
     ],
   });
@@ -1042,23 +1091,26 @@ export async function recalculateKeeperYears(
 
   // Process each keeper
   for (const keeper of keepers) {
-    // Skip if player doesn't exist
     if (!keeper.player) {
       logger.warn("Keeper has no player, skipping", { keeperId: keeper.id });
       continue;
     }
 
     try {
-      // Count previous consecutive years this player was kept by this roster
+      // Get all roster IDs for the same team across seasons
+      const teamRosterIds = rosterChainMap.get(keeper.roster.sleeperId) || [keeper.rosterId];
+
+      // Find previous keepers for this player on ANY of the team's rosters across seasons
       const previousKeepers = await prisma.keeper.findMany({
         where: {
           playerId: keeper.playerId,
-          rosterId: keeper.rosterId,
+          rosterId: { in: teamRosterIds },
           season: { lt: keeper.season },
         },
         orderBy: { season: "desc" },
       });
 
+      // Count consecutive years
       let consecutiveYears = 0;
       let checkSeason = keeper.season - 1;
       for (const prev of previousKeepers) {
