@@ -200,6 +200,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       // 3. Handle non-trade acquisitions (waiver, FA)
       if (txType !== "TRADE") {
         const acqType = txType === "WAIVER" ? AcquisitionType.WAIVER : AcquisitionType.FREE_AGENT;
+
+        // Check if player was dropped in the same season
+        // If dropped and picked up same season, preserve eligibility from previous owner
+        if (acquisition.fromRosterId) {
+          // Player was dropped - check the drop season
+          const dropTx = transactions.find(
+            (tx) => tx.playerId === playerId && tx.fromRosterId === acquisition.fromRosterId
+          );
+
+          if (dropTx) {
+            const dropSeason = getSeasonFromDate(dropTx.transaction.createdAt);
+
+            // Same season pickup - follow chain to get origin from previous owner
+            if (dropSeason === txSeason) {
+              const previousOrigin = getOriginSeason(playerId, acquisition.fromRosterId, visited);
+              return {
+                originSeason: previousOrigin.originSeason,
+                acquisitionType: acqType,
+                draftRound: previousOrigin.draftRound,
+              };
+            }
+          }
+        }
+
+        // Different season or no previous owner - origin resets to pickup season
         return { originSeason: txSeason, acquisitionType: acqType };
       }
 
@@ -283,13 +308,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     /**
-     * NEW: Calculate eligibility using Origin Season approach
+     * Calculate eligibility using Origin Season approach
      *
-     * Core rule: Player may be kept for max 2 seasons total
-     * - years_kept = current_season - origin_season
-     * - 0 = draft year (eligible)
-     * - 1 = final keeper year (eligible)
-     * - 2+ = ineligible
+     * Core rules:
+     * - Regular keeper: can be kept for up to `regularKeeperMaxYears` (default 2)
+     * - Years 1-2 (yearsKept 0-1): Regular OR Franchise
+     * - Year 3+ (yearsKept 2+): Must be Franchise tagged (no regular keeper option)
+     * - Franchise tag has no year limit (can be used indefinitely)
      */
     function calculateEligibility(playerId: string) {
       const origin = getOriginSeason(playerId, rosterId);
@@ -297,17 +322,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const originalDraft = getOriginalDraft(playerId);
       const costResult = calculateBaseCost(playerId);
 
-      // Max years from settings (default 2 means: draft year + 1 keeper year)
-      // yearsKept: 0 = draft year, 1 = first keeper year, 2+ = ineligible
-      const isEligible = yearsKept < maxYears;
-      const atMaxYears = yearsKept >= maxYears - 1; // Final keeper year
+      // A player can always be kept via Franchise Tag (no year limit)
+      // But regular keeper is limited to maxYears (default 2)
+      // yearsKept: 0 = year 1, 1 = year 2, 2 = year 3, etc.
+      const canBeRegularKeeper = yearsKept < maxYears; // Years 1-2 can be regular
+      const mustBeFranchise = yearsKept >= maxYears;   // Year 3+ must use franchise tag
+      const isEligible = true; // Players are always eligible (via FT if needed)
+      const atMaxYears = mustBeFranchise; // Franchise tag required starting year 3
 
       // Build reason string
       let reason: string | undefined;
-      if (!isEligible) {
-        reason = `Ineligible: Year ${yearsKept + 1} (max ${maxYears})`;
-      } else if (atMaxYears) {
-        reason = `Final year (Year ${yearsKept + 1} of ${maxYears})`;
+      if (mustBeFranchise) {
+        reason = `Year ${yearsKept + 1} - Franchise Tag required`;
+      } else if (yearsKept === maxYears - 1) {
+        reason = `Final regular keeper year (Year ${yearsKept + 1} of ${maxYears})`;
       } else if (yearsKept === 0) {
         reason = "Draft year";
       }
@@ -318,11 +346,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       return {
         isEligible,
+        canBeRegularKeeper,
+        mustBeFranchise,
         yearsKept: yearsKept + 1, // Display as "Year 1", "Year 2" (1-indexed for UI)
         consecutiveYears: yearsKept, // Keep for backwards compatibility
         originSeason: origin.originSeason,
         acquisitionType: origin.acquisitionType,
-        atMaxYears,
+        atMaxYears, // Backwards compatibility
         reason,
         baseCost,
         escalatedCost,
@@ -341,38 +371,36 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       let effectivelyEligible = eligibility.isEligible;
       let reason = eligibility.reason;
 
-      if (eligibility.isEligible) {
-        // Franchise tag is always Round 1
-        franchiseCost = {
-          baseCost: 1,
-          finalCost: 1,
-          costBreakdown: "Franchise Tag = Round 1",
+      // Franchise tag is always available (Round 1 cost)
+      franchiseCost = {
+        baseCost: 1,
+        finalCost: 1,
+        costBreakdown: "Franchise Tag = Round 1",
+      };
+
+      if (eligibility.canBeRegularKeeper) {
+        // Regular keeper cost with escalation (cost improves each year)
+        const baseCost = eligibility.baseCost;
+        const finalCost = eligibility.escalatedCost;
+        const yearsKept = eligibility.consecutiveYears;
+
+        let costBreakdown = `R${baseCost}`;
+        if (eligibility.isPostDeadlineTrade) {
+          costBreakdown = `R${baseCost} (offseason trade - reset)`;
+        } else if (yearsKept > 0) {
+          costBreakdown = `R${baseCost} - ${yearsKept}yr = R${finalCost}`;
+        }
+
+        regularCost = {
+          baseCost,
+          finalCost,
+          costBreakdown,
         };
-
-        if (!eligibility.atMaxYears) {
-          // Regular keeper cost with escalation (cost improves each year)
-          const baseCost = eligibility.baseCost;
-          const finalCost = eligibility.escalatedCost;
-          const yearsKept = eligibility.consecutiveYears;
-
-          let costBreakdown = `R${baseCost}`;
-          if (eligibility.isPostDeadlineTrade) {
-            costBreakdown = `R${baseCost} (offseason trade - reset)`;
-          } else if (yearsKept > 0) {
-            costBreakdown = `R${baseCost} - ${yearsKept}yr = R${finalCost}`;
-          }
-
-          regularCost = {
-            baseCost,
-            finalCost,
-            costBreakdown,
-          };
-        } else {
-          // At max years - check if FT is available
-          if (!canAddFranchise) {
-            effectivelyEligible = false;
-            reason = "At max years and no Franchise Tags available";
-          }
+      } else if (eligibility.mustBeFranchise) {
+        // Year 3+ - must use franchise tag, no regular keeper option
+        if (!canAddFranchise) {
+          effectivelyEligible = false;
+          reason = `Year ${eligibility.yearsKept} - Franchise Tag required but none available`;
         }
       }
 
@@ -392,6 +420,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         isStarter: rp.isStarter,
         eligibility: {
           isEligible: effectivelyEligible,
+          canBeRegularKeeper: eligibility.canBeRegularKeeper,
+          mustBeFranchise: eligibility.mustBeFranchise,
           reason,
           yearsKept: eligibility.yearsKept,
           consecutiveYears: eligibility.consecutiveYears,
