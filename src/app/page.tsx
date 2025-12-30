@@ -1,36 +1,15 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
 import { LayoutGrid, ArrowLeftRight, TrendingUp, ArrowRight } from "lucide-react";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
-  // If authenticated, redirect to their first league or show dashboard
+  // If authenticated, redirect to leagues dashboard
   if (session?.user?.id) {
-    const currentSeason = getCurrentSeason();
-    const firstLeague = await prisma.league.findFirst({
-      where: {
-        season: currentSeason,
-        rosters: {
-          some: {
-            teamMembers: {
-              some: { userId: session.user.id },
-            },
-          },
-        },
-      },
-      orderBy: { name: "asc" },
-    });
-
-    if (firstLeague) {
-      redirect(`/league/${firstLeague.id}`);
-    }
-    // If no leagues, redirect to onboarding
-    redirect("/onboarding");
+    redirect("/leagues");
   }
 
   return (

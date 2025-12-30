@@ -31,7 +31,7 @@ export function Sidebar() {
   const isLeaguePage = pathname.includes("/league/") && leagueId;
 
   const dashboardNav: NavItem[] = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "My Leagues", href: "/leagues", icon: LayoutDashboard },
   ];
 
   const leagueNav: NavItem[] = leagueId
@@ -54,15 +54,15 @@ export function Sidebar() {
       className="hidden lg:flex lg:flex-col lg:w-72 lg:border-r lg:border-gray-800/40 bg-gradient-to-b from-[#0d0c0a] to-[#0a0908] min-h-[calc(100vh-4rem)]"
       aria-label="Main navigation"
     >
-      {/* Back to Dashboard when in league view */}
+      {/* Back to Leagues when in league view */}
       {isLeaguePage && (
         <div className="px-5 pt-6">
           <Link
-            href="/"
+            href="/leagues"
             className="flex items-center gap-2 text-sm text-gray-500 hover:text-amber-400 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to Dashboard
+            All Leagues
           </Link>
         </div>
       )}
