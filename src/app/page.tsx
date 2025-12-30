@@ -1,27 +1,36 @@
-"use client";
-
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
-import { LayoutGrid, ArrowLeftRight, TrendingUp, ArrowRight, Loader2 } from "lucide-react";
+import { LayoutGrid, ArrowLeftRight, TrendingUp, ArrowRight } from "lucide-react";
 
-export default function Home() {
-  const { status } = useSession();
-  const router = useRouter();
+export default async function Home() {
+  const session = await getServerSession(authOptions);
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.push("/dashboard");
+  // If authenticated, redirect to their first league or show dashboard
+  if (session?.user?.id) {
+    const currentSeason = getCurrentSeason();
+    const firstLeague = await prisma.league.findFirst({
+      where: {
+        season: currentSeason,
+        rosters: {
+          some: {
+            teamMembers: {
+              some: { userId: session.user.id },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    if (firstLeague) {
+      redirect(`/league/${firstLeague.id}`);
     }
-  }, [status, router]);
-
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
-      </div>
-    );
+    // If no leagues, redirect to onboarding
+    redirect("/onboarding");
   }
 
   return (
