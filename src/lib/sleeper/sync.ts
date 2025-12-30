@@ -147,17 +147,21 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
     const user = userMap.get(roster.owner_id);
     const rosterData = mapSleeperRoster(roster, user);
 
+    // Use owner_id as sleeperId to track same owner across seasons
+    // Fall back to roster_id only if owner_id is not available (orphaned roster)
+    const rosterSleeperId = roster.owner_id || String(roster.roster_id);
+
     const dbRoster = await prisma.roster.upsert({
       where: {
         leagueId_sleeperId: {
           leagueId: league.id,
-          sleeperId: String(roster.roster_id),
+          sleeperId: rosterSleeperId,
         },
       },
       update: rosterData,
       create: {
         leagueId: league.id,
-        sleeperId: String(roster.roster_id),
+        sleeperId: rosterSleeperId,
         ...rosterData,
       },
     });
@@ -566,17 +570,20 @@ export async function syncLeagueFast(sleeperLeagueId: string): Promise<{
     const user = userMap.get(roster.owner_id);
     const rosterData = mapSleeperRoster(roster, user);
 
+    // Use owner_id as sleeperId to track same owner across seasons
+    const rosterSleeperId = roster.owner_id || String(roster.roster_id);
+
     const dbRoster = await prisma.roster.upsert({
       where: {
         leagueId_sleeperId: {
           leagueId: league.id,
-          sleeperId: String(roster.roster_id),
+          sleeperId: rosterSleeperId,
         },
       },
       update: rosterData,
       create: {
         leagueId: league.id,
-        sleeperId: String(roster.roster_id),
+        sleeperId: rosterSleeperId,
         ...rosterData,
       },
     });
@@ -744,17 +751,20 @@ export async function quickSyncLeague(leagueId: string): Promise<{
       const user = userMap.get(roster.owner_id);
       const rosterData = mapSleeperRoster(roster, user);
 
+      // Use owner_id as sleeperId to track same owner across seasons
+      const rosterSleeperId = roster.owner_id || String(roster.roster_id);
+
       const dbRoster = await tx.roster.upsert({
         where: {
           leagueId_sleeperId: {
             leagueId: league.id,
-            sleeperId: String(roster.roster_id),
+            sleeperId: rosterSleeperId,
           },
         },
         update: rosterData,
         create: {
           leagueId: league.id,
-          sleeperId: String(roster.roster_id),
+          sleeperId: rosterSleeperId,
           ...rosterData,
         },
       });
