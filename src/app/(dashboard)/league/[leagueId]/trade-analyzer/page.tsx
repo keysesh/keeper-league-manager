@@ -1020,11 +1020,6 @@ export default function TradeAnalyzerPage() {
 
 // Player Info Card Component (informative only, no value scoring)
 function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue; isAfterDeadline: boolean }) {
-  // In offseason, years kept ALWAYS resets for traded players
-  const yearsWillReset = isAfterDeadline;
-  const currentYearsKept = player.keeperStatus.yearsKept;
-  const newYearsKept = yearsWillReset ? 0 : currentYearsKept;
-
   return (
     <div className="p-4 rounded-xl bg-gray-800/30 border border-gray-700">
       {/* Header */}
@@ -1059,19 +1054,19 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
         </div>
         <div className="p-3 rounded-lg bg-gray-900/50">
           <div className="text-gray-500 text-xs uppercase tracking-wider mb-1">Years Kept</div>
-          <div className={`font-bold text-xl ${yearsWillReset ? "text-amber-400" : "text-white"}`}>
-            {currentYearsKept} → {newYearsKept}
+          <div className={`font-bold text-xl ${isAfterDeadline ? "text-amber-400" : "text-white"}`}>
+            {isAfterDeadline ? "Resets → 0" : "Preserved"}
           </div>
-          <div className={`text-xs font-medium ${yearsWillReset ? "text-amber-400" : "text-emerald-400"}`}>
-            {yearsWillReset ? "Resets (offseason)" : "Preserved"}
+          <div className={`text-xs font-medium ${isAfterDeadline ? "text-amber-400" : "text-emerald-400"}`}>
+            {isAfterDeadline ? "Offseason trade" : "In-season trade"}
           </div>
         </div>
       </div>
 
-      {/* Years Reset Warning */}
-      {yearsWillReset && currentYearsKept > 0 && (
+      {/* Offseason Trade Notice */}
+      {isAfterDeadline && (
         <div className="mt-3 p-2.5 rounded-lg text-sm bg-amber-500/10 border border-amber-500/20 text-amber-400">
-          ⚠️ Years kept resets from {currentYearsKept} to 0 (offseason trade)
+          ⚠️ New owner starts at Year 1 (years kept resets to 0)
         </div>
       )}
     </div>
