@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import Link from "next/link";
 import { Crown, Medal, Trophy, ChevronRight, Shield } from "lucide-react";
 
@@ -27,19 +28,22 @@ interface StandingsTableProps {
   playoffSpots?: number;
 }
 
-export function StandingsTable({
+export const StandingsTable = memo(function StandingsTable({
   rosters,
   leagueId,
   maxKeepers = 7,
   playoffSpots = 6,
 }: StandingsTableProps) {
-  // Sort by wins (desc), then points for (desc)
-  const sorted = [...rosters].sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    return b.pointsFor - a.pointsFor;
-  });
+  // Sort by wins (desc), then points for (desc) - memoized
+  const sorted = useMemo(() =>
+    [...rosters].sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return b.pointsFor - a.pointsFor;
+    }),
+    [rosters]
+  );
 
-  const maxPoints = Math.max(...sorted.map((r) => r.pointsFor));
+  const maxPoints = useMemo(() => Math.max(...sorted.map((r) => r.pointsFor)), [sorted]);
 
   return (
     <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-zinc-900/80 to-zinc-950/90 border border-white/[0.06] shadow-xl">
@@ -200,9 +204,9 @@ export function StandingsTable({
       </div>
     </div>
   );
-}
+});
 
-function RankBadge({ rank, isPlayoff }: { rank: number; isPlayoff: boolean }) {
+const RankBadge = memo(function RankBadge({ rank, isPlayoff }: { rank: number; isPlayoff: boolean }) {
   if (rank === 1) {
     return (
       <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
@@ -232,15 +236,15 @@ function RankBadge({ rank, isPlayoff }: { rank: number; isPlayoff: boolean }) {
       w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
       ${isPlayoff
         ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
-        : "bg-gray-800/80 text-gray-500 ring-1 ring-white/[0.04]"
+        : "bg-zinc-800/80 text-zinc-500 ring-1 ring-white/[0.04]"
       }
     `}>
       {rank}
     </div>
   );
-}
+});
 
-function KeeperBadge({ count, max }: { count: number; max: number }) {
+const KeeperBadge = memo(function KeeperBadge({ count, max }: { count: number; max: number }) {
   const isFull = count >= max;
   const isEmpty = count === 0;
   const percent = (count / max) * 100;
@@ -249,7 +253,7 @@ function KeeperBadge({ count, max }: { count: number; max: number }) {
     <div className={`
       relative px-2 py-1 rounded-lg text-xs font-semibold
       ${isFull ? "bg-emerald-500/15 text-emerald-400" : ""}
-      ${isEmpty ? "bg-gray-800/50 text-gray-600" : ""}
+      ${isEmpty ? "bg-zinc-800/50 text-zinc-600" : ""}
       ${!isFull && !isEmpty ? "bg-purple-500/15 text-purple-400" : ""}
     `}>
       <span className="relative z-10">{count}/{max}</span>
@@ -263,4 +267,4 @@ function KeeperBadge({ count, max }: { count: number; max: number }) {
       )}
     </div>
   );
-}
+});
