@@ -38,20 +38,20 @@ import {
   copyDraftBoardToClipboard,
 } from "@/lib/export";
 
-// High-visibility team colors - distinct and readable
+// High-visibility team colors - maximally distinct, ordered to avoid similar adjacent colors
 const TEAM_COLORS = [
-  { bg: "bg-rose-500", bgMuted: "bg-rose-900/30", bgSolid: "bg-rose-900/50", border: "border-rose-500/50", text: "text-rose-200", accent: "text-rose-400", ring: "ring-rose-500/30" },
-  { bg: "bg-sky-500", bgMuted: "bg-sky-900/30", bgSolid: "bg-sky-900/50", border: "border-sky-500/50", text: "text-sky-200", accent: "text-sky-400", ring: "ring-sky-500/30" },
-  { bg: "bg-emerald-500", bgMuted: "bg-emerald-900/30", bgSolid: "bg-emerald-900/50", border: "border-emerald-500/50", text: "text-emerald-200", accent: "text-emerald-400", ring: "ring-emerald-500/30" },
-  { bg: "bg-amber-500", bgMuted: "bg-amber-900/30", bgSolid: "bg-amber-900/50", border: "border-amber-500/50", text: "text-amber-200", accent: "text-amber-400", ring: "ring-amber-500/30" },
-  { bg: "bg-violet-500", bgMuted: "bg-violet-900/30", bgSolid: "bg-violet-900/50", border: "border-violet-500/50", text: "text-violet-200", accent: "text-violet-400", ring: "ring-violet-500/30" },
+  { bg: "bg-red-500", bgMuted: "bg-red-900/30", bgSolid: "bg-red-900/50", border: "border-red-500/50", text: "text-red-200", accent: "text-red-400", ring: "ring-red-500/30" },
+  { bg: "bg-blue-500", bgMuted: "bg-blue-900/30", bgSolid: "bg-blue-900/50", border: "border-blue-500/50", text: "text-blue-200", accent: "text-blue-400", ring: "ring-blue-500/30" },
+  { bg: "bg-yellow-500", bgMuted: "bg-yellow-900/30", bgSolid: "bg-yellow-900/50", border: "border-yellow-500/50", text: "text-yellow-200", accent: "text-yellow-400", ring: "ring-yellow-500/30" },
+  { bg: "bg-green-500", bgMuted: "bg-green-900/30", bgSolid: "bg-green-900/50", border: "border-green-500/50", text: "text-green-200", accent: "text-green-400", ring: "ring-green-500/30" },
+  { bg: "bg-purple-500", bgMuted: "bg-purple-900/30", bgSolid: "bg-purple-900/50", border: "border-purple-500/50", text: "text-purple-200", accent: "text-purple-400", ring: "ring-purple-500/30" },
+  { bg: "bg-orange-500", bgMuted: "bg-orange-900/30", bgSolid: "bg-orange-900/50", border: "border-orange-500/50", text: "text-orange-200", accent: "text-orange-400", ring: "ring-orange-500/30" },
   { bg: "bg-cyan-500", bgMuted: "bg-cyan-900/30", bgSolid: "bg-cyan-900/50", border: "border-cyan-500/50", text: "text-cyan-200", accent: "text-cyan-400", ring: "ring-cyan-500/30" },
   { bg: "bg-pink-500", bgMuted: "bg-pink-900/30", bgSolid: "bg-pink-900/50", border: "border-pink-500/50", text: "text-pink-200", accent: "text-pink-400", ring: "ring-pink-500/30" },
   { bg: "bg-lime-500", bgMuted: "bg-lime-900/30", bgSolid: "bg-lime-900/50", border: "border-lime-500/50", text: "text-lime-200", accent: "text-lime-400", ring: "ring-lime-500/30" },
-  { bg: "bg-orange-500", bgMuted: "bg-orange-900/30", bgSolid: "bg-orange-900/50", border: "border-orange-500/50", text: "text-orange-200", accent: "text-orange-400", ring: "ring-orange-500/30" },
-  { bg: "bg-teal-500", bgMuted: "bg-teal-900/30", bgSolid: "bg-teal-900/50", border: "border-teal-500/50", text: "text-teal-200", accent: "text-teal-400", ring: "ring-teal-500/30" },
   { bg: "bg-indigo-500", bgMuted: "bg-indigo-900/30", bgSolid: "bg-indigo-900/50", border: "border-indigo-500/50", text: "text-indigo-200", accent: "text-indigo-400", ring: "ring-indigo-500/30" },
-  { bg: "bg-fuchsia-500", bgMuted: "bg-fuchsia-900/30", bgSolid: "bg-fuchsia-900/50", border: "border-fuchsia-500/50", text: "text-fuchsia-200", accent: "text-fuchsia-400", ring: "ring-fuchsia-500/30" },
+  { bg: "bg-amber-500", bgMuted: "bg-amber-900/30", bgSolid: "bg-amber-900/50", border: "border-amber-500/50", text: "text-amber-200", accent: "text-amber-400", ring: "ring-amber-500/30" },
+  { bg: "bg-teal-500", bgMuted: "bg-teal-900/30", bgSolid: "bg-teal-900/50", border: "border-teal-500/50", text: "text-teal-200", accent: "text-teal-400", ring: "ring-teal-500/30" },
 ];
 
 function getTeamColor(index: number) {

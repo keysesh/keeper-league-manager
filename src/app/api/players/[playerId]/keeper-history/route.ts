@@ -22,8 +22,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get player info
-    const player = await prisma.player.findUnique({
+    // Get player info - try database ID first, then Sleeper ID
+    let player = await prisma.player.findUnique({
       where: { id: playerId },
       select: {
         id: true,
@@ -38,13 +38,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
 
+    // If not found by database ID, try Sleeper ID
+    if (!player) {
+      player = await prisma.player.findUnique({
+        where: { sleeperId: playerId },
+        select: {
+          id: true,
+          sleeperId: true,
+          fullName: true,
+          firstName: true,
+          lastName: true,
+          position: true,
+          team: true,
+          age: true,
+          yearsExp: true,
+        },
+      });
+    }
+
     if (!player) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    // Get all keeper records for this player
+    // Get all keeper records for this player (use database ID)
     const keepers = await prisma.keeper.findMany({
-      where: { playerId },
+      where: { playerId: player.id },
       include: {
         roster: {
           select: {
@@ -62,9 +80,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       orderBy: { season: "asc" },
     });
 
-    // Get all draft picks for this player
+    // Get all draft picks for this player (use database ID)
     const draftPicks = await prisma.draftPick.findMany({
-      where: { playerId },
+      where: { playerId: player.id },
       include: {
         draft: {
           select: {
