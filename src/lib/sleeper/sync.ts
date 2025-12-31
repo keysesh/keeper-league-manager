@@ -449,6 +449,7 @@ export async function syncTransactions(leagueId: string): Promise<number> {
         });
 
         // Sync transaction players using pre-fetched maps
+        // Process adds (pickups, trades where player is acquired)
         if (trans.adds) {
           for (const [playerId, toRosterId] of Object.entries(trans.adds)) {
             const dbPlayerId = playerMap.get(playerId);
@@ -477,6 +478,41 @@ export async function syncTransactions(leagueId: string): Promise<number> {
                 playerId: dbPlayerId,
                 fromRosterId: fromDbRosterId,
                 toRosterId: toDbRosterId,
+              },
+            });
+          }
+        }
+
+        // Process standalone drops (drops without corresponding adds)
+        // These are players dropped to waivers/FA without being picked up
+        if (trans.drops) {
+          for (const [playerId, fromRosterId] of Object.entries(trans.drops)) {
+            // Skip if this drop was part of an add (already processed above)
+            if (trans.adds && playerId in trans.adds) {
+              continue;
+            }
+
+            const dbPlayerId = playerMap.get(playerId);
+            if (!dbPlayerId) continue;
+
+            const fromDbRosterId = rosterMap.get(String(fromRosterId));
+            if (!fromDbRosterId) continue;
+
+            // Standalone drop: fromRosterId is set, toRosterId is null
+            await tx.transactionPlayer.upsert({
+              where: {
+                id: `${transaction.id}-${dbPlayerId}`,
+              },
+              update: {
+                fromRosterId: fromDbRosterId,
+                toRosterId: null,
+              },
+              create: {
+                id: `${transaction.id}-${dbPlayerId}`,
+                transactionId: transaction.id,
+                playerId: dbPlayerId,
+                fromRosterId: fromDbRosterId,
+                toRosterId: null,
               },
             });
           }

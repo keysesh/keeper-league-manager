@@ -190,6 +190,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
      * - In-season trade → origin = inherited from previous owner
      * - Offseason trade → origin = RESETS to trade season (next season)
      * - Waiver/FA → origin = pickup season
+     *
+     * IMPORTANT: isKeeper=true draft picks are keeper SLOTS, not original drafts.
+     * We filter those out and look for the actual original draft.
      */
     function getOriginSeason(
       playerId: string,
@@ -203,9 +206,38 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
       visited.add(key);
 
+      // 0. Check existing keeper records first - they have authoritative yearsKept data
+      // This handles cases where historical draft data isn't synced
+      const playerKeepers = keepersByPlayer.get(playerId) || [];
+      if (playerKeepers.length > 0) {
+        // Find the earliest keeper record to calculate origin
+        const earliestKeeper = playerKeepers.reduce((earliest, k) =>
+          k.season < earliest.season ? k : earliest
+        );
+        // Origin = earliest keeper season - (yearsKept - 1)
+        // e.g., if 2025 keeper has yearsKept=3, origin was 2023
+        const originFromKeeper = earliestKeeper.season - (earliestKeeper.yearsKept - 1);
+
+        // Try to find the original draft round from non-keeper draft picks
+        const originalDraft = draftPicks.find(
+          (p) => p.playerId === playerId &&
+                 p.roster?.sleeperId === targetSleeperId &&
+                 !p.isKeeper
+        );
+
+        return {
+          originSeason: originFromKeeper,
+          acquisitionType: AcquisitionType.DRAFTED, // Assume drafted if has keeper history
+          draftRound: originalDraft?.round ?? earliestKeeper.baseCost,
+        };
+      }
+
       // 1. Check if player was drafted by this owner (matching sleeperId across seasons)
+      // IMPORTANT: Filter out isKeeper=true picks - those are keeper SLOTS, not original drafts
       const draftPick = draftPicks.find(
-        (p) => p.playerId === playerId && p.roster?.sleeperId === targetSleeperId
+        (p) => p.playerId === playerId &&
+               p.roster?.sleeperId === targetSleeperId &&
+               !p.isKeeper
       );
 
       if (draftPick) {
