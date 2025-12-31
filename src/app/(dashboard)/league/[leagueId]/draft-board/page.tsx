@@ -721,22 +721,34 @@ export default function DraftBoardPage() {
       <div className="flex flex-wrap items-center gap-6 text-sm text-gray-400 pt-4 border-t border-gray-700/50">
         <span className="text-gray-500 text-xs uppercase tracking-wide font-medium">Legend:</span>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gray-800/80 border border-gray-600/50" />
+          <div className="w-8 h-6 rounded bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50 relative">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-l" />
+          </div>
           <span>Keeper</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gradient-to-br from-amber-900/60 to-amber-950/80 border-2 border-amber-500/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-t-amber-500 border-l-[8px] border-l-transparent" />
+          <div className="w-8 h-6 rounded bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400 relative flex items-center justify-center">
+            <Star size={10} className="text-amber-300 fill-amber-400" />
           </div>
           <span>Franchise Tag</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gray-800/30 border-2 border-dashed border-sky-500/50" />
+          <div className="w-8 h-6 rounded bg-gradient-to-br from-gray-800/40 to-gray-900/60 border-2 border-dashed border-gray-600/50 flex items-center justify-center">
+            <ArrowLeftRight size={8} className="text-gray-500" />
+          </div>
           <span>Traded Pick</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gray-900/30 border border-gray-800/50" />
+          <div className="w-8 h-6 rounded bg-gray-900/20 border border-gray-800/20" />
           <span>Available</span>
+        </div>
+        <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-700">
+          <span className="text-gray-500 text-xs uppercase tracking-wide font-medium">Years:</span>
+          <div className="flex items-center gap-1">
+            <span className="px-1.5 py-0.5 rounded bg-white/10 text-gray-300 text-[10px] font-bold">Y1</span>
+            <span className="px-1.5 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-[10px] font-bold">Y2</span>
+            <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 text-[10px] font-bold">Y3+</span>
+          </div>
         </div>
       </div>
     </div>
@@ -785,6 +797,16 @@ interface DraftCellProps {
   teamNameToInfo: Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>;
 }
 
+// Position accent colors for cards
+const POSITION_ACCENTS: Record<string, { gradient: string; border: string; glow: string }> = {
+  QB: { gradient: "from-rose-500/20 via-transparent", border: "border-l-rose-500", glow: "shadow-rose-500/20" },
+  RB: { gradient: "from-emerald-500/20 via-transparent", border: "border-l-emerald-500", glow: "shadow-emerald-500/20" },
+  WR: { gradient: "from-sky-500/20 via-transparent", border: "border-l-sky-500", glow: "shadow-sky-500/20" },
+  TE: { gradient: "from-amber-500/20 via-transparent", border: "border-l-amber-500", glow: "shadow-amber-500/20" },
+  K: { gradient: "from-violet-500/20 via-transparent", border: "border-l-violet-500", glow: "shadow-violet-500/20" },
+  DEF: { gradient: "from-slate-500/20 via-transparent", border: "border-l-slate-500", glow: "shadow-slate-500/20" },
+};
+
 function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
   // Traded pick - show who owns this pick now
   if (slot.status === "traded" && slot.tradedTo) {
@@ -803,83 +825,134 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCell
     const ownerName = newOwnerInfo?.name || slot.tradedTo;
 
     return (
-      <div className={`h-[72px] rounded-lg bg-gray-900/60 border-2 border-dashed ${ownerColor.border} flex flex-col items-center justify-center px-2 py-2`}>
-        <div className={`w-8 h-8 rounded-full ${ownerColor.bgSolid} flex items-center justify-center mb-1`}>
+      <div className="h-[88px] rounded-lg bg-gradient-to-br from-gray-800/40 to-gray-900/60 border-2 border-dashed border-gray-600/50 flex flex-col items-center justify-center gap-1 relative overflow-hidden">
+        <div className={`w-8 h-8 rounded-full ${ownerColor.bgMuted} flex items-center justify-center`}>
           <ArrowLeftRight size={14} className={ownerColor.accent} />
         </div>
-        <span className={`${ownerColor.accent} text-[10px] font-bold truncate max-w-[100px] text-center leading-tight`}>
-          {ownerName}
-        </span>
+        <div className="text-center px-2">
+          <span className="text-[9px] text-gray-500 uppercase tracking-wide block">Traded to</span>
+          <span className={`${ownerColor.accent} text-[10px] font-semibold truncate block max-w-[100px]`}>
+            {ownerName}
+          </span>
+        </div>
       </div>
     );
   }
 
-  // Keeper cell - rich player card with avatar
+  // Keeper cell - premium sports card design
   if (slot.status === "keeper" && slot.keeper) {
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
+    const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
+    const yearsKept = slot.keeper.yearsKept || 1;
+
+    // Get the first name initial and last name for compact display
+    const nameParts = slot.keeper.playerName.split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+    const displayName = lastName ? `${firstName.charAt(0)}. ${lastName}` : firstName;
 
     return (
       <div
         className={`
-          h-[72px] rounded-lg px-2 py-1.5 relative overflow-hidden
+          group h-[88px] rounded-lg relative overflow-hidden cursor-pointer
+          transition-all duration-300 ease-out
+          hover:scale-105 hover:z-20 hover:shadow-xl
           ${isFranchise
-            ? "bg-gradient-to-br from-amber-900/70 to-amber-950/90 border-2 border-amber-500/60 shadow-lg shadow-amber-500/10"
-            : "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-600/60"
+            ? "bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400 shadow-lg shadow-amber-500/40"
+            : "bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50 hover:ring-gray-500"
           }
         `}
       >
-        {/* Franchise corner ribbon */}
+        {/* Decorative corner accent */}
+        <div className={`absolute top-0 left-0 w-12 h-12 ${isFranchise ? "bg-amber-500/30" : `bg-gradient-to-br ${posAccent.gradient}`} blur-xl`} />
+
+        {/* Position stripe */}
+        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+          isFranchise ? "bg-amber-400" : posAccent.border.replace("border-l-", "bg-")
+        }`} />
+
+        {/* Franchise star badge */}
         {isFranchise && (
-          <div className="absolute -top-1 -right-1">
-            <div className="w-0 h-0 border-t-[24px] border-t-amber-500 border-l-[24px] border-l-transparent" />
-            <Star size={10} className="absolute top-0.5 right-0.5 text-amber-950 fill-amber-950" />
+          <div className="absolute top-1.5 right-1.5 z-10">
+            <Star size={16} className="text-amber-300 fill-amber-400 drop-shadow-lg" />
           </div>
         )}
 
-        {/* Main content */}
-        <div className="flex items-center gap-2 h-full">
-          {/* Player Avatar */}
-          <div className="relative shrink-0">
-            <PlayerAvatar
-              sleeperId={slot.keeper.playerId}
-              name={slot.keeper.playerName}
-              size="md"
-            />
-            {/* Team logo overlay */}
+        {/* Main content - side by side layout */}
+        <div className="flex h-full pl-3 pr-2 py-2 gap-2">
+          {/* Large Player Avatar */}
+          <div className="relative shrink-0 self-center">
+            <div className={`rounded-lg overflow-hidden ${isFranchise ? "ring-2 ring-amber-400/60" : "ring-1 ring-white/20"}`}>
+              <PlayerAvatar
+                sleeperId={slot.keeper.playerId}
+                name={slot.keeper.playerName}
+                size="lg"
+              />
+            </div>
+            {/* NFL Team overlay */}
             {slot.keeper.team && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gray-900 p-0.5">
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gray-900 ring-2 ring-gray-800 flex items-center justify-center shadow-lg">
                 <TeamLogo team={slot.keeper.team} size="xs" />
               </div>
             )}
           </div>
 
-          {/* Player Info */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
-            {/* Position Badge */}
-            <PositionBadge position={slot.keeper.position} size="xs" variant="filled" />
+          {/* Info Column */}
+          <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+            {/* Top: Position + Year */}
+            <div className="flex items-center justify-between gap-1">
+              <PositionBadge position={slot.keeper.position} size="xs" variant="filled" />
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                isFranchise
+                  ? "bg-amber-400/30 text-amber-100"
+                  : yearsKept >= 3
+                    ? "bg-red-500/30 text-red-200"
+                    : yearsKept === 2
+                      ? "bg-yellow-500/30 text-yellow-200"
+                      : "bg-white/10 text-gray-300"
+              }`}>
+                {isFranchise ? "FT" : `Y${yearsKept}`}
+              </span>
+            </div>
 
-            {/* Player Name */}
-            <span
-              className={`text-[11px] font-bold truncate leading-tight mt-0.5 ${
-                isFranchise ? "text-amber-100" : "text-white"
-              }`}
-              title={slot.keeper.playerName}
-            >
-              {slot.keeper.playerName}
-            </span>
+            {/* Middle: Player Name */}
+            <div className="flex-1 flex flex-col justify-center min-w-0">
+              <span
+                className={`text-[13px] font-bold leading-tight truncate ${
+                  isFranchise ? "text-white" : "text-white"
+                }`}
+                title={slot.keeper.playerName}
+              >
+                {displayName}
+              </span>
+              {slot.keeper.team && (
+                <span className={`text-[10px] font-medium ${isFranchise ? "text-amber-200/70" : "text-gray-400"}`}>
+                  {slot.keeper.team}
+                </span>
+              )}
+            </div>
 
-            {/* Year indicator */}
-            <span className={`text-[9px] ${isFranchise ? "text-amber-300/80" : "text-gray-400"}`}>
-              {isFranchise ? "Franchise" : `Year ${slot.keeper.yearsKept || 1}`}
-            </span>
+            {/* Bottom: Status indicator */}
+            <div className={`text-[8px] font-semibold uppercase tracking-wider ${
+              isFranchise ? "text-amber-300" : "text-gray-500"
+            }`}>
+              {isFranchise ? "Franchise" : "Keeper"}
+            </div>
           </div>
         </div>
+
+        {/* Hover glow effect */}
+        <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none ${
+          isFranchise
+            ? "bg-gradient-to-t from-amber-400/10 via-transparent to-amber-400/5"
+            : "bg-gradient-to-t from-white/5 via-transparent to-white/5"
+        }`} />
       </div>
     );
   }
 
-  // Empty cell - minimal and clean
+  // Empty cell - minimal
   return (
-    <div className="h-[72px] rounded-lg bg-gray-900/20 border border-gray-800/40" />
+    <div className="h-[88px] rounded-lg bg-gray-900/20 border border-gray-800/20" />
   );
 }
