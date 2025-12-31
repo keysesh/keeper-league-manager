@@ -45,7 +45,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="hidden lg:flex lg:flex-col lg:w-72 lg:border-r lg:border-gray-800/40 bg-gradient-to-b from-[#0d0c0a] to-[#0a0908] min-h-[calc(100vh-4rem)]"
+      className="hidden lg:flex lg:flex-col lg:w-72 lg:border-r lg:border-white/[0.06] bg-[#0c0a0f]/80 backdrop-blur-xl min-h-[calc(100vh-4rem)]"
       aria-label="Main navigation"
     >
       {/* Back to Leagues when in league view */}
@@ -53,7 +53,7 @@ export function Sidebar() {
         <div className="px-5 pt-6">
           <Link
             href="/leagues"
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-amber-400 transition-colors"
+            className="flex items-center gap-2 text-sm text-zinc-500 hover:text-violet-400 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             All Leagues
@@ -76,20 +76,20 @@ export function Sidebar() {
               aria-current={isActive ? "page" : undefined}
               className={`
                 group flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium
-                transition-all duration-200 ease-out
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70
+                transition-all duration-300 ease-out
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70
                 ${isActive
-                  ? "bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent text-amber-400"
-                  : "text-gray-400 hover:text-gray-100 hover:bg-white/[0.03]"
+                  ? "bg-gradient-to-r from-violet-500/15 via-violet-500/10 to-transparent text-violet-400 border border-violet-500/20"
+                  : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03] border border-transparent"
                 }
               `}
             >
               <span
                 className={`
-                flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200
+                flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-300
                 ${isActive
-                  ? "bg-amber-500/20 text-amber-400"
-                  : "bg-gray-800/50 text-gray-500 group-hover:bg-gray-700/50 group-hover:text-gray-300"
+                  ? "bg-violet-500/20 text-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.15)]"
+                  : "bg-white/[0.03] text-zinc-500 group-hover:bg-white/[0.06] group-hover:text-zinc-300"
                 }
               `}
               >
@@ -97,12 +97,12 @@ export function Sidebar() {
               </span>
               <span className="tracking-wide flex-1">{item.name}</span>
               {item.badge && item.badge > 0 && (
-                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full">
+                <span className="px-2 py-0.5 bg-violet-500/20 text-violet-400 text-xs font-semibold rounded-full">
                   {item.badge}
                 </span>
               )}
               {isActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
               )}
             </Link>
           );
@@ -111,9 +111,9 @@ export function Sidebar() {
 
       {/* Season Card */}
       <div className="mx-5 mb-6">
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-gray-800/40 via-gray-800/20 to-transparent border border-gray-700/30 backdrop-blur-sm">
+        <div className="p-5 rounded-2xl bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-white/[0.06] backdrop-blur-sm">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-semibold">
+            <span className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-semibold">
               Current Season
             </span>
             <span className="flex h-2 w-2">
@@ -122,16 +122,16 @@ export function Sidebar() {
             </span>
           </div>
           <p className="text-3xl font-bold text-white tracking-tight">{new Date().getFullYear()}</p>
-          <p className="text-xs text-amber-400/90 mt-2 font-medium">Keeper selections open</p>
+          <p className="text-xs text-violet-400/90 mt-2 font-medium">Keeper selections open</p>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-5 border-t border-gray-800/40">
-        <p className="text-[11px] text-gray-500 font-medium tracking-wide">
+      <div className="px-5 py-5 border-t border-white/[0.04]">
+        <p className="text-[11px] text-zinc-500 font-medium tracking-wide">
           E Pluribus Fantasy Football
         </p>
-        <p className="text-[10px] text-gray-600 mt-1 font-medium">
+        <p className="text-[10px] text-zinc-600 mt-1 font-medium">
           Keeper Tracker v2.0
         </p>
       </div>

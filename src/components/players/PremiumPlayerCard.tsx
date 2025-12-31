@@ -74,7 +74,7 @@ const positionColors: Record<string, { bg: string; border: string }> = {
   WR: { bg: "bg-blue-500/10", border: "border-blue-500" },
   TE: { bg: "bg-orange-500/10", border: "border-orange-500" },
   K: { bg: "bg-purple-500/10", border: "border-purple-500" },
-  DEF: { bg: "bg-gray-500/10", border: "border-gray-500" },
+  DEF: { bg: "bg-zinc-500/10", border: "border-zinc-500" },
 };
 
 function getAcquisitionLabel(type: string): string {
@@ -143,7 +143,7 @@ export function PremiumPlayerCard({
           <div className="flex items-center gap-1.5 mt-1">
             <PositionBadge position={player.position} size="xs" variant="filled" />
             <TeamLogo team={player.team || null} size="xs" />
-            <span className="text-[10px] text-gray-400">{player.team || "FA"}</span>
+            <span className="text-[10px] text-zinc-400">{player.team || "FA"}</span>
           </div>
         </div>
         {/* Keeper Badge */}
@@ -163,21 +163,21 @@ export function PremiumPlayerCard({
       {/* Player Info Grid */}
       <div className="grid grid-cols-4 gap-2 mt-3 text-center">
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">Age</div>
+          <div className="text-[9px] text-zinc-500 uppercase">Age</div>
           <div className="text-xs font-semibold text-white">{player.age || "—"}</div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">Exp</div>
+          <div className="text-[9px] text-zinc-500 uppercase">Exp</div>
           <div className="text-xs font-semibold text-white">{player.yearsExp ?? 0}yr</div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)} PPG` : "PPG"}</div>
+          <div className="text-[9px] text-zinc-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)} PPG` : "PPG"}</div>
           <div className="text-xs font-semibold text-emerald-400">
             {player.lastSeasonPpg ? player.lastSeasonPpg.toFixed(1) : "—"}
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">{player.prevSeason ? `'${String(player.prevSeason).slice(-2)} PPG` : "PPG"}</div>
+          <div className="text-[9px] text-zinc-500 uppercase">{player.prevSeason ? `'${String(player.prevSeason).slice(-2)} PPG` : "PPG"}</div>
           <div className="text-xs font-semibold text-sky-400">
             {player.prevSeasonPpg ? player.prevSeasonPpg.toFixed(1) : "—"}
           </div>
@@ -187,22 +187,22 @@ export function PremiumPlayerCard({
       {/* Keeper Year + Status Row */}
       <div className="grid grid-cols-3 gap-2 mt-2 text-center">
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)} GP` : "GP"}</div>
+          <div className="text-[9px] text-zinc-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)} GP` : "GP"}</div>
           <div className="text-xs font-semibold text-white">{player.lastSeasonGames || "—"}</div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">Status</div>
+          <div className="text-[9px] text-zinc-500 uppercase">Status</div>
           <div className={`text-xs font-semibold ${player.injuryStatus ? "text-red-400" : "text-green-400"}`}>
             {player.injuryStatus || "Active"}
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">Year</div>
+          <div className="text-[9px] text-zinc-500 uppercase">Year</div>
           <div className={`text-xs font-semibold ${
             isKeeper ? "text-amber-400" :
             (eligibility?.yearsKept ?? 1) >= 3 ? "text-amber-400" :
             (eligibility?.yearsKept ?? 1) === 2 ? "text-yellow-400" :
-            "text-gray-300"
+            "text-zinc-300"
           }`}>
             {isKeeper
               ? existingKeeper?.type === "FRANCHISE" ? "FT" : `Yr ${eligibility?.yearsKept ?? 1}`
@@ -216,10 +216,10 @@ export function PremiumPlayerCard({
 
       {/* Keeper Status Section */}
       {eligibility && (
-        <div className="mt-3 pt-3 border-t border-gray-700/30">
+        <div className="mt-3 pt-3 border-t border-white/[0.06]">
           <div className="grid grid-cols-3 gap-1 text-center">
             <div>
-              <div className="text-[9px] text-gray-500 uppercase">Drafted</div>
+              <div className="text-[9px] text-zinc-500 uppercase">Drafted</div>
               <div className="text-[10px] font-semibold text-white">
                 {eligibility.originalDraft
                   ? `'${String(eligibility.originalDraft.draftYear).slice(-2)} R${eligibility.originalDraft.draftRound}`
@@ -227,11 +227,11 @@ export function PremiumPlayerCard({
               </div>
             </div>
             <div>
-              <div className="text-[9px] text-gray-500 uppercase">Acquired</div>
+              <div className="text-[9px] text-zinc-500 uppercase">Acquired</div>
               <div className="text-[10px] font-semibold text-white">{getAcquisitionLabel(eligibility.acquisitionType)}</div>
             </div>
             <div>
-              <div className="text-[9px] text-gray-500 uppercase">Cost</div>
+              <div className="text-[9px] text-zinc-500 uppercase">Cost</div>
               <div className="text-[10px] font-semibold text-amber-400">
                 {isKeeper ? `R${existingKeeper.finalCost}` : costs?.regular ? `R${costs.regular.finalCost}` : "R1 (FT)"}
               </div>
@@ -240,7 +240,7 @@ export function PremiumPlayerCard({
 
           {/* Cost Breakdown - shows escalation */}
           {costs?.regular && !isKeeper && (eligibility.consecutiveYears ?? 0) > 0 && (
-            <div className="mt-2 text-[9px] text-gray-500 text-center">
+            <div className="mt-2 text-[9px] text-zinc-500 text-center">
               {costs.regular.costBreakdown}
             </div>
           )}
@@ -256,7 +256,7 @@ export function PremiumPlayerCard({
 
       {/* Action Buttons */}
       {!isKeeper && isEligible && costs && onAddKeeper && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-700/30">
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
           {costs.regular && (
             <button
               onClick={() => onAddKeeper(player.id, "REGULAR")}
@@ -280,7 +280,7 @@ export function PremiumPlayerCard({
 
       {/* Remove Keeper Button */}
       {isKeeper && !existingKeeper.isLocked && onRemoveKeeper && (
-        <div className="flex items-center justify-center mt-3 pt-3 border-t border-gray-700/30">
+        <div className="flex items-center justify-center mt-3 pt-3 border-t border-white/[0.06]">
           <button
             onClick={() => onRemoveKeeper(existingKeeper.id)}
             disabled={isLoading}

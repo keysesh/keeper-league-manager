@@ -264,19 +264,19 @@ export default function TeamRosterPage() {
         <div>
           <BackLink href={`/league/${leagueId}`} label="Back to League" />
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 ring-1 ring-purple-500/20 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-purple-400" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 ring-1 ring-violet-500/20 flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-violet-400" />
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Manage Keepers</h1>
-              <p className="text-gray-500 mt-0.5">{data.season} Season</p>
+              <p className="text-zinc-500 mt-0.5">{data.season} Season</p>
             </div>
           </div>
         </div>
         <button
           onClick={syncKeepers}
           disabled={syncingKeepers}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-800/50 text-gray-300 hover:text-white border border-gray-700/50 hover:border-gray-600 text-sm font-medium transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.03] text-zinc-300 hover:text-white border border-white/[0.06] hover:border-white/[0.12] text-sm font-medium transition-all disabled:opacity-50"
         >
           <RefreshCw size={16} className={syncingKeepers ? "animate-spin" : ""} />
           {syncingKeepers ? "Syncing..." : "Sync Keepers"}
@@ -287,12 +287,12 @@ export default function TeamRosterPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="card-premium rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-              <Users size={18} className="text-purple-400" />
+            <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
+              <Users size={18} className="text-violet-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{data.currentKeepers.total}<span className="text-sm text-gray-500">/{data.limits.maxKeepers}</span></p>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Total Keepers</p>
+              <p className="text-2xl font-bold text-white">{data.currentKeepers.total}<span className="text-sm text-zinc-500">/{data.limits.maxKeepers}</span></p>
+              <p className="text-xs text-zinc-500 uppercase tracking-wide">Total Keepers</p>
             </div>
           </div>
         </div>
@@ -302,8 +302,8 @@ export default function TeamRosterPage() {
               <Star size={18} className="text-amber-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-amber-400">{data.currentKeepers.franchise}<span className="text-sm text-gray-500">/{data.limits.maxFranchiseTags}</span></p>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Franchise Tags</p>
+              <p className="text-2xl font-bold text-amber-400">{data.currentKeepers.franchise}<span className="text-sm text-zinc-500">/{data.limits.maxFranchiseTags}</span></p>
+              <p className="text-xs text-zinc-500 uppercase tracking-wide">Franchise Tags</p>
             </div>
           </div>
         </div>
@@ -313,8 +313,8 @@ export default function TeamRosterPage() {
               <Trophy size={18} className="text-emerald-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-emerald-400">{data.currentKeepers.regular}<span className="text-sm text-gray-500">/{data.limits.maxRegularKeepers}</span></p>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Regular Keepers</p>
+              <p className="text-2xl font-bold text-emerald-400">{data.currentKeepers.regular}<span className="text-sm text-zinc-500">/{data.limits.maxRegularKeepers}</span></p>
+              <p className="text-xs text-zinc-500 uppercase tracking-wide">Regular Keepers</p>
             </div>
           </div>
         </div>
@@ -350,11 +350,11 @@ export default function TeamRosterPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-2xl bg-gray-800/50 flex items-center justify-center mx-auto mb-4">
-                <Trophy className="w-8 h-8 text-gray-600" />
+              <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 flex items-center justify-center mx-auto mb-4">
+                <Trophy className="w-8 h-8 text-zinc-600" />
               </div>
-              <p className="text-gray-400 font-medium">No keepers selected yet</p>
-              <p className="text-sm text-gray-600 mt-1">Add players from the eligible list below</p>
+              <p className="text-zinc-400 font-medium">No keepers selected yet</p>
+              <p className="text-sm text-zinc-600 mt-1">Add players from the eligible list below</p>
             </div>
           )}
         </div>
@@ -362,7 +362,7 @@ export default function TeamRosterPage() {
 
       {/* Eligible Players */}
       <div className="card-premium rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700/40">
+        <div className="px-6 py-4 border-b border-white/[0.06]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
@@ -373,7 +373,7 @@ export default function TeamRosterPage() {
                 {eligiblePlayers.length}
               </span>
             </div>
-            <div className="flex gap-4 text-xs text-gray-500">
+            <div className="flex gap-4 text-xs text-zinc-500">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
                 Keep
@@ -411,7 +411,7 @@ export default function TeamRosterPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500">No eligible players available</p>
+              <p className="text-zinc-500">No eligible players available</p>
             </div>
           )}
         </div>
@@ -420,11 +420,11 @@ export default function TeamRosterPage() {
       {/* Ineligible Players */}
       {ineligiblePlayers.length > 0 && (
         <details className="group">
-          <summary className="flex items-center gap-3 cursor-pointer hover:text-gray-300 transition-colors text-gray-500">
+          <summary className="flex items-center gap-3 cursor-pointer hover:text-zinc-300 transition-colors text-zinc-500">
             <span className="text-xs font-semibold uppercase tracking-wide">
               Ineligible Players ({ineligiblePlayers.length})
             </span>
-            <span className="text-xs text-gray-600 group-open:hidden">Click to expand</span>
+            <span className="text-xs text-zinc-600 group-open:hidden">Click to expand</span>
           </summary>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {ineligiblePlayers.map((p) => (

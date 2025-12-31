@@ -55,14 +55,14 @@ export function Header({ user }: HeaderProps) {
   return (
     <>
       <header
-        className="sticky top-0 z-50 w-full border-b border-gray-800/40 bg-[#0d0c0a]/90 backdrop-blur-xl"
+        className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#0c0a0f]/80 backdrop-blur-xl"
         role="banner"
       >
         <div className="flex h-16 items-center justify-between px-4 lg:px-8">
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="lg:hidden p-2 -ml-2 text-gray-400 hover:text-white"
+            className="lg:hidden p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"
             aria-label="Open menu"
           >
             <Menu className="w-6 h-6" />
@@ -80,7 +80,7 @@ export function Header({ user }: HeaderProps) {
           <div className="flex items-center gap-2 sm:gap-3">
             <NotificationBell />
             <div
-              className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-xl bg-gray-800/40 border border-gray-700/40"
+              className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm"
               aria-label={`Logged in as ${displayName}`}
             >
               {user.image ? (
@@ -89,27 +89,27 @@ export function Header({ user }: HeaderProps) {
                   alt={`${displayName} avatar`}
                   width={32}
                   height={32}
-                  className="rounded-full ring-2 ring-amber-500/30"
+                  className="rounded-full ring-2 ring-violet-500/30"
                 />
               ) : (
                 <div
-                  className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-amber-500/20"
+                  className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-violet-500/20"
                   aria-hidden="true"
                 >
                   {displayName[0].toUpperCase()}
                 </div>
               )}
-              <span className="text-sm text-gray-200 font-medium">
+              <span className="text-sm text-zinc-200 font-medium">
                 {displayName}
               </span>
             </div>
 
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="group flex items-center gap-2 text-sm text-gray-500 hover:text-white transition-all duration-150 px-3 py-2.5 rounded-xl hover:bg-gray-800/50 border border-transparent hover:border-gray-700/50 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+              className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-all duration-200 px-3 py-2.5 rounded-xl hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70"
               aria-label="Sign out of your account"
             >
-              <LogOut size={16} strokeWidth={2} className="text-gray-500 group-hover:text-white transition-colors" />
+              <LogOut size={16} strokeWidth={2} className="text-zinc-500 group-hover:text-white transition-colors" />
               <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>
@@ -121,25 +121,25 @@ export function Header({ user }: HeaderProps) {
         <div className="fixed inset-0 z-[60] lg:hidden">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/70 backdrop-blur-md"
             onClick={() => setMobileMenuOpen(false)}
           />
 
           {/* Slide-in Menu */}
-          <div className="fixed inset-y-0 left-0 w-72 bg-[#0d0c0a] border-r border-gray-800/40 overflow-y-auto">
+          <div className="fixed inset-y-0 left-0 w-72 bg-[#0c0a0f]/95 backdrop-blur-xl border-r border-white/[0.06] overflow-y-auto">
             {/* Menu Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-800/40">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <LogoMark size="sm" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-2 text-gray-400 hover:text-white"
+                className="p-2 text-zinc-400 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             {/* User Info */}
-            <div className="p-4 border-b border-gray-800/40">
+            <div className="p-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-3">
                 {user.image ? (
                   <Image
@@ -147,16 +147,16 @@ export function Header({ user }: HeaderProps) {
                     alt={`${displayName} avatar`}
                     width={40}
                     height={40}
-                    className="rounded-full ring-2 ring-amber-500/30"
+                    className="rounded-full ring-2 ring-violet-500/30"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-sm font-bold text-white">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-violet-500/20">
                     {displayName[0].toUpperCase()}
                   </div>
                 )}
                 <div>
                   <p className="text-white font-medium">{displayName}</p>
-                  <p className="text-xs text-gray-500">Keeper Manager</p>
+                  <p className="text-xs text-zinc-500">Keeper Manager</p>
                 </div>
               </div>
             </div>
@@ -167,7 +167,7 @@ export function Header({ user }: HeaderProps) {
                 <Link
                   href="/"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-xl transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-200"
                 >
                   <LayoutDashboard className="w-5 h-5" />
                   <span>Back to Dashboard</span>
@@ -181,10 +181,10 @@ export function Header({ user }: HeaderProps) {
                     key={item.name}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? "bg-amber-500/15 text-amber-400"
-                        : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                        ? "bg-violet-500/15 text-violet-400 border border-violet-500/20"
+                        : "text-zinc-400 hover:text-white hover:bg-white/[0.05] border border-transparent"
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -195,11 +195,11 @@ export function Header({ user }: HeaderProps) {
             </nav>
 
             {/* Footer */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800/40">
-              <p className="text-xs text-gray-500 font-medium">
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/[0.06]">
+              <p className="text-xs text-zinc-500 font-medium">
                 E Pluribus Fantasy Football
               </p>
-              <p className="text-[10px] text-gray-600 mt-0.5">
+              <p className="text-[10px] text-zinc-600 mt-0.5">
                 Keeper Tracker v2.0
               </p>
             </div>

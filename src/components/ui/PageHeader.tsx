@@ -22,11 +22,11 @@ interface PageHeaderProps {
 }
 
 const badgeColors = {
-  purple: "bg-purple-500/20 text-purple-400 ring-purple-500/30",
+  purple: "bg-violet-500/20 text-violet-400 ring-violet-500/30",
   emerald: "bg-emerald-500/20 text-emerald-400 ring-emerald-500/30",
   amber: "bg-amber-500/20 text-amber-400 ring-amber-500/30",
   blue: "bg-blue-500/20 text-blue-400 ring-blue-500/30",
-  gray: "bg-gray-500/20 text-gray-400 ring-gray-500/30",
+  gray: "bg-zinc-500/20 text-zinc-400 ring-zinc-500/30",
 };
 
 export function PageHeader({
@@ -61,15 +61,15 @@ export function PageHeader({
         {(subtitle || teamCount) && (
           <div className="flex items-center gap-2 mt-1.5">
             {teamCount && (
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-zinc-500">
                 {teamCount} teams
               </span>
             )}
             {subtitle && teamCount && (
-              <span className="text-gray-700">•</span>
+              <span className="text-zinc-600">•</span>
             )}
             {subtitle && (
-              <span className="text-sm text-gray-500">{subtitle}</span>
+              <span className="text-sm text-zinc-500">{subtitle}</span>
             )}
           </div>
         )}
@@ -83,16 +83,16 @@ export function PageHeader({
             disabled={syncing}
             className={`
               group flex items-center gap-2 px-3 py-2 rounded-xl
-              bg-gray-800/80 hover:bg-gray-700/80
+              bg-white/[0.03] hover:bg-white/[0.06] backdrop-blur-sm
               border border-white/[0.06] hover:border-white/[0.1]
-              text-sm font-medium text-gray-300 hover:text-white
+              text-sm font-medium text-zinc-300 hover:text-white
               disabled:opacity-50 disabled:cursor-not-allowed
               transition-all duration-200
             `}
           >
             <RefreshCw
               size={14}
-              className={`text-gray-400 group-hover:text-white transition-colors ${
+              className={`text-zinc-400 group-hover:text-white transition-colors ${
                 syncing ? "animate-spin" : ""
               }`}
             />
@@ -105,12 +105,12 @@ export function PageHeader({
             href={primaryAction.href}
             className="
               group flex items-center gap-1.5 px-4 py-2 rounded-xl
-              bg-gradient-to-r from-purple-600 to-purple-500
-              hover:from-purple-500 hover:to-purple-400
+              bg-gradient-to-r from-violet-600 to-purple-600
+              hover:from-violet-500 hover:to-purple-500
               text-sm font-semibold text-white
-              shadow-lg shadow-purple-500/20
+              shadow-lg shadow-violet-500/20
               transition-all duration-200
-              hover:shadow-purple-500/30
+              hover:shadow-violet-500/30
             "
           >
             {primaryAction.label}

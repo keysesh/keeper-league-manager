@@ -38,25 +38,25 @@ const typeConfig: Record<ToastType, {
   iconBg: string;
 }> = {
   success: {
-    bg: "bg-emerald-950/90",
+    bg: "bg-[#13111a]/90",
     border: "border-emerald-500/30",
     icon: "text-emerald-400",
     iconBg: "bg-emerald-500/20",
   },
   error: {
-    bg: "bg-red-950/90",
+    bg: "bg-[#13111a]/90",
     border: "border-red-500/30",
     icon: "text-red-400",
     iconBg: "bg-red-500/20",
   },
   info: {
-    bg: "bg-blue-950/90",
-    border: "border-blue-500/30",
-    icon: "text-blue-400",
-    iconBg: "bg-blue-500/20",
+    bg: "bg-[#13111a]/90",
+    border: "border-violet-500/30",
+    icon: "text-violet-400",
+    iconBg: "bg-violet-500/20",
   },
   warning: {
-    bg: "bg-amber-950/90",
+    bg: "bg-[#13111a]/90",
     border: "border-amber-500/30",
     icon: "text-amber-400",
     iconBg: "bg-amber-500/20",

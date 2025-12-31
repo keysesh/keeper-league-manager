@@ -52,10 +52,10 @@ const positionConfig: Record<string, { gradient: string; glow: string; text: str
     bg: "bg-purple-500",
   },
   DEF: {
-    gradient: "from-gray-500/20 via-gray-600/10 to-transparent",
-    glow: "shadow-gray-500/20",
-    text: "text-gray-400",
-    bg: "bg-gray-500",
+    gradient: "from-zinc-500/20 via-zinc-600/10 to-transparent",
+    glow: "shadow-zinc-500/20",
+    text: "text-zinc-400",
+    bg: "bg-zinc-500",
   },
 };
 
@@ -105,9 +105,9 @@ export function KeeperCard({ keeper, showDetails = false }: KeeperCardProps) {
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-gray-500">{keeper.player.team}</span>
+            <span className="text-xs text-zinc-500">{keeper.player.team}</span>
             {keeper.yearsKept && keeper.yearsKept > 1 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-400">
                 Year {keeper.yearsKept}
               </span>
             )}
@@ -119,13 +119,13 @@ export function KeeperCard({ keeper, showDetails = false }: KeeperCardProps) {
           flex flex-col items-center justify-center px-3 py-1.5 rounded-lg
           ${isFranchise
             ? "bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/30"
-            : "bg-gray-800/80 ring-1 ring-white/[0.06]"
+            : "bg-zinc-800/80 ring-1 ring-white/[0.06]"
           }
         `}>
           <span className={`text-lg font-bold ${isFranchise ? "text-amber-400" : config.text}`}>
             R{keeper.finalCost}
           </span>
-          <span className="text-[9px] text-gray-500 uppercase">Cost</span>
+          <span className="text-[9px] text-zinc-500 uppercase">Cost</span>
         </div>
       </div>
 
@@ -151,16 +151,16 @@ export function KeepersSection({ keepers, leagueId, rosterId, maxKeepers = 7 }: 
   const regularCount = keepers.filter(k => k.type === "REGULAR").length;
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-gray-900/60 to-gray-950/80 border border-white/[0.06]">
+    <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-[#13111a]/80 to-[#0c0a0f]/90 border border-white/[0.06] backdrop-blur-xl">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04] bg-black/20">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-purple-500/10">
-            <Lock className="w-4 h-4 text-purple-400" />
+          <div className="p-2 rounded-lg bg-violet-500/10">
+            <Lock className="w-4 h-4 text-violet-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Your Keepers</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-500">
               {keepers.length}/{maxKeepers} selected
               {franchiseCount > 0 && ` • ${franchiseCount} franchise`}
             </p>
@@ -169,8 +169,8 @@ export function KeepersSection({ keepers, leagueId, rosterId, maxKeepers = 7 }: 
         <Link
           href={`/league/${leagueId}/team/${rosterId}`}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-            text-purple-400 hover:text-purple-300
-            bg-purple-500/10 hover:bg-purple-500/20
+            text-violet-400 hover:text-violet-300
+            bg-violet-500/10 hover:bg-violet-500/20
             transition-all duration-200"
         >
           Manage
@@ -188,11 +188,11 @@ export function KeepersSection({ keepers, leagueId, rosterId, maxKeepers = 7 }: 
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-gray-800/50 flex items-center justify-center mb-3">
-              <TrendingUp className="w-6 h-6 text-gray-600" />
+            <div className="w-12 h-12 rounded-full bg-zinc-800/50 flex items-center justify-center mb-3">
+              <TrendingUp className="w-6 h-6 text-zinc-600" />
             </div>
-            <p className="text-sm text-gray-400">No keepers selected yet</p>
-            <p className="text-xs text-gray-600 mt-1">Select players to keep for next season</p>
+            <p className="text-sm text-zinc-400">No keepers selected yet</p>
+            <p className="text-xs text-zinc-600 mt-1">Select players to keep for next season</p>
           </div>
         )}
       </div>

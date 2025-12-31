@@ -85,7 +85,7 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -100,21 +100,24 @@ export function Modal({
         tabIndex={-1}
         className={`
           relative w-full ${sizeClasses[size]} max-w-[calc(100vw-2rem)]
-          bg-gradient-to-b from-gray-800 to-gray-850
+          bg-[#13111a]/95 backdrop-blur-xl
           rounded-2xl shadow-2xl shadow-black/50
-          border border-gray-700/50
+          border border-white/[0.08]
           focus:outline-none
           animate-in zoom-in-95 fade-in duration-200
         `}
       >
+        {/* Top accent line */}
+        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700/50">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
             <h3 id={titleId} className="text-lg font-semibold text-white tracking-tight">
               {title}
             </h3>
             <button
               onClick={onClose}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70"
               aria-label="Close dialog"
             >
               <X size={18} strokeWidth={2} />
@@ -143,19 +146,19 @@ const variantConfig = {
     icon: AlertCircle,
     iconBg: "bg-red-500/20",
     iconColor: "text-red-400",
-    button: "bg-red-600 hover:bg-red-500 focus-visible:ring-red-500/70",
+    button: "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/20 focus-visible:ring-red-500/70",
   },
   warning: {
     icon: AlertTriangle,
     iconBg: "bg-amber-500/20",
     iconColor: "text-amber-400",
-    button: "bg-amber-600 hover:bg-amber-500 focus-visible:ring-amber-500/70",
+    button: "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-lg shadow-amber-500/20 focus-visible:ring-amber-500/70",
   },
   info: {
     icon: Info,
-    iconBg: "bg-blue-500/20",
-    iconColor: "text-blue-400",
-    button: "bg-blue-600 hover:bg-blue-500 focus-visible:ring-blue-500/70",
+    iconBg: "bg-violet-500/20",
+    iconColor: "text-violet-400",
+    button: "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20 focus-visible:ring-violet-500/70",
   },
 };
 
@@ -179,11 +182,11 @@ export function ConfirmDialog({
           <Icon size={28} strokeWidth={1.5} />
         </div>
         <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-        <p className="text-gray-400 text-sm mb-8 max-w-xs">{message}</p>
+        <p className="text-zinc-400 text-sm mb-8 max-w-xs">{message}</p>
         <div className="flex gap-3 w-full">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600/50 rounded-xl text-sm font-medium text-gray-200 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/70"
+            className="flex-1 px-4 py-2.5 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.12] rounded-xl text-sm font-medium text-zinc-200 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500/70"
           >
             {cancelText}
           </button>

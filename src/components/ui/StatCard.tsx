@@ -21,36 +21,42 @@ const variantStyles: Record<StatVariant, {
   glow: string;
   accent: string;
   iconBg: string;
+  hoverGlow: string;
 }> = {
   record: {
-    gradient: "from-slate-800/80 via-slate-800/60 to-slate-900/80",
-    glow: "shadow-[0_0_30px_-5px_rgba(100,116,139,0.3)]",
-    accent: "text-white",
-    iconBg: "bg-slate-600/30",
+    gradient: "from-zinc-800/60 via-zinc-900/40 to-[#13111a]",
+    glow: "shadow-[0_0_30px_-5px_rgba(113,113,122,0.2)]",
+    accent: "text-zinc-100",
+    iconBg: "bg-zinc-600/20",
+    hoverGlow: "bg-zinc-500/10",
   },
   points: {
-    gradient: "from-emerald-900/40 via-emerald-950/30 to-slate-900/80",
-    glow: "shadow-[0_0_30px_-5px_rgba(16,185,129,0.25)]",
+    gradient: "from-emerald-900/30 via-emerald-950/20 to-[#13111a]",
+    glow: "shadow-[0_0_30px_-5px_rgba(16,185,129,0.2)]",
     accent: "text-emerald-400",
-    iconBg: "bg-emerald-500/20",
+    iconBg: "bg-emerald-500/15",
+    hoverGlow: "bg-emerald-500/10",
   },
   keepers: {
-    gradient: "from-purple-900/40 via-purple-950/30 to-slate-900/80",
-    glow: "shadow-[0_0_30px_-5px_rgba(168,85,247,0.25)]",
-    accent: "text-purple-400",
-    iconBg: "bg-purple-500/20",
+    gradient: "from-violet-900/30 via-violet-950/20 to-[#13111a]",
+    glow: "shadow-[0_0_30px_-5px_rgba(139,92,246,0.25)]",
+    accent: "text-violet-400",
+    iconBg: "bg-violet-500/15",
+    hoverGlow: "bg-violet-500/10",
   },
   synced: {
-    gradient: "from-amber-900/30 via-amber-950/20 to-slate-900/80",
-    glow: "shadow-[0_0_30px_-5px_rgba(245,158,11,0.2)]",
-    accent: "text-amber-400",
-    iconBg: "bg-amber-500/20",
+    gradient: "from-purple-900/25 via-purple-950/15 to-[#13111a]",
+    glow: "shadow-[0_0_30px_-5px_rgba(168,85,247,0.2)]",
+    accent: "text-purple-400",
+    iconBg: "bg-purple-500/15",
+    hoverGlow: "bg-purple-500/10",
   },
   default: {
-    gradient: "from-slate-800/80 via-slate-800/60 to-slate-900/80",
-    glow: "shadow-[0_0_20px_-5px_rgba(100,116,139,0.2)]",
-    accent: "text-gray-300",
-    iconBg: "bg-gray-600/30",
+    gradient: "from-zinc-800/50 via-zinc-900/30 to-[#13111a]",
+    glow: "shadow-[0_0_20px_-5px_rgba(113,113,122,0.15)]",
+    accent: "text-zinc-300",
+    iconBg: "bg-zinc-600/20",
+    hoverGlow: "bg-zinc-500/10",
   },
 };
 
@@ -70,29 +76,30 @@ export function StatCard({
       className={`
         relative overflow-hidden rounded-2xl p-4
         bg-gradient-to-br ${styles.gradient}
-        border border-white/[0.08]
+        border border-white/[0.06]
+        backdrop-blur-xl
         ${styles.glow}
-        hover:border-white/[0.15]
+        hover:border-white/[0.12]
         hover:scale-[1.02]
         transition-all duration-300 ease-out
         group
       `}
     >
-      {/* Subtle animated gradient overlay */}
+      {/* Glass overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/[0.02] pointer-events-none" />
 
       {/* Accent line at top */}
-      <div className={`absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent ${styles.accent.replace('text-', 'via-')}/30 to-transparent`} />
+      <div className={`absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent ${styles.accent.replace('text-', 'via-')}/20 to-transparent`} />
 
       {/* Content */}
       <div className="relative z-10">
         {/* Header with icon */}
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
             {label}
           </span>
           {icon && (
-            <div className={`p-1.5 rounded-lg ${styles.iconBg}`}>
+            <div className={`p-1.5 rounded-lg ${styles.iconBg} backdrop-blur-sm`}>
               {icon}
             </div>
           )}
@@ -105,17 +112,17 @@ export function StatCard({
               {value}
             </p>
             {subValue && (
-              <p className="text-xs text-gray-500 mt-1">{subValue}</p>
+              <p className="text-xs text-zinc-500 mt-1">{subValue}</p>
             )}
           </div>
 
           {/* Trend indicator */}
           {trend && (
             <div className={`
-              flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
-              ${trend === "up" ? "bg-emerald-500/20 text-emerald-400" : ""}
-              ${trend === "down" ? "bg-red-500/20 text-red-400" : ""}
-              ${trend === "neutral" ? "bg-gray-500/20 text-gray-400" : ""}
+              flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm
+              ${trend === "up" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" : ""}
+              ${trend === "down" ? "bg-red-500/15 text-red-400 border border-red-500/20" : ""}
+              ${trend === "neutral" ? "bg-zinc-500/15 text-zinc-400 border border-zinc-500/20" : ""}
             `}>
               {trend === "up" && <TrendingUp size={12} />}
               {trend === "down" && <TrendingDown size={12} />}
@@ -130,10 +137,7 @@ export function StatCard({
       <div className={`
         absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100
         transition-opacity duration-500 -z-10 blur-xl
-        ${variant === "points" ? "bg-emerald-500/10" : ""}
-        ${variant === "keepers" ? "bg-purple-500/10" : ""}
-        ${variant === "synced" ? "bg-amber-500/10" : ""}
-        ${variant === "record" ? "bg-slate-500/10" : ""}
+        ${styles.hoverGlow}
       `} />
     </div>
   );
@@ -151,7 +155,7 @@ export function RecordCard({ wins, losses, ties = 0 }: { wins: number; losses: n
       subValue={`${winPct}% win rate`}
       variant="record"
       icon={
-        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
         </svg>
       }
@@ -193,7 +197,7 @@ export function KeepersCard({
       subValue={franchiseTags > 0 ? `${franchiseTags} franchise tag${franchiseTags > 1 ? "s" : ""}` : isFull ? "Roster complete" : `${max - current} slots open`}
       variant="keepers"
       icon={
-        <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       }
@@ -220,7 +224,7 @@ export function SyncedCard({ date, isStale = false }: { date: Date | string | nu
       trend={isStale ? "down" : syncDate ? "up" : "neutral"}
       trendValue={isStale ? "Stale" : syncDate ? "Fresh" : ""}
       icon={
-        <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
       }

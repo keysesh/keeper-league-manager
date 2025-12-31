@@ -48,21 +48,21 @@ export function RulesBar({ settings }: RulesBarProps) {
       icon: Hash,
       label: "Undrafted Rd",
       value: `R${settings.undraftedRound}`,
-      color: "text-gray-400",
-      bg: "bg-gray-500/10",
+      color: "text-zinc-400",
+      bg: "bg-zinc-500/10",
     },
   ];
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-gray-900/80 via-gray-900/60 to-gray-900/80 border border-white/[0.06]">
+    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#13111a]/80 via-[#0c0a0f]/60 to-[#13111a]/80 border border-white/[0.06] backdrop-blur-sm">
       {/* Subtle top accent */}
-      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
 
       <div className="flex items-center gap-2 px-4 py-2.5">
         {/* Label */}
         <div className="flex items-center gap-2 pr-3 border-r border-white/[0.06]">
-          <Info className="w-3.5 h-3.5 text-gray-500" />
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rules</span>
+          <Info className="w-3.5 h-3.5 text-zinc-500" />
+          <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Rules</span>
         </div>
 
         {/* Rules chips */}
@@ -77,7 +77,7 @@ export function RulesBar({ settings }: RulesBarProps) {
               `}
             >
               <rule.icon className={`w-3 h-3 ${rule.color}`} />
-              <span className="text-[11px] text-gray-400">{rule.label}</span>
+              <span className="text-[11px] text-zinc-400">{rule.label}</span>
               <span className={`text-xs font-bold ${rule.color}`}>{rule.value}</span>
             </div>
           ))}

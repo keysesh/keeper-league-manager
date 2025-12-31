@@ -72,8 +72,8 @@ export function QuickLinks({ leagueId }: QuickLinksProps) {
       icon: Settings,
       label: "Settings",
       description: "League config",
-      color: "text-gray-400",
-      gradient: "from-gray-500/10 to-gray-600/5",
+      color: "text-zinc-400",
+      gradient: "from-zinc-500/10 to-zinc-600/5",
     },
   ];
 
@@ -107,7 +107,7 @@ export function QuickLinks({ leagueId }: QuickLinksProps) {
               {link.label}
             </span>
             {link.description && (
-              <span className="text-[10px] text-gray-500 block mt-0.5">
+              <span className="text-[10px] text-zinc-500 block mt-0.5">
                 {link.description}
               </span>
             )}
