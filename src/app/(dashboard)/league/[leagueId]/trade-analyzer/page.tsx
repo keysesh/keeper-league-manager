@@ -456,30 +456,20 @@ export default function TradeAnalyzerPage() {
         </div>
       </div>
 
-      {/* Trade Deadline Status */}
-      {analysis && (
-        <div className={`rounded-xl p-4 border ${
-          analysis.isAfterDeadline
-            ? "bg-amber-500/10 border-amber-500/30"
-            : "bg-green-500/10 border-green-500/30"
-        }`}>
-          <div className="flex items-center gap-3">
-            <span className={`text-xl ${analysis.isAfterDeadline ? "text-amber-400" : "text-green-400"}`}>
-              {analysis.isAfterDeadline ? "!" : "+"}
-            </span>
-            <div>
-              <p className={`font-semibold ${analysis.isAfterDeadline ? "text-amber-400" : "text-green-400"}`}>
-                {analysis.isAfterDeadline ? "Offseason Trade" : "In-Season Trade"}
-              </p>
-              <p className="text-gray-400 text-sm">
-                {analysis.isAfterDeadline
-                  ? "Draft round preserved, but years kept resets to 0"
-                  : "Draft round and years kept both preserved"}
-              </p>
-            </div>
+      {/* Offseason Banner - Always show since we're past trade deadline */}
+      <div className="rounded-xl p-4 border bg-amber-500/10 border-amber-500/30">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">⚠️</span>
+          <div>
+            <p className="font-semibold text-amber-400">
+              Offseason Period - Years Kept Will Reset
+            </p>
+            <p className="text-gray-400 text-sm">
+              Any trade now until draft day will reset years kept to 0 for traded players. Draft round is always preserved.
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Team Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -911,83 +901,67 @@ export default function TradeAnalyzerPage() {
         </div>
       )}
 
-      {/* Comprehensive Analysis Results */}
+      {/* Analysis Results - Just Player Cards */}
       {analysis && analysis.success && (
-        <>
-          {/* Player Keeper Info Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Team 1 Players */}
-            <div className="card-premium rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                {analysis.team1.rosterName} Trading Away
-              </h3>
-              <div className="space-y-4">
-                {analysis.team1.tradingAway.map((player) => (
-                  <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
-                ))}
-                {analysis.team1.tradingAway.length === 0 && (
-                  <p className="text-gray-500 text-sm">No players being traded</p>
-                )}
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Team 1 Players */}
+          <div className="card-premium rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              {analysis.team1.rosterName} Trading Away
+            </h3>
+            <div className="space-y-4">
+              {analysis.team1.tradingAway.map((player) => (
+                <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
+              ))}
+              {analysis.team1.tradingAway.length === 0 && analysis.team1.picksGiven.length === 0 && (
+                <p className="text-gray-500 text-sm">No players being traded</p>
+              )}
             </div>
-
-            {/* Team 2 Players */}
-            <div className="card-premium rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                {analysis.team2.rosterName} Trading Away
-              </h3>
-              <div className="space-y-4">
-                {analysis.team2.tradingAway.map((player) => (
-                  <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
-                ))}
-                {analysis.team2.tradingAway.length === 0 && (
-                  <p className="text-gray-500 text-sm">No players being traded</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Team Impact Panels */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TeamImpactPanel team={analysis.team1} color="blue" />
-            <TeamImpactPanel team={analysis.team2} color="green" />
-          </div>
-
-          {/* Trade Facts */}
-          {analysis.summary.facts.length > 0 && (
-            <div className="card-premium rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-1 h-5 bg-gray-500 rounded-full"></span>
-                Trade Details
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {analysis.summary.facts
-                  .filter(fact => fact.category !== "value") // Remove value-related facts
-                  .map((fact, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-xl border ${
-                      fact.category === "keeper"
-                        ? "bg-amber-500/10 border-amber-500/20"
-                        : fact.category === "roster"
-                        ? "bg-blue-500/10 border-blue-500/20"
-                        : fact.category === "draft"
-                        ? "bg-green-500/10 border-green-500/20"
-                        : "bg-gray-800/50 border-gray-700"
-                    }`}
-                  >
-                    <span className="text-xs uppercase tracking-wider text-gray-500 block mb-1">
-                      {fact.category}
+            {/* Draft Picks Given */}
+            {analysis.team1.picksGiven.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Draft Picks</p>
+                <div className="flex gap-2 flex-wrap">
+                  {analysis.team1.picksGiven.map((pick, i) => (
+                    <span key={i} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium">
+                      {planningSeason} Round {pick.round}
                     </span>
-                    <p className="text-white text-sm">{fact.description}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Team 2 Players */}
+          <div className="card-premium rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-400"></span>
+              {analysis.team2.rosterName} Trading Away
+            </h3>
+            <div className="space-y-4">
+              {analysis.team2.tradingAway.map((player) => (
+                <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
+              ))}
+              {analysis.team2.tradingAway.length === 0 && analysis.team2.picksGiven.length === 0 && (
+                <p className="text-gray-500 text-sm">No players being traded</p>
+              )}
             </div>
-          )}
-        </>
+            {/* Draft Picks Given */}
+            {analysis.team2.picksGiven.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Draft Picks</p>
+                <div className="flex gap-2 flex-wrap">
+                  {analysis.team2.picksGiven.map((pick, i) => (
+                    <span key={i} className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium">
+                      {planningSeason} Round {pick.round}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Trade Summary (always visible when players selected) */}
@@ -1055,10 +1029,15 @@ export default function TradeAnalyzerPage() {
 
 // Player Info Card Component (informative only, no value scoring)
 function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue; isAfterDeadline: boolean }) {
+  // In offseason, years kept ALWAYS resets for traded players
+  const yearsWillReset = isAfterDeadline;
+  const currentYearsKept = player.keeperStatus.yearsKept;
+  const newYearsKept = yearsWillReset ? 0 : currentYearsKept;
+
   return (
     <div className="p-4 rounded-xl bg-gray-800/30 border border-gray-700">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-3">
         <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="sm" />
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -1076,134 +1055,35 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
         </div>
       </div>
 
-      {/* Keeper Info */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      {/* Keeper Info - 2 columns */}
+      <div className="grid grid-cols-2 gap-3">
         <div className="p-3 rounded-lg bg-gray-900/50">
           <div className="text-gray-500 text-xs uppercase tracking-wider mb-1">Keeper Cost</div>
-          <div className="text-amber-400 font-semibold text-lg">
+          <div className="text-amber-400 font-bold text-xl">
             R{player.projection.newCost}
           </div>
-          <div className="text-gray-500 text-xs">
-            Draft round preserved
+          <div className="text-emerald-400 text-xs font-medium">
+            Always preserved
           </div>
         </div>
         <div className="p-3 rounded-lg bg-gray-900/50">
           <div className="text-gray-500 text-xs uppercase tracking-wider mb-1">Years Kept</div>
-          <div className={`font-semibold text-lg ${player.projection.yearsKeptReset ? "text-amber-400" : "text-white"}`}>
-            {player.projection.yearsKeptReset ? "0" : player.keeperStatus.yearsKept} yr{(player.projection.yearsKeptReset ? 0 : player.keeperStatus.yearsKept) !== 1 ? "s" : ""}
+          <div className={`font-bold text-xl ${yearsWillReset ? "text-amber-400" : "text-white"}`}>
+            {currentYearsKept} → {newYearsKept}
           </div>
-          <div className="text-gray-500 text-xs">
-            {player.projection.yearsKeptReset ? "Reset (offseason)" : "Preserved"}
+          <div className={`text-xs font-medium ${yearsWillReset ? "text-amber-400" : "text-emerald-400"}`}>
+            {yearsWillReset ? "Resets (offseason)" : "Preserved"}
           </div>
         </div>
       </div>
 
       {/* Years Reset Warning */}
-      {player.projection.yearsKeptReset && player.keeperStatus.yearsKept > 0 && (
-        <div className="p-2 rounded-lg text-sm bg-amber-500/10 text-amber-400">
-          Years kept resets from {player.keeperStatus.yearsKept} to 0 (offseason trade)
-        </div>
-      )}
-
-      {/* Cost Trajectory */}
-      {player.projection.costTrajectory.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-700">
-          <div className="text-gray-500 text-xs uppercase tracking-wider mb-2">
-            Future Keeper Years (max {player.keeperStatus.maxYearsAllowed} yrs)
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {player.projection.costTrajectory.map((yr) => (
-              <span
-                key={yr.year}
-                className={`px-2 py-1 rounded text-xs font-medium ${
-                  yr.isFinalYear
-                    ? "bg-red-500/20 text-red-400"
-                    : "bg-gray-700 text-gray-300"
-                }`}
-              >
-                Yr{yr.year}: R{yr.cost}{yr.isFinalYear ? " (FINAL)" : ""}
-              </span>
-            ))}
-          </div>
+      {yearsWillReset && currentYearsKept > 0 && (
+        <div className="mt-3 p-2.5 rounded-lg text-sm bg-amber-500/10 border border-amber-500/20 text-amber-400">
+          ⚠️ Years kept resets from {currentYearsKept} to 0 (offseason trade)
         </div>
       )}
     </div>
   );
 }
 
-// Team Impact Panel Component (informative only, no value scoring)
-function TeamImpactPanel({ team, color }: { team: TeamTradeAnalysis; color: "blue" | "green" }) {
-  const colorClasses = color === "blue"
-    ? "border-blue-500/20 bg-blue-500/5"
-    : "border-green-500/20 bg-green-500/5";
-  const headerColor = color === "blue" ? "text-blue-400" : "text-green-400";
-
-  return (
-    <div className={`card-premium rounded-2xl p-6 border ${colorClasses}`}>
-      <h3 className={`text-lg font-bold mb-4 ${headerColor}`}>
-        {team.rosterName} Impact
-      </h3>
-
-      {/* Position Changes */}
-      {team.positionChanges.length > 0 && (
-        <div className="mb-4">
-          <div className="text-gray-500 text-xs uppercase tracking-wider mb-2">Roster Changes</div>
-          <div className="space-y-1">
-            {team.positionChanges.map((change) => (
-              <div key={change.position} className="flex justify-between text-sm">
-                <span className="text-gray-400">{change.position}</span>
-                <span className={change.change > 0 ? "text-green-400" : "text-red-400"}>
-                  {change.before} &rarr; {change.after} ({change.change > 0 ? "+" : ""}{change.change})
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Keeper Slots */}
-      <div className="mb-4">
-        <div className="text-gray-500 text-xs uppercase tracking-wider mb-2">Keeper Slots</div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">Before</span>
-          <span className="text-white">{team.keeperSlotsBefore}/{team.keeperSlotsMax}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-400">After</span>
-          <span className="text-white">{team.keeperSlotsAfter}/{team.keeperSlotsMax}</span>
-        </div>
-        {team.keeperSlotsBefore !== team.keeperSlotsAfter && (
-          <div className={`mt-1 text-sm ${team.keeperSlotsAfter < team.keeperSlotsBefore ? "text-green-400" : "text-amber-400"}`}>
-            {team.keeperSlotsAfter < team.keeperSlotsBefore
-              ? `+${team.keeperSlotsBefore - team.keeperSlotsAfter} slot${team.keeperSlotsBefore - team.keeperSlotsAfter > 1 ? "s" : ""} freed`
-              : `${team.keeperSlotsAfter - team.keeperSlotsBefore} slot${team.keeperSlotsAfter - team.keeperSlotsBefore > 1 ? "s" : ""} used`
-            }
-          </div>
-        )}
-      </div>
-
-      {/* Draft Picks */}
-      {(team.picksGiven.length > 0 || team.picksReceived.length > 0) && (
-        <div>
-          <div className="text-gray-500 text-xs uppercase tracking-wider mb-2">Draft Picks</div>
-          {team.picksGiven.length > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Sending</span>
-              <span className="text-red-400">
-                {team.picksGiven.map(p => `R${p.round}`).join(", ")}
-              </span>
-            </div>
-          )}
-          {team.picksReceived.length > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Receiving</span>
-              <span className="text-green-400">
-                {team.picksReceived.map(p => `R${p.round}`).join(", ")}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
