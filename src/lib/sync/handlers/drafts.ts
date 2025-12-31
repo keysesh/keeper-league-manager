@@ -28,13 +28,43 @@ async function getLeagueOrError(leagueId: string) {
 
 /**
  * Get roster and player maps for a league
+ * Also builds a slot_to_roster_id -> owner_id -> db_roster_id mapping chain
  */
-async function getMaps(leagueId: string, playerSleeperIds: string[]) {
+async function getMaps(
+  leagueId: string,
+  playerSleeperIds: string[],
+  slotToRosterId?: Record<string, number> | null,
+  sleeperRosters?: Array<{ roster_id: number; owner_id: string }>
+) {
   const rosters = await prisma.roster.findMany({
     where: { leagueId },
     select: { id: true, sleeperId: true },
   });
+  // rosterMap: owner_id (sleeperId in DB) -> db roster id
   const rosterMap = new Map(rosters.map((r) => [r.sleeperId, r.id]));
+
+  // Build slot -> db roster id mapping if we have the Sleeper data
+  const slotToDbRosterId = new Map<number, string>();
+  if (slotToRosterId && sleeperRosters) {
+    // slotToRosterId maps draft_slot -> roster_id (slot number)
+    // sleeperRosters gives us roster_id -> owner_id
+    const rosterIdToOwnerId = new Map<number, string>();
+    for (const r of sleeperRosters) {
+      if (r.owner_id) {
+        rosterIdToOwnerId.set(r.roster_id, r.owner_id);
+      }
+    }
+    // Now build slot -> db roster id
+    for (const [slot, rosterIdNum] of Object.entries(slotToRosterId)) {
+      const ownerId = rosterIdToOwnerId.get(rosterIdNum);
+      if (ownerId) {
+        const dbRosterId = rosterMap.get(ownerId);
+        if (dbRosterId) {
+          slotToDbRosterId.set(rosterIdNum, dbRosterId);
+        }
+      }
+    }
+  }
 
   const players = await prisma.player.findMany({
     where: { sleeperId: { in: playerSleeperIds } },
@@ -42,7 +72,7 @@ async function getMaps(leagueId: string, playerSleeperIds: string[]) {
   });
   const playerMap = new Map(players.map((p) => [p.sleeperId, p.id]));
 
-  return { rosterMap, playerMap };
+  return { rosterMap, playerMap, slotToDbRosterId };
 }
 
 /**
@@ -51,14 +81,15 @@ async function getMaps(leagueId: string, playerSleeperIds: string[]) {
 async function syncDraftPicks(
   draftId: string,
   picks: SleeperDraftPick[],
-  rosterMap: Map<string, string>,
+  slotToDbRosterId: Map<number, string>,
   playerMap: Map<string, string>
 ) {
   let totalPicks = 0;
   let keeperPicks = 0;
 
   for (const pick of picks) {
-    const rosterId = rosterMap.get(String(pick.roster_id));
+    // pick.roster_id is a slot number (1-10), map to DB roster ID
+    const rosterId = slotToDbRosterId.get(parseInt(pick.roster_id));
     if (!rosterId) continue;
 
     const playerId = pick.player_id ? playerMap.get(pick.player_id) || null : null;
@@ -112,6 +143,8 @@ export async function handleSyncDraftsOnly(
     const league = await getLeagueOrError(leagueId);
     const sleeper = new SleeperClient();
 
+    // Fetch Sleeper rosters for roster_id -> owner_id mapping
+    const sleeperRosters = await sleeper.getRosters(league.sleeperId);
     const drafts = await sleeper.getDrafts(league.sleeperId);
     let totalPicks = 0;
     let keeperPicks = 0;
@@ -144,9 +177,14 @@ export async function handleSyncDraftsOnly(
       });
 
       const playerSleeperIds = picks.filter((p) => p.player_id).map((p) => p.player_id!);
-      const { rosterMap, playerMap } = await getMaps(leagueId, playerSleeperIds);
+      const { playerMap, slotToDbRosterId } = await getMaps(
+        leagueId,
+        playerSleeperIds,
+        draftData.slot_to_roster_id,
+        sleeperRosters
+      );
 
-      const result = await syncDraftPicks(draft.id, picks, rosterMap, playerMap);
+      const result = await syncDraftPicks(draft.id, picks, slotToDbRosterId, playerMap);
       totalPicks += result.totalPicks;
       keeperPicks += result.keeperPicks;
     }
@@ -181,13 +219,6 @@ export async function handleSyncLeagueHistory(
     const league = await getLeagueOrError(leagueId);
     const sleeper = new SleeperClient();
 
-    // Get roster map from current league
-    const rosters = await prisma.roster.findMany({
-      where: { leagueId },
-      select: { id: true, sleeperId: true },
-    });
-    const rosterMap = new Map(rosters.map((r) => [r.sleeperId, r.id]));
-
     let totalDrafts = 0;
     let totalPicks = 0;
     let totalKeepers = 0;
@@ -201,6 +232,8 @@ export async function handleSyncLeagueHistory(
     while (currentSleeperLeagueId && seasonsProcessed < maxSeasons) {
       try {
         const leagueData = await sleeper.getLeague(currentSleeperLeagueId);
+        // Fetch rosters for this season's league to get roster_id -> owner_id mapping
+        const sleeperRosters = await sleeper.getRosters(currentSleeperLeagueId);
         const drafts = await sleeper.getDrafts(currentSleeperLeagueId);
 
         for (const draftData of drafts) {
@@ -231,13 +264,14 @@ export async function handleSyncLeagueHistory(
           });
 
           const playerSleeperIds = picks.filter((p) => p.player_id).map((p) => p.player_id!);
-          const players = await prisma.player.findMany({
-            where: { sleeperId: { in: playerSleeperIds } },
-            select: { id: true, sleeperId: true },
-          });
-          const playerMap = new Map(players.map((p) => [p.sleeperId, p.id]));
+          const { playerMap, slotToDbRosterId } = await getMaps(
+            leagueId,
+            playerSleeperIds,
+            draftData.slot_to_roster_id,
+            sleeperRosters
+          );
 
-          const result = await syncDraftPicks(draft.id, picks, rosterMap, playerMap);
+          const result = await syncDraftPicks(draft.id, picks, slotToDbRosterId, playerMap);
 
           totalDrafts++;
           totalPicks += result.totalPicks;
@@ -297,15 +331,8 @@ export async function handleSyncLeagueChain(
   }
 
   try {
-    const league = await getLeagueOrError(leagueId);
+    await getLeagueOrError(leagueId);
     const sleeper = new SleeperClient();
-
-    // Get roster map from current league
-    const rosters = await prisma.roster.findMany({
-      where: { leagueId },
-      select: { id: true, sleeperId: true },
-    });
-    const rosterMap = new Map(rosters.map((r) => [r.sleeperId, r.id]));
 
     let totalDrafts = 0;
     let totalPicks = 0;
@@ -314,6 +341,8 @@ export async function handleSyncLeagueChain(
 
     for (const sleeperLeagueId of sleeperLeagueIds as string[]) {
       try {
+        // Fetch rosters for this season's league to get roster_id -> owner_id mapping
+        const sleeperRosters = await sleeper.getRosters(sleeperLeagueId);
         const drafts = await sleeper.getDrafts(sleeperLeagueId);
 
         for (const draftData of drafts) {
@@ -344,13 +373,14 @@ export async function handleSyncLeagueChain(
           });
 
           const playerSleeperIds = picks.filter((p) => p.player_id).map((p) => p.player_id!);
-          const players = await prisma.player.findMany({
-            where: { sleeperId: { in: playerSleeperIds } },
-            select: { id: true, sleeperId: true },
-          });
-          const playerMap = new Map(players.map((p) => [p.sleeperId, p.id]));
+          const { playerMap, slotToDbRosterId } = await getMaps(
+            leagueId,
+            playerSleeperIds,
+            draftData.slot_to_roster_id,
+            sleeperRosters
+          );
 
-          const result = await syncDraftPicks(draft.id, picks, rosterMap, playerMap);
+          const result = await syncDraftPicks(draft.id, picks, slotToDbRosterId, playerMap);
 
           totalDrafts++;
           totalPicks += result.totalPicks;
