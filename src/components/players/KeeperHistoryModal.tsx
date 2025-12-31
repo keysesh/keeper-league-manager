@@ -222,9 +222,6 @@ export function KeeperHistoryModal({
 
   if (!isOpen) return null;
 
-  // Group timeline by season with inferred drops
-  const groupedTimeline = data?.timeline ? groupBySeasonWithDrops(data.timeline) : {};
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -337,7 +334,7 @@ export function KeeperHistoryModal({
                 <QuickStat value={data.summary.waiverPickups + data.summary.faPickups} label="Pickups" color="emerald" />
               </div>
 
-              {/* Timeline */}
+              {/* Timeline - grouped by league */}
               <div className="px-5 pb-5">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   Transaction History
@@ -348,11 +345,10 @@ export function KeeperHistoryModal({
                     No transaction history found
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {Object.entries(groupedTimeline)
-                      .sort(([a], [b]) => Number(b) - Number(a))
-                      .map(([season, events]) => (
-                        <SeasonGroup key={season} season={season} events={events} />
+                  <div className="space-y-4">
+                    {Object.entries(groupByLeague(data.timeline))
+                      .map(([leagueName, leagueEvents]) => (
+                        <LeagueGroup key={leagueName} leagueName={leagueName} events={leagueEvents} />
                       ))}
                   </div>
                 )}
@@ -383,11 +379,11 @@ function QuickStat({ value, label, color }: { value: number; label: string; colo
 
 function SeasonGroup({ season, events }: { season: string; events: TimelineEvent[] }) {
   return (
-    <div className="bg-gray-800/30 rounded-xl overflow-hidden">
-      <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700/30">
-        <span className="text-sm font-semibold text-white">{season}</span>
+    <div>
+      <div className="px-3 py-1.5 bg-gray-800/30">
+        <span className="text-xs font-semibold text-gray-400">{season}</span>
       </div>
-      <div className="divide-y divide-gray-700/20">
+      <div className="divide-y divide-gray-800/30">
         {events.map((event, idx) => (
           <TimelineEventRow key={idx} event={event} />
         ))}
@@ -460,44 +456,63 @@ function getEventDescription(event: TimelineEvent): string {
   }
 }
 
-// Group events by season and infer drops from roster changes
-function groupBySeasonWithDrops(timeline: TimelineEvent[]): Record<string, TimelineEvent[]> {
+// Group events by league first, then by season within each league
+function groupByLeague(timeline: TimelineEvent[]): Record<string, TimelineEvent[]> {
   const grouped: Record<string, TimelineEvent[]> = {};
-  let lastTeamBySeason: Record<number, string> = {};
 
-  // Sort chronologically first
-  const sorted = [...timeline].sort((a, b) => {
-    if (a.season !== b.season) return a.season - b.season;
-    if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
-    return 0;
-  });
+  for (const event of timeline) {
+    const leagueName = event.leagueName || "Unknown League";
+    if (!grouped[leagueName]) {
+      grouped[leagueName] = [];
+    }
+    grouped[leagueName].push(event);
+  }
 
-  for (const event of sorted) {
+  // Sort events within each league by season (desc) then date
+  for (const leagueName of Object.keys(grouped)) {
+    grouped[leagueName].sort((a, b) => {
+      if (a.season !== b.season) return b.season - a.season;
+      if (a.date && b.date) return new Date(b.date).getTime() - new Date(a.date).getTime();
+      return 0;
+    });
+  }
+
+  return grouped;
+}
+
+// Group events by season within a league
+function groupBySeason(events: TimelineEvent[]): Record<string, TimelineEvent[]> {
+  const grouped: Record<string, TimelineEvent[]> = {};
+
+  for (const event of events) {
     const seasonKey = String(event.season);
     if (!grouped[seasonKey]) {
       grouped[seasonKey] = [];
     }
-
-    // Infer drop if player moved from one team to another via WAIVER/FA (not TRADE)
-    if ((event.event === "WAIVER" || event.event === "FREE_AGENT") &&
-        lastTeamBySeason[event.season] &&
-        lastTeamBySeason[event.season] !== event.teamName) {
-      // Add inferred drop event
-      grouped[seasonKey].push({
-        ...event,
-        event: "DROPPED",
-        teamName: lastTeamBySeason[event.season],
-        details: undefined,
-      });
-    }
-
     grouped[seasonKey].push(event);
-
-    // Track last team for this season
-    if (event.event !== "DROPPED") {
-      lastTeamBySeason[event.season] = event.teamName;
-    }
   }
 
   return grouped;
+}
+
+function LeagueGroup({ leagueName, events }: { leagueName: string; events: TimelineEvent[] }) {
+  const seasonGroups = groupBySeason(events);
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-gray-700/30">
+      {/* League Header */}
+      <div className="px-4 py-2.5 bg-gradient-to-r from-purple-500/10 to-transparent border-b border-gray-700/30">
+        <span className="text-sm font-semibold text-purple-400">{leagueName}</span>
+      </div>
+
+      {/* Seasons within this league */}
+      <div className="divide-y divide-gray-800/50">
+        {Object.entries(seasonGroups)
+          .sort(([a], [b]) => Number(b) - Number(a))
+          .map(([season, seasonEvents]) => (
+            <SeasonGroup key={season} season={season} events={seasonEvents} />
+          ))}
+      </div>
+    </div>
+  );
 }
