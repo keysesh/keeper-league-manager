@@ -416,37 +416,43 @@ export default function TradeAnalyzerPage() {
   const team2OwnedPicks = getTeamPicks(team2Roster?.sleeperId);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <BackLink href={`/league/${leagueId}`} label="Back to League" />
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 ring-1 ring-emerald-500/20 flex items-center justify-center">
-              <ArrowLeftRight className="w-6 h-6 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Trade Analyzer</h1>
-              <p className="text-gray-500 mt-0.5">
-                Comprehensive trade analysis with keeper value projections
-              </p>
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Premium Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border border-gray-700/50 p-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-emerald-500/5" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <BackLink href={`/league/${leagueId}`} label="Back to League" />
+            <div className="flex items-center gap-4 mt-2">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+                <ArrowLeftRight className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Trade Analyzer</h1>
+                <p className="text-gray-400 mt-0.5 text-sm">
+                  {planningSeason} Draft &bull; Keeper value projections
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={`/league/${leagueId}/trade-proposals`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
-          >
-            <FileText className="w-4 h-4" />
-            Saved Proposals
-          </Link>
-          <button
-            onClick={clearTrade}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
-          >
-            Clear Trade
-          </button>
+          <div className="flex gap-2">
+            <Link
+              href={`/league/${leagueId}/trade-proposals`}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm text-white font-medium transition-all backdrop-blur-sm"
+            >
+              <FileText className="w-4 h-4" />
+              Saved
+            </Link>
+            <button
+              onClick={clearTrade}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-sm text-red-400 font-medium transition-all"
+            >
+              <X className="w-4 h-4" />
+              Clear
+            </button>
+          </div>
         </div>
       </div>
 
@@ -478,219 +484,283 @@ export default function TradeAnalyzerPage() {
       {/* Team Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Team 1 */}
-        <div className="card-premium rounded-2xl p-6">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
-            Team 1
-          </h2>
-          <select
-            value={team1}
-            onChange={(e) => {
-              setTeam1(e.target.value);
-              setTeam1Players([]);
-              setTeam1Picks([]);
-              setAnalysis(null);
-            }}
-            className="w-full px-4 py-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all font-medium mb-5"
-          >
-            <option value="">Select a team...</option>
-            {rosters
-              .filter((r) => r.id !== team2)
-              .map((roster) => (
-                <option key={roster.id} value={roster.id}>
-                  {roster.teamName || `Team ${roster.sleeperId}`}
-                </option>
-              ))}
-          </select>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-gray-800/80 to-gray-900/80 border border-blue-500/20 backdrop-blur-sm">
+          {/* Team header */}
+          <div className="bg-gradient-to-r from-blue-500/10 to-transparent border-b border-blue-500/20 px-5 py-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <span className="text-blue-400 font-bold text-sm">1</span>
+                </div>
+                {team1Roster?.teamName || "Select Team"}
+              </h2>
+              {team1Players.length > 0 && (
+                <span className="px-2.5 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold">
+                  {team1Players.length} player{team1Players.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </div>
 
-          {team1 && (
-            <>
-              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
-                Players to trade away
-              </h3>
-              <div className="space-y-2 max-h-72 overflow-y-auto mb-5 pr-1">
-                {team1PlayerList.map((player) => (
-                  <label
-                    key={player.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                      team1Players.includes(player.id)
-                        ? "bg-amber-500/20 border-2 border-amber-500 shadow-lg shadow-amber-500/10"
-                        : "bg-gray-800/30 border-2 border-transparent hover:bg-gray-800/50"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={team1Players.includes(player.id)}
-                      onChange={() => togglePlayer(player.id, "team1")}
-                      className="hidden"
-                    />
-                    <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
-                    <PositionBadge position={player.position} size="xs" />
-                    <span className="text-white font-medium flex-1">{player.fullName}</span>
-                    {player.injuryStatus && player.injuryStatus !== "Active" && (
-                      <span className="text-red-400 text-xs font-medium px-2 py-0.5 bg-red-500/20 rounded">
-                        {player.injuryStatus}
-                      </span>
-                    )}
-                    <span className="text-gray-500 text-sm">{player.team}</span>
-                  </label>
+          <div className="p-5 space-y-4">
+            <select
+              value={team1}
+              onChange={(e) => {
+                setTeam1(e.target.value);
+                setTeam1Players([]);
+                setTeam1Picks([]);
+                setAnalysis(null);
+              }}
+              className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all font-medium"
+            >
+              <option value="">Select a team...</option>
+              {rosters
+                .filter((r) => r.id !== team2)
+                .map((roster) => (
+                  <option key={roster.id} value={roster.id}>
+                    {roster.teamName || `Team ${roster.sleeperId}`}
+                  </option>
                 ))}
-              </div>
+            </select>
 
-              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
-                Draft picks to include
-              </h3>
-              {/* Selected picks */}
-              <div className="flex flex-wrap gap-2 mb-3">
-                {team1Picks.map((pick, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-sm font-medium border border-amber-500/30"
-                  >
-                    {planningSeason} Rd {pick.round}
-                    <button
-                      onClick={() => removePick("team1", index)}
-                      className="hover:text-red-400 transition-colors"
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))}
-              </div>
-              {/* Available picks this team owns */}
-              <div className="flex gap-2 flex-wrap">
-                {team1OwnedPicks.length > 0 ? (
-                  team1OwnedPicks
-                    .filter(p => !team1Picks.some(tp => tp.round === p.round))
-                    .map((pick) => (
-                      <button
-                        key={`${pick.season}-${pick.round}`}
-                        onClick={() => addPick("team1", pick.round)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                          pick.isOwn
-                            ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700 text-gray-300"
-                            : "bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
+            {team1 && (
+              <>
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
+                    Players
+                  </h3>
+                  <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
+                    {team1PlayerList.map((player) => (
+                      <label
+                        key={player.id}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-xl cursor-pointer transition-all ${
+                          team1Players.includes(player.id)
+                            ? "bg-gradient-to-r from-amber-500/20 to-orange-500/10 border border-amber-500/50 shadow-lg shadow-amber-500/10"
+                            : "bg-gray-800/30 border border-transparent hover:bg-gray-800/50 hover:border-gray-700/50"
                         }`}
-                        title={pick.isOwn ? "Own pick" : `From ${pick.originalOwner}`}
                       >
-                        Rd {pick.round}
-                        {!pick.isOwn && <span className="ml-1 text-[10px] opacity-70">★</span>}
-                      </button>
-                    ))
-                ) : (
-                  <span className="text-gray-500 text-sm">Loading picks...</span>
-                )}
-              </div>
-            </>
-          )}
+                        <input
+                          type="checkbox"
+                          checked={team1Players.includes(player.id)}
+                          onChange={() => togglePlayer(player.id, "team1")}
+                          className="hidden"
+                        />
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                          team1Players.includes(player.id)
+                            ? 'bg-amber-500 border-amber-500'
+                            : 'border-gray-600 bg-gray-800/50'
+                        }`}>
+                          {team1Players.includes(player.id) && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
+                        <PositionBadge position={player.position} size="xs" />
+                        <span className="text-white font-medium flex-1 text-sm truncate">{player.fullName}</span>
+                        {player.injuryStatus && player.injuryStatus !== "Active" && (
+                          <span className="text-red-400 text-[10px] font-bold px-1.5 py-0.5 bg-red-500/20 rounded">
+                            {player.injuryStatus.slice(0, 3).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="text-gray-500 text-xs font-medium">{player.team || 'FA'}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
+                    {planningSeason} Draft Picks
+                  </h3>
+                  {/* Selected picks */}
+                  {team1Picks.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {team1Picks.map((pick, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/10 text-amber-400 rounded-lg text-xs font-semibold border border-amber-500/30"
+                        >
+                          Round {pick.round}
+                          <button
+                            onClick={() => removePick("team1", index)}
+                            className="hover:text-red-400 transition-colors ml-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Available picks this team owns */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {team1OwnedPicks.length > 0 ? (
+                      team1OwnedPicks
+                        .filter(p => !team1Picks.some(tp => tp.round === p.round))
+                        .map((pick) => (
+                          <button
+                            key={`${pick.season}-${pick.round}`}
+                            onClick={() => addPick("team1", pick.round)}
+                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                              pick.isOwn
+                                ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700/50 text-gray-300 hover:text-white"
+                                : "bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border border-emerald-500/30 text-emerald-400"
+                            }`}
+                            title={pick.isOwn ? "Own pick" : `Acquired from ${pick.originalOwner}`}
+                          >
+                            Rd {pick.round}
+                            {!pick.isOwn && <span className="ml-1 text-[10px]">★</span>}
+                          </button>
+                        ))
+                    ) : (
+                      <span className="text-gray-600 text-xs">No picks available</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Team 2 */}
-        <div className="card-premium rounded-2xl p-6">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <span className="w-1 h-5 bg-green-500 rounded-full"></span>
-            Team 2
-          </h2>
-          <select
-            value={team2}
-            onChange={(e) => {
-              setTeam2(e.target.value);
-              setTeam2Players([]);
-              setTeam2Picks([]);
-              setAnalysis(null);
-            }}
-            className="w-full px-4 py-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all font-medium mb-5"
-          >
-            <option value="">Select a team...</option>
-            {rosters
-              .filter((r) => r.id !== team1)
-              .map((roster) => (
-                <option key={roster.id} value={roster.id}>
-                  {roster.teamName || `Team ${roster.sleeperId}`}
-                </option>
-              ))}
-          </select>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-gray-800/80 to-gray-900/80 border border-emerald-500/20 backdrop-blur-sm">
+          {/* Team header */}
+          <div className="bg-gradient-to-r from-emerald-500/10 to-transparent border-b border-emerald-500/20 px-5 py-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                  <span className="text-emerald-400 font-bold text-sm">2</span>
+                </div>
+                {team2Roster?.teamName || "Select Team"}
+              </h2>
+              {team2Players.length > 0 && (
+                <span className="px-2.5 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold">
+                  {team2Players.length} player{team2Players.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </div>
 
-          {team2 && (
-            <>
-              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
-                Players to trade away
-              </h3>
-              <div className="space-y-2 max-h-72 overflow-y-auto mb-5 pr-1">
-                {team2PlayerList.map((player) => (
-                  <label
-                    key={player.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                      team2Players.includes(player.id)
-                        ? "bg-amber-500/20 border-2 border-amber-500 shadow-lg shadow-amber-500/10"
-                        : "bg-gray-800/30 border-2 border-transparent hover:bg-gray-800/50"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={team2Players.includes(player.id)}
-                      onChange={() => togglePlayer(player.id, "team2")}
-                      className="hidden"
-                    />
-                    <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
-                    <PositionBadge position={player.position} size="xs" />
-                    <span className="text-white font-medium flex-1">{player.fullName}</span>
-                    {player.injuryStatus && player.injuryStatus !== "Active" && (
-                      <span className="text-red-400 text-xs font-medium px-2 py-0.5 bg-red-500/20 rounded">
-                        {player.injuryStatus}
-                      </span>
-                    )}
-                    <span className="text-gray-500 text-sm">{player.team}</span>
-                  </label>
+          <div className="p-5 space-y-4">
+            <select
+              value={team2}
+              onChange={(e) => {
+                setTeam2(e.target.value);
+                setTeam2Players([]);
+                setTeam2Picks([]);
+                setAnalysis(null);
+              }}
+              className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium"
+            >
+              <option value="">Select a team...</option>
+              {rosters
+                .filter((r) => r.id !== team1)
+                .map((roster) => (
+                  <option key={roster.id} value={roster.id}>
+                    {roster.teamName || `Team ${roster.sleeperId}`}
+                  </option>
                 ))}
-              </div>
+            </select>
 
-              <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
-                Draft picks to include
-              </h3>
-              {/* Selected picks */}
-              <div className="flex flex-wrap gap-2 mb-3">
-                {team2Picks.map((pick, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-sm font-medium border border-amber-500/30"
-                  >
-                    {planningSeason} Rd {pick.round}
-                    <button
-                      onClick={() => removePick("team2", index)}
-                      className="hover:text-red-400 transition-colors"
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))}
-              </div>
-              {/* Available picks this team owns */}
-              <div className="flex gap-2 flex-wrap">
-                {team2OwnedPicks.length > 0 ? (
-                  team2OwnedPicks
-                    .filter(p => !team2Picks.some(tp => tp.round === p.round))
-                    .map((pick) => (
-                      <button
-                        key={`${pick.season}-${pick.round}`}
-                        onClick={() => addPick("team2", pick.round)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                          pick.isOwn
-                            ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700 text-gray-300"
-                            : "bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
+            {team2 && (
+              <>
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                    Players
+                  </h3>
+                  <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
+                    {team2PlayerList.map((player) => (
+                      <label
+                        key={player.id}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-xl cursor-pointer transition-all ${
+                          team2Players.includes(player.id)
+                            ? "bg-gradient-to-r from-amber-500/20 to-orange-500/10 border border-amber-500/50 shadow-lg shadow-amber-500/10"
+                            : "bg-gray-800/30 border border-transparent hover:bg-gray-800/50 hover:border-gray-700/50"
                         }`}
-                        title={pick.isOwn ? "Own pick" : `From ${pick.originalOwner}`}
                       >
-                        Rd {pick.round}
-                        {!pick.isOwn && <span className="ml-1 text-[10px] opacity-70">★</span>}
-                      </button>
-                    ))
-                ) : (
-                  <span className="text-gray-500 text-sm">Loading picks...</span>
-                )}
-              </div>
-            </>
-          )}
+                        <input
+                          type="checkbox"
+                          checked={team2Players.includes(player.id)}
+                          onChange={() => togglePlayer(player.id, "team2")}
+                          className="hidden"
+                        />
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                          team2Players.includes(player.id)
+                            ? 'bg-amber-500 border-amber-500'
+                            : 'border-gray-600 bg-gray-800/50'
+                        }`}>
+                          {team2Players.includes(player.id) && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
+                        <PositionBadge position={player.position} size="xs" />
+                        <span className="text-white font-medium flex-1 text-sm truncate">{player.fullName}</span>
+                        {player.injuryStatus && player.injuryStatus !== "Active" && (
+                          <span className="text-red-400 text-[10px] font-bold px-1.5 py-0.5 bg-red-500/20 rounded">
+                            {player.injuryStatus.slice(0, 3).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="text-gray-500 text-xs font-medium">{player.team || 'FA'}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                    {planningSeason} Draft Picks
+                  </h3>
+                  {/* Selected picks */}
+                  {team2Picks.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {team2Picks.map((pick, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/10 text-amber-400 rounded-lg text-xs font-semibold border border-amber-500/30"
+                        >
+                          Round {pick.round}
+                          <button
+                            onClick={() => removePick("team2", index)}
+                            className="hover:text-red-400 transition-colors ml-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Available picks this team owns */}
+                  <div className="flex gap-1.5 flex-wrap">
+                    {team2OwnedPicks.length > 0 ? (
+                      team2OwnedPicks
+                        .filter(p => !team2Picks.some(tp => tp.round === p.round))
+                        .map((pick) => (
+                          <button
+                            key={`${pick.season}-${pick.round}`}
+                            onClick={() => addPick("team2", pick.round)}
+                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                              pick.isOwn
+                                ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700/50 text-gray-300 hover:text-white"
+                                : "bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border border-emerald-500/30 text-emerald-400"
+                            }`}
+                            title={pick.isOwn ? "Own pick" : `Acquired from ${pick.originalOwner}`}
+                          >
+                            Rd {pick.round}
+                            {!pick.isOwn && <span className="ml-1 text-[10px]">★</span>}
+                          </button>
+                        ))
+                    ) : (
+                      <span className="text-gray-600 text-xs">No picks available</span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
