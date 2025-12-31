@@ -163,47 +163,38 @@ export default function TradeAnalyzerPage() {
 
   const fetchLeagueData = async () => {
     try {
-      const res = await fetch(`/api/leagues/${leagueId}`);
-      if (!res.ok) throw new Error("Failed to fetch league");
-      const data = await res.json();
+      // Fetch rosters with players AND draft picks in parallel (just 2 API calls)
+      const [rostersRes, picksRes] = await Promise.all([
+        fetch(`/api/leagues/${leagueId}/rosters?includePlayers=true`),
+        fetch(`/api/leagues/${leagueId}/draft-picks`),
+      ]);
 
-      const rosterList = data.rosters.map((r: { id: string; teamName: string | null; sleeperId: string }) => ({
+      if (!rostersRes.ok) throw new Error("Failed to fetch rosters");
+
+      const rostersData = await rostersRes.json();
+      const picksData = picksRes.ok ? await picksRes.json() : { picks: [] };
+
+      // Build roster list
+      const rosterList = rostersData.rosters.map((r: { id: string; teamName: string | null; sleeperId: string }) => ({
         id: r.id,
         teamName: r.teamName,
         sleeperId: r.sleeperId,
       }));
       setRosters(rosterList);
 
-      // Fetch players for all rosters IN PARALLEL for better performance
-      const playerPromises = data.rosters.map(async (roster: { id: string }) => {
-        const eligibleRes = await fetch(
-          `/api/leagues/${leagueId}/rosters/${roster.id}/eligible-keepers`
-        );
-        if (eligibleRes.ok) {
-          const eligibleData = await eligibleRes.json();
-          return {
-            rosterId: roster.id,
-            players: eligibleData.players.map((p: { player: Player }) => ({
-              ...p.player,
-              age: p.player.age,
-              injuryStatus: p.player.injuryStatus,
-            })),
-          };
-        }
-        return { rosterId: roster.id, players: [] };
-      });
-
-      // Also fetch traded picks in parallel
-      const picksPromise = fetch(`/api/leagues/${leagueId}/draft-picks`).then(r => r.ok ? r.json() : { picks: [] });
-
-      const [playerResults, picksData] = await Promise.all([
-        Promise.all(playerPromises),
-        picksPromise,
-      ]);
-
+      // Build player map from the rosters response
       const playerMap = new Map<string, Player[]>();
-      for (const result of playerResults) {
-        playerMap.set(result.rosterId, result.players);
+      for (const roster of rostersData.rosters) {
+        const players = (roster.players || []).map((p: { id: string; sleeperId: string; fullName: string; position: string | null; team: string | null }) => ({
+          id: p.id,
+          sleeperId: p.sleeperId,
+          fullName: p.fullName,
+          position: p.position,
+          team: p.team,
+          age: null, // Not needed for selection
+          injuryStatus: null,
+        }));
+        playerMap.set(roster.id, players);
       }
       setPlayers(playerMap);
       setDraftPicks(picksData.picks || []);
