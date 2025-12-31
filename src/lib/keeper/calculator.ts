@@ -211,8 +211,11 @@ async function getYearsOnRoster(
     new Set()
   );
 
-  // Years on roster = target season - origin season
-  return Math.max(0, targetSeason - originSeason);
+  // Years on roster = completed keeper years (not calendar difference)
+  // Player picked up in 2025 for 2026 draft = Year 1 (0 completed years)
+  // Player kept in 2026 for 2027 draft = Year 2 (1 completed year)
+  // Formula: targetSeason - originSeason - 1 (clamped to 0)
+  return Math.max(0, targetSeason - originSeason - 1);
 }
 
 /**

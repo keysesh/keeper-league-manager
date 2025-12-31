@@ -73,11 +73,6 @@ export async function handleSyncTradedPicks(
 
       // Skip if we can't map to valid user IDs
       if (!originalOwnerId || !currentOwnerId) {
-        context.logger?.warn("Could not map roster slot to owner ID", {
-          pick,
-          originalOwnerId,
-          currentOwnerId,
-        });
         continue;
       }
 
