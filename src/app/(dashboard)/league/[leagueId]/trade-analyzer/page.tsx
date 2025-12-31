@@ -25,6 +25,14 @@ interface Roster {
   sleeperId: string;
 }
 
+interface DraftPickOwnership {
+  season: number;
+  round: number;
+  originalOwnerSleeperId: string;
+  currentOwnerSleeperId: string;
+  originalOwnerName?: string;
+}
+
 // Comprehensive trade analysis types from API
 interface CostTrajectoryYear {
   year: number;
@@ -124,8 +132,10 @@ export default function TradeAnalyzerPage() {
 
   const [rosters, setRosters] = useState<Roster[]>([]);
   const [players, setPlayers] = useState<Map<string, Player[]>>(new Map());
+  const [draftPicks, setDraftPicks] = useState<DraftPickOwnership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const planningSeason = new Date().getFullYear() + (new Date().getMonth() >= 8 ? 1 : 0); // 2026 if Sept-Dec
 
   // Trade builder state
   const [team1, setTeam1] = useState<string>("");
@@ -157,31 +167,46 @@ export default function TradeAnalyzerPage() {
       if (!res.ok) throw new Error("Failed to fetch league");
       const data = await res.json();
 
-      setRosters(data.rosters.map((r: { id: string; teamName: string | null; sleeperId: string }) => ({
+      const rosterList = data.rosters.map((r: { id: string; teamName: string | null; sleeperId: string }) => ({
         id: r.id,
         teamName: r.teamName,
         sleeperId: r.sleeperId,
-      })));
+      }));
+      setRosters(rosterList);
 
-      // Fetch players for each roster
-      const playerMap = new Map<string, Player[]>();
-      for (const roster of data.rosters) {
+      // Fetch players for all rosters IN PARALLEL for better performance
+      const playerPromises = data.rosters.map(async (roster: { id: string }) => {
         const eligibleRes = await fetch(
           `/api/leagues/${leagueId}/rosters/${roster.id}/eligible-keepers`
         );
         if (eligibleRes.ok) {
           const eligibleData = await eligibleRes.json();
-          playerMap.set(
-            roster.id,
-            eligibleData.players.map((p: { player: Player }) => ({
+          return {
+            rosterId: roster.id,
+            players: eligibleData.players.map((p: { player: Player }) => ({
               ...p.player,
               age: p.player.age,
               injuryStatus: p.player.injuryStatus,
-            }))
-          );
+            })),
+          };
         }
+        return { rosterId: roster.id, players: [] };
+      });
+
+      // Also fetch traded picks in parallel
+      const picksPromise = fetch(`/api/leagues/${leagueId}/draft-picks`).then(r => r.ok ? r.json() : { picks: [] });
+
+      const [playerResults, picksData] = await Promise.all([
+        Promise.all(playerPromises),
+        picksPromise,
+      ]);
+
+      const playerMap = new Map<string, Player[]>();
+      for (const result of playerResults) {
+        playerMap.set(result.rosterId, result.players);
       }
       setPlayers(playerMap);
+      setDraftPicks(picksData.picks || []);
     } catch {
       setError("Failed to load league data");
     } finally {
@@ -371,6 +396,25 @@ export default function TradeAnalyzerPage() {
   const team1PlayerList = players.get(team1) || [];
   const team2PlayerList = players.get(team2) || [];
 
+  // Calculate draft picks owned by each team
+  const getTeamPicks = (sleeperId: string | undefined) => {
+    if (!sleeperId) return [];
+    return draftPicks
+      .filter((p: DraftPickOwnership & { currentOwnerSleeperId?: string }) =>
+        p.currentOwnerSleeperId === sleeperId
+      )
+      .sort((a, b) => a.round - b.round)
+      .map(p => ({
+        season: p.season || planningSeason,
+        round: p.round,
+        originalOwner: p.originalOwnerName || (p.originalOwnerSleeperId !== sleeperId ? 'Traded' : 'Own'),
+        isOwn: p.originalOwnerSleeperId === sleeperId,
+      }));
+  };
+
+  const team1OwnedPicks = getTeamPicks(team1Roster?.sleeperId);
+  const team2OwnedPicks = getTeamPicks(team2Roster?.sleeperId);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -496,13 +540,14 @@ export default function TradeAnalyzerPage() {
               <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
                 Draft picks to include
               </h3>
+              {/* Selected picks */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {team1Picks.map((pick, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-sm font-medium border border-amber-500/30"
                   >
-                    {pick.season} Rd {pick.round}
+                    {planningSeason} Rd {pick.round}
                     <button
                       onClick={() => removePick("team1", index)}
                       className="hover:text-red-400 transition-colors"
@@ -512,16 +557,29 @@ export default function TradeAnalyzerPage() {
                   </span>
                 ))}
               </div>
+              {/* Available picks this team owns */}
               <div className="flex gap-2 flex-wrap">
-                {[1, 2, 3, 4, 5].map((round) => (
-                  <button
-                    key={round}
-                    onClick={() => addPick("team1", round)}
-                    className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm text-gray-300 font-medium transition-colors"
-                  >
-                    +Rd {round}
-                  </button>
-                ))}
+                {team1OwnedPicks.length > 0 ? (
+                  team1OwnedPicks
+                    .filter(p => !team1Picks.some(tp => tp.round === p.round))
+                    .map((pick) => (
+                      <button
+                        key={`${pick.season}-${pick.round}`}
+                        onClick={() => addPick("team1", pick.round)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          pick.isOwn
+                            ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700 text-gray-300"
+                            : "bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
+                        }`}
+                        title={pick.isOwn ? "Own pick" : `From ${pick.originalOwner}`}
+                      >
+                        Rd {pick.round}
+                        {!pick.isOwn && <span className="ml-1 text-[10px] opacity-70">★</span>}
+                      </button>
+                    ))
+                ) : (
+                  <span className="text-gray-500 text-sm">Loading picks...</span>
+                )}
               </div>
             </>
           )}
@@ -590,13 +648,14 @@ export default function TradeAnalyzerPage() {
               <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
                 Draft picks to include
               </h3>
+              {/* Selected picks */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {team2Picks.map((pick, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-sm font-medium border border-amber-500/30"
                   >
-                    {pick.season} Rd {pick.round}
+                    {planningSeason} Rd {pick.round}
                     <button
                       onClick={() => removePick("team2", index)}
                       className="hover:text-red-400 transition-colors"
@@ -606,16 +665,29 @@ export default function TradeAnalyzerPage() {
                   </span>
                 ))}
               </div>
+              {/* Available picks this team owns */}
               <div className="flex gap-2 flex-wrap">
-                {[1, 2, 3, 4, 5].map((round) => (
-                  <button
-                    key={round}
-                    onClick={() => addPick("team2", round)}
-                    className="px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm text-gray-300 font-medium transition-colors"
-                  >
-                    +Rd {round}
-                  </button>
-                ))}
+                {team2OwnedPicks.length > 0 ? (
+                  team2OwnedPicks
+                    .filter(p => !team2Picks.some(tp => tp.round === p.round))
+                    .map((pick) => (
+                      <button
+                        key={`${pick.season}-${pick.round}`}
+                        onClick={() => addPick("team2", pick.round)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          pick.isOwn
+                            ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700 text-gray-300"
+                            : "bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
+                        }`}
+                        title={pick.isOwn ? "Own pick" : `From ${pick.originalOwner}`}
+                      >
+                        Rd {pick.round}
+                        {!pick.isOwn && <span className="ml-1 text-[10px] opacity-70">★</span>}
+                      </button>
+                    ))
+                ) : (
+                  <span className="text-gray-500 text-sm">Loading picks...</span>
+                )}
               </div>
             </>
           )}
