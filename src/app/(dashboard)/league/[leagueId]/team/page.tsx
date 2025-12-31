@@ -356,7 +356,20 @@ export default function TeamsPage() {
   );
 }
 
-// Compact Team Card Component with Historical Data
+// Helper to get playoff finish label
+function getPlayoffLabel(placement: number): { label: string; short: string } {
+  switch (placement) {
+    case 1: return { label: "Champion", short: "1st" };
+    case 2: return { label: "Runner-Up", short: "2nd" };
+    case 3: return { label: "3rd Place", short: "3rd" };
+    case 4: return { label: "4th Place", short: "4th" };
+    case 5: return { label: "5th Place", short: "5th" };
+    case 6: return { label: "6th Place", short: "6th" };
+    default: return { label: `${placement}th Place`, short: `${placement}th` };
+  }
+}
+
+// Compact Team Card Component with Historical Data and Fun Badges
 function TeamCard({
   roster,
   rank,
@@ -365,6 +378,10 @@ function TeamCard({
   leagueId,
   history,
   availableSeasons,
+  playoffPlacement,
+  draftPick,
+  isTopScorer,
+  winPct: passedWinPct,
 }: {
   roster: Roster;
   rank: number;
@@ -373,13 +390,17 @@ function TeamCard({
   leagueId: string;
   history?: OwnerHistory;
   availableSeasons: string[];
+  playoffPlacement?: number;
+  draftPick?: number;
+  isTopScorer?: boolean;
+  winPct?: number;
 }) {
   const totalGames = roster.wins + roster.losses + roster.ties;
-  const winPct = totalGames > 0 ? roster.wins / totalGames : 0;
+  const winPct = passedWinPct ?? (totalGames > 0 ? roster.wins / totalGames : 0);
 
-  // Calculate trend (comparing to last season)
-  const currentSeasonRecord = history?.seasons[0];
+  // Calculate trend
   const lastSeasonRecord = history?.seasons[1];
+  const currentSeasonRecord = history?.seasons[0];
   let trend: "up" | "down" | "same" = "same";
   if (lastSeasonRecord && currentSeasonRecord) {
     const lastWinPct = lastSeasonRecord.wins / (lastSeasonRecord.wins + lastSeasonRecord.losses) || 0;
@@ -388,12 +409,27 @@ function TeamCard({
     else if (currWinPct < lastWinPct - 0.05) trend = "down";
   }
 
+  const isChampion = playoffPlacement === 1;
+  const isRunnerUp = playoffPlacement === 2;
+  const isTopFinisher = playoffPlacement !== undefined && playoffPlacement <= 3;
+
+  // Fun accolades
+  const accolades: string[] = [];
+  if (isTopScorer) accolades.push("Scoring Leader");
+  if (winPct >= 0.75 && totalGames >= 5) accolades.push("Dominant");
+  if (history?.totals.championships && history.totals.championships >= 2) accolades.push("Dynasty");
+  if (history?.totals.playoffAppearances === history?.totals.seasonsPlayed &&
+      history?.totals.seasonsPlayed && history.totals.seasonsPlayed >= 2) accolades.push("Perennial Contender");
+  if (winPct <= 0.3 && totalGames >= 5) accolades.push("Rebuilding");
+
   return (
     <Link
       href={`/league/${leagueId}/team/${roster.id}`}
       className={`
         group relative rounded-xl p-3 transition-all duration-200
-        bg-zinc-900/60 backdrop-blur-sm
+        bg-zinc-900/60 backdrop-blur-sm overflow-visible
+        ${isChampion ? "ring-2 ring-amber-500/50 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent" : ""}
+        ${isRunnerUp ? "ring-1 ring-zinc-400/40" : ""}
         border ${isPlayoff ? "border-emerald-500/20" : "border-white/[0.04]"}
         hover:border-violet-500/30 hover:bg-zinc-900/80
         hover:shadow-lg hover:shadow-violet-500/5
@@ -401,68 +437,122 @@ function TeamCard({
     >
       {/* Rank Badge - Top Left */}
       <div className={`
-        absolute -top-2 -left-2 w-7 h-7 rounded-lg flex items-center justify-center
-        text-xs font-bold ${rankStyle.bg} ${rankStyle.text} ${rankStyle.glow}
+        absolute -top-2.5 -left-2.5 w-8 h-8 rounded-xl flex items-center justify-center
+        text-sm font-bold ${rankStyle.bg} ${rankStyle.text} ${rankStyle.glow}
       `}>
         {rankStyle.icon || rank}
       </div>
 
-      {/* Playoff Badge - Top Right */}
-      {isPlayoff && (
-        <div className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-          P
+      {/* Draft Pick Badge - Top Right (Big & Prominent) */}
+      {draftPick !== undefined && (
+        <div className={`
+          absolute -top-3 -right-3 w-12 h-12 rounded-xl flex flex-col items-center justify-center shadow-lg
+          ${draftPick <= 3 ? "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/40" : ""}
+          ${draftPick >= 10 ? "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/40" : ""}
+          ${draftPick > 3 && draftPick < 10 ? "bg-gradient-to-br from-zinc-500 to-zinc-600 shadow-zinc-500/30" : ""}
+        `}>
+          <span className="text-[8px] font-semibold text-white/80 uppercase">Pick</span>
+          <span className="text-xl font-black text-white leading-none">{draftPick}</span>
+        </div>
+      )}
+
+      {/* Champion Banner - Centered Top */}
+      {isChampion && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 shadow-lg shadow-amber-500/40">
+          <div className="flex items-center gap-1.5">
+            <Crown className="w-4 h-4 text-amber-900" />
+            <span className="text-xs font-black text-amber-900 uppercase tracking-wide">Champion</span>
+            <Crown className="w-4 h-4 text-amber-900" />
+          </div>
+        </div>
+      )}
+
+      {/* Runner-Up Banner */}
+      {isRunnerUp && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-zinc-300 to-zinc-400 shadow-lg">
+          <span className="text-[10px] font-bold text-zinc-800 uppercase tracking-wide">Runner-Up</span>
+        </div>
+      )}
+
+      {/* 3rd-6th Place Badge */}
+      {playoffPlacement && playoffPlacement >= 3 && playoffPlacement <= 6 && (
+        <div className="absolute -top-2 left-10 px-2 py-0.5 rounded-full bg-zinc-700/90 shadow">
+          <span className="text-[9px] font-bold text-zinc-200">{getPlayoffLabel(playoffPlacement).label}</span>
         </div>
       )}
 
       {/* Team Info */}
-      <div className="pt-2">
+      <div className={`${isChampion ? "pt-5" : isRunnerUp || isTopFinisher ? "pt-3" : "pt-3"}`}>
         {/* Avatar + Name Row */}
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2.5 mb-3">
           {history?.avatar ? (
             <img
               src={history.avatar}
               alt=""
-              className="w-8 h-8 rounded-lg ring-1 ring-white/10"
+              className={`w-11 h-11 rounded-xl ring-2 ${isChampion ? "ring-amber-500/60" : "ring-white/10"}`}
             />
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/30 to-purple-600/20 flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/10">
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500/40 to-purple-600/30 flex items-center justify-center text-white text-sm font-bold ring-2 ${isChampion ? "ring-amber-500/60" : "ring-white/10"}`}>
               {getInitials(roster.teamName)}
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate group-hover:text-violet-200 transition-colors">
+            <p className="text-sm font-bold text-white truncate group-hover:text-violet-200 transition-colors">
               {roster.teamName || "Unnamed Team"}
             </p>
-            <p className="text-[10px] text-zinc-500 truncate">
+            <p className="text-[11px] text-zinc-400 truncate">
               {history?.displayName || roster.owners?.[0]?.displayName || "Unknown"}
             </p>
           </div>
         </div>
 
-        {/* Current Season Record */}
-        <div className="flex items-center justify-between mb-2">
+        {/* Accolades */}
+        {accolades.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {accolades.slice(0, 2).map(accolade => (
+              <span key={accolade} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/20">
+                {accolade}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Current Season Stats - Bigger */}
+        <div className="flex items-center justify-between mb-3 px-2 py-2 rounded-lg bg-black/20">
           <div className="flex items-center gap-2">
-            <span className={`text-lg font-bold ${winPct >= 0.5 ? "text-emerald-400" : winPct < 0.4 ? "text-red-400" : "text-white"}`}>
+            <span className={`text-2xl font-black ${winPct >= 0.5 ? "text-emerald-400" : winPct < 0.4 ? "text-red-400" : "text-white"}`}>
               {roster.wins}-{roster.losses}
             </span>
             {trend !== "same" && (
               trend === "up" ? (
-                <TrendingUp className="w-3 h-3 text-emerald-400" />
+                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20">
+                  <TrendingUp className="w-3 h-3 text-emerald-400" />
+                  <span className="text-[9px] font-bold text-emerald-400">UP</span>
+                </div>
               ) : (
-                <TrendingDown className="w-3 h-3 text-red-400" />
+                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-red-500/20">
+                  <TrendingDown className="w-3 h-3 text-red-400" />
+                  <span className="text-[9px] font-bold text-red-400">DOWN</span>
+                </div>
               )
             )}
           </div>
-          <span className="text-xs text-zinc-500">{roster.pointsFor.toFixed(0)} PF</span>
+          <div className="text-right">
+            <div className="text-lg font-bold text-zinc-200">{roster.pointsFor.toFixed(0)}</div>
+            <div className="text-[9px] text-zinc-500 uppercase tracking-wide">Points</div>
+          </div>
         </div>
 
-        {/* Historical Records - Compact */}
+        {/* Historical Records */}
         {history && history.seasons.length > 1 && (
-          <div className="border-t border-white/[0.04] pt-2 mt-2">
-            <div className="flex items-center justify-between text-[10px] text-zinc-500 mb-1">
-              <span>All-Time</span>
-              <span className="font-medium text-zinc-400">
+          <div className="border-t border-white/[0.06] pt-2">
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-2">
+              <span className="font-semibold">All-Time</span>
+              <span className="font-bold text-white">
                 {history.totals.wins}-{history.totals.losses}
+                <span className="text-zinc-500 font-normal ml-1">
+                  ({((history.totals.wins / (history.totals.wins + history.totals.losses)) * 100).toFixed(0)}%)
+                </span>
               </span>
             </div>
             <div className="flex gap-1">
@@ -470,21 +560,24 @@ function TeamCard({
                 <div
                   key={season.season}
                   className={`
-                    flex-1 text-center py-1 rounded text-[9px]
-                    ${i === 0 ? "bg-violet-500/10 text-violet-400" : "bg-zinc-800/50 text-zinc-500"}
+                    flex-1 text-center py-1.5 rounded-lg
+                    ${i === 0 ? "bg-violet-500/20 ring-1 ring-violet-500/30" : "bg-zinc-800/60"}
                   `}
                 >
-                  <div className="font-bold">{season.wins}-{season.losses}</div>
-                  <div className="text-[8px] opacity-70">{season.season.slice(-2)}</div>
+                  <div className={`text-sm font-bold ${i === 0 ? "text-violet-300" : "text-zinc-400"}`}>
+                    {season.wins}-{season.losses}
+                  </div>
+                  <div className="text-[9px] text-zinc-500">&apos;{season.season.slice(-2)}</div>
                 </div>
               ))}
             </div>
-            {/* Championships */}
+
+            {/* Past Championships */}
             {history.totals.championships > 0 && (
-              <div className="flex items-center gap-1 mt-1.5">
-                <Crown className="w-3 h-3 text-amber-400" />
-                <span className="text-[10px] text-amber-400 font-medium">
-                  {history.totals.championships}x Champion
+              <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <Crown className="w-4 h-4 text-amber-400" />
+                <span className="text-[11px] text-amber-300 font-bold">
+                  {history.totals.championships}x League Champion
                 </span>
               </div>
             )}
@@ -493,15 +586,15 @@ function TeamCard({
 
         {/* Keepers Badge */}
         {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
-          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.04]">
-            <Star className="w-3 h-3 text-amber-400" />
-            <span className="text-[10px] text-amber-400 font-medium">{roster.keeperCount} Keepers</span>
+          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.06]">
+            <Star className="w-4 h-4 text-amber-400" />
+            <span className="text-[11px] text-amber-300 font-semibold">{roster.keeperCount} Keepers Locked</span>
           </div>
         )}
       </div>
 
       {/* Hover Arrow */}
-      <ChevronRight className="absolute bottom-3 right-2 w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+      <ChevronRight className="absolute bottom-3 right-2 w-5 h-5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
     </Link>
   );
 }
