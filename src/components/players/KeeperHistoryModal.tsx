@@ -426,7 +426,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
       {/* Right side details */}
       {event.details?.round && (
         <div className="flex-shrink-0 text-xs text-gray-500">
-          R{event.details.round}{event.details.pick ? `.${event.details.pick}` : ''}
+          Round {event.details.round}
         </div>
       )}
       {event.details?.cost && (
