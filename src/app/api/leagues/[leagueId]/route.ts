@@ -24,6 +24,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const currentYear = new Date().getFullYear();
+
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
       include: {
@@ -36,9 +38,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           },
         },
         rosters: {
-          include: {
+          select: {
+            id: true,
+            sleeperId: true,
+            teamName: true,
+            wins: true,
+            losses: true,
+            ties: true,
+            pointsFor: true,
+            pointsAgainst: true,
             teamMembers: {
-              include: {
+              select: {
+                userId: true,
+                role: true,
                 user: {
                   select: {
                     id: true,
@@ -49,19 +61,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 },
               },
             },
-            rosterPlayers: {
-              include: {
-                player: true,
-              },
-            },
+            // Only fetch current season keepers with minimal player data
             keepers: {
-              where: {
-                season: { gte: new Date().getFullYear() - 2 },
+              where: { season: currentYear },
+              select: {
+                id: true,
+                season: true,
+                type: true,
+                finalCost: true,
+                player: {
+                  select: {
+                    fullName: true,
+                    position: true,
+                    team: true,
+                  },
+                },
               },
-              include: {
-                player: true,
-              },
-              orderBy: { season: "desc" },
             },
             _count: {
               select: {
@@ -88,8 +103,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           },
         },
         tradedPicks: {
-          where: {
-            season: { gte: new Date().getFullYear() },
+          where: { season: currentYear },
+          select: {
+            season: true,
+            round: true,
+            originalOwnerId: true,
+            currentOwnerId: true,
           },
         },
         _count: {
@@ -163,15 +182,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         })),
         playerCount: roster._count.rosterPlayers,
         keeperCount: roster._count.keepers,
-        currentKeepers: roster.keepers.filter(k => k.season === league.season),
+        currentKeepers: roster.keepers,
       })),
       recentDrafts: league.drafts,
-      tradedPicks: league.tradedPicks.map(pick => ({
-        season: pick.season,
-        round: pick.round,
-        originalOwnerId: pick.originalOwnerId,
-        currentOwnerId: pick.currentOwnerId,
-      })),
+      tradedPicks: league.tradedPicks,
       counts: league._count,
     });
 
