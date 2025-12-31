@@ -258,6 +258,11 @@ export default function TeamsPage() {
   // Check if playoffs are complete
   const hasChampion = [...playoffPlacements.values()].includes(1);
 
+  // Find top scorer for accolade
+  const topScorerId = sortedRosters.reduce((maxId, roster) =>
+    roster.pointsFor > (sortedRosters.find(r => r.id === maxId)?.pointsFor || 0) ? roster.id : maxId
+  , sortedRosters[0]?.id);
+
   // Create a map from sleeper owner ID to historical data
   const ownerHistoryMap = new Map<string | undefined, OwnerHistory>();
   ownerHistory?.owners.forEach(owner => {
@@ -289,6 +294,9 @@ export default function TeamsPage() {
           const isPlayoff = rank <= playoffSpots;
           const rankStyle = getRankStyle(rank);
           const history = ownerHistoryMap.get(roster.id);
+          const playoffPlacement = playoffPlacements.get(roster.id);
+          const draftPick = hasChampion ? calculateDraftPick(roster.id) : undefined;
+          const isTopScorer = roster.id === topScorerId;
 
           return (
             <TeamCard
@@ -300,6 +308,9 @@ export default function TeamsPage() {
               leagueId={leagueId}
               history={history}
               availableSeasons={ownerHistory?.availableSeasons || []}
+              playoffPlacement={playoffPlacement}
+              draftPick={draftPick}
+              isTopScorer={isTopScorer}
             />
           );
         })}
