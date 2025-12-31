@@ -49,11 +49,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Default to 5 rounds for draft picks
-    const maxRounds = 5;
+    // Get max rounds from latest draft or default to 16
+    const latestDraft = await prisma.draft.findFirst({
+      where: { leagueId },
+      orderBy: { season: 'desc' },
+      select: { rounds: true },
+    });
+    const maxRounds = latestDraft?.rounds || 16;
+
+    // Build a map of sleeperId -> teamName for display
+    const sleeperToName = new Map<string, string>();
+    for (const roster of rosters) {
+      if (roster.sleeperId) {
+        sleeperToName.set(roster.sleeperId, roster.teamName || `Team ${roster.sleeperId.slice(0, 6)}`);
+      }
+    }
 
     // Build draft pick ownership for each team
-    // Start with each team owning their own picks
+    // Each team starts with their own Rd 1-5, then we apply trades
     const pickOwnership: {
       season: number;
       round: number;
@@ -63,24 +76,48 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       currentOwnerRosterId: string;
     }[] = [];
 
+    // For each team, calculate their picks:
+    // 1. Their own picks that weren't traded away
+    // 2. Picks they acquired from other teams
     for (const roster of rosters) {
       if (!roster.sleeperId) continue;
 
+      // Check each round
       for (let round = 1; round <= maxRounds; round++) {
-        // Check if this pick was traded
-        const tradedPick = tradedPicks.find(
-          tp => tp.originalOwnerId === roster.sleeperId && tp.round === round
+        // Did this team trade AWAY their own pick in this round?
+        const tradedAway = tradedPicks.find(
+          tp => tp.originalOwnerId === roster.sleeperId &&
+                tp.round === round &&
+                tp.currentOwnerId !== roster.sleeperId
         );
 
+        // If they still own their original pick, add it
+        if (!tradedAway) {
+          pickOwnership.push({
+            season: planningSeason,
+            round,
+            originalOwnerSleeperId: roster.sleeperId,
+            currentOwnerSleeperId: roster.sleeperId,
+            originalOwnerName: roster.teamName || `Team ${roster.sleeperId.slice(0, 6)}`,
+            currentOwnerRosterId: roster.id,
+          });
+        }
+      }
+
+      // Find picks this team ACQUIRED from others
+      const acquiredPicks = tradedPicks.filter(
+        tp => tp.currentOwnerId === roster.sleeperId &&
+              tp.originalOwnerId !== roster.sleeperId
+      );
+
+      for (const acquired of acquiredPicks) {
         pickOwnership.push({
           season: planningSeason,
-          round,
-          originalOwnerSleeperId: roster.sleeperId,
-          currentOwnerSleeperId: tradedPick?.currentOwnerId || roster.sleeperId,
-          originalOwnerName: roster.teamName || `Team ${roster.sleeperId.slice(0, 6)}`,
-          currentOwnerRosterId: tradedPick?.currentOwnerId
-            ? rosterMap.get(tradedPick.currentOwnerId)?.id || ''
-            : roster.id,
+          round: acquired.round,
+          originalOwnerSleeperId: acquired.originalOwnerId,
+          currentOwnerSleeperId: roster.sleeperId,
+          originalOwnerName: sleeperToName.get(acquired.originalOwnerId) || `Team ${acquired.originalOwnerId.slice(0, 6)}`,
+          currentOwnerRosterId: roster.id,
         });
       }
     }
