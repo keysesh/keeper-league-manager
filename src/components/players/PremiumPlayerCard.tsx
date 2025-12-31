@@ -150,9 +150,19 @@ export function PremiumPlayerCard({
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">Elig</div>
-          <div className={`text-xs font-semibold ${isEligible || isKeeper ? "text-green-400" : "text-red-400"}`}>
-            {isKeeper ? "Kept" : isEligible ? "Yes" : "No"}
+          <div className="text-[9px] text-gray-500 uppercase">Year</div>
+          <div className={`text-xs font-semibold ${
+            isKeeper ? "text-amber-400" :
+            (eligibility?.yearsKept ?? 1) >= 3 ? "text-amber-400" :
+            (eligibility?.yearsKept ?? 1) === 2 ? "text-yellow-400" :
+            "text-gray-300"
+          }`}>
+            {isKeeper
+              ? existingKeeper?.type === "FRANCHISE" ? "FT" : `Yr ${eligibility?.yearsKept ?? 1}`
+              : eligibility?.yearsKept
+                ? eligibility.yearsKept >= 3 ? "FT Req" : `Yr ${eligibility.yearsKept}`
+                : "Yr 1"
+            }
           </div>
         </div>
       </div>
@@ -160,13 +170,13 @@ export function PremiumPlayerCard({
       {/* Keeper Status Section */}
       {eligibility && (
         <div className="mt-3 pt-3 border-t border-gray-700/30">
-          <div className="grid grid-cols-4 gap-1 text-center">
+          <div className="grid grid-cols-3 gap-1 text-center">
             <div>
               <div className="text-[9px] text-gray-500 uppercase">Drafted</div>
               <div className="text-[10px] font-semibold text-white">
                 {eligibility.originalDraft
                   ? `'${String(eligibility.originalDraft.draftYear).slice(-2)} R${eligibility.originalDraft.draftRound}`
-                  : "Undrafted"}
+                  : "—"}
               </div>
             </div>
             <div>
@@ -174,15 +184,9 @@ export function PremiumPlayerCard({
               <div className="text-[10px] font-semibold text-white">{getAcquisitionLabel(eligibility.acquisitionType)}</div>
             </div>
             <div>
-              <div className="text-[9px] text-gray-500 uppercase">Kept</div>
-              <div className="text-[10px] font-semibold text-white">
-                {eligibility.consecutiveYears === 0 ? "New" : `${eligibility.consecutiveYears}yr`}
-              </div>
-            </div>
-            <div>
               <div className="text-[9px] text-gray-500 uppercase">Cost</div>
               <div className="text-[10px] font-semibold text-amber-400">
-                {isKeeper ? `R${existingKeeper.finalCost}` : costs?.regular ? `R${costs.regular.finalCost}` : "—"}
+                {isKeeper ? `R${existingKeeper.finalCost}` : costs?.regular ? `R${costs.regular.finalCost}` : "R1 (FT)"}
               </div>
             </div>
           </div>
@@ -194,10 +198,10 @@ export function PremiumPlayerCard({
             </div>
           )}
 
-          {/* Ineligibility Reason */}
-          {!isEligible && !isKeeper && eligibility.reason && (
-            <div className="mt-2 text-[9px] text-red-400 text-center italic">
-              {eligibility.reason}
+          {/* Year 3+ Warning */}
+          {!isKeeper && (eligibility.yearsKept ?? 1) >= 3 && (
+            <div className="mt-2 text-[9px] text-amber-400 text-center">
+              Franchise Tag required (Year {eligibility.yearsKept})
             </div>
           )}
         </div>
