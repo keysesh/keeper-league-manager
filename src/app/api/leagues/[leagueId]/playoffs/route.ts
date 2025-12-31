@@ -73,15 +73,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Fetch playoff brackets from Sleeper
-    const [winnersBracket, losersBracket] = await Promise.all([
+    // Fetch playoff brackets AND rosters from Sleeper
+    // We need rosters to map roster_id to owner_id
+    const [winnersBracket, losersBracket, sleeperRosters] = await Promise.all([
       sleeper.getWinnersBracket(league.sleeperId),
       sleeper.getLosersBracket(league.sleeperId),
+      sleeper.getRosters(league.sleeperId),
     ]);
 
-    // Create a map of sleeperId (owner_id) to roster info
-    // Note: Sleeper bracket uses roster_id (1-based index), not owner_id
-    const rosterMap = new Map<number, {
+    // Create a map from Sleeper roster_id to owner_id
+    const rosterIdToOwnerId = new Map<number, string>();
+    sleeperRosters.forEach((sr) => {
+      if (sr.owner_id) {
+        rosterIdToOwnerId.set(sr.roster_id, sr.owner_id);
+      }
+    });
+
+    // Create a map from owner_id (our sleeperId) to roster info
+    const ownerIdToRoster = new Map<string, {
       id: string;
       teamName: string | null;
       ownerName: string | null;
@@ -90,15 +99,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       pointsFor: number;
     }>();
 
-    // The bracket t1/t2 values are 1-based roster indices
-    // We need to match them to our rosters somehow
-    // Sleeper's roster_id in the bracket corresponds to the roster's position
-    league.rosters.forEach((roster, index) => {
-      // Try to extract roster_id from sleeperId if it's numeric
-      const rosterIdNum = parseInt(roster.sleeperId, 10);
-      const effectiveId = isNaN(rosterIdNum) ? index + 1 : rosterIdNum;
-
-      rosterMap.set(effectiveId, {
+    league.rosters.forEach((roster) => {
+      ownerIdToRoster.set(roster.sleeperId, {
         id: roster.id,
         teamName: roster.teamName,
         ownerName: roster.teamMembers[0]?.user?.displayName ||
@@ -109,18 +111,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
     });
 
-    // Also create a map by index (1-based) as fallback
-    league.rosters.forEach((roster, index) => {
-      if (!rosterMap.has(index + 1)) {
-        rosterMap.set(index + 1, {
-          id: roster.id,
-          teamName: roster.teamName,
-          ownerName: roster.teamMembers[0]?.user?.displayName ||
-                     roster.teamMembers[0]?.user?.sleeperUsername || null,
-          wins: roster.wins,
-          losses: roster.losses,
-          pointsFor: Number(roster.pointsFor),
-        });
+    // Create final map from Sleeper roster_id to our roster info
+    const rosterMap = new Map<number, {
+      id: string;
+      teamName: string | null;
+      ownerName: string | null;
+      wins: number;
+      losses: number;
+      pointsFor: number;
+    }>();
+
+    rosterIdToOwnerId.forEach((ownerId, rosterId) => {
+      const rosterInfo = ownerIdToRoster.get(ownerId);
+      if (rosterInfo) {
+        rosterMap.set(rosterId, rosterInfo);
       }
     });
 

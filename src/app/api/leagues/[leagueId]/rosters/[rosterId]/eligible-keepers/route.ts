@@ -625,8 +625,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Cache for 30 seconds, stale-while-revalidate for 60 seconds
-    response.headers.set('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
+    // No caching - keeper data must always be fresh after add/remove operations
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
     console.error("Error fetching eligible keepers:", error);

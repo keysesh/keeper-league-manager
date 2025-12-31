@@ -105,13 +105,14 @@ export default function TeamRosterPage() {
   const [syncingKeepers, setSyncingKeepers] = useState(false);
   const [historyPlayerId, setHistoryPlayerId] = useState<string | null>(null);
 
-  // Use SWR for faster data loading with caching
+  // Use SWR for data loading - no caching since keeper data changes frequently
   const { data, error, mutate, isLoading } = useSWR<RosterData>(
     `/api/leagues/${leagueId}/rosters/${rosterId}/eligible-keepers`,
     fetcher,
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 5000,
+      revalidateOnFocus: true,
+      revalidateIfStale: true,
+      dedupingInterval: 0, // No deduping - always fetch fresh data after mutations
     }
   );
 
