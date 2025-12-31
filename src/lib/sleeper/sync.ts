@@ -7,7 +7,6 @@ import {
   mapSleeperLeague,
   mapSleeperDraftStatus,
   mapSleeperTransaction,
-  mapSleeperTradedPick,
 } from "./mappers";
 import { logger } from "@/lib/logger";
 import {
@@ -218,25 +217,49 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
     }
   }
 
-  // Sync traded picks
+  // Sync traded picks - need to map roster_id (slot numbers) to owner_id (user IDs)
+  // Build roster_id -> owner_id mapping
+  const tradedPickRosterIdToOwnerId = new Map<number, string>();
+  for (const roster of rosters) {
+    if (roster.owner_id) {
+      tradedPickRosterIdToOwnerId.set(roster.roster_id, roster.owner_id);
+    }
+  }
+
   for (const pick of tradedPicks) {
-    const mappedPick = mapSleeperTradedPick(pick);
+    // Sleeper traded picks use roster slot IDs, not owner user IDs
+    // owner_id = original owner's roster_id, roster_id = current owner's roster_id
+    const originalOwnerId = tradedPickRosterIdToOwnerId.get(pick.owner_id);
+    const currentOwnerId = tradedPickRosterIdToOwnerId.get(pick.roster_id);
+
+    if (!originalOwnerId || !currentOwnerId) {
+      logger.warn("Could not map traded pick roster IDs", {
+        pickOwnerSlot: pick.owner_id,
+        pickRosterSlot: pick.roster_id,
+        season: pick.season,
+        round: pick.round,
+      });
+      continue;
+    }
 
     await prisma.tradedPick.upsert({
       where: {
         leagueId_season_round_originalOwnerId: {
           leagueId: league.id,
-          season: mappedPick.season,
-          round: mappedPick.round,
-          originalOwnerId: mappedPick.originalOwnerId,
+          season: parseInt(pick.season),
+          round: pick.round,
+          originalOwnerId,
         },
       },
       update: {
-        currentOwnerId: mappedPick.currentOwnerId,
+        currentOwnerId,
       },
       create: {
         leagueId: league.id,
-        ...mappedPick,
+        season: parseInt(pick.season),
+        round: pick.round,
+        originalOwnerId,
+        currentOwnerId,
       },
     });
   }
