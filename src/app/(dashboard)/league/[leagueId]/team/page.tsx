@@ -11,16 +11,13 @@ import {
   Trophy,
   Star,
   ChevronRight,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Crown,
   Medal,
-  Target,
-  Zap,
   ChevronDown,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
-import { PlayoffBracket } from "@/components/ui/PlayoffBracket";
+import { TournamentBracket } from "@/components/ui/TournamentBracket";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -54,6 +51,43 @@ interface LeagueData {
   rosters: Roster[];
 }
 
+interface HistoricalRecord {
+  season: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  playoffFinish?: string | null;
+  standing?: number;
+}
+
+interface OwnerHistory {
+  ownerId: string;
+  displayName: string;
+  avatar: string | null;
+  currentTeamName: string | null;
+  currentRosterId: string | null;
+  seasons: HistoricalRecord[];
+  totals: {
+    wins: number;
+    losses: number;
+    ties: number;
+    pointsFor: number;
+    pointsAgainst: number;
+    championships: number;
+    playoffAppearances: number;
+    seasonsPlayed: number;
+  };
+}
+
+interface OwnerHistoryData {
+  leagueId: string;
+  currentSeason: string;
+  availableSeasons: string[];
+  owners: OwnerHistory[];
+}
+
 // Get initials from team name
 function getInitials(name: string | null): string {
   if (!name) return "??";
@@ -68,21 +102,21 @@ function getRankStyle(rank: number): { bg: string; text: string; glow: string; i
         bg: "bg-gradient-to-br from-amber-400 to-amber-600",
         text: "text-black",
         glow: "shadow-lg shadow-amber-500/30",
-        icon: <Crown className="w-4 h-4" />
+        icon: <Crown className="w-3.5 h-3.5" />
       };
     case 2:
       return {
         bg: "bg-gradient-to-br from-zinc-300 to-zinc-400",
         text: "text-black",
         glow: "shadow-lg shadow-zinc-400/30",
-        icon: <Medal className="w-4 h-4" />
+        icon: <Medal className="w-3.5 h-3.5" />
       };
     case 3:
       return {
         bg: "bg-gradient-to-br from-amber-600 to-amber-800",
         text: "text-white",
         glow: "shadow-lg shadow-amber-700/30",
-        icon: <Medal className="w-4 h-4" />
+        icon: <Medal className="w-3.5 h-3.5" />
       };
     default:
       return {
@@ -91,14 +125,6 @@ function getRankStyle(rank: number): { bg: string; text: string; glow: string; i
         glow: ""
       };
   }
-}
-
-// Get team avatar gradient based on performance
-function getTeamGradient(winPct: number): string {
-  if (winPct >= 0.7) return "from-emerald-500 to-emerald-700";
-  if (winPct >= 0.5) return "from-violet-500 to-purple-700";
-  if (winPct >= 0.3) return "from-amber-500 to-orange-700";
-  return "from-zinc-500 to-zinc-700";
 }
 
 interface PlayoffData {
@@ -133,7 +159,13 @@ export default function TeamsPage() {
     fetcher
   );
 
-  // Only fetch playoffs when bracket is shown
+  // Fetch historical owner data
+  const { data: ownerHistory } = useSWR<OwnerHistoryData>(
+    `/api/leagues/${leagueId}/owner-history`,
+    fetcher
+  );
+
+  // Fetch playoffs when bracket is shown
   const { data: playoffs } = useSWR<PlayoffData>(
     showBracket ? `/api/leagues/${leagueId}/playoffs` : null,
     fetcher
@@ -146,15 +178,9 @@ export default function TeamsPage() {
           <Skeleton className="h-4 w-24 mb-3" />
           <Skeleton className="h-10 w-48" />
         </div>
-        {/* Podium skeleton */}
-        <div className="flex justify-center gap-4 py-8">
-          <Skeleton className="w-32 h-40 rounded-2xl" />
-          <Skeleton className="w-36 h-48 rounded-2xl" />
-          <Skeleton className="w-32 h-36 rounded-2xl" />
-        </div>
-        <div className="grid gap-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Skeleton key={i} className="h-48 rounded-xl" />
           ))}
         </div>
       </div>
@@ -177,266 +203,91 @@ export default function TeamsPage() {
     return b.pointsFor - a.pointsFor;
   });
 
-  const top3 = sortedRosters.slice(0, 3);
-  const rest = sortedRosters.slice(3);
-  // Use playoff_teams from Sleeper settings, fallback to half the league size
   const playoffSpots = league.settings?.playoff_teams ?? Math.min(6, Math.floor(sortedRosters.length / 2));
-  const maxPoints = Math.max(...sortedRosters.map(r => r.pointsFor));
+
+  // Create a map from sleeper owner ID to historical data
+  const ownerHistoryMap = new Map<string | undefined, OwnerHistory>();
+  ownerHistory?.owners.forEach(owner => {
+    if (owner.currentRosterId) {
+      ownerHistoryMap.set(owner.currentRosterId, owner);
+    }
+  });
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-8">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
       {/* Header */}
       <div>
         <BackLink href={`/league/${leagueId}`} label="Back to League" />
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/10 ring-1 ring-violet-500/20 flex items-center justify-center">
-            <Users className="w-6 h-6 text-violet-400" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/10 ring-1 ring-violet-500/20 flex items-center justify-center">
+            <Users className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Standings</h1>
-            <p className="text-zinc-500 mt-0.5">{league.name} • {league.season}</p>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">League Standings</h1>
+            <p className="text-sm text-zinc-500">{league.name} • {league.season}</p>
           </div>
         </div>
       </div>
 
-      {/* Top 3 Podium */}
-      {top3.length >= 3 && (
-        <div className="relative">
-          {/* Background glow */}
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-500/5 via-transparent to-transparent rounded-3xl" />
+      {/* Compact Team Cards Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {sortedRosters.map((roster, index) => {
+          const rank = index + 1;
+          const isPlayoff = rank <= playoffSpots;
+          const rankStyle = getRankStyle(rank);
+          const history = ownerHistoryMap.get(roster.id);
 
-          <div className="relative flex items-end justify-center gap-3 md:gap-6 py-6 px-4">
-            {/* 2nd Place */}
-            <PodiumCard
-              roster={top3[1]}
-              rank={2}
+          return (
+            <TeamCard
+              key={roster.id}
+              roster={roster}
+              rank={rank}
+              isPlayoff={isPlayoff}
+              rankStyle={rankStyle}
               leagueId={leagueId}
-              maxPoints={maxPoints}
-              height="h-44"
+              history={history}
+              availableSeasons={ownerHistory?.availableSeasons || []}
             />
+          );
+        })}
+      </div>
 
-            {/* 1st Place */}
-            <PodiumCard
-              roster={top3[0]}
-              rank={1}
-              leagueId={leagueId}
-              maxPoints={maxPoints}
-              height="h-52"
-              featured
-            />
-
-            {/* 3rd Place */}
-            <PodiumCard
-              roster={top3[2]}
-              rank={3}
-              leagueId={leagueId}
-              maxPoints={maxPoints}
-              height="h-40"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Playoff Bracket Toggle */}
-      <div className="bg-[#13111a]/60 backdrop-blur-sm rounded-xl border border-white/[0.04] overflow-hidden">
+      {/* Playoff Bracket Section */}
+      <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-white/[0.06] overflow-hidden">
         <button
           onClick={() => setShowBracket(!showBracket)}
           className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-amber-400" />
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Trophy className="w-4 h-4 text-amber-400" />
             </div>
             <div className="text-left">
               <h3 className="text-sm font-semibold text-white">Playoff Bracket</h3>
-              <p className="text-xs text-zinc-500">
-                {playoffSpots} teams compete for the championship
-              </p>
+              <p className="text-xs text-zinc-500">{playoffSpots} teams • Championship</p>
             </div>
           </div>
           <ChevronDown
-            className={`w-5 h-5 text-zinc-400 transition-transform ${
-              showBracket ? "rotate-180" : ""
-            }`}
+            className={`w-5 h-5 text-zinc-400 transition-transform ${showBracket ? "rotate-180" : ""}`}
           />
         </button>
         {showBracket && (
-          <div className="px-4 pb-4 border-t border-white/[0.04]">
-            <div className="pt-4">
+          <div className="border-t border-white/[0.04]">
+            <div className="p-4">
               {playoffs ? (
-                <PlayoffBracket
+                <TournamentBracket
                   winnersBracket={playoffs.winnersBracket}
                   losersBracket={playoffs.losersBracket}
                   playoffTeams={playoffs.playoffTeams}
-                  showLosersBracket={true}
                 />
               ) : (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-amber-400 border-t-transparent"></div>
                 </div>
               )}
             </div>
           </div>
         )}
-      </div>
-
-      {/* Rest of Teams */}
-      <div className="space-y-2">
-        {/* Section Header */}
-        <div className="flex items-center justify-between px-2 mb-4">
-          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
-            All Teams
-          </h2>
-          <div className="flex items-center gap-4 text-xs text-zinc-500">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Playoff
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-zinc-600"></span>
-              Out
-            </span>
-          </div>
-        </div>
-
-        {sortedRosters.map((roster, index) => {
-          const rank = index + 1;
-          const totalGames = roster.wins + roster.losses + roster.ties;
-          const winPct = totalGames > 0 ? roster.wins / totalGames : 0;
-          const isPlayoff = rank <= playoffSpots;
-          const isPlayoffLine = rank === playoffSpots;
-          const rankStyle = getRankStyle(rank);
-          const pointsPct = maxPoints > 0 ? (roster.pointsFor / maxPoints) * 100 : 0;
-
-          return (
-            <div key={roster.id}>
-              <Link
-                href={`/league/${leagueId}/team/${roster.id}`}
-                className={`
-                  group block rounded-xl p-4 transition-all duration-300
-                  bg-[#13111a]/60 backdrop-blur-sm
-                  border ${isPlayoff ? "border-emerald-500/20" : "border-white/[0.04]"}
-                  hover:border-violet-500/30 hover:bg-[#13111a]/80
-                  hover:shadow-lg hover:shadow-violet-500/5
-                  hover:scale-[1.01]
-                `}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Rank Badge */}
-                  <div className={`
-                    w-10 h-10 rounded-xl flex items-center justify-center
-                    text-sm font-bold transition-transform group-hover:scale-110
-                    ${rankStyle.bg} ${rankStyle.text} ${rankStyle.glow}
-                  `}>
-                    {rankStyle.icon || rank}
-                  </div>
-
-                  {/* Team Avatar */}
-                  <div className={`
-                    w-12 h-12 rounded-xl bg-gradient-to-br ${getTeamGradient(winPct)}
-                    flex items-center justify-center text-white font-bold text-sm
-                    ring-2 ring-white/10 shadow-lg
-                  `}>
-                    {getInitials(roster.teamName)}
-                  </div>
-
-                  {/* Team Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white truncate group-hover:text-violet-200 transition-colors">
-                        {roster.teamName || "Unnamed Team"}
-                      </span>
-                      {rank === 1 && <Crown className="w-4 h-4 text-amber-400" />}
-                      {isPlayoff && rank > 1 && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
-                          PLAYOFF
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-zinc-500 mt-0.5">
-                      {roster.owners?.[0]?.displayName || "Unknown Owner"}
-                    </div>
-                  </div>
-
-                  {/* Stats Grid */}
-                  <div className="hidden md:grid grid-cols-3 gap-6 text-center">
-                    {/* Record */}
-                    <div>
-                      <div className="text-lg font-bold text-white">
-                        {roster.wins}-{roster.losses}{roster.ties > 0 ? `-${roster.ties}` : ""}
-                      </div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wide">Record</div>
-                    </div>
-
-                    {/* Win % */}
-                    <div>
-                      <div className={`text-lg font-bold ${
-                        winPct >= 0.5 ? "text-emerald-400" : "text-zinc-400"
-                      }`}>
-                        {(winPct * 100).toFixed(0)}%
-                      </div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wide">Win Rate</div>
-                    </div>
-
-                    {/* Points */}
-                    <div>
-                      <div className="text-lg font-bold text-violet-400">
-                        {roster.pointsFor.toFixed(0)}
-                      </div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wide">Points</div>
-                    </div>
-                  </div>
-
-                  {/* Mobile Stats */}
-                  <div className="md:hidden text-right">
-                    <div className="text-sm font-bold text-white">
-                      {roster.wins}-{roster.losses}
-                    </div>
-                    <div className="text-xs text-zinc-500">
-                      {roster.pointsFor.toFixed(0)} PF
-                    </div>
-                  </div>
-
-                  {/* Keepers Badge */}
-                  {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                      <Star className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="text-xs font-bold text-amber-400">{roster.keeperCount}</span>
-                    </div>
-                  )}
-
-                  {/* Arrow */}
-                  <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
-                </div>
-
-                {/* Points Progress Bar */}
-                <div className="mt-3 pt-3 border-t border-white/[0.04]">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-zinc-500 uppercase tracking-wide w-16">Scoring</span>
-                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all duration-500"
-                        style={{ width: `${pointsPct}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-zinc-400 w-12 text-right">{pointsPct.toFixed(0)}%</span>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Playoff Line Indicator */}
-              {isPlayoffLine && rank < sortedRosters.length && (
-                <div className="flex items-center gap-3 py-3 px-4">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
-                  <span className="text-[10px] font-semibold text-red-400 uppercase tracking-wider">
-                    Playoff Cutoff
-                  </span>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
-                </div>
-              )}
-            </div>
-          );
-        })}
       </div>
 
       {sortedRosters.length === 0 && (
@@ -452,88 +303,152 @@ export default function TeamsPage() {
   );
 }
 
-// Podium Card Component
-function PodiumCard({
+// Compact Team Card Component with Historical Data
+function TeamCard({
   roster,
   rank,
+  isPlayoff,
+  rankStyle,
   leagueId,
-  maxPoints,
-  height,
-  featured = false
+  history,
+  availableSeasons,
 }: {
   roster: Roster;
   rank: number;
+  isPlayoff: boolean;
+  rankStyle: { bg: string; text: string; glow: string; icon?: React.ReactNode };
   leagueId: string;
-  maxPoints: number;
-  height: string;
-  featured?: boolean;
+  history?: OwnerHistory;
+  availableSeasons: string[];
 }) {
   const totalGames = roster.wins + roster.losses + roster.ties;
   const winPct = totalGames > 0 ? roster.wins / totalGames : 0;
-  const rankStyle = getRankStyle(rank);
+
+  // Calculate trend (comparing to last season)
+  const currentSeasonRecord = history?.seasons[0];
+  const lastSeasonRecord = history?.seasons[1];
+  let trend: "up" | "down" | "same" = "same";
+  if (lastSeasonRecord && currentSeasonRecord) {
+    const lastWinPct = lastSeasonRecord.wins / (lastSeasonRecord.wins + lastSeasonRecord.losses) || 0;
+    const currWinPct = currentSeasonRecord.wins / (currentSeasonRecord.wins + currentSeasonRecord.losses) || 0;
+    if (currWinPct > lastWinPct + 0.05) trend = "up";
+    else if (currWinPct < lastWinPct - 0.05) trend = "down";
+  }
 
   return (
     <Link
       href={`/league/${leagueId}/team/${roster.id}`}
       className={`
-        group relative flex flex-col items-center justify-end
-        w-28 md:w-36 ${height} p-3 rounded-2xl
-        bg-gradient-to-b from-[#1a1625] to-[#13111a]
-        border border-white/[0.06]
-        hover:border-violet-500/30
-        transition-all duration-300
-        hover:scale-105 hover:-translate-y-1
-        ${featured ? "ring-2 ring-amber-500/30 shadow-xl shadow-amber-500/10" : ""}
+        group relative rounded-xl p-3 transition-all duration-200
+        bg-zinc-900/60 backdrop-blur-sm
+        border ${isPlayoff ? "border-emerald-500/20" : "border-white/[0.04]"}
+        hover:border-violet-500/30 hover:bg-zinc-900/80
+        hover:shadow-lg hover:shadow-violet-500/5
       `}
     >
-      {/* Rank Medal */}
+      {/* Rank Badge - Top Left */}
       <div className={`
-        absolute -top-3 left-1/2 -translate-x-1/2
-        w-8 h-8 rounded-full flex items-center justify-center
-        ${rankStyle.bg} ${rankStyle.text} ${rankStyle.glow}
-        text-sm font-bold
+        absolute -top-2 -left-2 w-7 h-7 rounded-lg flex items-center justify-center
+        text-xs font-bold ${rankStyle.bg} ${rankStyle.text} ${rankStyle.glow}
       `}>
         {rankStyle.icon || rank}
       </div>
 
-      {/* Team Avatar */}
-      <div className={`
-        w-14 h-14 md:w-16 md:h-16 rounded-xl mb-2
-        bg-gradient-to-br ${getTeamGradient(winPct)}
-        flex items-center justify-center text-white font-bold
-        ring-2 ring-white/20 shadow-lg
-        group-hover:scale-110 transition-transform
-      `}>
-        {getInitials(roster.teamName)}
-      </div>
-
-      {/* Team Name */}
-      <span className="text-xs md:text-sm font-semibold text-white text-center truncate w-full">
-        {roster.teamName || "Unnamed"}
-      </span>
-
-      {/* Owner */}
-      <span className="text-[10px] text-zinc-500 truncate w-full text-center">
-        {roster.owners?.[0]?.displayName || "Unknown"}
-      </span>
-
-      {/* Record */}
-      <div className="mt-2 px-2 py-1 rounded-lg bg-white/[0.05] text-center">
-        <span className="text-xs font-bold text-white">
-          {roster.wins}-{roster.losses}
-        </span>
-        <span className="text-[10px] text-zinc-500 ml-1">
-          ({(winPct * 100).toFixed(0)}%)
-        </span>
-      </div>
-
-      {/* Keepers indicator */}
-      {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
-        <div className="absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-500/20">
-          <Star className="w-2.5 h-2.5 text-amber-400" />
-          <span className="text-[10px] font-bold text-amber-400">{roster.keeperCount}</span>
+      {/* Playoff Badge - Top Right */}
+      {isPlayoff && (
+        <div className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+          P
         </div>
       )}
+
+      {/* Team Info */}
+      <div className="pt-2">
+        {/* Avatar + Name Row */}
+        <div className="flex items-center gap-2 mb-2">
+          {history?.avatar ? (
+            <img
+              src={history.avatar}
+              alt=""
+              className="w-8 h-8 rounded-lg ring-1 ring-white/10"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/30 to-purple-600/20 flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/10">
+              {getInitials(roster.teamName)}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white truncate group-hover:text-violet-200 transition-colors">
+              {roster.teamName || "Unnamed Team"}
+            </p>
+            <p className="text-[10px] text-zinc-500 truncate">
+              {history?.displayName || roster.owners?.[0]?.displayName || "Unknown"}
+            </p>
+          </div>
+        </div>
+
+        {/* Current Season Record */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className={`text-lg font-bold ${winPct >= 0.5 ? "text-emerald-400" : winPct < 0.4 ? "text-red-400" : "text-white"}`}>
+              {roster.wins}-{roster.losses}
+            </span>
+            {trend !== "same" && (
+              trend === "up" ? (
+                <TrendingUp className="w-3 h-3 text-emerald-400" />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-red-400" />
+              )
+            )}
+          </div>
+          <span className="text-xs text-zinc-500">{roster.pointsFor.toFixed(0)} PF</span>
+        </div>
+
+        {/* Historical Records - Compact */}
+        {history && history.seasons.length > 1 && (
+          <div className="border-t border-white/[0.04] pt-2 mt-2">
+            <div className="flex items-center justify-between text-[10px] text-zinc-500 mb-1">
+              <span>All-Time</span>
+              <span className="font-medium text-zinc-400">
+                {history.totals.wins}-{history.totals.losses}
+              </span>
+            </div>
+            <div className="flex gap-1">
+              {history.seasons.slice(0, 3).map((season, i) => (
+                <div
+                  key={season.season}
+                  className={`
+                    flex-1 text-center py-1 rounded text-[9px]
+                    ${i === 0 ? "bg-violet-500/10 text-violet-400" : "bg-zinc-800/50 text-zinc-500"}
+                  `}
+                >
+                  <div className="font-bold">{season.wins}-{season.losses}</div>
+                  <div className="text-[8px] opacity-70">{season.season.slice(-2)}</div>
+                </div>
+              ))}
+            </div>
+            {/* Championships */}
+            {history.totals.championships > 0 && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <Crown className="w-3 h-3 text-amber-400" />
+                <span className="text-[10px] text-amber-400 font-medium">
+                  {history.totals.championships}x Champion
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Keepers Badge */}
+        {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
+          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-white/[0.04]">
+            <Star className="w-3 h-3 text-amber-400" />
+            <span className="text-[10px] text-amber-400 font-medium">{roster.keeperCount} Keepers</span>
+          </div>
+        )}
+      </div>
+
+      {/* Hover Arrow */}
+      <ChevronRight className="absolute bottom-3 right-2 w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
     </Link>
   );
 }
