@@ -91,11 +91,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Get all player IDs on this roster
     const playerIds = roster.rosterPlayers.map(rp => rp.playerId);
 
-    // BATCH QUERY 2: Get all draft picks for all players (including historical for original draft info)
+    // BATCH QUERY 2: Get all draft picks for all players in THIS LEAGUE
     // Include roster to get sleeperId for matching across seasons
     const draftPicks = await prisma.draftPick.findMany({
       where: {
         playerId: { in: playerIds },
+        draft: { leagueId: leagueId }, // Filter to current league only
       },
       include: {
         draft: true,
