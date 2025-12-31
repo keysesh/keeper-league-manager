@@ -249,27 +249,27 @@ export async function calculatePlayerTradeValue(
   const isAfterDeadline = isTradeAfterDeadline(tradeDate, tradeSeason);
   const tradeDeadlineImpact = isAfterDeadline ? "reset" : "preserved";
 
-  // Calculate new cost on destination team
-  let newCost: number;
-  let yearsKeptReset: boolean;
-  let newYearsKept: number;
+  // Per league rules:
+  // - Draft round/cost: NEVER changes on trade (always preserved)
+  // - Years kept: Resets to 0 if trade is AFTER deadline, preserved if BEFORE deadline
 
-  if (isAfterDeadline) {
-    // Offseason trade - value resets to undrafted round, years kept resets
-    newCost = undraftedRound;
-    yearsKeptReset = true;
-    newYearsKept = 0;
+  // Get the current keeper cost (either from keeper record or calculated from draft)
+  let currentCost: number;
+  if (keeperStatus.currentCost) {
+    currentCost = keeperStatus.currentCost;
   } else {
-    // In-season trade - value preserved, years kept carries over
+    // Calculate what the cost would be based on original draft round
     const baseCost = await getPlayerBaseCost(playerId, sourceRosterId, settings || null);
-    newCost = Math.max(minRound, baseCost - keeperStatus.yearsKept);
-    yearsKeptReset = false;
-    newYearsKept = keeperStatus.yearsKept;
+    currentCost = Math.max(minRound, baseCost - keeperStatus.yearsKept);
   }
 
-  // Calculate cost change (negative = better/lower round)
-  const currentCost = keeperStatus.currentCost || undraftedRound;
-  const costChange = newCost - currentCost;
+  // Cost NEVER changes on trade
+  const newCost = currentCost;
+  const costChange = 0;
+
+  // Years kept depends on trade deadline
+  const yearsKeptReset = isAfterDeadline;
+  const newYearsKept = isAfterDeadline ? 0 : keeperStatus.yearsKept;
 
   // Calculate cost trajectory on new team
   const costTrajectory = calculateCostTrajectory(
@@ -522,25 +522,31 @@ function generateTradeFacts(
 ): TradeFact[] {
   const facts: TradeFact[] = [];
 
-  // Keeper cost changes for traded players
+  // Keeper years kept changes for traded players (cost never changes on trade)
   for (const player of team1.tradingAway) {
-    if (player.projection.costChange !== 0) {
-      const direction = player.projection.costChange > 0 ? "increases" : "improves";
-      const reason = isAfterDeadline ? "offseason trade reset" : "preserved value";
+    if (player.projection.yearsKeptReset && player.keeperStatus.yearsKept > 0) {
       facts.push({
         category: "keeper",
-        description: `${player.playerName}: Cost ${direction} from R${player.keeperStatus.currentCost || "?"} to R${player.projection.newCost} (${reason})`,
+        description: `${player.playerName}: Years kept resets from ${player.keeperStatus.yearsKept} to 0 (offseason trade)`,
+      });
+    } else if (!player.projection.yearsKeptReset && player.keeperStatus.yearsKept > 0) {
+      facts.push({
+        category: "keeper",
+        description: `${player.playerName}: Years kept preserved (${player.keeperStatus.yearsKept} yrs, R${player.projection.newCost})`,
       });
     }
   }
 
   for (const player of team2.tradingAway) {
-    if (player.projection.costChange !== 0) {
-      const direction = player.projection.costChange > 0 ? "increases" : "improves";
-      const reason = isAfterDeadline ? "offseason trade reset" : "preserved value";
+    if (player.projection.yearsKeptReset && player.keeperStatus.yearsKept > 0) {
       facts.push({
         category: "keeper",
-        description: `${player.playerName}: Cost ${direction} from R${player.keeperStatus.currentCost || "?"} to R${player.projection.newCost} (${reason})`,
+        description: `${player.playerName}: Years kept resets from ${player.keeperStatus.yearsKept} to 0 (offseason trade)`,
+      });
+    } else if (!player.projection.yearsKeptReset && player.keeperStatus.yearsKept > 0) {
+      facts.push({
+        category: "keeper",
+        description: `${player.playerName}: Years kept preserved (${player.keeperStatus.yearsKept} yrs, R${player.projection.newCost})`,
       });
     }
   }
