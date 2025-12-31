@@ -136,7 +136,16 @@ export default function DraftBoardPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const deadlineInfo = getKeeperDeadlineInfo();
 
@@ -388,65 +397,68 @@ export default function DraftBoardPage() {
             </div>
           </div>
 
-          {/* Controls */}
+          {/* Controls - responsive layout */}
           <div className="flex flex-wrap gap-2">
+            {/* View mode toggle */}
             <div className="flex rounded-xl overflow-hidden ring-1 ring-white/10">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 text-sm font-medium transition-all ${
                   viewMode === "grid"
                     ? "bg-white/10 text-white"
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
                 }`}
               >
                 <LayoutGrid size={16} />
-                <span className="hidden sm:inline">Grid</span>
+                <span className="hidden md:inline">Grid</span>
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 text-sm font-medium transition-all ${
                   viewMode === "list"
                     ? "bg-white/10 text-white"
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
                 }`}
               >
                 <List size={16} />
-                <span className="hidden sm:inline">Teams</span>
+                <span className="hidden md:inline">Teams</span>
               </button>
             </div>
 
+            {/* Primary actions - always visible */}
             <Link
               href={`/league/${leagueId}/simulation`}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 ring-1 ring-purple-500/30 text-sm font-medium transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 ring-1 ring-purple-500/30 text-sm font-medium transition-all"
             >
               <FlaskConical size={16} />
-              <span className="hidden sm:inline">Simulate</span>
+              <span className="hidden md:inline">Simulate</span>
             </Link>
 
             <button
               onClick={syncData}
               disabled={isSyncing}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30 text-sm font-medium transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30 text-sm font-medium transition-all disabled:opacity-50"
               title="Sync keepers from Sleeper"
             >
               <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
-              <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync"}</span>
+              <span className="hidden md:inline">{isSyncing ? "Syncing..." : "Sync"}</span>
             </button>
 
+            {/* Secondary actions - hidden on small mobile */}
             <button
               onClick={() => fetchData()}
               disabled={isRefreshing}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 ring-1 ring-white/10 text-sm font-medium transition-all disabled:opacity-50"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 ring-1 ring-white/10 text-sm font-medium transition-all disabled:opacity-50"
             >
               <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-              <span className="hidden sm:inline">Refresh</span>
+              <span className="hidden md:inline">Refresh</span>
             </button>
 
             <div className="relative group">
-              <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 ring-1 ring-white/10 text-sm font-medium transition-all">
+              <button className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 ring-1 ring-white/10 text-sm font-medium transition-all">
                 <Download size={16} />
-                <span className="hidden sm:inline">Export</span>
-                <ChevronDown size={14} />
+                <span className="hidden md:inline">Export</span>
+                <ChevronDown size={14} className="hidden sm:block" />
               </button>
               <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700/50 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
                 <button
@@ -555,73 +567,121 @@ export default function DraftBoardPage() {
       </div>
 
       {viewMode === "grid" ? (
-        /* Grid View - Redesigned for readability */
-        <div className="rounded-xl overflow-hidden border border-gray-700/50 bg-gray-950">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: `${rosters.length * 145 + 70}px` }}>
-              {/* Sticky Header */}
-              <thead className="sticky top-0 z-30">
-                <tr className="bg-gray-900 border-b-2 border-gray-700">
-                  <th className="sticky left-0 z-40 bg-gray-900 px-3 py-3 text-center w-14 border-r border-gray-700">
-                    <span className="text-gray-400 text-xs font-bold">RD</span>
-                  </th>
-                  {rosters.map((roster, index) => {
-                    const color = getTeamColor(index);
-                    const teamData = data.cascade.find(t => t.rosterId === roster.rosterId);
-                    const keeperCount = teamData?.results.length || 0;
-                    return (
-                      <th key={roster.rosterId} className="px-2 py-3 min-w-[140px] border-r border-gray-800/50 last:border-r-0">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className={`w-2 h-2 rounded-full ${color.bg}`} />
-                          <span className={`text-xs font-bold ${color.accent} truncate max-w-[110px]`} title={roster.rosterName || undefined}>
-                            {roster.rosterName || `Team ${index + 1}`}
-                          </span>
-                          <span className={`text-[10px] font-medium ${keeperCount > 0 ? "text-amber-400" : "text-gray-600"}`}>
-                            {keeperCount} keeper{keeperCount !== 1 ? "s" : ""}
-                          </span>
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {data.draftBoard.map((row, rowIndex) => (
-                  <tr
-                    key={row.round}
-                    className={`
-                      ${rowIndex % 2 === 0 ? "bg-gray-950" : "bg-gray-900/50"}
-                      hover:bg-gray-800/30 transition-colors
-                    `}
-                  >
-                    <td className="sticky left-0 z-20 px-3 py-2 border-r border-gray-700 bg-inherit">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 text-white font-bold text-sm">
-                        {row.round}
-                      </span>
-                    </td>
+        /* Grid View - Desktop: table, Mobile: stacked rounds with horizontal scroll */
+        isMobile ? (
+          /* Mobile Grid View - Stacked rounds with horizontal scrolling */
+          <div className="space-y-4">
+            {data.draftBoard.map((row) => (
+              <div key={row.round} className="rounded-xl border border-gray-700/50 bg-gray-950 overflow-hidden">
+                {/* Round Header */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-700">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 text-white font-bold text-sm">
+                    {row.round}
+                  </span>
+                  <span className="text-gray-400 text-sm font-medium">Round {row.round}</span>
+                  <span className="ml-auto text-gray-600 text-xs">
+                    {row.slots.filter(s => s.status === "keeper").length} keepers
+                  </span>
+                </div>
+                {/* Horizontal scrolling picks */}
+                <div className="overflow-x-auto">
+                  <div className="flex gap-2 p-3" style={{ minWidth: "max-content" }}>
                     {row.slots.map((slot, slotIndex) => {
                       const columnColor = getTeamColor(slotIndex);
                       const keeper = slot.keeper;
                       const shouldShow = !filterPosition || (keeper?.position === filterPosition);
+                      const teamName = slot.rosterName || `Team ${slotIndex + 1}`;
 
                       return (
-                        <td key={slot.rosterId} className="px-1.5 py-2 border-r border-gray-800/30 last:border-r-0">
-                          <DraftCell
+                        <div key={slot.rosterId} className="flex flex-col gap-1.5" style={{ width: "140px", flexShrink: 0 }}>
+                          {/* Team name chip */}
+                          <div className={`text-center text-[10px] font-semibold ${columnColor.accent} truncate px-1`}>
+                            {teamName}
+                          </div>
+                          <MobileDraftCell
                             slot={shouldShow ? slot : { ...slot, status: slot.status === "keeper" ? "available" : slot.status, keeper: undefined }}
                             columnColor={columnColor}
                             teamInfoMap={teamInfoMap}
                             teamNameToInfo={teamNameToInfo}
                             onPlayerClick={setSelectedPlayerId}
                           />
-                        </td>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Desktop Grid View - Traditional table */
+          <div className="rounded-xl overflow-hidden border border-gray-700/50 bg-gray-950">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse" style={{ minWidth: `${rosters.length * 145 + 70}px` }}>
+                {/* Sticky Header */}
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gray-900 border-b-2 border-gray-700">
+                    <th className="sticky left-0 z-40 bg-gray-900 px-3 py-3 text-center w-14 border-r border-gray-700">
+                      <span className="text-gray-400 text-xs font-bold">RD</span>
+                    </th>
+                    {rosters.map((roster, index) => {
+                      const color = getTeamColor(index);
+                      const teamData = data.cascade.find(t => t.rosterId === roster.rosterId);
+                      const keeperCount = teamData?.results.length || 0;
+                      return (
+                        <th key={roster.rosterId} className="px-2 py-3 min-w-[140px] border-r border-gray-800/50 last:border-r-0">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className={`w-2 h-2 rounded-full ${color.bg}`} />
+                            <span className={`text-xs font-bold ${color.accent} truncate max-w-[110px]`} title={roster.rosterName || undefined}>
+                              {roster.rosterName || `Team ${index + 1}`}
+                            </span>
+                            <span className={`text-[10px] font-medium ${keeperCount > 0 ? "text-amber-400" : "text-gray-600"}`}>
+                              {keeperCount} keeper{keeperCount !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.draftBoard.map((row, rowIndex) => (
+                    <tr
+                      key={row.round}
+                      className={`
+                        ${rowIndex % 2 === 0 ? "bg-gray-950" : "bg-gray-900/50"}
+                        hover:bg-gray-800/30 transition-colors
+                      `}
+                    >
+                      <td className="sticky left-0 z-20 px-3 py-2 border-r border-gray-700 bg-inherit">
+                        <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 text-white font-bold text-sm">
+                          {row.round}
+                        </span>
+                      </td>
+                      {row.slots.map((slot, slotIndex) => {
+                        const columnColor = getTeamColor(slotIndex);
+                        const keeper = slot.keeper;
+                        const shouldShow = !filterPosition || (keeper?.position === filterPosition);
+
+                        return (
+                          <td key={slot.rosterId} className="px-1.5 py-2 border-r border-gray-800/30 last:border-r-0">
+                            <DraftCell
+                              slot={shouldShow ? slot : { ...slot, status: slot.status === "keeper" ? "available" : slot.status, keeper: undefined }}
+                              columnColor={columnColor}
+                              teamInfoMap={teamInfoMap}
+                              teamNameToInfo={teamNameToInfo}
+                              onPlayerClick={setSelectedPlayerId}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )
       ) : (
         /* List View - By Team */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -720,37 +780,39 @@ export default function DraftBoardPage() {
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-6 text-sm text-gray-400 pt-4 border-t border-gray-700/50">
-        <span className="text-gray-500 text-xs uppercase tracking-wide font-medium">Legend:</span>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-6 rounded bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50 relative">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-l" />
+      {/* Legend - responsive grid on mobile */}
+      <div className="pt-4 border-t border-gray-700/50">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 text-xs md:text-sm text-gray-400">
+          <span className="text-gray-500 text-[10px] md:text-xs uppercase tracking-wide font-medium w-full md:w-auto">Legend:</span>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50 relative">
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 md:w-1 bg-emerald-500 rounded-l" />
+            </div>
+            <span>Keeper</span>
           </div>
-          <span>Keeper</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-6 rounded bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400 relative flex items-center justify-center">
-            <Star size={10} className="text-amber-300 fill-amber-400" />
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400 relative flex items-center justify-center">
+              <Star size={8} className="md:w-2.5 md:h-2.5 text-amber-300 fill-amber-400" />
+            </div>
+            <span>Franchise</span>
           </div>
-          <span>Franchise Tag</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-6 rounded bg-gradient-to-br from-gray-800/40 to-gray-900/60 border-2 border-dashed border-gray-600/50 flex items-center justify-center">
-            <ArrowLeftRight size={8} className="text-gray-500" />
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gradient-to-br from-gray-800/40 to-gray-900/60 border-2 border-dashed border-gray-600/50 flex items-center justify-center">
+              <ArrowLeftRight size={6} className="md:w-2 md:h-2 text-gray-500" />
+            </div>
+            <span>Traded</span>
           </div>
-          <span>Traded Pick</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-6 rounded bg-gray-900/20 border border-gray-800/20" />
-          <span>Available</span>
-        </div>
-        <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-700">
-          <span className="text-gray-500 text-xs uppercase tracking-wide font-medium">Years:</span>
-          <div className="flex items-center gap-1">
-            <span className="px-1.5 py-0.5 rounded bg-white/10 text-gray-300 text-[10px] font-bold">Y1</span>
-            <span className="px-1.5 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-[10px] font-bold">Y2</span>
-            <span className="px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 text-[10px] font-bold">Y3+</span>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gray-900/20 border border-gray-800/20" />
+            <span>Open</span>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3 md:ml-4 md:pl-4 md:border-l md:border-gray-700 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-800">
+            <span className="text-gray-500 text-[10px] md:text-xs uppercase tracking-wide font-medium">Years:</span>
+            <div className="flex items-center gap-1">
+              <span className="px-1 md:px-1.5 py-0.5 rounded bg-white/10 text-gray-300 text-[9px] md:text-[10px] font-bold">Y1</span>
+              <span className="px-1 md:px-1.5 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-[9px] md:text-[10px] font-bold">Y2</span>
+              <span className="px-1 md:px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 text-[9px] md:text-[10px] font-bold">Y3+</span>
+            </div>
           </div>
         </div>
       </div>
@@ -966,5 +1028,109 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
   // Empty cell - minimal
   return (
     <div className="h-[88px] rounded-lg bg-gray-900/20 border border-gray-800/20" />
+  );
+}
+
+// Mobile-optimized draft cell - more compact, touch-friendly
+function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerClick }: DraftCellProps) {
+  // Traded pick
+  if (slot.status === "traded" && slot.tradedTo) {
+    let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
+    if (!newOwnerInfo) {
+      for (const [name, info] of teamNameToInfo) {
+        if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
+          newOwnerInfo = info;
+          break;
+        }
+      }
+    }
+    const ownerColor = newOwnerInfo?.color || columnColor;
+    const ownerName = newOwnerInfo?.name || slot.tradedTo;
+
+    return (
+      <div className="h-[72px] rounded-lg bg-gradient-to-br from-gray-800/40 to-gray-900/60 border-2 border-dashed border-gray-600/50 flex flex-col items-center justify-center gap-0.5">
+        <ArrowLeftRight size={14} className={ownerColor.accent} />
+        <span className="text-[8px] text-gray-500 uppercase">To</span>
+        <span className={`${ownerColor.accent} text-[9px] font-semibold truncate max-w-[90%] text-center`}>
+          {ownerName}
+        </span>
+      </div>
+    );
+  }
+
+  // Keeper cell - compact mobile design
+  if (slot.status === "keeper" && slot.keeper) {
+    const isFranchise = slot.keeper.keeperType === "FRANCHISE";
+    const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
+    const yearsKept = slot.keeper.yearsKept || 1;
+
+    // Get last name for compact display
+    const nameParts = slot.keeper.playerName.split(" ");
+    const lastName = nameParts.slice(1).join(" ") || nameParts[0] || "";
+
+    return (
+      <div
+        onClick={() => slot.keeper && onPlayerClick?.(slot.keeper.playerId)}
+        className={`
+          h-[72px] rounded-lg relative overflow-hidden cursor-pointer active:scale-95 transition-transform
+          ${isFranchise
+            ? "bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400"
+            : "bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50"
+          }
+        `}
+      >
+        {/* Position stripe */}
+        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+          isFranchise ? "bg-amber-400" : posAccent.border.replace("border-l-", "bg-")
+        }`} />
+
+        {/* Franchise star */}
+        {isFranchise && (
+          <div className="absolute top-1 right-1">
+            <Star size={12} className="text-amber-300 fill-amber-400" />
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex items-center h-full pl-2.5 pr-2 gap-2">
+          {/* Avatar */}
+          <div className="shrink-0">
+            <div className={`rounded overflow-hidden ${isFranchise ? "ring-1 ring-amber-400/60" : "ring-1 ring-white/20"}`}>
+              <PlayerAvatar
+                sleeperId={slot.keeper.playerId}
+                name={slot.keeper.playerName}
+                size="md"
+              />
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+            <div className="flex items-center gap-1">
+              <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
+              <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${
+                isFranchise ? "bg-amber-400/30 text-amber-100" :
+                yearsKept >= 3 ? "bg-red-500/30 text-red-200" :
+                yearsKept === 2 ? "bg-yellow-500/30 text-yellow-200" :
+                "bg-white/10 text-gray-300"
+              }`}>
+                {isFranchise ? "FT" : `Y${yearsKept}`}
+              </span>
+            </div>
+            <span className="text-[11px] font-bold text-white truncate leading-tight">
+              {lastName}
+            </span>
+            {slot.keeper.team && (
+              <span className="text-[9px] text-gray-400">{slot.keeper.team}</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty cell
+  return (
+    <div className="h-[72px] rounded-lg bg-gray-900/20 border border-gray-800/20" />
   );
 }
