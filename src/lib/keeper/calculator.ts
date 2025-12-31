@@ -466,57 +466,62 @@ async function getPlayerAcquisition(
     return { type: AcquisitionType.WAIVER };
   }
 
-  // Find all draft picks for this player (get the ORIGINAL/EARLIEST one)
-  const draftPick = await prisma.draftPick.findFirst({
+  // Get when the player joined the current roster (if via transaction)
+  const rosterTransaction = await prisma.transactionPlayer.findFirst({
+    where: {
+      playerId: player.id,
+      toRosterId: rosterId,
+    },
+    include: { transaction: true },
+    orderBy: { transaction: { createdAt: "desc" } },
+  });
+
+  const pickupSeason = rosterTransaction
+    ? getSeasonFromDate(rosterTransaction.transaction.createdAt)
+    : null;
+
+  // Case 1: Check if current roster drafted this player
+  const ownDraftPick = await prisma.draftPick.findFirst({
+    where: {
+      playerId: player.id,
+      rosterId: rosterId,
+    },
+    include: { draft: true },
+    orderBy: { draft: { season: "desc" } },
+  });
+
+  if (ownDraftPick) {
+    return {
+      type: AcquisitionType.DRAFTED,
+      date: ownDraftPick.pickedAt || undefined,
+      draftRound: ownDraftPick.round,
+    };
+  }
+
+  // Case 2: Player was drafted by another team, check if picked up same season
+  // Find the MOST RECENT draft (player may have been dropped and re-drafted)
+  const mostRecentDraft = await prisma.draftPick.findFirst({
     where: {
       playerId: player.id,
     },
     include: { draft: true },
-    orderBy: { draft: { season: "asc" } },
+    orderBy: { draft: { season: "desc" } },
   });
 
-  if (draftPick) {
-    const draftSeason = draftPick.draft.season;
+  if (mostRecentDraft && pickupSeason) {
+    const draftSeason = mostRecentDraft.draft.season;
 
-    // Get when the player joined the current roster
-    const rosterTransaction = await prisma.transactionPlayer.findFirst({
-      where: {
-        playerId: player.id,
-        toRosterId: rosterId,
-      },
-      include: { transaction: true },
-      orderBy: { transaction: { createdAt: "desc" } },
-    });
-
-    // Case 1: Player was drafted by current roster - use draft round
-    if (draftPick.rosterId === rosterId) {
+    // If picked up in the SAME season as the most recent draft → retain draft value
+    // Example: Drafted Aug 2024, dropped Oct 2024, picked up Nov 2024 (same season)
+    if (pickupSeason === draftSeason) {
       return {
         type: AcquisitionType.DRAFTED,
-        date: draftPick.pickedAt || undefined,
-        draftRound: draftPick.round,
+        date: rosterTransaction!.transaction.createdAt,
+        draftRound: mostRecentDraft.round,
       };
     }
 
-    // Case 2: Player was drafted by another team, then acquired
-    if (rosterTransaction) {
-      const pickupSeason = getSeasonFromDate(rosterTransaction.transaction.createdAt);
-
-      // If picked up in the SAME season as drafted → retain draft value
-      // Example: Drafted Aug 2024 (season 2024), dropped Oct 2024, picked up Nov 2024 (season 2024)
-      if (pickupSeason === draftSeason) {
-        return {
-          type: AcquisitionType.DRAFTED,
-          date: rosterTransaction.transaction.createdAt,
-          draftRound: draftPick.round,
-        };
-      }
-
-      // If picked up in a DIFFERENT season → lose draft value, get waiver cost
-      // Example: Drafted Aug 2024 (season 2024), dropped Oct 2024, picked up Aug 2025 (season 2025)
-      // Fall through to waiver logic below
-    }
-
-    // Player was drafted but picked up in a different season - they lose draft value
+    // If picked up in a DIFFERENT season → lose draft value, fall through to transaction type
   }
 
   // Check transactions for how player joined roster (waiver, FA, trade)

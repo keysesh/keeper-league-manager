@@ -40,8 +40,9 @@ const fixes = [
   { playerName: "Calvin Ridley", season: 2025, baseCost: 16, yearsKept: 2, finalCost: 15 },
   // George Pickens: Same owner 2024-2025 → year 2, original R6 in 2023
   { playerName: "George Pickens", season: 2025, baseCost: 6, yearsKept: 2, finalCost: 5 },
-  // Javonte Williams: All 3 years different owners → year 1, original R4
-  { playerName: "Javonte Williams", season: 2025, baseCost: 4, yearsKept: 1, finalCost: 4 },
+  // Javonte Williams: Drafted R11 in 2025 by Wet Reckless, traded mid-season to Jackson Off My DK
+  // Mid-season trade inherits cost from previous owner → R11, year 1
+  { playerName: "Javonte Williams", season: 2025, baseCost: 11, yearsKept: 1, finalCost: 11 },
   // Lamar Jackson: Same owner 2023-2025 → year 3, original R2
   { playerName: "Lamar Jackson", season: 2025, baseCost: 2, yearsKept: 3, finalCost: 1 },
 ];
