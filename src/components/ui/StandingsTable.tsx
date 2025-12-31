@@ -106,7 +106,7 @@ export const StandingsTable = memo(function StandingsTable({
               `}>
                 {roster.owners?.[0]?.avatar ? (
                   <img
-                    src={roster.owners[0].avatar}
+                    src={`https://sleepercdn.com/avatars/${roster.owners[0].avatar}`}
                     alt=""
                     className="w-full h-full rounded-xl object-cover"
                   />

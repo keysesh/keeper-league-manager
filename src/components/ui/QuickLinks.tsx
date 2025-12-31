@@ -9,6 +9,7 @@ import {
   Activity,
   TrendingUp,
   Settings,
+  Star,
   LucideIcon,
 } from "lucide-react";
 
@@ -23,10 +24,19 @@ interface QuickLink {
 
 interface QuickLinksProps {
   leagueId: string;
+  userRosterId?: string;
 }
 
-export function QuickLinks({ leagueId }: QuickLinksProps) {
+export function QuickLinks({ leagueId, userRosterId }: QuickLinksProps) {
   const links: QuickLink[] = [
+    ...(userRosterId ? [{
+      href: `/league/${leagueId}/team/${userRosterId}`,
+      icon: Star,
+      label: "My Keepers",
+      description: "Manage your keepers",
+      color: "text-amber-400",
+      gradient: "from-amber-500/10 to-amber-600/5",
+    }] : []),
     {
       href: `/league/${leagueId}/draft-board`,
       icon: LayoutGrid,

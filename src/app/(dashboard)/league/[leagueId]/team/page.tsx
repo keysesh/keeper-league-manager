@@ -165,9 +165,9 @@ export default function TeamsPage() {
     fetcher
   );
 
-  // Fetch playoffs when bracket is shown
+  // Always fetch playoffs to determine final standings
   const { data: playoffs } = useSWR<PlayoffData>(
-    showBracket ? `/api/leagues/${leagueId}/playoffs` : null,
+    `/api/leagues/${leagueId}/playoffs`,
     fetcher
   );
 
@@ -197,13 +197,66 @@ export default function TeamsPage() {
     );
   }
 
-  // Sort by wins (desc), then points for (desc)
+  const playoffSpots = league.settings?.playoff_teams ?? Math.min(6, Math.floor(league.rosters.length / 2));
+
+  // Build playoff placement map from bracket data
+  const playoffPlacements = new Map<string, number>();
+
+  if (playoffs?.winnersBracket) {
+    playoffs.winnersBracket.forEach(matchup => {
+      if (matchup.placement && matchup.winner) {
+        playoffPlacements.set(matchup.winner.id, matchup.placement);
+      }
+      if (matchup.placement === 1 && matchup.loser) {
+        playoffPlacements.set(matchup.loser.id, 2);
+      }
+      if (matchup.placement === 3) {
+        if (matchup.winner) playoffPlacements.set(matchup.winner.id, 3);
+        if (matchup.loser) playoffPlacements.set(matchup.loser.id, 4);
+      }
+    });
+  }
+
+  if (playoffs?.losersBracket) {
+    playoffs.losersBracket.forEach(matchup => {
+      if (matchup.placement) {
+        if (matchup.winner) playoffPlacements.set(matchup.winner.id, matchup.placement);
+        if (matchup.loser && matchup.placement < 12) {
+          playoffPlacements.set(matchup.loser.id, matchup.placement + 1);
+        }
+      }
+    });
+  }
+
+  // Sort by regular season: wins (desc), then points for (desc)
   const sortedRosters = [...league.rosters].sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
     return b.pointsFor - a.pointsFor;
   });
 
-  const playoffSpots = league.settings?.playoff_teams ?? Math.min(6, Math.floor(sortedRosters.length / 2));
+  // Calculate draft order based on final standings
+  // Non-playoff teams pick first (worst record first), then playoff teams in reverse finish order
+  const calculateDraftPick = (rosterId: string): number | undefined => {
+    const placement = playoffPlacements.get(rosterId);
+    const totalTeams = league.rosters.length;
+
+    if (placement !== undefined) {
+      // Playoff teams: Champion picks last, runner-up second to last, etc.
+      return totalTeams - placement + 1;
+    }
+
+    // Non-playoff teams: Sort by record (worst first)
+    const nonPlayoffTeams = sortedRosters.filter(r => !playoffPlacements.has(r.id));
+    const nonPlayoffRank = nonPlayoffTeams.findIndex(r => r.id === rosterId);
+    if (nonPlayoffRank !== -1) {
+      // Reverse order: worst record picks first
+      return nonPlayoffTeams.length - nonPlayoffRank;
+    }
+    return undefined;
+  };
+
+  // Check if playoffs are complete
+  const hasChampion = [...playoffPlacements.values()].includes(1);
 
   // Create a map from sleeper owner ID to historical data
   const ownerHistoryMap = new Map<string | undefined, OwnerHistory>();

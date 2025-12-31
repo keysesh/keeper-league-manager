@@ -250,7 +250,10 @@ export default function LeaguePage() {
       />
 
       {/* Quick Links */}
-      <QuickLinks leagueId={leagueId} />
+      <QuickLinks
+        leagueId={leagueId}
+        userRosterId={league.rosters.find(r => r.isUserRoster)?.id}
+      />
       </div>
     </>
   );
