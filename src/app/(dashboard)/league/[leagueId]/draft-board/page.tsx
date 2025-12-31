@@ -144,11 +144,11 @@ export default function DraftBoardPage() {
     setIsSyncing(true);
     setSyncMessage(null);
     try {
-      // Step 1: Sync league data from Sleeper
+      // Step 1: Sync league data from Sleeper (quick sync uses internal leagueId)
       const syncRes = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "league", leagueId }),
+        body: JSON.stringify({ action: "quick", leagueId }),
       });
 
       if (!syncRes.ok) {
