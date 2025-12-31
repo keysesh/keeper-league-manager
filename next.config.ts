@@ -19,6 +19,17 @@ const nextConfig: NextConfig = {
         hostname: "a.espncdn.com",
         pathname: "/**",
       },
+      // NFLverse / NFL.com headshots
+      {
+        protocol: "https",
+        hostname: "static.www.nfl.com",
+        pathname: "/image/upload/**",
+      },
+      {
+        protocol: "https",
+        hostname: "static.nfl.com",
+        pathname: "/**",
+      },
     ],
     // Use modern formats for better compression
     formats: ["image/avif", "image/webp"],
