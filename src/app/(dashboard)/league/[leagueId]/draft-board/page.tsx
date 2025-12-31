@@ -26,6 +26,7 @@ import {
   Zap,
 } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
+import { PlayerAvatar, TeamLogo } from "@/components/players/PlayerAvatar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import { getKeeperDeadlineInfo, getCurrentSeason } from "@/lib/constants/keeper-rules";
@@ -78,6 +79,7 @@ interface DraftSlot {
     playerId: string;
     playerName: string;
     position: string | null;
+    team: string | null;
     yearsKept?: number;
     keeperType?: string;
   };
@@ -130,9 +132,64 @@ export default function DraftBoardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const deadlineInfo = getKeeperDeadlineInfo();
+
+  const syncData = async () => {
+    setIsSyncing(true);
+    setSyncMessage(null);
+    try {
+      // Step 1: Sync league data from Sleeper
+      const syncRes = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-league", leagueId }),
+      });
+
+      if (!syncRes.ok) {
+        const err = await syncRes.json();
+        throw new Error(err.error || "Failed to sync league");
+      }
+
+      // Step 2: Populate keepers from draft picks
+      const populateRes = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "populate-keepers", leagueId }),
+      });
+
+      if (!populateRes.ok) {
+        const err = await populateRes.json();
+        throw new Error(err.error || "Failed to populate keepers");
+      }
+
+      // Step 3: Recalculate keeper years
+      const recalcRes = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "recalculate-keeper-years", leagueId }),
+      });
+
+      if (!recalcRes.ok) {
+        const err = await recalcRes.json();
+        throw new Error(err.error || "Failed to recalculate years");
+      }
+
+      const result = await recalcRes.json();
+      setSyncMessage(`Synced! ${result.data?.totalUpdated || 0} keepers updated`);
+
+      // Refresh the draft board
+      await fetchData();
+    } catch (err) {
+      setSyncMessage(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncMessage(null), 3000);
+    }
+  };
 
   const fetchData = useCallback(async (showLoading = true) => {
     if (showLoading) setIsRefreshing(true);
@@ -365,6 +422,16 @@ export default function DraftBoardPage() {
             </Link>
 
             <button
+              onClick={syncData}
+              disabled={isSyncing}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30 text-sm font-medium transition-all disabled:opacity-50"
+              title="Sync keepers from Sleeper"
+            >
+              <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync"}</span>
+            </button>
+
+            <button
               onClick={() => fetchData()}
               disabled={isRefreshing}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 ring-1 ring-white/10 text-sm font-medium transition-all disabled:opacity-50"
@@ -412,6 +479,17 @@ export default function DraftBoardPage() {
             </div>
           </div>
         </div>
+
+        {/* Sync Message */}
+        {syncMessage && (
+          <div className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            syncMessage.includes("failed") || syncMessage.includes("Failed")
+              ? "bg-red-500/20 text-red-400"
+              : "bg-emerald-500/20 text-emerald-400"
+          }`}>
+            {syncMessage}
+          </div>
+        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -478,7 +556,7 @@ export default function DraftBoardPage() {
         /* Grid View - Redesigned for readability */
         <div className="rounded-xl overflow-hidden border border-gray-700/50 bg-gray-950">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: `${rosters.length * 130 + 60}px` }}>
+            <table className="w-full border-collapse" style={{ minWidth: `${rosters.length * 145 + 70}px` }}>
               {/* Sticky Header */}
               <thead className="sticky top-0 z-30">
                 <tr className="bg-gray-900 border-b-2 border-gray-700">
@@ -490,7 +568,7 @@ export default function DraftBoardPage() {
                     const teamData = data.cascade.find(t => t.rosterId === roster.rosterId);
                     const keeperCount = teamData?.results.length || 0;
                     return (
-                      <th key={roster.rosterId} className="px-2 py-3 min-w-[120px] border-r border-gray-800/50 last:border-r-0">
+                      <th key={roster.rosterId} className="px-2 py-3 min-w-[140px] border-r border-gray-800/50 last:border-r-0">
                         <div className="flex flex-col items-center gap-1">
                           <div className={`w-2 h-2 rounded-full ${color.bg}`} />
                           <span className={`text-xs font-bold ${color.accent} truncate max-w-[110px]`} title={roster.rosterName || undefined}>
@@ -708,7 +786,7 @@ interface DraftCellProps {
 }
 
 function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
-  // Traded pick - clear visual distinction with colored border
+  // Traded pick - show who owns this pick now
   if (slot.status === "traded" && slot.tradedTo) {
     let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
 
@@ -725,54 +803,83 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCell
     const ownerName = newOwnerInfo?.name || slot.tradedTo;
 
     return (
-      <div className={`h-14 rounded-md bg-gray-800/30 border-2 border-dashed ${ownerColor.border} flex flex-col items-center justify-center px-2`}>
-        <ArrowLeftRight size={12} className={ownerColor.accent} />
-        <span className={`${ownerColor.accent} text-[11px] font-semibold truncate max-w-[90px] mt-0.5`}>
+      <div className={`h-[72px] rounded-lg bg-gray-900/60 border-2 border-dashed ${ownerColor.border} flex flex-col items-center justify-center px-2 py-2`}>
+        <div className={`w-8 h-8 rounded-full ${ownerColor.bgSolid} flex items-center justify-center mb-1`}>
+          <ArrowLeftRight size={14} className={ownerColor.accent} />
+        </div>
+        <span className={`${ownerColor.accent} text-[10px] font-bold truncate max-w-[100px] text-center leading-tight`}>
           {ownerName}
         </span>
       </div>
     );
   }
 
-  // Keeper cell - high contrast, easy to read
+  // Keeper cell - rich player card with avatar
   if (slot.status === "keeper" && slot.keeper) {
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
 
     return (
       <div
         className={`
-          h-14 rounded-md px-2 py-1 flex flex-col justify-center relative overflow-hidden
+          h-[72px] rounded-lg px-2 py-1.5 relative overflow-hidden
           ${isFranchise
-            ? "bg-gradient-to-br from-amber-900/60 to-amber-950/80 border-2 border-amber-500/50"
-            : `bg-gray-800/80 border border-gray-600/50`
+            ? "bg-gradient-to-br from-amber-900/70 to-amber-950/90 border-2 border-amber-500/60 shadow-lg shadow-amber-500/10"
+            : "bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-600/60"
           }
         `}
       >
-        {/* Franchise indicator */}
+        {/* Franchise corner ribbon */}
         {isFranchise && (
-          <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-t-amber-500 border-l-[16px] border-l-transparent" />
+          <div className="absolute -top-1 -right-1">
+            <div className="w-0 h-0 border-t-[24px] border-t-amber-500 border-l-[24px] border-l-transparent" />
+            <Star size={10} className="absolute top-0.5 right-0.5 text-amber-950 fill-amber-950" />
+          </div>
         )}
 
-        {/* Position + Name row */}
-        <div className="flex items-center gap-1.5">
-          <PositionBadge position={slot.keeper.position} size="xs" variant="filled" />
-          <span className={`${isFranchise ? "text-amber-100" : "text-white"} text-[11px] font-semibold truncate flex-1`}>
-            {slot.keeper.playerName}
-          </span>
+        {/* Main content */}
+        <div className="flex items-center gap-2 h-full">
+          {/* Player Avatar */}
+          <div className="relative shrink-0">
+            <PlayerAvatar
+              sleeperId={slot.keeper.playerId}
+              name={slot.keeper.playerName}
+              size="md"
+            />
+            {/* Team logo overlay */}
+            {slot.keeper.team && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gray-900 p-0.5">
+                <TeamLogo team={slot.keeper.team} size="xs" />
+              </div>
+            )}
+          </div>
+
+          {/* Player Info */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            {/* Position Badge */}
+            <PositionBadge position={slot.keeper.position} size="xs" variant="filled" />
+
+            {/* Player Name */}
+            <span
+              className={`text-[11px] font-bold truncate leading-tight mt-0.5 ${
+                isFranchise ? "text-amber-100" : "text-white"
+              }`}
+              title={slot.keeper.playerName}
+            >
+              {slot.keeper.playerName}
+            </span>
+
+            {/* Year indicator */}
+            <span className={`text-[9px] ${isFranchise ? "text-amber-300/80" : "text-gray-400"}`}>
+              {isFranchise ? "Franchise" : `Year ${slot.keeper.yearsKept || 1}`}
+            </span>
+          </div>
         </div>
-
-        {/* Year indicator */}
-        {slot.keeper.yearsKept && (
-          <span className={`text-[9px] ${isFranchise ? "text-amber-300/70" : "text-gray-400"} mt-0.5 ml-6`}>
-            Year {slot.keeper.yearsKept}
-          </span>
-        )}
       </div>
     );
   }
 
-  // Empty cell - clean and minimal
+  // Empty cell - minimal and clean
   return (
-    <div className="h-14 rounded-md bg-gray-900/30 border border-gray-800/50" />
+    <div className="h-[72px] rounded-lg bg-gray-900/20 border border-gray-800/40" />
   );
 }

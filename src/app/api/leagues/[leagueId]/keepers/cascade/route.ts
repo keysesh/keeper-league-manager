@@ -201,6 +201,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
               playerId: keeper?.player.sleeperId || keeperInSlot.playerId,
               playerName: keeperInSlot.playerName,
               position: keeper?.player.position || null,
+              team: keeper?.player.team || null,
+              yearsKept: keeper?.yearsKept || 1,
+              keeperType: keeper?.type || "REGULAR",
             },
           };
         }
