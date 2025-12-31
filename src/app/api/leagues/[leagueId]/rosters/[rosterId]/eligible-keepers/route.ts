@@ -75,7 +75,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const maxYears = settings.regularKeeperMaxYears ?? DEFAULT_KEEPER_RULES.REGULAR_KEEPER_MAX_YEARS;
     const undraftedRound = settings.undraftedRound ?? DEFAULT_KEEPER_RULES.UNDRAFTED_ROUND;
     const minRound = settings.minimumRound ?? DEFAULT_KEEPER_RULES.MINIMUM_ROUND;
-    const costReduction = settings.costReductionPerYear ?? DEFAULT_KEEPER_RULES.COST_REDUCTION_PER_YEAR;
+    // Note: costReduction is no longer used for initial cost - cost only reduces with years kept
 
     // Get all player IDs on this roster
     const playerIds = roster.rosterPlayers.map(rp => rp.playerId);
@@ -306,6 +306,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Helper: Calculate base cost (pure function, no DB calls)
     // Post-deadline trades reset to undrafted round
     // Before-deadline trades preserve original draft value
+    // NO initial cost reduction - cost only improves with years kept
     function calculateBaseCost(playerId: string): { baseCost: number; isPostDeadlineTrade: boolean } {
       const acquisition = getAcquisition(playerId);
 
@@ -317,14 +318,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       let baseCost: number;
       switch (acquisition.type) {
         case AcquisitionType.DRAFTED:
-          const draftRound = acquisition.draftRound || undraftedRound;
-          baseCost = Math.max(minRound, draftRound - costReduction);
+          // Base cost = draft round (no initial reduction)
+          baseCost = acquisition.draftRound || undraftedRound;
           break;
         case AcquisitionType.TRADE:
-          // Before-deadline trade: preserve original draft value
+          // Before-deadline trade: preserve original draft value (no reduction)
           const originalDraft = getOriginalDraft(playerId);
           if (originalDraft) {
-            baseCost = Math.max(minRound, originalDraft.draftRound - costReduction);
+            baseCost = originalDraft.draftRound;
           } else {
             baseCost = undraftedRound;
           }

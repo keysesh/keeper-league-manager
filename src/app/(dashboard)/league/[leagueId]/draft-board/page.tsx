@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar, TeamLogo } from "@/components/players/PlayerAvatar";
+import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import { getKeeperDeadlineInfo, getCurrentSeason } from "@/lib/constants/keeper-rules";
@@ -134,6 +135,7 @@ export default function DraftBoardPage() {
   const [copied, setCopied] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const deadlineInfo = getKeeperDeadlineInfo();
@@ -609,6 +611,7 @@ export default function DraftBoardPage() {
                             columnColor={columnColor}
                             teamInfoMap={teamInfoMap}
                             teamNameToInfo={teamNameToInfo}
+                            onPlayerClick={setSelectedPlayerId}
                           />
                         </td>
                       );
@@ -751,6 +754,13 @@ export default function DraftBoardPage() {
           </div>
         </div>
       </div>
+
+      {/* Keeper History Modal */}
+      <KeeperHistoryModal
+        playerId={selectedPlayerId || ""}
+        isOpen={!!selectedPlayerId}
+        onClose={() => setSelectedPlayerId(null)}
+      />
     </div>
   );
 }
@@ -795,6 +805,7 @@ interface DraftCellProps {
   columnColor: ReturnType<typeof getTeamColor>;
   teamInfoMap: Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>;
   teamNameToInfo: Map<string, { color: ReturnType<typeof getTeamColor>; name: string; rosterId: string }>;
+  onPlayerClick?: (playerId: string) => void;
 }
 
 // Position accent colors for cards
@@ -807,7 +818,7 @@ const POSITION_ACCENTS: Record<string, { gradient: string; border: string; glow:
   DEF: { gradient: "from-slate-500/20 via-transparent", border: "border-l-slate-500", glow: "shadow-slate-500/20" },
 };
 
-function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
+function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerClick }: DraftCellProps) {
   // Traded pick - show who owns this pick now
   if (slot.status === "traded" && slot.tradedTo) {
     let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
@@ -853,6 +864,7 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCell
 
     return (
       <div
+        onClick={() => slot.keeper && onPlayerClick?.(slot.keeper.playerId)}
         className={`
           group h-[88px] rounded-lg relative overflow-hidden cursor-pointer
           transition-all duration-300 ease-out

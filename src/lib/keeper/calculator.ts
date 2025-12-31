@@ -131,10 +131,13 @@ export async function calculateKeeperEligibility(
  * FIXED: Calculate the base keeper cost for a player
  *
  * Rules:
- * - Drafted players: Draft Round - 1 (minimum Round 1)
+ * - Drafted players: Draft Round (Year 1 = draft round)
  * - Undrafted/Waiver/FA: Round 8 (configurable)
  * - Traded players: Inherit original cost from previous owner
- * - Cost IMPROVES by 1 round for each consecutive year kept
+ * - Cost IMPROVES by 1 round for each consecutive year kept AFTER the first year
+ *   Year 1: Draft round
+ *   Year 2: Draft round - 1
+ *   Year 3: Draft round - 2
  */
 export async function calculateBaseCost(
   playerId: string,
@@ -144,7 +147,6 @@ export async function calculateBaseCost(
 ): Promise<number> {
   const undraftedRound = settings?.undraftedRound ?? DEFAULT_KEEPER_RULES.UNDRAFTED_ROUND;
   const minRound = settings?.minimumRound ?? DEFAULT_KEEPER_RULES.MINIMUM_ROUND;
-  const costReduction = settings?.costReductionPerYear ?? DEFAULT_KEEPER_RULES.COST_REDUCTION_PER_YEAR;
 
   const acquisition = await getPlayerAcquisition(playerId, rosterId, targetSeason);
 
@@ -152,9 +154,8 @@ export async function calculateBaseCost(
 
   switch (acquisition.type) {
     case AcquisitionType.DRAFTED:
-      // Cost = Draft Round - cost reduction (minimum = minRound)
-      const draftRound = acquisition.draftRound || undraftedRound;
-      baseCost = Math.max(minRound, draftRound - costReduction);
+      // Base cost = Draft Round (no initial reduction)
+      baseCost = acquisition.draftRound || undraftedRound;
       break;
 
     case AcquisitionType.WAIVER:
@@ -173,7 +174,10 @@ export async function calculateBaseCost(
   }
 
   // Get consecutive years kept and apply cost improvement
-  // Cost IMPROVES (lower round = better) by 1 for each consecutive year kept
+  // Cost IMPROVES (lower round = better) by 1 for each year AFTER the first
+  // Year 1 (consecutiveYears=0): baseCost
+  // Year 2 (consecutiveYears=1): baseCost - 1
+  // Year 3 (consecutiveYears=2): baseCost - 2
   const consecutiveYears = await getConsecutiveYearsKept(playerId, rosterId, targetSeason);
   const effectiveCost = Math.max(minRound, baseCost - consecutiveYears);
 
@@ -297,14 +301,32 @@ export async function calculateKeeperCost(
 // ============================================
 
 /**
+ * Get the NFL season for a given date
+ * NFL season runs Sept-Feb: 2024 season = Sept 2024 - Feb 2025
+ */
+function getSeasonFromDate(date: Date): number {
+  const month = date.getMonth(); // 0-indexed
+  const year = date.getFullYear();
+
+  // January/February = still previous season (playoffs)
+  if (month < 2) {
+    return year - 1;
+  }
+  // March-August = offseason, preparing for current year's season
+  // September+ = current year's season
+  return year;
+}
+
+/**
  * Get how a player was acquired by a roster
  *
  * FIXED: Per league rules:
- * - If a player was drafted in the CURRENT season's draft (or picked up same season
- *   after being dropped), they retain their draft round cost
- * - If a player was dropped for a FULL season and picked up AFTER the next draft,
- *   they lose their draft value and become waiver cost (Round 10)
- * - Only players who were never drafted get the undrafted/waiver cost
+ * - If a player was drafted THIS season, they cost their draft round
+ * - If a player was drafted, dropped, and picked up in the SAME season,
+ *   they RETAIN their draft round cost
+ * - If a player was drafted, dropped, and picked up in a DIFFERENT season,
+ *   they get waiver cost (undrafted round)
+ * - Players never drafted get waiver cost
  */
 async function getPlayerAcquisition(
   playerId: string,
@@ -320,26 +342,17 @@ async function getPlayerAcquisition(
     return { type: AcquisitionType.WAIVER };
   }
 
-  // Check if player was drafted in the CURRENT season's draft
-  // Draft for 2025 season happens in 2024, so we check for season = targetSeason - 1
-  // or the same season if drafted mid-season
+  // Find all draft picks for this player (get the most relevant one)
   const draftPick = await prisma.draftPick.findFirst({
     where: {
       playerId: player.id,
-      draft: {
-        season: {
-          gte: targetSeason - 1, // Draft from previous year (for this season)
-          lte: targetSeason
-        }
-      },
     },
     include: { draft: true },
     orderBy: { draft: { season: "desc" } },
   });
 
   if (draftPick) {
-    // Player was drafted in the relevant season - check if they were on a roster
-    // continuously or picked up after being dropped within the same season
+    const draftSeason = draftPick.draft.season;
 
     // Get when the player joined the current roster
     const rosterTransaction = await prisma.transactionPlayer.findFirst({
@@ -351,10 +364,8 @@ async function getPlayerAcquisition(
       orderBy: { transaction: { createdAt: "desc" } },
     });
 
-    // If player was drafted by current roster OR picked up same season as draft
-    // they retain draft value
+    // Case 1: Player was drafted by current roster - use draft round
     if (draftPick.rosterId === rosterId) {
-      // Drafted by current roster - use draft round
       return {
         type: AcquisitionType.DRAFTED,
         date: draftPick.pickedAt || undefined,
@@ -362,27 +373,29 @@ async function getPlayerAcquisition(
       };
     }
 
-    // Player was drafted by another team - check if picked up same season
+    // Case 2: Player was drafted by another team, then acquired
     if (rosterTransaction) {
-      const transactionYear = rosterTransaction.transaction.createdAt.getFullYear();
-      const draftYear = draftPick.draft.season;
+      const pickupSeason = getSeasonFromDate(rosterTransaction.transaction.createdAt);
 
-      // If picked up in the same year as drafted (or year after for late-season drafts),
-      // they retain draft value
-      if (transactionYear <= draftYear + 1) {
+      // If picked up in the SAME season as drafted → retain draft value
+      // Example: Drafted Aug 2024 (season 2024), dropped Oct 2024, picked up Nov 2024 (season 2024)
+      if (pickupSeason === draftSeason) {
         return {
           type: AcquisitionType.DRAFTED,
           date: rosterTransaction.transaction.createdAt,
           draftRound: draftPick.round,
         };
       }
+
+      // If picked up in a DIFFERENT season → lose draft value, get waiver cost
+      // Example: Drafted Aug 2024 (season 2024), dropped Oct 2024, picked up Aug 2025 (season 2025)
+      // Fall through to waiver logic below
     }
 
-    // Player was drafted but dropped for a full season and picked up after next draft
-    // They lose draft value - fall through to waiver logic
+    // Player was drafted but picked up in a different season - they lose draft value
   }
 
-  // Check transactions for how undrafted player joined roster
+  // Check transactions for how player joined roster (waiver, FA, trade)
   const transaction = await prisma.transactionPlayer.findFirst({
     where: {
       playerId: player.id,
@@ -447,8 +460,8 @@ async function getTradeInheritedCost(
   );
 
   if (previousAcquisition.type === AcquisitionType.DRAFTED && previousAcquisition.draftRound) {
-    const costReduction = settings?.costReductionPerYear ?? DEFAULT_KEEPER_RULES.COST_REDUCTION_PER_YEAR;
-    return Math.max(1, previousAcquisition.draftRound - costReduction);
+    // Trade inherits the original draft round (no initial reduction)
+    return previousAcquisition.draftRound;
   }
 
   if (previousAcquisition.type === AcquisitionType.TRADE) {
