@@ -148,7 +148,7 @@ export default function DraftBoardPage() {
       const syncRes = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "sync-league", leagueId }),
+        body: JSON.stringify({ action: "league", leagueId }),
       });
 
       if (!syncRes.ok) {
