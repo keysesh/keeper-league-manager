@@ -4,6 +4,12 @@ import { memo } from "react";
 import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "../ui/PositionBadge";
 
+interface NFLVerseMetadata {
+  gsisId?: string;
+  espnId?: string;
+  headshotUrl?: string;
+}
+
 interface PlayerCardProps {
   player: {
     id: string;
@@ -17,6 +23,7 @@ interface PlayerCardProps {
     yearsExp?: number | null;
     status?: string | null;
     injuryStatus?: string | null;
+    metadata?: { nflverse?: NFLVerseMetadata } | null;
   };
   keeperInfo?: {
     cost: number;
@@ -37,6 +44,7 @@ export const PlayerCard = memo(function PlayerCard({
 }: PlayerCardProps) {
   const isRookie = player.yearsExp === 0;
   const isInjured = !!player.injuryStatus;
+  const nflverse = player.metadata?.nflverse;
 
   if (compact) {
     return (
@@ -44,7 +52,14 @@ export const PlayerCard = memo(function PlayerCard({
         onClick={onClick}
         className={`flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
       >
-        <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
+        <PlayerAvatar
+            sleeperId={player.sleeperId}
+            name={player.fullName}
+            size="sm"
+            nflverseHeadshot={nflverse?.headshotUrl}
+            gsisId={nflverse?.gsisId}
+            espnId={nflverse?.espnId}
+          />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium text-white truncate">{player.fullName}</span>
@@ -65,7 +80,14 @@ export const PlayerCard = memo(function PlayerCard({
       className={`p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
     >
       <div className="flex items-start gap-4">
-        <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="lg" />
+        <PlayerAvatar
+          sleeperId={player.sleeperId}
+          name={player.fullName}
+          size="lg"
+          nflverseHeadshot={nflverse?.headshotUrl}
+          gsisId={nflverse?.gsisId}
+          espnId={nflverse?.espnId}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-white text-lg truncate">{player.fullName}</h3>

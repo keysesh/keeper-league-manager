@@ -463,13 +463,13 @@ async function getPlayerAcquisition(
     return { type: AcquisitionType.WAIVER };
   }
 
-  // Find all draft picks for this player (get the most relevant one)
+  // Find all draft picks for this player (get the ORIGINAL/EARLIEST one)
   const draftPick = await prisma.draftPick.findFirst({
     where: {
       playerId: player.id,
     },
     include: { draft: true },
-    orderBy: { draft: { season: "desc" } },
+    orderBy: { draft: { season: "asc" } },
   });
 
   if (draftPick) {
