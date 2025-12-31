@@ -68,8 +68,18 @@ export async function handleSyncTradedPicks(
       // Convert slot numbers to Sleeper user IDs
       // pick.owner_id = original owner's roster slot (1-10)
       // pick.roster_id = current owner's roster slot (1-10)
-      const originalOwnerId = slotToOwnerMap.get(pick.owner_id) || String(pick.owner_id);
-      const currentOwnerId = slotToOwnerMap.get(pick.roster_id) || String(pick.roster_id);
+      const originalOwnerId = slotToOwnerMap.get(pick.owner_id);
+      const currentOwnerId = slotToOwnerMap.get(pick.roster_id);
+
+      // Skip if we can't map to valid user IDs
+      if (!originalOwnerId || !currentOwnerId) {
+        context.logger?.warn("Could not map roster slot to owner ID", {
+          pick,
+          originalOwnerId,
+          currentOwnerId,
+        });
+        continue;
+      }
 
       const mappedPick = {
         season: parseInt(pick.season),

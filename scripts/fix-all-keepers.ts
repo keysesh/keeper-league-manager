@@ -1,4 +1,16 @@
+import * as dotenv from "dotenv";
+import * as fs from "fs";
+import * as path from "path";
 import { PrismaClient } from "@prisma/client";
+
+// Load .env.local for production DATABASE_URL
+const envLocalPath = path.join(process.cwd(), ".env.local");
+if (fs.existsSync(envLocalPath)) {
+  const envConfig = dotenv.parse(fs.readFileSync(envLocalPath));
+  if (envConfig.DATABASE_URL) {
+    process.env.DATABASE_URL = envConfig.DATABASE_URL;
+  }
+}
 
 const prisma = new PrismaClient();
 
