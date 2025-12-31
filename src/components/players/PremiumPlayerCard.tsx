@@ -49,6 +49,7 @@ interface PremiumPlayerCardProps {
   existingKeeper?: ExistingKeeper | null;
   onAddKeeper?: (playerId: string, type: "FRANCHISE" | "REGULAR") => void;
   onRemoveKeeper?: (keeperId: string) => void;
+  onShowHistory?: (playerId: string) => void;
   isLoading?: boolean;
   canAddFranchise?: boolean;
   canAddRegular?: boolean;
@@ -81,6 +82,7 @@ export function PremiumPlayerCard({
   existingKeeper,
   onAddKeeper,
   onRemoveKeeper,
+  onShowHistory,
   isLoading = false,
   canAddFranchise = true,
   canAddRegular = true,
@@ -102,11 +104,24 @@ export function PremiumPlayerCard({
     >
       {/* Header: Avatar + Name + Badges */}
       <div className="flex items-start gap-3">
-        <PlayerAvatar
-          sleeperId={player.sleeperId}
-          name={player.fullName}
-          size="lg"
-        />
+        <button
+          onClick={() => onShowHistory?.(player.id)}
+          className="relative group"
+          title="View keeper history"
+        >
+          <PlayerAvatar
+            sleeperId={player.sleeperId}
+            name={player.fullName}
+            size="lg"
+          />
+          {onShowHistory && (
+            <div className="absolute inset-0 bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          )}
+        </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-bold text-white truncate">{player.fullName}</span>

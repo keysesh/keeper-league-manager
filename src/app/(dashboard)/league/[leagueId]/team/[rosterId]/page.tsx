@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
+import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { BackLink } from "@/components/ui/BackLink";
 import { Trophy, Star, Users, RefreshCw } from "lucide-react";
 
@@ -90,6 +91,7 @@ export default function TeamRosterPage() {
   const { success, error: showError } = useToast();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [syncingKeepers, setSyncingKeepers] = useState(false);
+  const [historyPlayerId, setHistoryPlayerId] = useState<string | null>(null);
 
   // Use SWR for faster data loading with caching
   const { data, error, mutate, isLoading } = useSWR<RosterData>(
@@ -329,6 +331,7 @@ export default function TeamRosterPage() {
                   eligibility={p.eligibility}
                   existingKeeper={p.existingKeeper}
                   onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
+                  onShowHistory={setHistoryPlayerId}
                   isLoading={actionLoading === p.existingKeeper?.id}
                 />
               ))}
@@ -387,6 +390,7 @@ export default function TeamRosterPage() {
                       yearsKept: p.eligibility.yearsKept,
                     } : undefined);
                   }}
+                  onShowHistory={setHistoryPlayerId}
                   isLoading={actionLoading === p.player.id}
                   canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
                   canAddRegular={data.canAddMore.any && data.canAddMore.regular}
@@ -416,11 +420,19 @@ export default function TeamRosterPage() {
                 key={p.player.id}
                 player={p.player}
                 eligibility={p.eligibility}
+                onShowHistory={setHistoryPlayerId}
               />
             ))}
           </div>
         </details>
       )}
+
+      {/* Keeper History Modal */}
+      <KeeperHistoryModal
+        playerId={historyPlayerId || ""}
+        isOpen={!!historyPlayerId}
+        onClose={() => setHistoryPlayerId(null)}
+      />
     </div>
   );
 }
