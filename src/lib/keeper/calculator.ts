@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AcquisitionType, KeeperSettings, KeeperType } from "@prisma/client";
-import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
+import { DEFAULT_KEEPER_RULES, isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
 
 // ============================================
 // TYPES
@@ -40,13 +40,13 @@ export interface PlayerAcquisition {
 /**
  * FIXED: Calculate keeper eligibility for a player
  *
- * Key fix: Uses > instead of >= for year comparison
- * A player is ineligible only when yearsKept > maxYears (not >=)
+ * Uses years on ROSTER (not Keeper records) to determine eligibility.
+ * Years on roster = targetSeason - originSeason
  *
  * Example with maxYears = 2:
- * - Year 1: eligible (1 <= 2)
- * - Year 2: eligible (2 <= 2)
- * - Year 3: NOT eligible (3 > 2)
+ * - Year 1 (yearsOnRoster=0): eligible for regular keeper
+ * - Year 2 (yearsOnRoster=1): eligible for regular keeper
+ * - Year 3+ (yearsOnRoster>=2): must use Franchise Tag
  */
 export async function calculateKeeperEligibility(
   playerId: string,
@@ -62,35 +62,14 @@ export async function calculateKeeperEligibility(
   const settings = league?.keeperSettings;
   const maxYears = settings?.regularKeeperMaxYears ?? DEFAULT_KEEPER_RULES.REGULAR_KEEPER_MAX_YEARS;
 
-  // Get keeper history for this player on this roster
-  const previousKeepers = await prisma.keeper.findMany({
-    where: {
-      playerId,
-      rosterId,
-      season: { lt: targetSeason },
-    },
-    orderBy: { season: "desc" },
-  });
-
-  // Count consecutive years kept (must be consecutive seasons)
-  let consecutiveYears = 0;
-  let checkSeason = targetSeason - 1;
-
-  for (const keeper of previousKeepers) {
-    if (keeper.season === checkSeason) {
-      consecutiveYears++;
-      checkSeason--;
-    } else {
-      break; // Not consecutive - stop counting
-    }
-  }
-
-  const yearsKept = consecutiveYears + 1; // +1 for current season if kept
+  // FIXED: Use years on roster instead of Keeper records
+  const yearsOnRoster = await getYearsOnRoster(playerId, rosterId, targetSeason);
+  const yearsKept = yearsOnRoster + 1; // Display as Year 1, Year 2, etc.
 
   // Check if at max years for regular keeper
-  // Instead of marking as ineligible, we flag atMaxYears so the API can determine
-  // if they're still eligible for Franchise Tag
-  const atMaxYears = consecutiveYears >= maxYears;
+  // yearsOnRoster >= maxYears means they need Franchise Tag
+  // yearsOnRoster: 0 = Year 1, 1 = Year 2, 2 = Year 3
+  const atMaxYears = yearsOnRoster >= maxYears;
 
   // Get acquisition details
   const acquisition = await getPlayerAcquisition(playerId, rosterId, targetSeason);
@@ -173,48 +152,189 @@ export async function calculateBaseCost(
       baseCost = undraftedRound;
   }
 
-  // Get consecutive years kept and apply cost improvement
-  // Cost IMPROVES (lower round = better) by 1 for each year AFTER the first
-  // Year 1 (consecutiveYears=0): baseCost
-  // Year 2 (consecutiveYears=1): baseCost - 1
-  // Year 3 (consecutiveYears=2): baseCost - 2
-  const consecutiveYears = await getConsecutiveYearsKept(playerId, rosterId, targetSeason);
-  const effectiveCost = Math.max(minRound, baseCost - consecutiveYears);
+  // FIXED: Get years on roster (not keeper records) and apply cost improvement
+  // Cost IMPROVES (lower round = better) by 1 for each year on roster AFTER the first
+  // Year 1 (yearsOnRoster=0): baseCost
+  // Year 2 (yearsOnRoster=1): baseCost - 1
+  // Year 3 (yearsOnRoster=2): baseCost - 2
+  const yearsOnRoster = await getYearsOnRoster(playerId, rosterId, targetSeason);
+  const effectiveCost = Math.max(minRound, baseCost - yearsOnRoster);
 
   return effectiveCost;
 }
 
 /**
- * Get the number of consecutive years a player has been kept by this roster
+ * FIXED: Get the number of years a player has been on this roster
+ *
+ * Years on roster = targetSeason - originSeason
+ * Where originSeason is when they joined this owner's roster:
+ * - Drafted by this owner → draft season
+ * - In-season trade → inherited from previous owner
+ * - Offseason trade → resets to trade season (Year 1)
+ * - Waiver/FA same season as drop → inherited from previous owner
+ * - Waiver/FA different season → pickup season
  */
-async function getConsecutiveYearsKept(
+async function getYearsOnRoster(
   playerId: string,
   rosterId: string,
   targetSeason: number
 ): Promise<number> {
-  const previousKeepers = await prisma.keeper.findMany({
-    where: {
-      playerId,
-      rosterId,
-      season: { lt: targetSeason },
-    },
-    orderBy: { season: "desc" },
+  // Get roster's sleeper ID for matching across seasons
+  const roster = await prisma.roster.findUnique({
+    where: { id: rosterId },
+    select: { sleeperId: true, leagueId: true },
   });
 
-  // Count consecutive years (must be consecutive seasons)
-  let consecutiveYears = 0;
-  let checkSeason = targetSeason - 1;
+  if (!roster?.sleeperId) {
+    return 0;
+  }
 
-  for (const keeper of previousKeepers) {
-    if (keeper.season === checkSeason) {
-      consecutiveYears++;
-      checkSeason--;
-    } else {
-      break; // Not consecutive - stop counting
+  // Get all rosters in the league for sleeperId mapping
+  const allRosters = await prisma.roster.findMany({
+    where: { leagueId: roster.leagueId },
+    select: { id: true, sleeperId: true },
+  });
+
+  const rosterToSleeperMap = new Map<string, string>();
+  for (const r of allRosters) {
+    if (r.sleeperId) {
+      rosterToSleeperMap.set(r.id, r.sleeperId);
     }
   }
 
-  return consecutiveYears;
+  // Get origin season for this player on this owner
+  const originSeason = await getOriginSeasonForOwner(
+    playerId,
+    roster.sleeperId,
+    targetSeason,
+    rosterToSleeperMap,
+    new Set()
+  );
+
+  // Years on roster = target season - origin season
+  return Math.max(0, targetSeason - originSeason);
+}
+
+/**
+ * Recursively determine when a player joined an owner's roster (by sleeperId)
+ */
+async function getOriginSeasonForOwner(
+  playerId: string,
+  targetSleeperId: string,
+  targetSeason: number,
+  rosterToSleeperMap: Map<string, string>,
+  visited: Set<string>
+): Promise<number> {
+  // Prevent infinite loops
+  const key = `${playerId}-${targetSleeperId}`;
+  if (visited.has(key)) {
+    return targetSeason;
+  }
+  visited.add(key);
+
+  // 1. Check if player was drafted by this owner
+  const draftPick = await prisma.draftPick.findFirst({
+    where: {
+      playerId,
+      roster: { sleeperId: targetSleeperId },
+    },
+    include: { draft: true },
+    orderBy: { draft: { season: "asc" } },
+  });
+
+  if (draftPick) {
+    return draftPick.draft.season;
+  }
+
+  // 2. Find acquisition transaction for this owner
+  // First get all roster IDs for this sleeper ID
+  const targetRosters = await prisma.roster.findMany({
+    where: { sleeperId: targetSleeperId },
+    select: { id: true },
+  });
+  const targetRosterIds = targetRosters.map(r => r.id);
+
+  const transaction = await prisma.transactionPlayer.findFirst({
+    where: {
+      playerId,
+      toRosterId: { in: targetRosterIds },
+    },
+    include: { transaction: true },
+    orderBy: { transaction: { createdAt: "desc" } },
+  });
+
+  if (!transaction) {
+    // No transaction found - treat as current season
+    return targetSeason;
+  }
+
+  const txDate = transaction.transaction.createdAt;
+  const txType = transaction.transaction.type;
+  const txSeason = getSeasonFromDate(txDate);
+
+  // 3. Handle trades - check trade deadline
+  if (txType === "TRADE" && transaction.fromRosterId) {
+    const fromSleeperId = rosterToSleeperMap.get(transaction.fromRosterId);
+    if (fromSleeperId) {
+      // Get previous owner's origin
+      const previousOrigin = await getOriginSeasonForOwner(
+        playerId,
+        fromSleeperId,
+        targetSeason,
+        rosterToSleeperMap,
+        visited
+      );
+
+      // Check if trade was after deadline (offseason)
+      const isOffseasonTrade = isTradeAfterDeadline(txDate, txSeason);
+
+      if (isOffseasonTrade) {
+        // Offseason trade: years reset (origin = next season)
+        return txSeason >= 8 ? txSeason + 1 : txSeason;
+      } else {
+        // Mid-season trade: inherit origin from previous owner
+        return previousOrigin;
+      }
+    }
+  }
+
+  // 4. Handle waiver/FA
+  if (txType !== "TRADE") {
+    // Check if player was dropped in the same season
+    if (transaction.fromRosterId) {
+      const fromSleeperId = rosterToSleeperMap.get(transaction.fromRosterId);
+      if (fromSleeperId) {
+        const dropTx = await prisma.transactionPlayer.findFirst({
+          where: {
+            playerId,
+            fromRosterId: transaction.fromRosterId,
+          },
+          include: { transaction: true },
+        });
+
+        if (dropTx) {
+          const dropSeason = getSeasonFromDate(dropTx.transaction.createdAt);
+
+          // Same season pickup - inherit from previous owner
+          if (dropSeason === txSeason) {
+            return await getOriginSeasonForOwner(
+              playerId,
+              fromSleeperId,
+              targetSeason,
+              rosterToSleeperMap,
+              visited
+            );
+          }
+        }
+      }
+    }
+
+    // Different season or no previous owner - origin is pickup season
+    return txSeason;
+  }
+
+  // Fallback to transaction season
+  return txSeason;
 }
 
 /**
@@ -278,12 +398,13 @@ export async function calculateKeeperCost(
   const settings = league?.keeperSettings;
   const costDetails = await getKeeperCostDetails(playerId, rosterId, targetSeason, settings);
 
-  // For franchise tags, cost is always Round 1
+  // FIXED: Franchise tags use the SAME cost formula as regular keepers
+  // The only difference is FT is required after Year 2, and has no year limit
   if (keeperType === KeeperType.FRANCHISE) {
     return {
-      baseCost: 1,
-      finalCost: 1,
-      costBreakdown: "Franchise Tag = Round 1",
+      baseCost: costDetails.baseCost,
+      finalCost: costDetails.baseCost,
+      costBreakdown: `Franchise Tag: ${costDetails.reason}`,
     };
   }
 

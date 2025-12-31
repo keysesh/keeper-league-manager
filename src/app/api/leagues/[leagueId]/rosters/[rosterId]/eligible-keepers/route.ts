@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getKeeperPlanningSeason, isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { AcquisitionType, KeeperType } from "@prisma/client";
 import { cache, cacheKeys, cacheTTL } from "@/lib/cache";
@@ -268,18 +268,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return { originSeason: txSeason, acquisitionType: acqType };
       }
 
-      // 4. Handle trades - ALWAYS follow chain to preserve original draft value
-      // Per league rules: trades NEVER reset keeper value
-      // Only dropping to waivers + not being re-drafted resets value
+      // 4. Handle trades - check trade deadline
+      // Mid-season trade (before deadline): inherit everything from previous owner
+      // Offseason trade (after deadline): reset years to 0, but preserve draft round
       if (acquisition.fromRosterId) {
         const fromSleeperId = rosterToSleeperMap.get(acquisition.fromRosterId);
         if (fromSleeperId) {
+          // Get the previous owner's origin to find the draft round
           const previousOrigin = getOriginSeason(playerId, fromSleeperId, visited);
-          return {
-            originSeason: previousOrigin.originSeason,
-            acquisitionType: AcquisitionType.TRADE,
-            draftRound: previousOrigin.draftRound, // Inherit draft round for cost calculation
-          };
+
+          // Check if this trade was after the deadline
+          const tradeSeason = getSeasonFromDate(txDate);
+          const isOffseasonTrade = isTradeAfterDeadline(txDate, tradeSeason);
+
+          if (isOffseasonTrade) {
+            // Offseason trade: years reset (originSeason = current planning season)
+            // but draft round is preserved for cost calculation
+            return {
+              originSeason: season, // Reset to current season = Year 1
+              acquisitionType: AcquisitionType.TRADE,
+              draftRound: previousOrigin.draftRound, // Preserve draft round for cost
+            };
+          } else {
+            // Mid-season trade: inherit everything from previous owner
+            return {
+              originSeason: previousOrigin.originSeason,
+              acquisitionType: AcquisitionType.TRADE,
+              draftRound: previousOrigin.draftRound,
+            };
+          }
         }
       }
 
@@ -287,14 +304,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const originalDraft = originalDraftMap.get(playerId);
       if (originalDraft) {
         return {
-          originSeason: originalDraft.draft.season,
+          originSeason: season, // Can't determine trade timing, assume current season
           acquisitionType: AcquisitionType.TRADE,
           draftRound: originalDraft.round,
         };
       }
 
-      // No draft found - treat as undrafted
-      return { originSeason: txSeason, acquisitionType: AcquisitionType.TRADE };
+      // No draft found - treat as undrafted, current season
+      return { originSeason: season, acquisitionType: AcquisitionType.TRADE };
     }
 
     // Legacy helper for acquisition type (for cost calculation)
@@ -436,11 +453,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       let effectivelyEligible = eligibility.isEligible;
       let reason = eligibility.reason;
 
-      // Franchise tag is always available (Round 1 cost)
+      // Franchise tag uses same cost formula as regular keeper
+      // The only difference is FT is required after Year 2, and has no year limit
+      const ftBaseCost = eligibility.baseCost;
+      const ftFinalCost = eligibility.escalatedCost;
+      const ftYearsKept = eligibility.consecutiveYears;
+
+      let ftCostBreakdown = `R${ftBaseCost}`;
+      if (ftYearsKept > 0) {
+        ftCostBreakdown = `R${ftBaseCost} - ${ftYearsKept}yr = R${ftFinalCost}`;
+      }
+
       franchiseCost = {
-        baseCost: 1,
-        finalCost: 1,
-        costBreakdown: "Franchise Tag = Round 1",
+        baseCost: ftBaseCost,
+        finalCost: ftFinalCost,
+        costBreakdown: `Franchise Tag: ${ftCostBreakdown}`,
       };
 
       if (eligibility.canBeRegularKeeper) {
