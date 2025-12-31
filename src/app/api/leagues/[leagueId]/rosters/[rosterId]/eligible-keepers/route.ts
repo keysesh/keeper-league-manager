@@ -307,10 +307,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const origin = getOriginSeason(playerId, currentSleeperId);
       const transaction = transactionMap.get(playerId);
 
+      // Check if this is a post-deadline trade
+      // A trade is "post-deadline" only if:
+      // 1. It's actually a trade acquisition
+      // 2. The trade itself happened after the deadline (checked via isTradeAfterDeadline in getOriginSeason)
+      //
+      // When getOriginSeason detects an offseason trade, it sets originSeason = txSeason + 1
+      // This means: if originSeason > season (current), or if originSeason === season but
+      // the origin was reset (not inherited from drafter), it's a post-deadline trade.
+      //
+      // The key indicator: if acquisition is TRADE and there's no draftRound inherited,
+      // that means the trade chain ended at an offseason trade reset point.
+      const isPostDeadlineTrade =
+        origin.acquisitionType === AcquisitionType.TRADE &&
+        !origin.draftRound; // No inherited draft round = value was reset at trade
+
       return {
         type: origin.acquisitionType,
         draftRound: origin.draftRound,
-        isPostDeadlineTrade: origin.originSeason === season && origin.acquisitionType === AcquisitionType.TRADE,
+        isPostDeadlineTrade,
         tradeDate: transaction?.transaction.createdAt,
       };
     }
@@ -334,12 +349,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           baseCost = acquisition.draftRound || undraftedRound;
           break;
         case AcquisitionType.TRADE:
-          // Before-deadline trade: preserve original draft value (no reduction)
-          const originalDraft = getOriginalDraft(playerId);
-          if (originalDraft) {
-            baseCost = originalDraft.draftRound;
+          // Before-deadline trade: preserve original draft value
+          // First try to use inherited draft round from trade chain
+          // Then fall back to original draft lookup
+          if (acquisition.draftRound) {
+            baseCost = acquisition.draftRound;
           } else {
-            baseCost = undraftedRound;
+            const originalDraft = getOriginalDraft(playerId);
+            if (originalDraft) {
+              baseCost = originalDraft.draftRound;
+            } else {
+              baseCost = undraftedRound;
+            }
           }
           break;
         case AcquisitionType.WAIVER:
