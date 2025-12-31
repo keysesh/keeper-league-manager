@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentSeason, isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
+import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { AcquisitionType, KeeperType } from "@prisma/client";
 import { cache, cacheKeys, cacheTTL } from "@/lib/cache";
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const season = getCurrentSeason();
+    const season = getKeeperPlanningSeason();
 
     // BATCH QUERY 1: Get roster with players, keepers, and league settings in ONE query
     const roster = await prisma.roster.findUnique({

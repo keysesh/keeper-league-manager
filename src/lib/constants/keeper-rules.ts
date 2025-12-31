@@ -46,8 +46,7 @@ export const KEEPER_COLORS = {
 } as const;
 
 /**
- * FIXED: Dynamic season calculation
- * No more hardcoded years like 2023/2024/2025
+ * Get the current NFL season year
  */
 export function getCurrentSeason(): number {
   const now = new Date();
@@ -61,6 +60,32 @@ export function getCurrentSeason(): number {
   if (month < 2) {
     return year - 1; // January/February = previous season
   }
+  return year;
+}
+
+/**
+ * Get the season for keeper planning/draft prep
+ *
+ * Keeper planning is always for the NEXT season's draft:
+ * - During the season (Sept-Feb): planning for next year's draft
+ * - During offseason (Mar-Aug): planning for current year's draft
+ *
+ * Example: In Dec 2025, we're prepping for the 2026 draft
+ */
+export function getKeeperPlanningSeason(): number {
+  const now = new Date();
+  const month = now.getMonth(); // 0-indexed
+  const year = now.getFullYear();
+
+  // Sept-Dec: Planning for next year's draft
+  if (month >= 8) {
+    return year + 1;
+  }
+  // Jan-Feb: Still planning for current year's draft (playoffs ongoing)
+  if (month < 2) {
+    return year;
+  }
+  // Mar-Aug: Planning for current year's draft
   return year;
 }
 
