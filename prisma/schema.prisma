@@ -178,16 +178,66 @@ model Player {
   metadata         Json?
   updatedAt        DateTime @updatedAt @map("updated_at")
 
+  // Fantasy stats (current/last season for quick access)
+  fantasyPointsPpr     Float?   @map("fantasy_points_ppr")
+  fantasyPointsHalfPpr Float?   @map("fantasy_points_half_ppr")
+  gamesPlayed          Int?     @map("games_played")
+  pointsPerGame        Float?   @map("points_per_game")
+  adp                  Float?   // Average Draft Position
+  projectedPoints      Float?   @map("projected_points")
+  statsUpdatedAt       DateTime? @map("stats_updated_at")
+
   rosterPlayers       RosterPlayer[]
   draftPicks          DraftPick[]
   keeperHistory       Keeper[]
   transactionPlayers  TransactionPlayer[]
   draftPlanKeepers    DraftPlanKeeper[]
   tradeProposalAssets TradeProposalAsset[]
+  seasonStats         PlayerSeasonStats[]
 
   @@index([position])
   @@index([team])
   @@map("players")
+}
+
+// Historical stats by season for trend analysis
+model PlayerSeasonStats {
+  id        String @id @default(cuid())
+  playerId  String @map("player_id")
+  season    Int
+
+  // Games
+  gamesPlayed Int @default(0) @map("games_played")
+
+  // Fantasy points
+  fantasyPointsPpr     Float @default(0) @map("fantasy_points_ppr")
+  fantasyPointsHalfPpr Float @default(0) @map("fantasy_points_half_ppr")
+  fantasyPointsStd     Float @default(0) @map("fantasy_points_std")
+
+  // Passing (QB)
+  passingYards Int @default(0) @map("passing_yards")
+  passingTds   Int @default(0) @map("passing_tds")
+  interceptions Int @default(0)
+
+  // Rushing (RB/QB)
+  rushingYards Int @default(0) @map("rushing_yards")
+  rushingTds   Int @default(0) @map("rushing_tds")
+  carries      Int @default(0)
+
+  // Receiving (WR/TE/RB)
+  receptions     Int @default(0)
+  receivingYards Int @default(0) @map("receiving_yards")
+  receivingTds   Int @default(0) @map("receiving_tds")
+  targets        Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, season])
+  @@index([season])
+  @@map("player_season_stats")
 }
 
 model RosterPlayer {

@@ -16,6 +16,11 @@ interface Player {
   yearsExp?: number | null;
   status?: string | null;
   injuryStatus?: string | null;
+  // Fantasy stats
+  fantasyPointsPpr?: number | null;
+  fantasyPointsHalfPpr?: number | null;
+  gamesPlayed?: number | null;
+  pointsPerGame?: number | null;
 }
 
 interface Eligibility {
@@ -157,6 +162,26 @@ export function PremiumPlayerCard({
         <div>
           <div className="text-[9px] text-gray-500 uppercase">Exp</div>
           <div className="text-xs font-semibold text-white">{player.yearsExp ?? 0}yr</div>
+        </div>
+        <div>
+          <div className="text-[9px] text-gray-500 uppercase">PPR Pts</div>
+          <div className="text-xs font-semibold text-emerald-400">
+            {player.fantasyPointsPpr ? player.fantasyPointsPpr.toFixed(1) : "—"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[9px] text-gray-500 uppercase">PPG</div>
+          <div className="text-xs font-semibold text-sky-400">
+            {player.pointsPerGame ? player.pointsPerGame.toFixed(1) : "—"}
+          </div>
+        </div>
+      </div>
+
+      {/* Keeper Year + Status Row */}
+      <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+        <div>
+          <div className="text-[9px] text-gray-500 uppercase">Games</div>
+          <div className="text-xs font-semibold text-white">{player.gamesPlayed || "—"}</div>
         </div>
         <div>
           <div className="text-[9px] text-gray-500 uppercase">Status</div>

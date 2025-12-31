@@ -448,6 +448,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           age: rp.player.age,
           yearsExp: rp.player.yearsExp,
           injuryStatus: rp.player.injuryStatus,
+          // Fantasy stats
+          fantasyPointsPpr: rp.player.fantasyPointsPpr,
+          fantasyPointsHalfPpr: rp.player.fantasyPointsHalfPpr,
+          gamesPlayed: rp.player.gamesPlayed,
+          pointsPerGame: rp.player.pointsPerGame,
         },
         isStarter: rp.isStarter,
         eligibility: {
