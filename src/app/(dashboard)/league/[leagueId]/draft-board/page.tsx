@@ -36,19 +36,20 @@ import {
   copyDraftBoardToClipboard,
 } from "@/lib/export";
 
+// Sophisticated muted team colors - premium look
 const TEAM_COLORS = [
-  { bg: "bg-rose-500", bgMuted: "bg-rose-500/15", bgSolid: "bg-rose-500/30", border: "border-rose-500/40", text: "text-rose-200", accent: "text-rose-400", ring: "ring-rose-500/30" },
-  { bg: "bg-sky-500", bgMuted: "bg-sky-500/15", bgSolid: "bg-sky-500/30", border: "border-sky-500/40", text: "text-sky-200", accent: "text-sky-400", ring: "ring-sky-500/30" },
-  { bg: "bg-emerald-500", bgMuted: "bg-emerald-500/15", bgSolid: "bg-emerald-500/30", border: "border-emerald-500/40", text: "text-emerald-200", accent: "text-emerald-400", ring: "ring-emerald-500/30" },
-  { bg: "bg-amber-500", bgMuted: "bg-amber-500/15", bgSolid: "bg-amber-500/30", border: "border-amber-500/40", text: "text-amber-200", accent: "text-amber-400", ring: "ring-amber-500/30" },
-  { bg: "bg-violet-500", bgMuted: "bg-violet-500/15", bgSolid: "bg-violet-500/30", border: "border-violet-500/40", text: "text-violet-200", accent: "text-violet-400", ring: "ring-violet-500/30" },
-  { bg: "bg-cyan-500", bgMuted: "bg-cyan-500/15", bgSolid: "bg-cyan-500/30", border: "border-cyan-500/40", text: "text-cyan-200", accent: "text-cyan-400", ring: "ring-cyan-500/30" },
-  { bg: "bg-pink-500", bgMuted: "bg-pink-500/15", bgSolid: "bg-pink-500/30", border: "border-pink-500/40", text: "text-pink-200", accent: "text-pink-400", ring: "ring-pink-500/30" },
-  { bg: "bg-lime-500", bgMuted: "bg-lime-500/15", bgSolid: "bg-lime-500/30", border: "border-lime-500/40", text: "text-lime-200", accent: "text-lime-400", ring: "ring-lime-500/30" },
-  { bg: "bg-orange-500", bgMuted: "bg-orange-500/15", bgSolid: "bg-orange-500/30", border: "border-orange-500/40", text: "text-orange-200", accent: "text-orange-400", ring: "ring-orange-500/30" },
-  { bg: "bg-teal-500", bgMuted: "bg-teal-500/15", bgSolid: "bg-teal-500/30", border: "border-teal-500/40", text: "text-teal-200", accent: "text-teal-400", ring: "ring-teal-500/30" },
-  { bg: "bg-indigo-500", bgMuted: "bg-indigo-500/15", bgSolid: "bg-indigo-500/30", border: "border-indigo-500/40", text: "text-indigo-200", accent: "text-indigo-400", ring: "ring-indigo-500/30" },
-  { bg: "bg-fuchsia-500", bgMuted: "bg-fuchsia-500/15", bgSolid: "bg-fuchsia-500/30", border: "border-fuchsia-500/40", text: "text-fuchsia-200", accent: "text-fuchsia-400", ring: "ring-fuchsia-500/30" },
+  { bg: "bg-rose-600", bgMuted: "bg-rose-950/40", bgSolid: "bg-rose-950/60", border: "border-rose-800/30", text: "text-rose-300", accent: "text-rose-400", ring: "ring-rose-800/30" },
+  { bg: "bg-sky-600", bgMuted: "bg-sky-950/40", bgSolid: "bg-sky-950/60", border: "border-sky-800/30", text: "text-sky-300", accent: "text-sky-400", ring: "ring-sky-800/30" },
+  { bg: "bg-emerald-600", bgMuted: "bg-emerald-950/40", bgSolid: "bg-emerald-950/60", border: "border-emerald-800/30", text: "text-emerald-300", accent: "text-emerald-400", ring: "ring-emerald-800/30" },
+  { bg: "bg-amber-600", bgMuted: "bg-amber-950/40", bgSolid: "bg-amber-950/60", border: "border-amber-800/30", text: "text-amber-300", accent: "text-amber-400", ring: "ring-amber-800/30" },
+  { bg: "bg-violet-600", bgMuted: "bg-violet-950/40", bgSolid: "bg-violet-950/60", border: "border-violet-800/30", text: "text-violet-300", accent: "text-violet-400", ring: "ring-violet-800/30" },
+  { bg: "bg-cyan-600", bgMuted: "bg-cyan-950/40", bgSolid: "bg-cyan-950/60", border: "border-cyan-800/30", text: "text-cyan-300", accent: "text-cyan-400", ring: "ring-cyan-800/30" },
+  { bg: "bg-pink-600", bgMuted: "bg-pink-950/40", bgSolid: "bg-pink-950/60", border: "border-pink-800/30", text: "text-pink-300", accent: "text-pink-400", ring: "ring-pink-800/30" },
+  { bg: "bg-lime-600", bgMuted: "bg-lime-950/40", bgSolid: "bg-lime-950/60", border: "border-lime-800/30", text: "text-lime-300", accent: "text-lime-400", ring: "ring-lime-800/30" },
+  { bg: "bg-orange-600", bgMuted: "bg-orange-950/40", bgSolid: "bg-orange-950/60", border: "border-orange-800/30", text: "text-orange-300", accent: "text-orange-400", ring: "ring-orange-800/30" },
+  { bg: "bg-teal-600", bgMuted: "bg-teal-950/40", bgSolid: "bg-teal-950/60", border: "border-teal-800/30", text: "text-teal-300", accent: "text-teal-400", ring: "ring-teal-800/30" },
+  { bg: "bg-indigo-600", bgMuted: "bg-indigo-950/40", bgSolid: "bg-indigo-950/60", border: "border-indigo-800/30", text: "text-indigo-300", accent: "text-indigo-400", ring: "ring-indigo-800/30" },
+  { bg: "bg-fuchsia-600", bgMuted: "bg-fuchsia-950/40", bgSolid: "bg-fuchsia-950/60", border: "border-fuchsia-800/30", text: "text-fuchsia-300", accent: "text-fuchsia-400", ring: "ring-fuchsia-800/30" },
 ];
 
 function getTeamColor(index: number) {
@@ -442,56 +443,58 @@ export default function DraftBoardPage() {
         </div>
       </div>
 
-      {/* Position Filter Pills */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-gray-500 text-sm font-medium mr-1">Filter:</span>
-        <button
-          onClick={() => setFilterPosition(null)}
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-            filterPosition === null
-              ? "bg-white text-gray-900"
-              : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white ring-1 ring-white/10"
-          }`}
-        >
-          All ({data.summary.totalKeepers})
-        </button>
-        {(["QB", "RB", "WR", "TE"] as const).map((pos) => (
+      {/* Position Filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-gray-600 text-[10px] font-medium uppercase tracking-widest">Filter</span>
+        <div className="flex items-center gap-1.5">
           <button
-            key={pos}
-            onClick={() => setFilterPosition(filterPosition === pos ? null : pos)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              filterPosition === pos
-                ? "bg-white text-gray-900"
-                : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white ring-1 ring-white/10"
+            onClick={() => setFilterPosition(null)}
+            className={`px-3 py-1.5 rounded text-[11px] font-medium transition-all ${
+              filterPosition === null
+                ? "bg-white/10 text-white"
+                : "text-gray-500 hover:text-gray-300"
             }`}
           >
-            <PositionBadge position={pos} size="xs" />
-            <span>{overallPositions[pos]}</span>
+            All · {data.summary.totalKeepers}
           </button>
-        ))}
+          {(["QB", "RB", "WR", "TE"] as const).map((pos) => (
+            <button
+              key={pos}
+              onClick={() => setFilterPosition(filterPosition === pos ? null : pos)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-medium transition-all ${
+                filterPosition === pos
+                  ? "bg-white/10 text-white"
+                  : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              <PositionBadge position={pos} size="xs" variant="minimal" />
+              <span>{overallPositions[pos]}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {viewMode === "grid" ? (
         /* Grid View */
-        <div className="card-premium rounded-2xl overflow-hidden">
+        <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-gray-950/50">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr>
-                  <th className="sticky left-0 z-20 bg-gray-900 px-3 py-3 text-left w-12">
-                    <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Rd</span>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="sticky left-0 z-20 bg-gray-950 px-3 py-3 text-left w-12">
+                    <span className="text-gray-600 text-[10px] font-medium uppercase tracking-widest">Rd</span>
                   </th>
                   {rosters.map((roster, index) => {
                     const color = getTeamColor(index);
                     const teamData = data.cascade.find(t => t.rosterId === roster.rosterId);
                     const keeperCount = teamData?.results.length || 0;
                     return (
-                      <th key={roster.rosterId} className="px-1 py-3 min-w-[100px]">
-                        <div className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl ${color.bgMuted}`}>
-                          <span className={`text-xs font-bold ${color.accent} truncate max-w-[90px]`}>
+                      <th key={roster.rosterId} className="px-1 py-2.5 min-w-[100px]">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={`text-[11px] font-semibold ${color.accent} truncate max-w-[90px]`}>
                             {roster.rosterName || `Team ${index + 1}`}
                           </span>
-                          <span className="text-gray-500 text-[10px] font-medium">
+                          <span className="text-gray-600 text-[9px] font-normal">
                             {keeperCount} keeper{keeperCount !== 1 ? "s" : ""}
                           </span>
                         </div>
@@ -502,9 +505,9 @@ export default function DraftBoardPage() {
               </thead>
               <tbody>
                 {data.draftBoard.map((row) => (
-                  <tr key={row.round} className="border-t border-white/5">
-                    <td className="sticky left-0 z-10 bg-gray-900 px-3 py-1.5">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 text-white font-bold text-sm">
+                  <tr key={row.round} className="border-t border-white/[0.03]">
+                    <td className="sticky left-0 z-10 bg-gray-950 px-3 py-1">
+                      <span className="flex items-center justify-center w-7 h-7 rounded text-gray-400 font-medium text-xs">
                         {row.round}
                       </span>
                     </td>
@@ -629,26 +632,27 @@ export default function DraftBoardPage() {
       )}
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 pt-2">
+      <div className="flex flex-wrap items-center gap-6 text-xs text-gray-500 pt-4 border-t border-white/5">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-emerald-500/20 ring-1 ring-emerald-500/40 flex items-center justify-center">
-            <Trophy size={12} className="text-emerald-400" />
-          </div>
+          <div className="w-5 h-5 rounded bg-emerald-950/40 border border-white/[0.06]" />
           <span>Keeper</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg border-2 border-dashed border-blue-500/50 bg-blue-500/10 flex items-center justify-center">
-            <ArrowLeftRight size={10} className="text-blue-400" />
-          </div>
-          <span>Traded Pick</span>
+          <div
+            className="w-5 h-5 rounded border border-gray-700/30"
+            style={{
+              background: `repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)`
+            }}
+          />
+          <span>Traded</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-white/5 ring-1 ring-white/10" />
+          <div className="w-5 h-5 rounded border border-white/[0.03]" />
           <span>Available</span>
         </div>
         <div className="flex items-center gap-2">
-          <Star size={14} className="text-amber-400 fill-amber-400" />
-          <span>Franchise Tag</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          <span>Franchise</span>
         </div>
       </div>
     </div>
@@ -698,6 +702,7 @@ interface DraftCellProps {
 }
 
 function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
+  // Traded pick - distinct diagonal stripe pattern
   if (slot.status === "traded" && slot.tradedTo) {
     let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
 
@@ -714,40 +719,61 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCell
     const ownerName = newOwnerInfo?.name || slot.tradedTo;
 
     return (
-      <div className={`${ownerColor.bgMuted} border-2 border-dashed ${ownerColor.border} rounded-xl px-2 py-2 h-[52px] flex flex-col justify-center`}>
-        <p className={`${ownerColor.accent} text-[10px] font-bold truncate text-center`}>
-          {ownerName}
-        </p>
-        <p className="text-gray-600 text-[9px] text-center">owns pick</p>
+      <div
+        className="relative h-[52px] rounded-lg overflow-hidden"
+        style={{
+          background: `repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 4px,
+            rgba(255,255,255,0.03) 4px,
+            rgba(255,255,255,0.03) 8px
+          )`
+        }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-2 bg-gray-900/40 border border-gray-700/30 rounded-lg">
+          <div className="flex items-center gap-1">
+            <ArrowLeftRight size={10} className="text-gray-500" />
+            <span className={`${ownerColor.accent} text-[10px] font-medium truncate max-w-[70px]`}>
+              {ownerName}
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Keeper cell - refined premium look
   if (slot.status === "keeper" && slot.keeper) {
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
 
     return (
       <div
-        className={`${columnColor.bgMuted} ${
-          isFranchise ? "ring-2 ring-amber-500/50" : `ring-1 ${columnColor.ring}`
-        } rounded-xl px-2 py-1.5 h-[52px] flex flex-col justify-center relative`}
+        className={`
+          h-[52px] rounded-lg px-2 py-1.5 flex flex-col justify-center relative
+          ${isFranchise
+            ? "bg-amber-950/30 border border-amber-800/40"
+            : `${columnColor.bgMuted} border border-white/[0.06]`
+          }
+        `}
       >
         {isFranchise && (
-          <Star size={10} className="absolute top-1.5 right-1.5 text-amber-400 fill-amber-400" />
+          <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
         )}
-        <div className="flex items-center justify-center">
-          <PositionBadge position={slot.keeper.position} size="xs" />
+        <div className="flex items-center justify-center gap-1.5">
+          <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
+          <p className={`${isFranchise ? "text-amber-200" : columnColor.text} text-[10px] font-medium truncate max-w-[60px]`}>
+            {slot.keeper.playerName}
+          </p>
         </div>
-        <p className={`${columnColor.text} text-[10px] font-semibold truncate text-center mt-0.5`}>
-          {slot.keeper.playerName}
-        </p>
       </div>
     );
   }
 
+  // Empty cell - minimal
   return (
-    <div className="bg-white/[0.02] ring-1 ring-white/5 rounded-xl h-[52px] flex items-center justify-center">
-      <span className="text-gray-700 text-[10px] font-medium">—</span>
+    <div className="h-[52px] rounded-lg border border-white/[0.03] flex items-center justify-center">
+      <span className="text-gray-800 text-[10px]">—</span>
     </div>
   );
 }

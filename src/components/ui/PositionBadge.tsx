@@ -1,28 +1,26 @@
-import { getPositionColor } from "@/lib/constants/positions";
-
 interface PositionBadgeProps {
   position: string | null | undefined;
   size?: "xs" | "sm" | "md" | "lg";
-  variant?: "filled" | "outline" | "subtle";
+  variant?: "filled" | "outline" | "minimal";
   className?: string;
 }
 
 const sizeClasses = {
-  xs: "text-[10px] px-1.5 py-0.5 min-w-[24px]",
-  sm: "text-xs px-2 py-0.5 min-w-[28px]",
-  md: "text-sm px-2.5 py-1 min-w-[32px]",
-  lg: "text-base px-3 py-1.5 min-w-[40px]",
+  xs: "text-[9px] px-1 py-px min-w-[18px]",
+  sm: "text-[10px] px-1.5 py-0.5 min-w-[22px]",
+  md: "text-xs px-2 py-0.5 min-w-[26px]",
+  lg: "text-sm px-2.5 py-1 min-w-[32px]",
 };
 
-// Premium position colors with gradients
-const positionStyles: Record<string, { bg: string; text: string; border: string }> = {
-  QB: { bg: "bg-gradient-to-r from-red-600 to-red-500", text: "text-red-400", border: "border-red-500/50" },
-  RB: { bg: "bg-gradient-to-r from-green-600 to-green-500", text: "text-green-400", border: "border-green-500/50" },
-  WR: { bg: "bg-gradient-to-r from-blue-600 to-blue-500", text: "text-blue-400", border: "border-blue-500/50" },
-  TE: { bg: "bg-gradient-to-r from-orange-600 to-orange-500", text: "text-orange-400", border: "border-orange-500/50" },
-  K: { bg: "bg-gradient-to-r from-purple-600 to-purple-500", text: "text-purple-400", border: "border-purple-500/50" },
-  DEF: { bg: "bg-gradient-to-r from-gray-600 to-gray-500", text: "text-gray-400", border: "border-gray-500/50" },
-  default: { bg: "bg-gradient-to-r from-gray-700 to-gray-600", text: "text-gray-400", border: "border-gray-600/50" },
+// Sophisticated muted colors - professional look
+const positionStyles: Record<string, { bg: string; text: string; accent: string }> = {
+  QB: { bg: "bg-rose-950/60", text: "text-rose-300", accent: "border-rose-700/50" },
+  RB: { bg: "bg-emerald-950/60", text: "text-emerald-300", accent: "border-emerald-700/50" },
+  WR: { bg: "bg-sky-950/60", text: "text-sky-300", accent: "border-sky-700/50" },
+  TE: { bg: "bg-amber-950/60", text: "text-amber-300", accent: "border-amber-700/50" },
+  K: { bg: "bg-violet-950/60", text: "text-violet-300", accent: "border-violet-700/50" },
+  DEF: { bg: "bg-slate-800/60", text: "text-slate-300", accent: "border-slate-600/50" },
+  default: { bg: "bg-gray-800/60", text: "text-gray-400", accent: "border-gray-600/50" },
 };
 
 export function PositionBadge({
@@ -31,20 +29,19 @@ export function PositionBadge({
   variant = "filled",
   className = "",
 }: PositionBadgeProps) {
-  const colors = getPositionColor(position);
   const displayPosition = position?.toUpperCase() || "—";
-  const premiumStyles = positionStyles[displayPosition] || positionStyles.default;
+  const styles = positionStyles[displayPosition] || positionStyles.default;
 
   const variantClasses = {
-    filled: `${premiumStyles.bg} text-white shadow-sm`,
-    outline: `border-2 ${premiumStyles.border} ${premiumStyles.text} bg-transparent`,
-    subtle: `${colors.bgLight} ${premiumStyles.text}`,
+    filled: `${styles.bg} ${styles.text} border ${styles.accent}`,
+    outline: `border ${styles.accent} ${styles.text} bg-transparent`,
+    minimal: `${styles.text} bg-transparent`,
   };
 
   return (
     <span
       className={`
-        inline-flex items-center justify-center font-bold rounded-md tracking-wide
+        inline-flex items-center justify-center font-semibold rounded tracking-wider uppercase
         ${sizeClasses[size]}
         ${variantClasses[variant]}
         ${className}
@@ -63,16 +60,16 @@ export function RookieBadge({
   className?: string;
 }) {
   const sizeClasses = {
-    xs: "text-[10px] px-1.5 py-0.5",
-    sm: "text-xs px-2 py-0.5",
-    md: "text-sm px-2.5 py-1",
+    xs: "text-[9px] px-1 py-px",
+    sm: "text-[10px] px-1.5 py-0.5",
+    md: "text-xs px-2 py-0.5",
   };
 
   return (
     <span
       className={`
-        inline-flex items-center justify-center font-bold rounded-md
-        bg-gradient-to-r from-amber-500 to-yellow-500 text-black shadow-sm
+        inline-flex items-center justify-center font-semibold rounded tracking-wider
+        bg-amber-900/50 text-amber-300 border border-amber-700/50
         ${sizeClasses[size]}
         ${className}
       `}
