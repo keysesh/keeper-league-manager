@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateCascade } from "@/lib/keeper/cascade";
-import { getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { searchParams } = new URL(request.url);
-    const season = parseInt(searchParams.get("season") || String(getCurrentSeason()));
+    const season = parseInt(searchParams.get("season") || String(getKeeperPlanningSeason()));
 
     // Get league with settings
     const league = await prisma.league.findUnique({
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const season = getCurrentSeason();
+    const season = getKeeperPlanningSeason();
 
     // Get all keepers for this season
     const keepers = await prisma.keeper.findMany({

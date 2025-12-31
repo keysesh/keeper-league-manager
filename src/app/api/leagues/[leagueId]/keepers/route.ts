@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
+import { getKeeperPlanningSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 
 interface RouteParams {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { searchParams } = new URL(request.url);
-    const season = parseInt(searchParams.get("season") || String(getCurrentSeason()));
+    const season = parseInt(searchParams.get("season") || String(getKeeperPlanningSeason()));
     const rosterId = searchParams.get("rosterId");
 
     // Get league with keeper settings
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             include: { keeperSettings: true },
           },
           keepers: {
-            where: { season: getCurrentSeason() },
+            where: { season: getKeeperPlanningSeason() },
           },
         },
       }),
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const season = getCurrentSeason();
+    const season = getKeeperPlanningSeason();
     const existingKeepers = rosterWithData.keepers;
 
     const franchiseCount = existingKeepers.filter(k => k.type === KeeperType.FRANCHISE).length;

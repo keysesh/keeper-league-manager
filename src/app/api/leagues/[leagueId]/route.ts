@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageLeague } from "@/lib/permissions";
-import { getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const currentYear = getCurrentSeason();
+    const currentYear = getKeeperPlanningSeason();
 
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
