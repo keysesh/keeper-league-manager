@@ -245,7 +245,7 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
   let draftPickCount = 0;
   for (const draft of drafts) {
     try {
-      draftPickCount += await syncDraft(league.id, draft);
+      draftPickCount += await syncDraft(league.id, draft, rosters);
     } catch (err) {
       logger.warn("Failed to sync draft", { draftId: draft.draft_id, error: err instanceof Error ? err.message : err });
     }
@@ -275,15 +275,19 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
 /**
  * Sync a single draft and its picks
  */
-async function syncDraft(leagueId: string, draftData: {
-  draft_id: string;
-  season: string;
-  status: string;
-  type: string;
-  start_time?: number | null;
-  settings?: Record<string, unknown> | null;
-  slot_to_roster_id?: Record<string, number> | null;
-}): Promise<number> {
+async function syncDraft(
+  leagueId: string,
+  draftData: {
+    draft_id: string;
+    season: string;
+    status: string;
+    type: string;
+    start_time?: number | null;
+    settings?: Record<string, unknown> | null;
+    slot_to_roster_id?: Record<string, number> | null;
+  },
+  sleeperRosters: Array<{ roster_id: number; owner_id: string }>
+): Promise<number> {
   const picks = await sleeper.getDraftPicks(draftData.draft_id);
 
   // Upsert draft
@@ -316,12 +320,29 @@ async function syncDraft(leagueId: string, draftData: {
     },
   });
 
-  // Batch fetch all rosters for this league
-  const rosters = await prisma.roster.findMany({
+  // Build roster_id -> owner_id mapping from Sleeper rosters
+  const rosterIdToOwnerId = new Map<number, string>();
+  for (const roster of sleeperRosters) {
+    if (roster.owner_id) {
+      rosterIdToOwnerId.set(roster.roster_id, roster.owner_id);
+    }
+  }
+
+  // Batch fetch all DB rosters for this league (keyed by owner_id / sleeperId)
+  const dbRosters = await prisma.roster.findMany({
     where: { leagueId },
     select: { id: true, sleeperId: true },
   });
-  const rosterMap = new Map(rosters.map(r => [r.sleeperId, r.id]));
+  const ownerIdToDbRosterId = new Map(dbRosters.map(r => [r.sleeperId, r.id]));
+
+  // Build roster_id (slot) -> DB roster ID mapping
+  const slotToDbRosterId = new Map<number, string>();
+  for (const [rosterIdNum, ownerId] of rosterIdToOwnerId) {
+    const dbRosterId = ownerIdToDbRosterId.get(ownerId);
+    if (dbRosterId) {
+      slotToDbRosterId.set(rosterIdNum, dbRosterId);
+    }
+  }
 
   // Batch fetch all players we need
   const playerSleeperIds = picks.filter(p => p.player_id).map(p => p.player_id!);
@@ -334,7 +355,8 @@ async function syncDraft(leagueId: string, draftData: {
   // Sync draft picks with batch-fetched data
   let pickCount = 0;
   for (const pick of picks) {
-    const rosterId = rosterMap.get(String(pick.roster_id));
+    // pick.roster_id is a slot number (1-10), map to DB roster ID
+    const rosterId = slotToDbRosterId.get(parseInt(pick.roster_id));
     if (!rosterId) continue;
 
     const playerId = pick.player_id ? playerMap.get(pick.player_id) || null : null;
