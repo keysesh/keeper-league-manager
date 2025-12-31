@@ -268,19 +268,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return { originSeason: txSeason, acquisitionType: acqType };
       }
 
-      // 4. Handle trades - check if in-season or offseason
-      const isOffseasonTrade = isTradeAfterDeadline(txDate, txSeason);
-
-      if (isOffseasonTrade) {
-        // Offseason trade - origin RESETS to the next season
-        // Player is treated as a fresh acquisition for the new owner
-        return {
-          originSeason: txSeason + 1,
-          acquisitionType: AcquisitionType.TRADE,
-        };
-      }
-
-      // 5. In-season trade - follow chain to get origin from previous owner
+      // 4. Handle trades - ALWAYS follow chain to preserve original draft value
+      // Per league rules: trades NEVER reset keeper value
+      // Only dropping to waivers + not being re-drafted resets value
       if (acquisition.fromRosterId) {
         const fromSleeperId = rosterToSleeperMap.get(acquisition.fromRosterId);
         if (fromSleeperId) {
@@ -293,8 +283,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
       }
 
-      // Fallback: treat as current season
-      return { originSeason: season, acquisitionType: AcquisitionType.TRADE };
+      // Fallback: if we can't trace the chain, look up original draft directly
+      const originalDraft = originalDraftMap.get(playerId);
+      if (originalDraft) {
+        return {
+          originSeason: originalDraft.draft.season,
+          acquisitionType: AcquisitionType.TRADE,
+          draftRound: originalDraft.round,
+        };
+      }
+
+      // No draft found - treat as undrafted
+      return { originSeason: txSeason, acquisitionType: AcquisitionType.TRADE };
     }
 
     // Legacy helper for acquisition type (for cost calculation)
