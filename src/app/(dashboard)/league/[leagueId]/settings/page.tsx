@@ -17,7 +17,9 @@ import {
   Info,
   TrendingUp,
   Loader2,
+  ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import { useToast } from "@/components/ui/Toast";
@@ -415,6 +417,18 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
+
+            {/* Link to advanced commissioner tools */}
+            <Link
+              href={`/league/${leagueId}/commissioner`}
+              className="flex items-center justify-between p-4 bg-gray-900/50 rounded-xl border border-gray-700/30 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group"
+            >
+              <div>
+                <p className="text-white font-medium group-hover:text-purple-400 transition-colors">Advanced Tools</p>
+                <p className="text-gray-500 text-sm mt-1">Manage keepers across all teams, view activity logs</p>
+              </div>
+              <ChevronRight size={20} className="text-gray-500 group-hover:text-purple-400 transition-colors" />
+            </Link>
           </div>
         </div>
       )}

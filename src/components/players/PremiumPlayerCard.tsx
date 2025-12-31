@@ -21,6 +21,13 @@ interface Player {
   fantasyPointsHalfPpr?: number | null;
   gamesPlayed?: number | null;
   pointsPerGame?: number | null;
+  // Season-specific PPG
+  lastSeasonPpg?: number | null;
+  lastSeasonGames?: number | null;
+  prevSeasonPpg?: number | null;
+  prevSeasonGames?: number | null;
+  lastSeason?: number;
+  prevSeason?: number;
 }
 
 interface Eligibility {
@@ -164,15 +171,15 @@ export function PremiumPlayerCard({
           <div className="text-xs font-semibold text-white">{player.yearsExp ?? 0}yr</div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">PPR Pts</div>
+          <div className="text-[9px] text-gray-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)} PPG` : "PPG"}</div>
           <div className="text-xs font-semibold text-emerald-400">
-            {player.fantasyPointsPpr ? player.fantasyPointsPpr.toFixed(1) : "—"}
+            {player.lastSeasonPpg ? player.lastSeasonPpg.toFixed(1) : "—"}
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">PPG</div>
+          <div className="text-[9px] text-gray-500 uppercase">{player.prevSeason ? `'${String(player.prevSeason).slice(-2)} PPG` : "PPG"}</div>
           <div className="text-xs font-semibold text-sky-400">
-            {player.pointsPerGame ? player.pointsPerGame.toFixed(1) : "—"}
+            {player.prevSeasonPpg ? player.prevSeasonPpg.toFixed(1) : "—"}
           </div>
         </div>
       </div>
@@ -180,8 +187,8 @@ export function PremiumPlayerCard({
       {/* Keeper Year + Status Row */}
       <div className="grid grid-cols-3 gap-2 mt-2 text-center">
         <div>
-          <div className="text-[9px] text-gray-500 uppercase">Games</div>
-          <div className="text-xs font-semibold text-white">{player.gamesPlayed || "—"}</div>
+          <div className="text-[9px] text-gray-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)} GP` : "GP"}</div>
+          <div className="text-xs font-semibold text-white">{player.lastSeasonGames || "—"}</div>
         </div>
         <div>
           <div className="text-[9px] text-gray-500 uppercase">Status</div>

@@ -15,10 +15,7 @@ import {
   LayoutGrid,
   ArrowLeftRight,
   Users,
-  History,
   Settings,
-  Shield,
-  FileText,
   Home,
 } from "lucide-react";
 
@@ -47,12 +44,9 @@ export function Header({ user }: HeaderProps) {
     ? [
         { name: "Overview", href: `/league/${leagueId}`, icon: Home },
         { name: "Draft Board", href: `/league/${leagueId}/draft-board`, icon: LayoutGrid },
-        { name: "Trade Analyzer", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
-        { name: "Trade Proposals", href: `/league/${leagueId}/trade-proposals`, icon: FileText },
+        { name: "Trades", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
         { name: "Teams", href: `/league/${leagueId}/team`, icon: Users },
-        { name: "History", href: `/league/${leagueId}/history`, icon: History },
         { name: "Settings", href: `/league/${leagueId}/settings`, icon: Settings },
-        { name: "Commissioner", href: `/league/${leagueId}/commissioner`, icon: Shield },
       ]
     : [];
 

@@ -27,6 +27,18 @@ interface Player {
   age: number | null;
   yearsExp: number | null;
   injuryStatus: string | null;
+  // Fantasy stats from NFLverse
+  fantasyPointsPpr: number | null;
+  fantasyPointsHalfPpr: number | null;
+  gamesPlayed: number | null;
+  pointsPerGame: number | null;
+  // Season-specific PPG
+  lastSeasonPpg: number | null;
+  lastSeasonGames: number | null;
+  prevSeasonPpg: number | null;
+  prevSeasonGames: number | null;
+  lastSeason: number;
+  prevSeason: number;
 }
 
 interface EligiblePlayer {

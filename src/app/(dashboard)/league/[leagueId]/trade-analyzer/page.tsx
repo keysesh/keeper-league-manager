@@ -389,12 +389,21 @@ export default function TradeAnalyzerPage() {
             </div>
           </div>
         </div>
-        <button
-          onClick={clearTrade}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
-        >
-          Clear Trade
-        </button>
+        <div className="flex gap-2">
+          <Link
+            href={`/league/${leagueId}/trade-proposals`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
+          >
+            <FileText className="w-4 h-4" />
+            Saved Proposals
+          </Link>
+          <button
+            onClick={clearTrade}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm text-white font-medium transition-all hover:scale-[1.02]"
+          >
+            Clear Trade
+          </button>
+        </div>
       </div>
 
       {/* Trade Deadline Status */}
