@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { SleeperClient } from "@/lib/sleeper/client";
-import { mapSleeperTradedPick } from "@/lib/sleeper/mappers";
 import { SyncContext, createSyncResponse, createSyncError } from "../types";
 
 /**
@@ -35,14 +34,27 @@ export async function handleSyncTradedPicks(
     const league = await getLeagueOrError(leagueId);
     const sleeper = new SleeperClient();
 
-    const tradedPicks = await sleeper.getTradedPicks(league.sleeperId);
+    // Fetch traded picks and rosters from Sleeper API
+    const [tradedPicks, sleeperRosters] = await Promise.all([
+      sleeper.getTradedPicks(league.sleeperId),
+      sleeper.getRosters(league.sleeperId),
+    ]);
 
-    // Get roster map for verification
-    const rosters = await prisma.roster.findMany({
+    // Build a map from Sleeper roster_id (slot 1-10) to owner_id (Sleeper user ID)
+    // This is needed because traded picks use roster slot numbers, not user IDs
+    const slotToOwnerMap = new Map<number, string>();
+    for (const roster of sleeperRosters) {
+      if (roster.owner_id) {
+        slotToOwnerMap.set(roster.roster_id, roster.owner_id);
+      }
+    }
+
+    // Get DB rosters for team names
+    const dbRosters = await prisma.roster.findMany({
       where: { leagueId },
       select: { id: true, sleeperId: true, teamName: true },
     });
-    const rosterMap = new Map(rosters.map((r) => [r.sleeperId, r]));
+    const rosterMap = new Map(dbRosters.map((r) => [r.sleeperId, r]));
 
     let synced = 0;
     const details: Array<{
@@ -53,7 +65,19 @@ export async function handleSyncTradedPicks(
     }> = [];
 
     for (const pick of tradedPicks) {
-      const mappedPick = mapSleeperTradedPick(pick);
+      // Convert slot numbers to Sleeper user IDs
+      // pick.owner_id = original owner's roster slot (1-10)
+      // pick.roster_id = current owner's roster slot (1-10)
+      const originalOwnerId = slotToOwnerMap.get(pick.owner_id) || String(pick.owner_id);
+      const currentOwnerId = slotToOwnerMap.get(pick.roster_id) || String(pick.roster_id);
+
+      const mappedPick = {
+        season: parseInt(pick.season),
+        round: pick.round,
+        originalOwnerId,
+        currentOwnerId,
+      };
+
       const originalRoster = rosterMap.get(mappedPick.originalOwnerId);
       const currentRoster = rosterMap.get(mappedPick.currentOwnerId);
 
@@ -90,7 +114,7 @@ export async function handleSyncTradedPicks(
       data: {
         total: synced,
         details,
-        rosters: rosters.map((r) => ({ sleeperId: r.sleeperId, teamName: r.teamName })),
+        rosters: dbRosters.map((r) => ({ sleeperId: r.sleeperId, teamName: r.teamName })),
       },
     });
   } catch (error) {
