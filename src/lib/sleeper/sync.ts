@@ -393,6 +393,16 @@ export async function syncTransactions(leagueId: string): Promise<number> {
     throw new Error("League not found");
   }
 
+  // Fetch Sleeper rosters to build roster_id -> owner_id mapping
+  // Sleeper transactions use roster_id (1-10), but our DB uses owner_id
+  const sleeperRosters = await sleeper.getRosters(league.sleeperId);
+  const rosterIdToOwnerId = new Map<number, string>();
+  for (const roster of sleeperRosters) {
+    if (roster.owner_id) {
+      rosterIdToOwnerId.set(roster.roster_id, roster.owner_id);
+    }
+  }
+
   const allTransactions = await sleeper.getAllTransactions(league.sleeperId);
 
   if (allTransactions.length === 0) {
@@ -401,16 +411,24 @@ export async function syncTransactions(leagueId: string): Promise<number> {
 
   // Batch fetch all players and rosters we'll need (optimization: 2 queries instead of N*3)
   const allPlayerIds = new Set<string>();
-  const allRosterSleeperIds = new Set<string>();
+  const allOwnerIds = new Set<string>();
 
   for (const trans of allTransactions) {
     if (trans.adds) {
       Object.keys(trans.adds).forEach(id => allPlayerIds.add(id));
-      Object.values(trans.adds).forEach(id => allRosterSleeperIds.add(String(id)));
+      // Convert roster_id to owner_id for lookup
+      Object.values(trans.adds).forEach(rosterIdNum => {
+        const ownerId = rosterIdToOwnerId.get(rosterIdNum);
+        if (ownerId) allOwnerIds.add(ownerId);
+      });
     }
     if (trans.drops) {
       Object.keys(trans.drops).forEach(id => allPlayerIds.add(id));
-      Object.values(trans.drops).forEach(id => allRosterSleeperIds.add(String(id)));
+      // Convert roster_id to owner_id for lookup
+      Object.values(trans.drops).forEach(rosterIdNum => {
+        const ownerId = rosterIdToOwnerId.get(rosterIdNum);
+        if (ownerId) allOwnerIds.add(ownerId);
+      });
     }
   }
 
@@ -420,17 +438,18 @@ export async function syncTransactions(leagueId: string): Promise<number> {
       select: { id: true, sleeperId: true },
     }),
     prisma.roster.findMany({
-      where: { leagueId, sleeperId: { in: Array.from(allRosterSleeperIds) } },
+      where: { leagueId, sleeperId: { in: Array.from(allOwnerIds) } },
       select: { id: true, sleeperId: true },
     }),
   ]);
 
   const playerMap = new Map(players.map(p => [p.sleeperId, p.id]));
+  // Map owner_id (sleeperId in our DB) to database roster ID
   const rosterMap = new Map(rosters.map(r => [r.sleeperId, r.id]));
 
   let count = 0;
 
-  // Process transactions in batches with transaction wrapper for data consistency
+  // Process transactions in batches with extended timeout for large syncs
   for (let i = 0; i < allTransactions.length; i += DB_BATCH_SIZE) {
     const batch = allTransactions.slice(i, i + DB_BATCH_SIZE);
 
@@ -451,17 +470,23 @@ export async function syncTransactions(leagueId: string): Promise<number> {
         // Sync transaction players using pre-fetched maps
         // Process adds (pickups, trades where player is acquired)
         if (trans.adds) {
-          for (const [playerId, toRosterId] of Object.entries(trans.adds)) {
+          for (const [playerId, toRosterIdNum] of Object.entries(trans.adds)) {
             const dbPlayerId = playerMap.get(playerId);
             if (!dbPlayerId) continue;
 
-            const toDbRosterId = rosterMap.get(String(toRosterId));
+            // Convert roster_id to owner_id, then look up DB roster
+            const toOwnerId = rosterIdToOwnerId.get(toRosterIdNum);
+            if (!toOwnerId) continue;
+            const toDbRosterId = rosterMap.get(toOwnerId);
             if (!toDbRosterId) continue;
 
             // Find from roster (for trades)
             let fromDbRosterId: string | null = null;
             if (trans.drops && trans.drops[playerId]) {
-              fromDbRosterId = rosterMap.get(String(trans.drops[playerId])) || null;
+              const fromOwnerId = rosterIdToOwnerId.get(trans.drops[playerId]);
+              if (fromOwnerId) {
+                fromDbRosterId = rosterMap.get(fromOwnerId) || null;
+              }
             }
 
             await tx.transactionPlayer.upsert({
@@ -486,7 +511,7 @@ export async function syncTransactions(leagueId: string): Promise<number> {
         // Process standalone drops (drops without corresponding adds)
         // These are players dropped to waivers/FA without being picked up
         if (trans.drops) {
-          for (const [playerId, fromRosterId] of Object.entries(trans.drops)) {
+          for (const [playerId, fromRosterIdNum] of Object.entries(trans.drops)) {
             // Skip if this drop was part of an add (already processed above)
             if (trans.adds && playerId in trans.adds) {
               continue;
@@ -495,7 +520,10 @@ export async function syncTransactions(leagueId: string): Promise<number> {
             const dbPlayerId = playerMap.get(playerId);
             if (!dbPlayerId) continue;
 
-            const fromDbRosterId = rosterMap.get(String(fromRosterId));
+            // Convert roster_id to owner_id, then look up DB roster
+            const fromOwnerId = rosterIdToOwnerId.get(fromRosterIdNum);
+            if (!fromOwnerId) continue;
+            const fromDbRosterId = rosterMap.get(fromOwnerId);
             if (!fromDbRosterId) continue;
 
             // Standalone drop: fromRosterId is set, toRosterId is null
@@ -520,7 +548,7 @@ export async function syncTransactions(leagueId: string): Promise<number> {
 
         count++;
       }
-    });
+    }, { timeout: 60000 }); // 60 second timeout for large transaction batches
   }
 
   return count;

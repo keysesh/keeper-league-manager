@@ -196,11 +196,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const timeline: TimelineEvent[] = [];
 
     // Add draft events and infer drops when re-drafted
-    let lastDraftByLeague: Record<string, { season: number; teamName: string; sleeperId: string | null }> = {};
+    // Use league NAME as key since dynasty leagues have different IDs each season
+    let lastDraftByLeagueName: Record<string, { season: number; teamName: string; sleeperId: string | null; leagueId: string }> = {};
 
     for (const pick of draftPicks) {
-      const leagueId = pick.draft.league.id;
-      const lastDraft = lastDraftByLeague[leagueId];
+      const leagueName = pick.draft.league.name;
+      const lastDraft = lastDraftByLeagueName[leagueName];
 
       // If player was drafted before by a different team, infer they were dropped
       if (lastDraft && lastDraft.teamName !== pick.roster?.teamName) {
@@ -209,8 +210,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           event: "DROPPED",
           teamName: lastDraft.teamName,
           sleeperId: lastDraft.sleeperId,
-          leagueName: pick.draft.league.name,
-          leagueId: leagueId,
+          leagueName: leagueName,
+          leagueId: lastDraft.leagueId,
         });
       }
 
@@ -226,11 +227,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         },
       });
 
-      // Track last draft for this league
-      lastDraftByLeague[leagueId] = {
+      // Track last draft for this league (by name)
+      lastDraftByLeagueName[leagueName] = {
         season: pick.draft.season,
         teamName: pick.roster?.teamName || "Unknown",
         sleeperId: pick.roster?.sleeperId || null,
+        leagueId: pick.draft.league.id,
       };
     }
 
