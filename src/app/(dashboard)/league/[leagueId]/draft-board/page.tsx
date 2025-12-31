@@ -36,20 +36,20 @@ import {
   copyDraftBoardToClipboard,
 } from "@/lib/export";
 
-// Sophisticated muted team colors - premium look
+// High-visibility team colors - distinct and readable
 const TEAM_COLORS = [
-  { bg: "bg-rose-600", bgMuted: "bg-rose-950/40", bgSolid: "bg-rose-950/60", border: "border-rose-800/30", text: "text-rose-300", accent: "text-rose-400", ring: "ring-rose-800/30" },
-  { bg: "bg-sky-600", bgMuted: "bg-sky-950/40", bgSolid: "bg-sky-950/60", border: "border-sky-800/30", text: "text-sky-300", accent: "text-sky-400", ring: "ring-sky-800/30" },
-  { bg: "bg-emerald-600", bgMuted: "bg-emerald-950/40", bgSolid: "bg-emerald-950/60", border: "border-emerald-800/30", text: "text-emerald-300", accent: "text-emerald-400", ring: "ring-emerald-800/30" },
-  { bg: "bg-amber-600", bgMuted: "bg-amber-950/40", bgSolid: "bg-amber-950/60", border: "border-amber-800/30", text: "text-amber-300", accent: "text-amber-400", ring: "ring-amber-800/30" },
-  { bg: "bg-violet-600", bgMuted: "bg-violet-950/40", bgSolid: "bg-violet-950/60", border: "border-violet-800/30", text: "text-violet-300", accent: "text-violet-400", ring: "ring-violet-800/30" },
-  { bg: "bg-cyan-600", bgMuted: "bg-cyan-950/40", bgSolid: "bg-cyan-950/60", border: "border-cyan-800/30", text: "text-cyan-300", accent: "text-cyan-400", ring: "ring-cyan-800/30" },
-  { bg: "bg-pink-600", bgMuted: "bg-pink-950/40", bgSolid: "bg-pink-950/60", border: "border-pink-800/30", text: "text-pink-300", accent: "text-pink-400", ring: "ring-pink-800/30" },
-  { bg: "bg-lime-600", bgMuted: "bg-lime-950/40", bgSolid: "bg-lime-950/60", border: "border-lime-800/30", text: "text-lime-300", accent: "text-lime-400", ring: "ring-lime-800/30" },
-  { bg: "bg-orange-600", bgMuted: "bg-orange-950/40", bgSolid: "bg-orange-950/60", border: "border-orange-800/30", text: "text-orange-300", accent: "text-orange-400", ring: "ring-orange-800/30" },
-  { bg: "bg-teal-600", bgMuted: "bg-teal-950/40", bgSolid: "bg-teal-950/60", border: "border-teal-800/30", text: "text-teal-300", accent: "text-teal-400", ring: "ring-teal-800/30" },
-  { bg: "bg-indigo-600", bgMuted: "bg-indigo-950/40", bgSolid: "bg-indigo-950/60", border: "border-indigo-800/30", text: "text-indigo-300", accent: "text-indigo-400", ring: "ring-indigo-800/30" },
-  { bg: "bg-fuchsia-600", bgMuted: "bg-fuchsia-950/40", bgSolid: "bg-fuchsia-950/60", border: "border-fuchsia-800/30", text: "text-fuchsia-300", accent: "text-fuchsia-400", ring: "ring-fuchsia-800/30" },
+  { bg: "bg-rose-500", bgMuted: "bg-rose-900/30", bgSolid: "bg-rose-900/50", border: "border-rose-500/50", text: "text-rose-200", accent: "text-rose-400", ring: "ring-rose-500/30" },
+  { bg: "bg-sky-500", bgMuted: "bg-sky-900/30", bgSolid: "bg-sky-900/50", border: "border-sky-500/50", text: "text-sky-200", accent: "text-sky-400", ring: "ring-sky-500/30" },
+  { bg: "bg-emerald-500", bgMuted: "bg-emerald-900/30", bgSolid: "bg-emerald-900/50", border: "border-emerald-500/50", text: "text-emerald-200", accent: "text-emerald-400", ring: "ring-emerald-500/30" },
+  { bg: "bg-amber-500", bgMuted: "bg-amber-900/30", bgSolid: "bg-amber-900/50", border: "border-amber-500/50", text: "text-amber-200", accent: "text-amber-400", ring: "ring-amber-500/30" },
+  { bg: "bg-violet-500", bgMuted: "bg-violet-900/30", bgSolid: "bg-violet-900/50", border: "border-violet-500/50", text: "text-violet-200", accent: "text-violet-400", ring: "ring-violet-500/30" },
+  { bg: "bg-cyan-500", bgMuted: "bg-cyan-900/30", bgSolid: "bg-cyan-900/50", border: "border-cyan-500/50", text: "text-cyan-200", accent: "text-cyan-400", ring: "ring-cyan-500/30" },
+  { bg: "bg-pink-500", bgMuted: "bg-pink-900/30", bgSolid: "bg-pink-900/50", border: "border-pink-500/50", text: "text-pink-200", accent: "text-pink-400", ring: "ring-pink-500/30" },
+  { bg: "bg-lime-500", bgMuted: "bg-lime-900/30", bgSolid: "bg-lime-900/50", border: "border-lime-500/50", text: "text-lime-200", accent: "text-lime-400", ring: "ring-lime-500/30" },
+  { bg: "bg-orange-500", bgMuted: "bg-orange-900/30", bgSolid: "bg-orange-900/50", border: "border-orange-500/50", text: "text-orange-200", accent: "text-orange-400", ring: "ring-orange-500/30" },
+  { bg: "bg-teal-500", bgMuted: "bg-teal-900/30", bgSolid: "bg-teal-900/50", border: "border-teal-500/50", text: "text-teal-200", accent: "text-teal-400", ring: "ring-teal-500/30" },
+  { bg: "bg-indigo-500", bgMuted: "bg-indigo-900/30", bgSolid: "bg-indigo-900/50", border: "border-indigo-500/50", text: "text-indigo-200", accent: "text-indigo-400", ring: "ring-indigo-500/30" },
+  { bg: "bg-fuchsia-500", bgMuted: "bg-fuchsia-900/30", bgSolid: "bg-fuchsia-900/50", border: "border-fuchsia-500/50", text: "text-fuchsia-200", accent: "text-fuchsia-400", ring: "ring-fuchsia-500/30" },
 ];
 
 function getTeamColor(index: number) {
@@ -475,26 +475,28 @@ export default function DraftBoardPage() {
       </div>
 
       {viewMode === "grid" ? (
-        /* Grid View */
-        <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-gray-950/50">
+        /* Grid View - Redesigned for readability */
+        <div className="rounded-xl overflow-hidden border border-gray-700/50 bg-gray-950">
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="sticky left-0 z-20 bg-gray-950 px-3 py-3 text-left w-12">
-                    <span className="text-gray-600 text-[10px] font-medium uppercase tracking-widest">Rd</span>
+            <table className="w-full border-collapse" style={{ minWidth: `${rosters.length * 130 + 60}px` }}>
+              {/* Sticky Header */}
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-gray-900 border-b-2 border-gray-700">
+                  <th className="sticky left-0 z-40 bg-gray-900 px-3 py-3 text-center w-14 border-r border-gray-700">
+                    <span className="text-gray-400 text-xs font-bold">RD</span>
                   </th>
                   {rosters.map((roster, index) => {
                     const color = getTeamColor(index);
                     const teamData = data.cascade.find(t => t.rosterId === roster.rosterId);
                     const keeperCount = teamData?.results.length || 0;
                     return (
-                      <th key={roster.rosterId} className="px-1 py-2.5 min-w-[100px]">
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className={`text-[11px] font-semibold ${color.accent} truncate max-w-[90px]`}>
+                      <th key={roster.rosterId} className="px-2 py-3 min-w-[120px] border-r border-gray-800/50 last:border-r-0">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${color.bg}`} />
+                          <span className={`text-xs font-bold ${color.accent} truncate max-w-[110px]`} title={roster.rosterName || undefined}>
                             {roster.rosterName || `Team ${index + 1}`}
                           </span>
-                          <span className="text-gray-600 text-[9px] font-normal">
+                          <span className={`text-[10px] font-medium ${keeperCount > 0 ? "text-amber-400" : "text-gray-600"}`}>
                             {keeperCount} keeper{keeperCount !== 1 ? "s" : ""}
                           </span>
                         </div>
@@ -504,10 +506,16 @@ export default function DraftBoardPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.draftBoard.map((row) => (
-                  <tr key={row.round} className="border-t border-white/[0.03]">
-                    <td className="sticky left-0 z-10 bg-gray-950 px-3 py-1">
-                      <span className="flex items-center justify-center w-7 h-7 rounded text-gray-400 font-medium text-xs">
+                {data.draftBoard.map((row, rowIndex) => (
+                  <tr
+                    key={row.round}
+                    className={`
+                      ${rowIndex % 2 === 0 ? "bg-gray-950" : "bg-gray-900/50"}
+                      hover:bg-gray-800/30 transition-colors
+                    `}
+                  >
+                    <td className="sticky left-0 z-20 px-3 py-2 border-r border-gray-700 bg-inherit">
+                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 text-white font-bold text-sm">
                         {row.round}
                       </span>
                     </td>
@@ -517,7 +525,7 @@ export default function DraftBoardPage() {
                       const shouldShow = !filterPosition || (keeper?.position === filterPosition);
 
                       return (
-                        <td key={slot.rosterId} className="px-1 py-1.5">
+                        <td key={slot.rosterId} className="px-1.5 py-2 border-r border-gray-800/30 last:border-r-0">
                           <DraftCell
                             slot={shouldShow ? slot : { ...slot, status: slot.status === "keeper" ? "available" : slot.status, keeper: undefined }}
                             columnColor={columnColor}
@@ -632,27 +640,25 @@ export default function DraftBoardPage() {
       )}
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-6 text-xs text-gray-500 pt-4 border-t border-white/5">
+      <div className="flex flex-wrap items-center gap-6 text-sm text-gray-400 pt-4 border-t border-gray-700/50">
+        <span className="text-gray-500 text-xs uppercase tracking-wide font-medium">Legend:</span>
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-emerald-950/40 border border-white/[0.06]" />
+          <div className="w-6 h-6 rounded bg-gray-800/80 border border-gray-600/50" />
           <span>Keeper</span>
         </div>
         <div className="flex items-center gap-2">
-          <div
-            className="w-5 h-5 rounded border border-gray-700/30"
-            style={{
-              background: `repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)`
-            }}
-          />
-          <span>Traded</span>
+          <div className="w-6 h-6 rounded bg-gradient-to-br from-amber-900/60 to-amber-950/80 border-2 border-amber-500/50 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-t-amber-500 border-l-[8px] border-l-transparent" />
+          </div>
+          <span>Franchise Tag</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded border border-white/[0.03]" />
+          <div className="w-6 h-6 rounded bg-gray-800/30 border-2 border-dashed border-sky-500/50" />
+          <span>Traded Pick</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-gray-900/30 border border-gray-800/50" />
           <span>Available</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span>Franchise</span>
         </div>
       </div>
     </div>
@@ -702,7 +708,7 @@ interface DraftCellProps {
 }
 
 function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCellProps) {
-  // Traded pick - distinct diagonal stripe pattern
+  // Traded pick - clear visual distinction with colored border
   if (slot.status === "traded" && slot.tradedTo) {
     let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
 
@@ -719,61 +725,54 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo }: DraftCell
     const ownerName = newOwnerInfo?.name || slot.tradedTo;
 
     return (
-      <div
-        className="relative h-[52px] rounded-lg overflow-hidden"
-        style={{
-          background: `repeating-linear-gradient(
-            -45deg,
-            transparent,
-            transparent 4px,
-            rgba(255,255,255,0.03) 4px,
-            rgba(255,255,255,0.03) 8px
-          )`
-        }}
-      >
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-2 bg-gray-900/40 border border-gray-700/30 rounded-lg">
-          <div className="flex items-center gap-1">
-            <ArrowLeftRight size={10} className="text-gray-500" />
-            <span className={`${ownerColor.accent} text-[10px] font-medium truncate max-w-[70px]`}>
-              {ownerName}
-            </span>
-          </div>
-        </div>
+      <div className={`h-14 rounded-md bg-gray-800/30 border-2 border-dashed ${ownerColor.border} flex flex-col items-center justify-center px-2`}>
+        <ArrowLeftRight size={12} className={ownerColor.accent} />
+        <span className={`${ownerColor.accent} text-[11px] font-semibold truncate max-w-[90px] mt-0.5`}>
+          {ownerName}
+        </span>
       </div>
     );
   }
 
-  // Keeper cell - refined premium look
+  // Keeper cell - high contrast, easy to read
   if (slot.status === "keeper" && slot.keeper) {
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
 
     return (
       <div
         className={`
-          h-[52px] rounded-lg px-2 py-1.5 flex flex-col justify-center relative
+          h-14 rounded-md px-2 py-1 flex flex-col justify-center relative overflow-hidden
           ${isFranchise
-            ? "bg-amber-950/30 border border-amber-800/40"
-            : `${columnColor.bgMuted} border border-white/[0.06]`
+            ? "bg-gradient-to-br from-amber-900/60 to-amber-950/80 border-2 border-amber-500/50"
+            : `bg-gray-800/80 border border-gray-600/50`
           }
         `}
       >
+        {/* Franchise indicator */}
         {isFranchise && (
-          <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
+          <div className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-t-amber-500 border-l-[16px] border-l-transparent" />
         )}
-        <div className="flex items-center justify-center gap-1.5">
-          <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
-          <p className={`${isFranchise ? "text-amber-200" : columnColor.text} text-[10px] font-medium truncate max-w-[60px]`}>
+
+        {/* Position + Name row */}
+        <div className="flex items-center gap-1.5">
+          <PositionBadge position={slot.keeper.position} size="xs" variant="filled" />
+          <span className={`${isFranchise ? "text-amber-100" : "text-white"} text-[11px] font-semibold truncate flex-1`}>
             {slot.keeper.playerName}
-          </p>
+          </span>
         </div>
+
+        {/* Year indicator */}
+        {slot.keeper.yearsKept && (
+          <span className={`text-[9px] ${isFranchise ? "text-amber-300/70" : "text-gray-400"} mt-0.5 ml-6`}>
+            Year {slot.keeper.yearsKept}
+          </span>
+        )}
       </div>
     );
   }
 
-  // Empty cell - minimal
+  // Empty cell - clean and minimal
   return (
-    <div className="h-[52px] rounded-lg border border-white/[0.03] flex items-center justify-center">
-      <span className="text-gray-800 text-[10px]">—</span>
-    </div>
+    <div className="h-14 rounded-md bg-gray-900/30 border border-gray-800/50" />
   );
 }
