@@ -81,11 +81,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const playerIds = roster.rosterPlayers.map(rp => rp.playerId);
 
     // BATCH QUERY 2: Get all draft picks for all players (including historical for original draft info)
+    // Include roster to get sleeperId for matching across seasons
     const draftPicks = await prisma.draftPick.findMany({
       where: {
         playerId: { in: playerIds },
       },
-      include: { draft: true },
+      include: {
+        draft: true,
+        roster: { select: { sleeperId: true } },
+      },
       orderBy: { draft: { season: "asc" } }, // Oldest first to get original draft
     });
 
@@ -98,6 +102,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       include: { transaction: true },
       orderBy: { transaction: { createdAt: "desc" } },
     });
+
+    // BATCH QUERY 4: Get all rosters for this league (all seasons) to build rosterId -> sleeperId map
+    // This allows us to match transactions across seasons (roster IDs change each year)
+    const allRosters = await prisma.roster.findMany({
+      where: { leagueId },
+      select: { id: true, sleeperId: true },
+    });
+
+    // Build rosterId -> sleeperId map for transaction matching
+    const rosterToSleeperMap = new Map<string, string>();
+    for (const r of allRosters) {
+      if (r.sleeperId) {
+        rosterToSleeperMap.set(r.id, r.sleeperId);
+      }
+    }
 
     // Build lookup maps for O(1) access
     // Store the ORIGINAL (oldest) draft pick for each player
@@ -148,34 +167,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return null;
     }
 
+    // Get current roster's sleeperId for matching across seasons
+    const currentSleeperId = roster.sleeperId;
+
     /**
-     * NEW: Get Origin Season for a player on the current roster
+     * Get Origin Season for a player on the current roster
      *
      * Origin Season is the "keeper start season" for eligibility calculation.
-     * - Drafted by this roster → origin = draft season
+     * - Drafted by this owner (matching sleeperId) → origin = draft season
      * - In-season trade → origin = inherited from previous owner
      * - Offseason trade → origin = RESETS to trade season (next season)
      * - Waiver/FA → origin = pickup season
      */
     function getOriginSeason(
       playerId: string,
-      targetRosterId: string,
+      targetSleeperId: string,
       visited: Set<string> = new Set()
     ): { originSeason: number; acquisitionType: AcquisitionType; draftRound?: number } {
       // Prevent infinite loops in trade chains
-      const key = `${playerId}-${targetRosterId}`;
+      const key = `${playerId}-${targetSleeperId}`;
       if (visited.has(key)) {
         return { originSeason: season, acquisitionType: AcquisitionType.WAIVER };
       }
       visited.add(key);
 
-      // 1. Check if player was drafted by this roster
+      // 1. Check if player was drafted by this owner (matching sleeperId across seasons)
       const draftPick = draftPicks.find(
-        (p) => p.playerId === playerId && p.rosterId === targetRosterId
+        (p) => p.playerId === playerId && p.roster?.sleeperId === targetSleeperId
       );
 
       if (draftPick) {
-        // Player was drafted by this roster - origin is draft season
+        // Player was drafted by this owner - origin is draft season
         return {
           originSeason: draftPick.draft.season,
           acquisitionType: AcquisitionType.DRAFTED,
@@ -183,9 +205,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         };
       }
 
-      // 2. Find the most recent acquisition transaction for this roster
+      // 2. Find the most recent acquisition transaction for this owner (by sleeperId)
+      // Transactions use rosterId, so we convert to sleeperId for matching across seasons
       const acquisition = transactions.find(
-        (tx) => tx.playerId === playerId && tx.toRosterId === targetRosterId
+        (tx) => tx.playerId === playerId &&
+                tx.toRosterId &&
+                rosterToSleeperMap.get(tx.toRosterId) === targetSleeperId
       );
 
       if (!acquisition) {
@@ -204,22 +229,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         // Check if player was dropped in the same season
         // If dropped and picked up same season, preserve eligibility from previous owner
         if (acquisition.fromRosterId) {
-          // Player was dropped - check the drop season
-          const dropTx = transactions.find(
-            (tx) => tx.playerId === playerId && tx.fromRosterId === acquisition.fromRosterId
-          );
+          const fromSleeperId = rosterToSleeperMap.get(acquisition.fromRosterId);
+          if (fromSleeperId) {
+            // Player was dropped - check the drop season
+            const dropTx = transactions.find(
+              (tx) => tx.playerId === playerId && tx.fromRosterId === acquisition.fromRosterId
+            );
 
-          if (dropTx) {
-            const dropSeason = getSeasonFromDate(dropTx.transaction.createdAt);
+            if (dropTx) {
+              const dropSeason = getSeasonFromDate(dropTx.transaction.createdAt);
 
-            // Same season pickup - follow chain to get origin from previous owner
-            if (dropSeason === txSeason) {
-              const previousOrigin = getOriginSeason(playerId, acquisition.fromRosterId, visited);
-              return {
-                originSeason: previousOrigin.originSeason,
-                acquisitionType: acqType,
-                draftRound: previousOrigin.draftRound,
-              };
+              // Same season pickup - follow chain to get origin from previous owner
+              if (dropSeason === txSeason) {
+                const previousOrigin = getOriginSeason(playerId, fromSleeperId, visited);
+                return {
+                  originSeason: previousOrigin.originSeason,
+                  acquisitionType: acqType,
+                  draftRound: previousOrigin.draftRound,
+                };
+              }
             }
           }
         }
@@ -242,12 +270,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       // 5. In-season trade - follow chain to get origin from previous owner
       if (acquisition.fromRosterId) {
-        const previousOrigin = getOriginSeason(playerId, acquisition.fromRosterId, visited);
-        return {
-          originSeason: previousOrigin.originSeason,
-          acquisitionType: AcquisitionType.TRADE,
-          draftRound: previousOrigin.draftRound, // Inherit draft round for cost calculation
-        };
+        const fromSleeperId = rosterToSleeperMap.get(acquisition.fromRosterId);
+        if (fromSleeperId) {
+          const previousOrigin = getOriginSeason(playerId, fromSleeperId, visited);
+          return {
+            originSeason: previousOrigin.originSeason,
+            acquisitionType: AcquisitionType.TRADE,
+            draftRound: previousOrigin.draftRound, // Inherit draft round for cost calculation
+          };
+        }
       }
 
       // Fallback: treat as current season
@@ -261,7 +292,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       isPostDeadlineTrade: boolean;
       tradeDate?: Date;
     } {
-      const origin = getOriginSeason(playerId, rosterId);
+      const origin = getOriginSeason(playerId, currentSleeperId);
       const transaction = transactionMap.get(playerId);
 
       return {
@@ -317,7 +348,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
      * - Franchise tag has no year limit (can be used indefinitely)
      */
     function calculateEligibility(playerId: string) {
-      const origin = getOriginSeason(playerId, rosterId);
+      const origin = getOriginSeason(playerId, currentSleeperId);
       const yearsKept = season - origin.originSeason;
       const originalDraft = getOriginalDraft(playerId);
       const costResult = calculateBaseCost(playerId);
