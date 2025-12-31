@@ -200,33 +200,48 @@ export default function TeamsPage() {
   const playoffSpots = league.settings?.playoff_teams ?? Math.min(6, Math.floor(league.rosters.length / 2));
 
   // Build playoff placement map from bracket data
+  // Only use winners bracket for 1st-6th place
+  // Losers bracket is for toilet bowl/consolation and doesn't affect draft order
   const playoffPlacements = new Map<string, number>();
 
   if (playoffs?.winnersBracket) {
-    playoffs.winnersBracket.forEach(matchup => {
-      if (matchup.placement && matchup.winner) {
-        playoffPlacements.set(matchup.winner.id, matchup.placement);
-      }
-      if (matchup.placement === 1 && matchup.loser) {
-        playoffPlacements.set(matchup.loser.id, 2);
-      }
-      if (matchup.placement === 3) {
-        if (matchup.winner) playoffPlacements.set(matchup.winner.id, 3);
-        if (matchup.loser) playoffPlacements.set(matchup.loser.id, 4);
-      }
-    });
-  }
+    // Sort matchups by round descending to process finals first
+    const sortedMatchups = [...playoffs.winnersBracket].sort((a, b) => b.round - a.round);
 
-  if (playoffs?.losersBracket) {
-    playoffs.losersBracket.forEach(matchup => {
-      if (matchup.placement) {
-        if (matchup.winner) playoffPlacements.set(matchup.winner.id, matchup.placement);
-        if (matchup.loser && matchup.placement < 12) {
-          playoffPlacements.set(matchup.loser.id, matchup.placement + 1);
+    sortedMatchups.forEach(matchup => {
+      // Championship game (placement 1)
+      if (matchup.placement === 1) {
+        if (matchup.winner && !playoffPlacements.has(matchup.winner.id)) {
+          playoffPlacements.set(matchup.winner.id, 1); // Champion
+        }
+        if (matchup.loser && !playoffPlacements.has(matchup.loser.id)) {
+          playoffPlacements.set(matchup.loser.id, 2); // Runner-up
+        }
+      }
+      // 3rd place game (placement 2 in Sleeper means 3rd place game)
+      else if (matchup.placement === 2) {
+        if (matchup.winner && !playoffPlacements.has(matchup.winner.id)) {
+          playoffPlacements.set(matchup.winner.id, 3); // 3rd place
+        }
+        if (matchup.loser && !playoffPlacements.has(matchup.loser.id)) {
+          playoffPlacements.set(matchup.loser.id, 4); // 4th place
+        }
+      }
+      // 5th place game (placement 3 in Sleeper)
+      else if (matchup.placement === 3) {
+        if (matchup.winner && !playoffPlacements.has(matchup.winner.id)) {
+          playoffPlacements.set(matchup.winner.id, 5); // 5th place
+        }
+        if (matchup.loser && !playoffPlacements.has(matchup.loser.id)) {
+          playoffPlacements.set(matchup.loser.id, 6); // 6th place
         }
       }
     });
   }
+
+  // Losers bracket handles 7th place and below (teams that didn't make playoffs)
+  // These are toilet bowl/consolation matchups - we skip them for draft order
+  // since non-playoff teams are ordered by regular season record
 
   // Sort by regular season: wins (desc), then points for (desc)
   const sortedRosters = [...league.rosters].sort((a, b) => {
