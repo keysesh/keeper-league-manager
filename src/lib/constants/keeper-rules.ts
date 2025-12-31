@@ -10,7 +10,7 @@ export const DEFAULT_KEEPER_RULES = {
   MAX_FRANCHISE_TAGS: 2,
   MAX_REGULAR_KEEPERS: 5,
   REGULAR_KEEPER_MAX_YEARS: 2,
-  UNDRAFTED_ROUND: 10,
+  UNDRAFTED_ROUND: 8, // Waiver/FA pickups without a draft position that season cost Round 8
   MINIMUM_ROUND: 1,
   COST_REDUCTION_PER_YEAR: 1,
   MAX_DRAFT_ROUNDS: 16,

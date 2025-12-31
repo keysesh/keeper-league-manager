@@ -49,6 +49,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         team: true,
         age: true,
         yearsExp: true,
+        status: true,
+        injuryStatus: true,
+        fantasyPointsPpr: true,
+        gamesPlayed: true,
+        pointsPerGame: true,
+        metadata: true,
       },
     });
 
@@ -66,6 +72,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           team: true,
           age: true,
           yearsExp: true,
+          status: true,
+          injuryStatus: true,
+          fantasyPointsPpr: true,
+          gamesPlayed: true,
+          pointsPerGame: true,
+          metadata: true,
         },
       });
     }
