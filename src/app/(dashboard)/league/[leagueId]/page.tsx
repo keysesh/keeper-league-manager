@@ -113,7 +113,7 @@ export default function LeaguePage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         <div className="flex items-start justify-between">
           <div>
             <Skeleton className="h-8 w-48 mb-2" />
@@ -172,9 +172,9 @@ export default function LeaguePage() {
 
   if (error || !league) {
     return (
-      <div className="p-6">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <p className="text-red-400">{error || "League not found"}</p>
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+          <p className="text-red-400 font-medium">{error || "League not found"}</p>
         </div>
       </div>
     );
@@ -185,7 +185,7 @@ export default function LeaguePage() {
   return (
     <>
       <DeadlineBanner leagueId={leagueId} />
-      <div className="p-4 md:p-6 space-y-4 md:space-y-5">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-4 md:space-y-5">
         {/* Header */}
         <PageHeader
           title={league.name}
