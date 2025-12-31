@@ -134,6 +134,8 @@ model Roster {
   tradeVotes          TradeProposalVote[]
 
   @@unique([leagueId, sleeperId])
+  @@index([leagueId])
+  @@index([ownerId])
   @@map("rosters")
 }
 
@@ -148,6 +150,8 @@ model TeamMember {
   roster Roster @relation(fields: [rosterId], references: [id], onDelete: Cascade)
 
   @@unique([userId, rosterId])
+  @@index([userId])
+  @@index([rosterId])
   @@map("team_members")
 }
 
@@ -252,6 +256,7 @@ model RosterPlayer {
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
   @@unique([rosterId, playerId])
+  @@index([rosterId])
   @@index([playerId])
   @@map("roster_players")
 }

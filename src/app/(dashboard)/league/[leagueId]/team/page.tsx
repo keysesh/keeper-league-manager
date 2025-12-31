@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -16,8 +17,10 @@ import {
   Crown,
   Medal,
   Target,
-  Zap
+  Zap,
+  ChevronDown,
 } from "lucide-react";
+import { PlayoffBracket } from "@/components/ui/PlayoffBracket";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -36,10 +39,18 @@ interface Roster {
   keeperCount?: number;
 }
 
+interface SleeperSettings {
+  playoff_teams?: number;
+  playoff_week_start?: number;
+  num_teams?: number;
+  [key: string]: unknown;
+}
+
 interface LeagueData {
   id: string;
   name: string;
   season: number;
+  settings?: SleeperSettings | null;
   rosters: Roster[];
 }
 
@@ -90,12 +101,41 @@ function getTeamGradient(winPct: number): string {
   return "from-zinc-500 to-zinc-700";
 }
 
+interface PlayoffData {
+  winnersBracket: Array<{
+    round: number;
+    matchupId: number;
+    team1: { id: string; teamName: string | null; ownerName: string | null } | null;
+    team2: { id: string; teamName: string | null; ownerName: string | null } | null;
+    winner: { id: string; teamName: string | null; ownerName: string | null } | null;
+    loser: { id: string; teamName: string | null; ownerName: string | null } | null;
+    placement?: number;
+  }>;
+  losersBracket: Array<{
+    round: number;
+    matchupId: number;
+    team1: { id: string; teamName: string | null; ownerName: string | null } | null;
+    team2: { id: string; teamName: string | null; ownerName: string | null } | null;
+    winner: { id: string; teamName: string | null; ownerName: string | null } | null;
+    loser: { id: string; teamName: string | null; ownerName: string | null } | null;
+    placement?: number;
+  }>;
+  playoffTeams: number;
+}
+
 export default function TeamsPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
+  const [showBracket, setShowBracket] = useState(false);
 
   const { data: league, error, isLoading } = useSWR<LeagueData>(
     `/api/leagues/${leagueId}`,
+    fetcher
+  );
+
+  // Only fetch playoffs when bracket is shown
+  const { data: playoffs } = useSWR<PlayoffData>(
+    showBracket ? `/api/leagues/${leagueId}/playoffs` : null,
     fetcher
   );
 
@@ -139,7 +179,8 @@ export default function TeamsPage() {
 
   const top3 = sortedRosters.slice(0, 3);
   const rest = sortedRosters.slice(3);
-  const playoffSpots = Math.min(6, Math.floor(sortedRosters.length / 2));
+  // Use playoff_teams from Sleeper settings, fallback to half the league size
+  const playoffSpots = league.settings?.playoff_teams ?? Math.min(6, Math.floor(sortedRosters.length / 2));
   const maxPoints = Math.max(...sortedRosters.map(r => r.pointsFor));
 
   return (
@@ -195,6 +236,49 @@ export default function TeamsPage() {
           </div>
         </div>
       )}
+
+      {/* Playoff Bracket Toggle */}
+      <div className="bg-[#13111a]/60 backdrop-blur-sm rounded-xl border border-white/[0.04] overflow-hidden">
+        <button
+          onClick={() => setShowBracket(!showBracket)}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Trophy className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-sm font-semibold text-white">Playoff Bracket</h3>
+              <p className="text-xs text-zinc-500">
+                {playoffSpots} teams compete for the championship
+              </p>
+            </div>
+          </div>
+          <ChevronDown
+            className={`w-5 h-5 text-zinc-400 transition-transform ${
+              showBracket ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {showBracket && (
+          <div className="px-4 pb-4 border-t border-white/[0.04]">
+            <div className="pt-4">
+              {playoffs ? (
+                <PlayoffBracket
+                  winnersBracket={playoffs.winnersBracket}
+                  losersBracket={playoffs.losersBracket}
+                  playoffTeams={playoffs.playoffTeams}
+                  showLosersBracket={true}
+                />
+              ) : (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400"></div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Rest of Teams */}
       <div className="space-y-2">

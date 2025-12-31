@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { InjuryIndicator } from "@/components/ui/InjuryIndicator";
@@ -87,7 +88,7 @@ function getAcquisitionLabel(type: string): string {
   }
 }
 
-export function PremiumPlayerCard({
+export const PremiumPlayerCard = memo(function PremiumPlayerCard({
   player,
   eligibility,
   costs,
@@ -292,4 +293,4 @@ export function PremiumPlayerCard({
       )}
     </div>
   );
-}
+});

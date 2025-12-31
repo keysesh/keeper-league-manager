@@ -202,6 +202,29 @@ export interface SleeperNFLState {
   display_week: number;
 }
 
+export interface SleeperMatchup {
+  roster_id: number;
+  matchup_id: number;
+  points: number;
+  starters: string[];
+  starters_points: number[];
+  players: string[];
+  players_points: Record<string, number>;
+  custom_points?: number;
+}
+
+export interface SleeperPlayoffMatchup {
+  r: number; // Round
+  m: number; // Matchup number
+  t1?: number; // Team 1 roster_id
+  t2?: number; // Team 2 roster_id
+  t1_from?: { w?: number; l?: number }; // Team 1 advances from (winner/loser of matchup)
+  t2_from?: { w?: number; l?: number }; // Team 2 advances from (winner/loser of matchup)
+  w?: number; // Winner roster_id
+  l?: number; // Loser roster_id
+  p?: number; // Final placement position
+}
+
 // Mapped types for database
 export interface MappedPlayer {
   firstName: string | null;

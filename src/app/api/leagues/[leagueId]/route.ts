@@ -158,6 +158,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       totalRosters: league.totalRosters,
       draftRounds: league.draftRounds,
       lastSyncedAt: league.lastSyncedAt,
+      settings: league.settings, // Sleeper league settings (playoff_teams, etc.)
       keeperSettings: league.keeperSettings,
       commissioner: league.commissioner ? {
         id: league.commissioner.id,

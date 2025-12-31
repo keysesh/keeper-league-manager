@@ -9,6 +9,8 @@ import {
   SleeperTransaction,
   SleeperTradedPick,
   SleeperNFLState,
+  SleeperMatchup,
+  SleeperPlayoffMatchup,
 } from "./types";
 import { logger } from "@/lib/logger";
 import {
@@ -255,6 +257,31 @@ export class SleeperClient {
     return this.fetch(
       `/players/nfl/trending/${type}?lookback_hours=${lookbackHours}&limit=${limit}`
     );
+  }
+
+  // ============================================
+  // MATCHUPS & PLAYOFFS
+  // ============================================
+
+  /**
+   * Get matchups for a specific week
+   */
+  async getMatchups(leagueId: string, week: number): Promise<SleeperMatchup[]> {
+    return this.fetch<SleeperMatchup[]>(`/league/${leagueId}/matchups/${week}`);
+  }
+
+  /**
+   * Get playoff winners bracket
+   */
+  async getWinnersBracket(leagueId: string): Promise<SleeperPlayoffMatchup[]> {
+    return this.fetch<SleeperPlayoffMatchup[]>(`/league/${leagueId}/winners_bracket`);
+  }
+
+  /**
+   * Get playoff losers bracket
+   */
+  async getLosersBracket(leagueId: string): Promise<SleeperPlayoffMatchup[]> {
+    return this.fetch<SleeperPlayoffMatchup[]>(`/league/${leagueId}/losers_bracket`);
   }
 
   // ============================================

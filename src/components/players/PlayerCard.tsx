@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "../ui/PositionBadge";
 
@@ -27,7 +28,7 @@ interface PlayerCardProps {
   className?: string;
 }
 
-export function PlayerCard({
+export const PlayerCard = memo(function PlayerCard({
   player,
   keeperInfo,
   onClick,
@@ -104,9 +105,9 @@ export function PlayerCard({
       )}
     </div>
   );
-}
+});
 
-export function PlayerCardList({
+export const PlayerCardList = memo(function PlayerCardList({
   players,
   onPlayerClick,
   compact = false,
@@ -127,4 +128,4 @@ export function PlayerCardList({
       ))}
     </div>
   );
-}
+});

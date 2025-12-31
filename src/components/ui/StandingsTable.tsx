@@ -42,7 +42,7 @@ export function StandingsTable({
   const maxPoints = Math.max(...sorted.map((r) => r.pointsFor));
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-gray-900/80 to-gray-950/90 border border-white/[0.06] shadow-xl">
+    <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-zinc-900/80 to-zinc-950/90 border border-white/[0.06] shadow-xl">
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/[0.06] bg-black/20">
         <div className="flex items-center justify-between">
@@ -50,7 +50,7 @@ export function StandingsTable({
             <Trophy className="w-4 h-4 text-amber-500" />
             <h3 className="text-sm font-semibold text-white">Standings</h3>
           </div>
-          <div className="flex items-center gap-6 text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+          <div className="flex items-center gap-6 text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
             <span className="w-12 text-center">W-L</span>
             <span className="w-16 text-right">Points</span>
             <span className="w-12 text-center">Keepers</span>
@@ -96,7 +96,7 @@ export function StandingsTable({
                 w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0
                 ${roster.isUserRoster
                   ? "bg-gradient-to-br from-purple-500/30 to-purple-600/20 ring-1 ring-purple-500/30"
-                  : "bg-gradient-to-br from-gray-700/50 to-gray-800/50 ring-1 ring-white/[0.06]"
+                  : "bg-gradient-to-br from-zinc-700/50 to-zinc-800/50 ring-1 ring-white/[0.06]"
                 }
                 group-hover:ring-white/[0.12] transition-all
               `}>
@@ -107,7 +107,7 @@ export function StandingsTable({
                     className="w-full h-full rounded-xl object-cover"
                   />
                 ) : (
-                  <span className={`text-sm font-bold ${roster.isUserRoster ? "text-purple-400" : "text-gray-500"}`}>
+                  <span className={`text-sm font-bold ${roster.isUserRoster ? "text-purple-400" : "text-zinc-500"}`}>
                     {(roster.teamName || "T")[0].toUpperCase()}
                   </span>
                 )}
@@ -130,7 +130,7 @@ export function StandingsTable({
                   )}
                 </div>
                 {roster.owners?.[0] && (
-                  <span className="text-[11px] text-gray-500 truncate block">
+                  <span className="text-[11px] text-zinc-500 truncate block">
                     {roster.owners[0].displayName}
                   </span>
                 )}
@@ -144,7 +144,7 @@ export function StandingsTable({
                     text-sm font-semibold tabular-nums
                     ${roster.wins > roster.losses ? "text-emerald-400" : ""}
                     ${roster.wins < roster.losses ? "text-red-400" : ""}
-                    ${roster.wins === roster.losses ? "text-gray-400" : ""}
+                    ${roster.wins === roster.losses ? "text-zinc-400" : ""}
                   `}>
                     {roster.wins}-{roster.losses}
                   </span>
@@ -153,11 +153,11 @@ export function StandingsTable({
                 {/* Points with mini bar */}
                 <div className="w-16">
                   <div className="text-right">
-                    <span className="text-sm font-medium text-gray-300 tabular-nums">
+                    <span className="text-sm font-medium text-zinc-300 tabular-nums">
                       {roster.pointsFor.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
-                  <div className="h-1 mt-1 rounded-full bg-gray-800 overflow-hidden">
+                  <div className="h-1 mt-1 rounded-full bg-zinc-800 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         roster.isUserRoster
@@ -175,7 +175,7 @@ export function StandingsTable({
                 </div>
 
                 {/* Arrow */}
-                <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 group-hover:translate-x-0.5 transition-all" />
+                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 group-hover:translate-x-0.5 transition-all" />
               </div>
             </Link>
           );
@@ -184,7 +184,7 @@ export function StandingsTable({
 
       {/* Footer legend */}
       <div className="px-4 py-2.5 border-t border-white/[0.04] bg-black/20">
-        <div className="flex items-center justify-between text-[10px] text-gray-500">
+        <div className="flex items-center justify-between text-[10px] text-zinc-500">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-emerald-500/50" />
@@ -195,7 +195,7 @@ export function StandingsTable({
               <span>Elimination zone</span>
             </div>
           </div>
-          <span className="text-gray-600">Top {playoffSpots} make playoffs</span>
+          <span className="text-zinc-600">Top {playoffSpots} make playoffs</span>
         </div>
       </div>
     </div>
@@ -213,8 +213,8 @@ function RankBadge({ rank, isPlayoff }: { rank: number; isPlayoff: boolean }) {
 
   if (rank === 2) {
     return (
-      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-300 via-gray-400 to-gray-500 flex items-center justify-center shadow-lg shadow-gray-400/20">
-        <Medal className="w-4 h-4 text-gray-700" />
+      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-zinc-300 via-zinc-400 to-zinc-500 flex items-center justify-center shadow-lg shadow-zinc-400/20">
+        <Medal className="w-4 h-4 text-zinc-700" />
       </div>
     );
   }
