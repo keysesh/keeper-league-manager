@@ -127,26 +127,34 @@ function getRankStyle(rank: number): { bg: string; text: string; glow: string; i
   }
 }
 
+interface BracketTeam {
+  id: string;
+  teamName: string | null;
+  ownerName: string | null;
+  sleeperRosterId?: number;
+}
+
 interface PlayoffData {
   winnersBracket: Array<{
     round: number;
     matchupId: number;
-    team1: { id: string; teamName: string | null; ownerName: string | null } | null;
-    team2: { id: string; teamName: string | null; ownerName: string | null } | null;
-    winner: { id: string; teamName: string | null; ownerName: string | null } | null;
-    loser: { id: string; teamName: string | null; ownerName: string | null } | null;
+    team1: BracketTeam | null;
+    team2: BracketTeam | null;
+    winner: BracketTeam | null;
+    loser: BracketTeam | null;
     placement?: number;
   }>;
   losersBracket: Array<{
     round: number;
     matchupId: number;
-    team1: { id: string; teamName: string | null; ownerName: string | null } | null;
-    team2: { id: string; teamName: string | null; ownerName: string | null } | null;
-    winner: { id: string; teamName: string | null; ownerName: string | null } | null;
-    loser: { id: string; teamName: string | null; ownerName: string | null } | null;
+    team1: BracketTeam | null;
+    team2: BracketTeam | null;
+    winner: BracketTeam | null;
+    loser: BracketTeam | null;
     placement?: number;
   }>;
   playoffTeams: number;
+  rosterIdMapping?: Record<number, string>; // Sleeper roster_id -> DB roster UUID
 }
 
 export default function TeamsPage() {
@@ -204,36 +212,51 @@ export default function TeamsPage() {
   // Losers bracket is for toilet bowl/consolation and doesn't affect draft order
   const playoffPlacements = new Map<string, number>();
 
+  // Helper to resolve DB roster ID from bracket team
+  const resolveRosterId = (team: BracketTeam | null): string | null => {
+    if (!team) return null;
+    // If we have a sleeperRosterId and mapping, use that
+    if (team.sleeperRosterId && playoffs?.rosterIdMapping) {
+      const mappedId = playoffs.rosterIdMapping[team.sleeperRosterId];
+      if (mappedId) return mappedId;
+    }
+    // Otherwise use the id directly (might be a UUID or a string number)
+    return team.id;
+  };
+
   if (playoffs?.winnersBracket) {
     // Sort matchups by round descending to process finals first
     const sortedMatchups = [...playoffs.winnersBracket].sort((a, b) => b.round - a.round);
 
     sortedMatchups.forEach(matchup => {
+      const winnerId = resolveRosterId(matchup.winner);
+      const loserId = resolveRosterId(matchup.loser);
+
       // Championship game (placement 1)
       if (matchup.placement === 1) {
-        if (matchup.winner && !playoffPlacements.has(matchup.winner.id)) {
-          playoffPlacements.set(matchup.winner.id, 1); // Champion
+        if (winnerId && !playoffPlacements.has(winnerId)) {
+          playoffPlacements.set(winnerId, 1); // Champion
         }
-        if (matchup.loser && !playoffPlacements.has(matchup.loser.id)) {
-          playoffPlacements.set(matchup.loser.id, 2); // Runner-up
+        if (loserId && !playoffPlacements.has(loserId)) {
+          playoffPlacements.set(loserId, 2); // Runner-up
         }
       }
       // 3rd place game (placement 2 in Sleeper means 3rd place game)
       else if (matchup.placement === 2) {
-        if (matchup.winner && !playoffPlacements.has(matchup.winner.id)) {
-          playoffPlacements.set(matchup.winner.id, 3); // 3rd place
+        if (winnerId && !playoffPlacements.has(winnerId)) {
+          playoffPlacements.set(winnerId, 3); // 3rd place
         }
-        if (matchup.loser && !playoffPlacements.has(matchup.loser.id)) {
-          playoffPlacements.set(matchup.loser.id, 4); // 4th place
+        if (loserId && !playoffPlacements.has(loserId)) {
+          playoffPlacements.set(loserId, 4); // 4th place
         }
       }
       // 5th place game (placement 3 in Sleeper)
       else if (matchup.placement === 3) {
-        if (matchup.winner && !playoffPlacements.has(matchup.winner.id)) {
-          playoffPlacements.set(matchup.winner.id, 5); // 5th place
+        if (winnerId && !playoffPlacements.has(winnerId)) {
+          playoffPlacements.set(winnerId, 5); // 5th place
         }
-        if (matchup.loser && !playoffPlacements.has(matchup.loser.id)) {
-          playoffPlacements.set(matchup.loser.id, 6); // 6th place
+        if (loserId && !playoffPlacements.has(loserId)) {
+          playoffPlacements.set(loserId, 6); // 6th place
         }
       }
     });

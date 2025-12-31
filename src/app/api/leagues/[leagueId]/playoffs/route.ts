@@ -129,19 +129,33 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     // Transform bracket data with roster names
+    // Include sleeperRosterId so we can map back if needed
     const enrichBracket = (bracket: typeof winnersBracket) => {
-      return bracket.map(matchup => ({
-        round: matchup.r,
-        matchupId: matchup.m,
-        team1: matchup.t1 ? rosterMap.get(matchup.t1) || { id: String(matchup.t1), teamName: `Team ${matchup.t1}`, ownerName: null } : null,
-        team2: matchup.t2 ? rosterMap.get(matchup.t2) || { id: String(matchup.t2), teamName: `Team ${matchup.t2}`, ownerName: null } : null,
-        team1From: matchup.t1_from,
-        team2From: matchup.t2_from,
-        winner: matchup.w ? rosterMap.get(matchup.w) || { id: String(matchup.w), teamName: `Team ${matchup.w}`, ownerName: null } : null,
-        loser: matchup.l ? rosterMap.get(matchup.l) || { id: String(matchup.l), teamName: `Team ${matchup.l}`, ownerName: null } : null,
-        placement: matchup.p,
-      }));
+      return bracket.map(matchup => {
+        const team1Info = matchup.t1 ? rosterMap.get(matchup.t1) : null;
+        const team2Info = matchup.t2 ? rosterMap.get(matchup.t2) : null;
+        const winnerInfo = matchup.w ? rosterMap.get(matchup.w) : null;
+        const loserInfo = matchup.l ? rosterMap.get(matchup.l) : null;
+
+        return {
+          round: matchup.r,
+          matchupId: matchup.m,
+          team1: team1Info ? { ...team1Info, sleeperRosterId: matchup.t1 } : (matchup.t1 ? { id: String(matchup.t1), teamName: `Team ${matchup.t1}`, ownerName: null, sleeperRosterId: matchup.t1 } : null),
+          team2: team2Info ? { ...team2Info, sleeperRosterId: matchup.t2 } : (matchup.t2 ? { id: String(matchup.t2), teamName: `Team ${matchup.t2}`, ownerName: null, sleeperRosterId: matchup.t2 } : null),
+          team1From: matchup.t1_from,
+          team2From: matchup.t2_from,
+          winner: winnerInfo ? { ...winnerInfo, sleeperRosterId: matchup.w } : (matchup.w ? { id: String(matchup.w), teamName: `Team ${matchup.w}`, ownerName: null, sleeperRosterId: matchup.w } : null),
+          loser: loserInfo ? { ...loserInfo, sleeperRosterId: matchup.l } : (matchup.l ? { id: String(matchup.l), teamName: `Team ${matchup.l}`, ownerName: null, sleeperRosterId: matchup.l } : null),
+          placement: matchup.p,
+        };
+      });
     };
+
+    // Also return the roster mapping for client-side use
+    const rosterIdMapping: Record<number, string> = {};
+    rosterMap.forEach((info, sleeperRosterId) => {
+      rosterIdMapping[sleeperRosterId] = info.id;
+    });
 
     const settings = league.settings as Record<string, unknown> | null;
 
@@ -152,6 +166,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       playoffWeekStart: settings?.playoff_week_start ?? 15,
       winnersBracket: enrichBracket(winnersBracket),
       losersBracket: enrichBracket(losersBracket),
+      rosterIdMapping, // Maps Sleeper roster_id (1-10) to our DB roster UUID
     });
   } catch (error) {
     console.error("Error fetching playoffs:", error);
