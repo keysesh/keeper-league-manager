@@ -16,7 +16,8 @@ interface Player {
 
 interface TimelineEvent {
   season: number;
-  event: "DRAFTED" | "KEPT_REGULAR" | "KEPT_FRANCHISE" | "NOT_KEPT";
+  date?: string;
+  event: "DRAFTED" | "KEPT_REGULAR" | "KEPT_FRANCHISE" | "TRADED" | "WAIVER" | "FREE_AGENT" | "DROPPED" | "NOT_KEPT";
   teamName: string;
   sleeperId: string | null;
   leagueName: string;
@@ -25,6 +26,8 @@ interface TimelineEvent {
     round?: number;
     pick?: number;
     cost?: number;
+    fromTeam?: string;
+    toTeam?: string;
   };
 }
 
@@ -33,10 +36,14 @@ interface KeeperHistoryData {
   timeline: TimelineEvent[];
   seasons: number[];
   summary: {
-    totalTimesKept: number;
     totalTimesDrafted: number;
+    totalTimesKept: number;
     franchiseTags: number;
     regularKeeps: number;
+    trades: number;
+    waiverPickups: number;
+    faPickups: number;
+    drops: number;
   };
 }
 
@@ -46,7 +53,13 @@ interface KeeperHistoryModalProps {
   onClose: () => void;
 }
 
-const eventStyles = {
+const eventStyles: Record<string, {
+  bg: string;
+  border: string;
+  text: string;
+  icon: string;
+  label: string;
+}> = {
   DRAFTED: {
     bg: "bg-blue-500/20",
     border: "border-blue-500/50",
@@ -68,6 +81,34 @@ const eventStyles = {
     icon: "FT",
     label: "Franchise",
   },
+  TRADED: {
+    bg: "bg-purple-500/20",
+    border: "border-purple-500/50",
+    text: "text-purple-300",
+    icon: "T",
+    label: "Traded",
+  },
+  WAIVER: {
+    bg: "bg-emerald-500/20",
+    border: "border-emerald-500/50",
+    text: "text-emerald-300",
+    icon: "W",
+    label: "Waiver",
+  },
+  FREE_AGENT: {
+    bg: "bg-cyan-500/20",
+    border: "border-cyan-500/50",
+    text: "text-cyan-300",
+    icon: "FA",
+    label: "Free Agent",
+  },
+  DROPPED: {
+    bg: "bg-red-500/20",
+    border: "border-red-500/50",
+    text: "text-red-300",
+    icon: "X",
+    label: "Dropped",
+  },
   NOT_KEPT: {
     bg: "bg-gray-700/30",
     border: "border-gray-600/30",
@@ -76,6 +117,15 @@ const eventStyles = {
     label: "Not Kept",
   },
 };
+
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export function KeeperHistoryModal({
   playerId,
@@ -113,12 +163,12 @@ export function KeeperHistoryModal({
 
       {/* Modal */}
       <div
-        className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+        className="relative bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-lg font-bold text-white">Keeper History</h2>
+          <h2 className="text-lg font-bold text-white">Player Timeline</h2>
           <button
             onClick={onClose}
             className="p-1 text-gray-400 hover:text-white transition-colors"
@@ -130,7 +180,7 @@ export function KeeperHistoryModal({
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-[calc(80vh-120px)]">
+        <div className="p-4 overflow-y-auto max-h-[calc(85vh-120px)]">
           {loading && (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
@@ -139,7 +189,7 @@ export function KeeperHistoryModal({
 
           {error && (
             <div className="text-center py-8 text-red-400">
-              Failed to load keeper history
+              Failed to load player history
             </div>
           )}
 
@@ -160,43 +210,43 @@ export function KeeperHistoryModal({
                     <PositionBadge position={data.player.position} size="sm" />
                   </div>
                   <div className="text-sm text-gray-400 mt-1">
-                    {data.player.team || "Free Agent"} • {data.player.age || "?"} yrs
+                    {data.player.team || "Free Agent"} {data.player.age && `• ${data.player.age} yrs`}
                   </div>
                 </div>
               </div>
 
-              {/* Summary Stats */}
-              <div className="grid grid-cols-4 gap-3 mb-6">
-                <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold text-white">
+              {/* Summary Stats - 2 rows */}
+              <div className="grid grid-cols-4 gap-2 mb-6">
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5 text-center">
+                  <div className="text-xl font-bold text-blue-300">
                     {data.summary.totalTimesDrafted}
                   </div>
                   <div className="text-[10px] text-gray-500 uppercase tracking-wide">
-                    Times Drafted
+                    Drafted
                   </div>
                 </div>
-                <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold text-amber-400">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-center">
+                  <div className="text-xl font-bold text-amber-300">
                     {data.summary.totalTimesKept}
                   </div>
                   <div className="text-[10px] text-gray-500 uppercase tracking-wide">
-                    Times Kept
+                    Kept
                   </div>
                 </div>
-                <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold text-amber-300">
-                    {data.summary.regularKeeps}
+                <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-2.5 text-center">
+                  <div className="text-xl font-bold text-purple-300">
+                    {data.summary.trades}
                   </div>
                   <div className="text-[10px] text-gray-500 uppercase tracking-wide">
-                    Regular
+                    Trades
                   </div>
                 </div>
-                <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold text-amber-200">
-                    {data.summary.franchiseTags}
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-center">
+                  <div className="text-xl font-bold text-emerald-300">
+                    {data.summary.waiverPickups + data.summary.faPickups}
                   </div>
                   <div className="text-[10px] text-gray-500 uppercase tracking-wide">
-                    Franchise
+                    Pickups
                   </div>
                 </div>
               </div>
@@ -204,12 +254,12 @@ export function KeeperHistoryModal({
               {/* Timeline */}
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-gray-400 mb-3">
-                  Timeline
+                  Full Timeline
                 </h3>
 
-                {data.seasons.length === 0 ? (
+                {data.timeline.length === 0 ? (
                   <div className="text-center py-6 text-gray-500">
-                    No keeper history found
+                    No history found
                   </div>
                 ) : (
                   <div className="relative">
@@ -219,7 +269,7 @@ export function KeeperHistoryModal({
                     {/* Events */}
                     <div className="space-y-3">
                       {data.timeline.map((event, index) => {
-                        const style = eventStyles[event.event];
+                        const style = eventStyles[event.event] || eventStyles.NOT_KEPT;
                         return (
                           <div key={index} className="relative flex items-start gap-4 pl-2">
                             {/* Timeline node */}
@@ -231,22 +281,57 @@ export function KeeperHistoryModal({
 
                             {/* Event content */}
                             <div className="flex-1 min-w-0 pt-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-semibold text-white">
                                   {event.season}
                                 </span>
-                                <span className={`text-xs ${style.text}`}>
+                                <span className={`text-xs px-1.5 py-0.5 rounded ${style.bg} ${style.text}`}>
                                   {style.label}
                                 </span>
+                                {event.date && (
+                                  <span className="text-xs text-gray-500">
+                                    {formatDate(event.date)}
+                                  </span>
+                                )}
                               </div>
                               <div className="text-xs text-gray-400 mt-0.5">
-                                {event.teamName}
+                                {/* Team info based on event type */}
+                                {event.event === "TRADED" && event.details?.fromTeam && (
+                                  <span>
+                                    <span className="text-red-400">{event.details.fromTeam}</span>
+                                    <span className="text-gray-500"> → </span>
+                                    <span className="text-emerald-400">{event.teamName}</span>
+                                  </span>
+                                )}
+                                {event.event === "DROPPED" && (
+                                  <span className="text-red-400">
+                                    Dropped by {event.teamName}
+                                  </span>
+                                )}
+                                {event.event === "WAIVER" && (
+                                  <span className="text-emerald-400">
+                                    Claimed by {event.teamName}
+                                    {event.details?.fromTeam && (
+                                      <span className="text-gray-500"> (was {event.details.fromTeam})</span>
+                                    )}
+                                  </span>
+                                )}
+                                {event.event === "FREE_AGENT" && (
+                                  <span className="text-cyan-400">
+                                    Signed by {event.teamName}
+                                  </span>
+                                )}
+                                {(event.event === "DRAFTED" || event.event === "KEPT_REGULAR" || event.event === "KEPT_FRANCHISE") && (
+                                  <span>{event.teamName}</span>
+                                )}
+                                {/* Draft details */}
                                 {event.details?.round && (
                                   <span className="text-gray-500">
                                     {" "}• R{event.details.round}
                                     {event.details.pick && `.${event.details.pick}`}
                                   </span>
                                 )}
+                                {/* Keeper cost */}
                                 {event.details?.cost && (
                                   <span className="text-amber-400">
                                     {" "}• Cost: R{event.details.cost}
