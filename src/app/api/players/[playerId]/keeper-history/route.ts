@@ -19,13 +19,13 @@ function getSeasonFromDate(date: Date): number {
 
 /**
  * Filter out "glitch fix" transactions where a player was dropped to draft pool
- * and immediately re-drafted (within 1 day). These are corrections, not real drops.
+ * and immediately re-drafted (within 1 day). These are draft day corrections only.
  *
  * Pattern to filter:
- * 1. DROPPED event (player dropped to waivers/FA)
- * 2. Followed by DRAFTED, WAIVER, or FREE_AGENT event within 1 day in the same league
+ * 1. DROPPED event (player dropped to draft pool)
+ * 2. Followed by DRAFTED event within 1 day in the same league
  *
- * We remove BOTH the drop AND the subsequent add if they appear to be a correction.
+ * Only filters DROP → DRAFTED pairs, not regular waiver/FA activity.
  */
 function filterGlitchTransactions<T extends {
   event: string;
@@ -38,38 +38,29 @@ function filterGlitchTransactions<T extends {
   for (let i = 0; i < timeline.length; i++) {
     const current = timeline[i];
 
-    // Only look at DROPPED events
+    // Only look at DROPPED events with dates
     if (current.event !== "DROPPED") continue;
     if (!current.date) continue;
 
     const dropDate = new Date(current.date).getTime();
 
-    // Look for a subsequent add event within 1 day in the same league
+    // Look for a subsequent DRAFTED event within 1 day in the same league
     for (let j = i + 1; j < timeline.length; j++) {
       const next = timeline[j];
 
       // Must be same league
       if (next.leagueId !== current.leagueId) continue;
 
-      // Must be an "add" type event
-      const isAddEvent = ["DRAFTED", "WAIVER", "FREE_AGENT"].includes(next.event);
-      if (!isAddEvent) continue;
+      // Only filter DROP → DRAFTED pairs (draft day fixes)
+      if (next.event !== "DRAFTED") continue;
 
-      // Check time difference
+      // Check time difference if next has a date
       if (next.date) {
-        const addDate = new Date(next.date).getTime();
-        const daysDiff = Math.abs(addDate - dropDate) / (1000 * 60 * 60 * 24);
+        const draftDate = new Date(next.date).getTime();
+        const daysDiff = Math.abs(draftDate - dropDate) / (1000 * 60 * 60 * 24);
 
         if (daysDiff <= 1) {
-          // This looks like a glitch fix - mark both for removal
-          indicesToRemove.add(i);
-          indicesToRemove.add(j);
-          break;
-        }
-      } else if (next.season === current.season) {
-        // If no date, check same season - might still be a glitch fix
-        // But only if the events are adjacent (draft events don't have dates)
-        if (j === i + 1) {
+          // Draft day glitch fix - remove both
           indicesToRemove.add(i);
           indicesToRemove.add(j);
           break;
