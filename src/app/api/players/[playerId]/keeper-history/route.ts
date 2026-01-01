@@ -18,6 +18,73 @@ function getSeasonFromDate(date: Date): number {
 }
 
 /**
+ * Filter out "glitch fix" transactions where a player was dropped to draft pool
+ * and immediately re-drafted (within 1 day). These are corrections, not real drops.
+ *
+ * Pattern to filter:
+ * 1. DROPPED event (player dropped to waivers/FA)
+ * 2. Followed by DRAFTED, WAIVER, or FREE_AGENT event within 1 day in the same league
+ *
+ * We remove BOTH the drop AND the subsequent add if they appear to be a correction.
+ */
+function filterGlitchTransactions<T extends {
+  event: string;
+  date?: string;
+  season: number;
+  leagueId: string;
+}>(timeline: T[]): T[] {
+  const indicesToRemove = new Set<number>();
+
+  for (let i = 0; i < timeline.length; i++) {
+    const current = timeline[i];
+
+    // Only look at DROPPED events
+    if (current.event !== "DROPPED") continue;
+    if (!current.date) continue;
+
+    const dropDate = new Date(current.date).getTime();
+
+    // Look for a subsequent add event within 1 day in the same league
+    for (let j = i + 1; j < timeline.length; j++) {
+      const next = timeline[j];
+
+      // Must be same league
+      if (next.leagueId !== current.leagueId) continue;
+
+      // Must be an "add" type event
+      const isAddEvent = ["DRAFTED", "WAIVER", "FREE_AGENT"].includes(next.event);
+      if (!isAddEvent) continue;
+
+      // Check time difference
+      if (next.date) {
+        const addDate = new Date(next.date).getTime();
+        const daysDiff = Math.abs(addDate - dropDate) / (1000 * 60 * 60 * 24);
+
+        if (daysDiff <= 1) {
+          // This looks like a glitch fix - mark both for removal
+          indicesToRemove.add(i);
+          indicesToRemove.add(j);
+          break;
+        }
+      } else if (next.season === current.season) {
+        // If no date, check same season - might still be a glitch fix
+        // But only if the events are adjacent (draft events don't have dates)
+        if (j === i + 1) {
+          indicesToRemove.add(i);
+          indicesToRemove.add(j);
+          break;
+        }
+      }
+
+      // Only check the next few events
+      if (j - i > 3) break;
+    }
+  }
+
+  return timeline.filter((_, index) => !indicesToRemove.has(index));
+}
+
+/**
  * GET /api/players/[playerId]/keeper-history
  *
  * Returns the complete timeline for a player including:
@@ -350,10 +417,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return (eventPriority[a.event] || 99) - (eventPriority[b.event] || 99);
     });
 
+    // Filter out "glitch fix" patterns: DROP followed by DRAFT/ADD within 1 day
+    // These are corrections where a player was dropped to draft pool then immediately re-drafted
+    const filteredTimeline = filterGlitchTransactions(timeline);
+
     // Group by league for multi-league support
-    const leagueIds = [...new Set(timeline.map((t) => t.leagueId).filter(Boolean))];
+    const leagueIds = [...new Set(filteredTimeline.map((t) => t.leagueId).filter(Boolean))];
     const byLeague = leagueIds.map((leagueId) => {
-      const leagueEvents = timeline.filter((t) => t.leagueId === leagueId);
+      const leagueEvents = filteredTimeline.filter((t) => t.leagueId === leagueId);
       return {
         leagueId,
         leagueName: leagueEvents[0]?.leagueName || "Unknown",
@@ -362,17 +433,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     // Get all seasons that have data
-    const seasons = [...new Set(timeline.map((t) => t.season))].sort();
+    const seasons = [...new Set(filteredTimeline.map((t) => t.season))].sort();
 
     // Calculate summary stats
-    const tradeCount = timeline.filter((t) => t.event === "TRADED").length;
-    const waiverCount = timeline.filter((t) => t.event === "WAIVER").length;
-    const faCount = timeline.filter((t) => t.event === "FREE_AGENT").length;
-    const dropCount = timeline.filter((t) => t.event === "DROPPED").length;
+    const tradeCount = filteredTimeline.filter((t) => t.event === "TRADED").length;
+    const waiverCount = filteredTimeline.filter((t) => t.event === "WAIVER").length;
+    const faCount = filteredTimeline.filter((t) => t.event === "FREE_AGENT").length;
+    const dropCount = filteredTimeline.filter((t) => t.event === "DROPPED").length;
 
     return NextResponse.json({
       player,
-      timeline,
+      timeline: filteredTimeline,
       byLeague,
       seasons,
       summary: {
