@@ -18,57 +18,93 @@ function getSeasonFromDate(date: Date): number {
 }
 
 /**
- * Filter out "glitch fix" transactions where a player was dropped to draft pool
- * and immediately re-drafted (within 1 day). These are draft day corrections only.
+ * Filter out glitch-related events from the timeline:
  *
- * Pattern to filter:
- * 1. DROPPED event (player dropped to draft pool)
- * 2. Followed by DRAFTED event within 1 day in the same league
- *
- * Only filters DROP → DRAFTED pairs, not regular waiver/FA activity.
+ * 1. DROP → DRAFTED pairs within 1 day (draft day corrections)
+ * 2. Duplicate DRAFTED events in the same season/league (keep only one per season per league)
  */
 function filterGlitchTransactions<T extends {
   event: string;
   date?: string;
   season: number;
   leagueId: string;
+  teamName?: string;
 }>(timeline: T[]): T[] {
   const indicesToRemove = new Set<number>();
 
+  // First pass: Remove DROP → DRAFTED pairs within 1 day
   for (let i = 0; i < timeline.length; i++) {
     const current = timeline[i];
-
-    // Only look at DROPPED events with dates
-    if (current.event !== "DROPPED") continue;
-    if (!current.date) continue;
+    if (current.event !== "DROPPED" || !current.date) continue;
 
     const dropDate = new Date(current.date).getTime();
 
-    // Look for a subsequent DRAFTED event within 1 day in the same league
     for (let j = i + 1; j < timeline.length; j++) {
       const next = timeline[j];
-
-      // Must be same league
       if (next.leagueId !== current.leagueId) continue;
-
-      // Only filter DROP → DRAFTED pairs (draft day fixes)
       if (next.event !== "DRAFTED") continue;
 
-      // Check time difference if next has a date
       if (next.date) {
         const draftDate = new Date(next.date).getTime();
         const daysDiff = Math.abs(draftDate - dropDate) / (1000 * 60 * 60 * 24);
 
         if (daysDiff <= 1) {
-          // Draft day glitch fix - remove both
           indicesToRemove.add(i);
           indicesToRemove.add(j);
           break;
         }
       }
 
-      // Only check the next few events
       if (j - i > 3) break;
+    }
+  }
+
+  // Second pass: Remove duplicate DRAFTED events in same season/league
+  // Prefer keeping the draft that matches a KEPT event for that season
+  const keeperTeams = new Map<string, string>(); // season-leagueName -> teamName
+  for (const event of timeline) {
+    if (event.event === "KEPT_REGULAR" || event.event === "KEPT_FRANCHISE") {
+      const leagueName = (event as { leagueName?: string }).leagueName || event.leagueId;
+      keeperTeams.set(`${event.season}-${leagueName}`, event.teamName || "");
+    }
+  }
+
+  // Group drafts by season-league
+  const draftsByKey = new Map<string, number[]>();
+  for (let i = 0; i < timeline.length; i++) {
+    if (indicesToRemove.has(i)) continue;
+    const event = timeline[i];
+    if (event.event !== "DRAFTED") continue;
+
+    const leagueName = (event as { leagueName?: string }).leagueName || event.leagueId;
+    const key = `${event.season}-${leagueName}`;
+
+    if (!draftsByKey.has(key)) draftsByKey.set(key, []);
+    draftsByKey.get(key)!.push(i);
+  }
+
+  // For each group with duplicates, keep only the one matching the keeper (or first if no keeper)
+  for (const [key, indices] of draftsByKey) {
+    if (indices.length <= 1) continue;
+
+    const keeperTeam = keeperTeams.get(key);
+    let keepIndex = indices[0]; // Default to first
+
+    if (keeperTeam) {
+      // Find the draft that matches the keeper's team
+      for (const idx of indices) {
+        if (timeline[idx].teamName === keeperTeam) {
+          keepIndex = idx;
+          break;
+        }
+      }
+    }
+
+    // Remove all except the one we're keeping
+    for (const idx of indices) {
+      if (idx !== keepIndex) {
+        indicesToRemove.add(idx);
+      }
     }
   }
 
