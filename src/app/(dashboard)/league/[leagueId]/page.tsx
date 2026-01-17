@@ -16,9 +16,10 @@ import {
   Target,
   Zap,
   Users,
-  Calendar,
   TrendingUp,
   Shield,
+  Star,
+  ArrowUpRight,
 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -121,9 +122,8 @@ export default function LeaguePage() {
   if (isLoading) {
     return (
       <div className="max-w-6xl mx-auto p-6 space-y-8">
-        <Skeleton className="h-32 w-full rounded-2xl" />
-        <Skeleton className="h-64 w-full rounded-2xl" />
-        <Skeleton className="h-96 w-full rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-3xl" />
+        <Skeleton className="h-64 w-full rounded-3xl" />
       </div>
     );
   }
@@ -150,159 +150,204 @@ export default function LeaguePage() {
   return (
     <>
       <DeadlineBanner leagueId={leagueId} />
-      <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8 space-y-8">
+      <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8 space-y-10">
 
         {/* ============================================ */}
-        {/* HERO: League + Your Status */}
+        {/* HERO SECTION */}
         {/* ============================================ */}
-        <div className="relative">
-          {/* Background texture */}
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent rounded-3xl" />
-          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl" />
+        <section className="relative overflow-hidden rounded-3xl">
+          {/* Layered background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_-20%,rgba(212,160,18,0.15),transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_100%,rgba(212,160,18,0.08),transparent_50%)]" />
 
-          <div className="relative p-6 md:p-8">
-            {/* Top row: League info + actions */}
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-                    <Trophy className="w-6 h-6 text-amber-900" />
+          {/* Noise texture */}
+          <div className="absolute inset-0 opacity-[0.015]" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
+          }} />
+
+          {/* Top edge highlight */}
+          <div className="absolute top-0 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+
+          <div className="relative p-6 md:p-10">
+            {/* Header Row */}
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-10">
+              <div className="flex items-center gap-4">
+                {/* Trophy icon with glow */}
+                <div className="relative">
+                  <div className="absolute inset-0 bg-amber-400/20 rounded-2xl blur-xl" />
+                  <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center shadow-2xl shadow-amber-500/30">
+                    <Trophy className="w-7 h-7 text-amber-900" strokeWidth={2.5} />
                   </div>
-                  <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-                      {league.name}
-                    </h1>
-                    <p className="text-zinc-500 text-sm">{league.totalRosters} teams • {league.season} Season</p>
-                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white tracking-tight">
+                    {league.name}
+                  </h1>
+                  <p className="text-zinc-400 text-sm md:text-base mt-1">
+                    {league.totalRosters} teams &middot; {league.season} Season
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <button
                   onClick={handleSync}
                   disabled={syncing}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700/80 border border-zinc-700/50 text-sm font-medium text-zinc-300 hover:text-white transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-sm font-medium text-zinc-300 hover:text-white transition-all disabled:opacity-50 backdrop-blur-sm"
                 >
                   <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
-                  <span>{syncing ? "Syncing..." : "Sync"}</span>
+                  <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync"}</span>
                 </button>
                 <Link
                   href={`/league/${leagueId}/draft-board`}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-sm font-semibold text-black shadow-lg shadow-amber-500/25 transition-all"
+                  className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl overflow-hidden text-sm font-semibold text-black transition-all"
                 >
-                  <Target size={16} />
-                  Draft Board
+                  {/* Button gradient background */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 bg-[length:200%_100%] group-hover:animate-shimmer" />
+                  {/* Shine effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-black/10" />
+                  <Target size={16} className="relative" />
+                  <span className="relative">Draft Board</span>
                 </Link>
               </div>
             </div>
 
-            {/* Your Team Spotlight */}
+            {/* Stats Cards */}
             {userRoster && (
               <div className="grid md:grid-cols-3 gap-4">
-                {/* Standing */}
-                <div className="bg-zinc-900/60 backdrop-blur-sm rounded-2xl p-5 border border-zinc-800/50">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-emerald-400" />
+                {/* Standing Card */}
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/[0.08] p-5 transition-all hover:border-white/[0.15]">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-emerald-400/0 via-emerald-400/30 to-emerald-400/0" />
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-emerald-400/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-500/10 border border-emerald-400/20 flex items-center justify-center">
+                        <TrendingUp className="w-5 h-5 text-emerald-400" />
+                      </div>
                     </div>
+                    <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Standing</span>
+                  </div>
+                  <div className="space-y-3">
                     <div>
-                      <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Your Standing</p>
-                      <p className="text-2xl font-bold text-white">
-                        #{userRank}
-                        <span className="text-base text-zinc-500 font-normal ml-1">of {league.totalRosters}</span>
-                      </p>
+                      <span className="text-4xl font-bold text-white tabular-nums">#{userRank}</span>
+                      <span className="text-lg text-zinc-500 ml-1">/ {league.totalRosters}</span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-400">Record</span>
-                    <span className={`font-semibold ${userRoster.wins > userRoster.losses ? "text-emerald-400" : userRoster.wins < userRoster.losses ? "text-red-400" : "text-zinc-300"}`}>
-                      {userRoster.wins}-{userRoster.losses}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm mt-2">
-                    <span className="text-zinc-400">Points For</span>
-                    <span className="font-semibold text-zinc-300">{Math.round(userRoster.pointsFor).toLocaleString()}</span>
+                    <div className="flex items-center justify-between text-sm border-t border-white/[0.06] pt-3">
+                      <span className="text-zinc-500">Record</span>
+                      <span className={`font-semibold tabular-nums ${userRoster.wins > userRoster.losses ? "text-emerald-400" : userRoster.wins < userRoster.losses ? "text-red-400" : "text-zinc-300"}`}>
+                        {userRoster.wins}-{userRoster.losses}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-500">Points</span>
+                      <span className="font-semibold text-zinc-300 tabular-nums">{Math.round(userRoster.pointsFor).toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Keepers Status */}
-                <div className="bg-zinc-900/60 backdrop-blur-sm rounded-2xl p-5 border border-zinc-800/50">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-amber-400" />
+                {/* Keepers Card */}
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/[0.08] p-5 transition-all hover:border-amber-500/30">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-amber-400/0 via-amber-400/40 to-amber-400/0" />
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-amber-400/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-500/10 border border-amber-400/20 flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-amber-400" />
+                      </div>
                     </div>
+                    <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Keepers</span>
+                  </div>
+                  <div className="space-y-3">
                     <div>
-                      <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Keepers</p>
-                      <p className="text-2xl font-bold text-white">
-                        {userRoster.keeperCount}
-                        <span className="text-base text-zinc-500 font-normal">/{maxKeepers}</span>
-                      </p>
+                      <span className="text-4xl font-bold text-white tabular-nums">{userRoster.keeperCount}</span>
+                      <span className="text-lg text-zinc-500 ml-1">/ {maxKeepers}</span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-400">Franchise Tags</span>
-                    <span className="font-semibold text-amber-400">{franchiseCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm mt-2">
-                    <span className="text-zinc-400">Regular</span>
-                    <span className="font-semibold text-zinc-300">{userRoster.keeperCount - franchiseCount}</span>
+                    <div className="flex items-center justify-between text-sm border-t border-white/[0.06] pt-3">
+                      <span className="text-zinc-500">Franchise</span>
+                      <span className="font-semibold text-amber-400 tabular-nums">{franchiseCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-500">Regular</span>
+                      <span className="font-semibold text-zinc-300 tabular-nums">{userRoster.keeperCount - franchiseCount}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Quick Action */}
+                {/* CTA Card */}
                 <Link
                   href={`/league/${leagueId}/team/${userRoster.id}`}
-                  className="group bg-gradient-to-br from-amber-500/10 to-amber-600/5 backdrop-blur-sm rounded-2xl p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all"
+                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 p-5 transition-all hover:border-amber-400/40 hover:shadow-lg hover:shadow-amber-500/10"
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-amber-400/0 via-amber-400/50 to-amber-400/0" />
+                  <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl group-hover:bg-amber-400/20 transition-colors" />
+
+                  <div className="relative flex items-start justify-between mb-6">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400/30 to-amber-500/20 border border-amber-400/30 flex items-center justify-center">
                       <Zap className="w-5 h-5 text-amber-400" />
                     </div>
-                    <ChevronRight className="w-5 h-5 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                    <ArrowUpRight className="w-5 h-5 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                   <p className="text-lg font-semibold text-white mb-1">Manage Keepers</p>
-                  <p className="text-sm text-zinc-400">Select and lock your keepers for {league.season}</p>
+                  <p className="text-sm text-zinc-400">Select and lock your {league.season} keepers</p>
                 </Link>
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* ============================================ */}
-        {/* YOUR KEEPERS - Featured */}
+        {/* YOUR KEEPERS */}
         {/* ============================================ */}
         {userRoster && userRoster.currentKeepers.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Crown className="w-5 h-5 text-amber-400" />
-                Your {league.season} Keepers
-              </h2>
+          <section>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400/20 to-amber-500/10 border border-amber-400/20 flex items-center justify-center">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                </div>
+                <h2 className="text-lg font-semibold text-white">Your {league.season} Keepers</h2>
+              </div>
               <Link
                 href={`/league/${leagueId}/team/${userRoster.id}`}
-                className="text-sm text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1"
+                className="text-sm text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1 transition-colors"
               >
                 Manage <ChevronRight size={16} />
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
               {userRoster.currentKeepers.map((keeper) => (
                 <div
                   key={keeper.id}
-                  className={`relative rounded-xl p-4 ${
+                  className={`group relative rounded-2xl p-4 transition-all ${
                     keeper.type === "FRANCHISE"
-                      ? "bg-gradient-to-br from-amber-500/15 to-amber-600/5 border border-amber-500/30"
-                      : "bg-zinc-900/60 border border-zinc-800/50"
+                      ? "bg-gradient-to-br from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/10"
+                      : "bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] hover:border-white/[0.15]"
                   }`}
                 >
+                  {/* Top accent */}
+                  <div className={`absolute top-0 left-2 right-2 h-px ${
+                    keeper.type === "FRANCHISE"
+                      ? "bg-gradient-to-r from-transparent via-amber-400/50 to-transparent"
+                      : "bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  }`} />
+
                   {keeper.type === "FRANCHISE" && (
-                    <Crown className="absolute top-2 right-2 w-4 h-4 text-amber-400" />
+                    <div className="absolute top-2 right-2">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    </div>
                   )}
+
                   <PositionBadge position={keeper.player.position} size="sm" className="mb-2" />
                   <p className="text-sm font-semibold text-white truncate">{keeper.player.fullName}</p>
-                  <p className="text-xs text-zinc-500">{keeper.player.team}</p>
-                  <div className={`mt-2 text-lg font-bold ${keeper.type === "FRANCHISE" ? "text-amber-400" : "text-zinc-300"}`}>
+                  <p className="text-xs text-zinc-500 mb-2">{keeper.player.team}</p>
+
+                  <div className={`inline-flex items-center px-2 py-1 rounded-lg text-sm font-bold ${
+                    keeper.type === "FRANCHISE"
+                      ? "bg-amber-400/20 text-amber-400"
+                      : "bg-white/[0.08] text-zinc-300"
+                  }`}>
                     R{keeper.finalCost}
                   </div>
                 </div>
@@ -313,28 +358,32 @@ export default function LeaguePage() {
                 <Link
                   key={`empty-${i}`}
                   href={`/league/${leagueId}/team/${userRoster.id}`}
-                  className="rounded-xl p-4 border-2 border-dashed border-zinc-800 hover:border-zinc-700 flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 transition-colors min-h-[120px]"
+                  className="group rounded-2xl p-4 border-2 border-dashed border-zinc-800 hover:border-amber-500/30 flex flex-col items-center justify-center text-zinc-600 hover:text-amber-400 transition-all min-h-[140px] hover:bg-amber-500/5"
                 >
-                  <span className="text-2xl mb-1">+</span>
-                  <span className="text-xs">Add Keeper</span>
+                  <div className="w-10 h-10 rounded-xl border-2 border-dashed border-current flex items-center justify-center mb-2 group-hover:border-solid">
+                    <span className="text-xl">+</span>
+                  </div>
+                  <span className="text-xs font-medium">Add Keeper</span>
                 </Link>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {/* ============================================ */}
-        {/* LEADERBOARD */}
+        {/* STANDINGS */}
         {/* ============================================ */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-zinc-400" />
-              League Standings
-            </h2>
+        <section>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
+                <Users className="w-4 h-4 text-zinc-400" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">League Standings</h2>
+            </div>
             <Link
               href={`/league/${leagueId}/team`}
-              className="text-sm text-zinc-400 hover:text-white font-medium flex items-center gap-1"
+              className="text-sm text-zinc-400 hover:text-white font-medium flex items-center gap-1 transition-colors"
             >
               View All <ChevronRight size={16} />
             </Link>
@@ -344,41 +393,49 @@ export default function LeaguePage() {
             {sortedRosters.slice(0, 8).map((roster, index) => {
               const rank = index + 1;
               const isUser = roster.isUserRoster;
-              const isTop3 = rank <= 3;
               const isPlayoff = rank <= 6;
 
               return (
                 <Link
                   key={roster.id}
                   href={`/league/${leagueId}/team/${roster.id}`}
-                  className={`group flex items-center gap-4 p-4 rounded-xl transition-all ${
+                  className={`group relative flex items-center gap-4 p-4 rounded-2xl transition-all overflow-hidden ${
                     isUser
-                      ? "bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20"
-                      : "bg-zinc-900/40 hover:bg-zinc-900/60 border border-transparent hover:border-zinc-800/50"
+                      ? "bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 hover:border-amber-400/40"
+                      : "bg-white/[0.03] hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08]"
                   }`}
                 >
+                  {/* User indicator line */}
+                  {isUser && (
+                    <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-amber-400 to-amber-600" />
+                  )}
+
                   {/* Rank */}
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    rank === 1 ? "bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/20" :
-                    rank === 2 ? "bg-gradient-to-br from-zinc-300 to-zinc-500" :
-                    rank === 3 ? "bg-gradient-to-br from-orange-400 to-orange-600" :
-                    isPlayoff ? "bg-emerald-500/10 ring-1 ring-emerald-500/30" :
-                    "bg-zinc-800/80"
-                  }`}>
-                    {rank === 1 ? <Crown className="w-5 h-5 text-amber-900" /> :
-                     rank <= 3 ? <span className="text-sm font-bold text-zinc-900">{rank}</span> :
-                     <span className={`text-sm font-bold ${isPlayoff ? "text-emerald-400" : "text-zinc-500"}`}>{rank}</span>
-                    }
+                  <div className="relative">
+                    {rank <= 3 && (
+                      <div className={`absolute inset-0 rounded-xl blur-lg ${
+                        rank === 1 ? "bg-amber-400/30" : rank === 2 ? "bg-zinc-400/20" : "bg-orange-400/20"
+                      }`} />
+                    )}
+                    <div className={`relative w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                      rank === 1 ? "bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 text-amber-900 shadow-lg shadow-amber-500/30" :
+                      rank === 2 ? "bg-gradient-to-br from-zinc-300 via-zinc-400 to-zinc-500 text-zinc-800" :
+                      rank === 3 ? "bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 text-orange-900" :
+                      isPlayoff ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" :
+                      "bg-zinc-800/80 text-zinc-500"
+                    }`}>
+                      {rank === 1 ? <Crown className="w-5 h-5" /> : rank}
+                    </div>
                   </div>
 
                   {/* Team Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`font-semibold truncate ${isUser ? "text-amber-200" : "text-white"}`}>
+                      <span className={`font-semibold truncate ${isUser ? "text-amber-100" : "text-white"}`}>
                         {roster.teamName || `Team ${roster.sleeperId}`}
                       </span>
                       {isUser && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 uppercase">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-400 uppercase tracking-wide">
                           You
                         </span>
                       )}
@@ -390,71 +447,71 @@ export default function LeaguePage() {
 
                   {/* Stats */}
                   <div className="flex items-center gap-6 text-sm">
-                    <div className="text-right">
-                      <span className={`font-semibold ${
+                    <div className="text-right w-12">
+                      <span className={`font-semibold tabular-nums ${
                         roster.wins > roster.losses ? "text-emerald-400" :
                         roster.wins < roster.losses ? "text-red-400" : "text-zinc-300"
                       }`}>
                         {roster.wins}-{roster.losses}
                       </span>
                     </div>
-                    <div className="text-right w-16">
-                      <span className="text-zinc-300 font-medium">{Math.round(roster.pointsFor).toLocaleString()}</span>
+                    <div className="text-right w-16 hidden sm:block">
+                      <span className="text-zinc-400 font-medium tabular-nums">{Math.round(roster.pointsFor).toLocaleString()}</span>
                     </div>
-                    <div className="w-12 text-center">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${
-                        roster.keeperCount >= maxKeepers ? "bg-emerald-500/10 text-emerald-400" :
-                        roster.keeperCount > 0 ? "bg-amber-500/10 text-amber-400" :
+                    <div className="w-14 text-center">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${
+                        roster.keeperCount >= maxKeepers ? "bg-emerald-500/15 text-emerald-400" :
+                        roster.keeperCount > 0 ? "bg-amber-500/15 text-amber-400" :
                         "bg-zinc-800/50 text-zinc-600"
                       }`}>
                         {roster.keeperCount}/{maxKeepers}
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </Link>
               );
             })}
           </div>
-        </div>
+        </section>
 
         {/* ============================================ */}
         {/* QUICK ACTIONS */}
         {/* ============================================ */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <QuickActionCard
             href={`/league/${leagueId}/draft-board`}
             icon={<Target className="w-5 h-5" />}
             label="Draft Board"
             description="View keeper costs"
-            color="amber"
+            accentColor="amber"
           />
           <QuickActionCard
             href={`/league/${leagueId}/trade-analyzer`}
             icon={<Zap className="w-5 h-5" />}
             label="Trade Analyzer"
             description="Evaluate trades"
-            color="emerald"
+            accentColor="emerald"
           />
           <QuickActionCard
             href={`/league/${leagueId}/team`}
             icon={<Users className="w-5 h-5" />}
             label="All Teams"
             description="League rosters"
-            color="blue"
+            accentColor="blue"
           />
           <QuickActionCard
-            href={`/league/${leagueId}/settings`}
-            icon={<Calendar className="w-5 h-5" />}
-            label="Settings"
-            description="League rules"
-            color="zinc"
+            href={`/league/${leagueId}/history`}
+            icon={<TrendingUp className="w-5 h-5" />}
+            label="History"
+            description="Past seasons"
+            accentColor="purple"
           />
-        </div>
+        </section>
 
-        {/* Last synced footer */}
+        {/* Footer */}
         {league.lastSyncedAt && (
-          <p className="text-center text-xs text-zinc-600">
+          <p className="text-center text-xs text-zinc-600 pb-4">
             Last synced {new Date(league.lastSyncedAt).toLocaleDateString()} at{" "}
             {new Date(league.lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
@@ -469,30 +526,54 @@ function QuickActionCard({
   icon,
   label,
   description,
-  color,
+  accentColor,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   description: string;
-  color: "amber" | "emerald" | "blue" | "zinc";
+  accentColor: "amber" | "emerald" | "blue" | "purple";
 }) {
   const colors = {
-    amber: "bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20",
-    emerald: "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20",
-    blue: "bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20",
-    zinc: "bg-zinc-800/50 text-zinc-400 group-hover:bg-zinc-800/80",
+    amber: {
+      icon: "from-amber-400/20 to-amber-500/10 border-amber-400/20 text-amber-400",
+      hover: "group-hover:border-amber-400/40 group-hover:shadow-amber-500/10",
+      glow: "group-hover:bg-amber-400/20",
+    },
+    emerald: {
+      icon: "from-emerald-400/20 to-emerald-500/10 border-emerald-400/20 text-emerald-400",
+      hover: "group-hover:border-emerald-400/40 group-hover:shadow-emerald-500/10",
+      glow: "group-hover:bg-emerald-400/20",
+    },
+    blue: {
+      icon: "from-blue-400/20 to-blue-500/10 border-blue-400/20 text-blue-400",
+      hover: "group-hover:border-blue-400/40 group-hover:shadow-blue-500/10",
+      glow: "group-hover:bg-blue-400/20",
+    },
+    purple: {
+      icon: "from-purple-400/20 to-purple-500/10 border-purple-400/20 text-purple-400",
+      hover: "group-hover:border-purple-400/40 group-hover:shadow-purple-500/10",
+      glow: "group-hover:bg-purple-400/20",
+    },
   };
+
+  const c = colors[accentColor];
 
   return (
     <Link
       href={href}
-      className="group p-4 rounded-xl bg-zinc-900/40 hover:bg-zinc-900/60 border border-zinc-800/50 hover:border-zinc-700/50 transition-all"
+      className={`group relative overflow-hidden p-5 rounded-2xl bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/[0.08] transition-all hover:shadow-lg ${c.hover}`}
     >
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-colors ${colors[color]}`}>
-        {icon}
+      {/* Top accent line */}
+      <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+      <div className="relative mb-4">
+        <div className={`absolute inset-0 rounded-xl blur-lg opacity-0 transition-opacity ${c.glow}`} />
+        <div className={`relative w-11 h-11 rounded-xl bg-gradient-to-br border flex items-center justify-center ${c.icon}`}>
+          {icon}
+        </div>
       </div>
-      <p className="font-semibold text-white text-sm">{label}</p>
+      <p className="font-semibold text-white text-sm mb-0.5">{label}</p>
       <p className="text-xs text-zinc-500">{description}</p>
     </Link>
   );
