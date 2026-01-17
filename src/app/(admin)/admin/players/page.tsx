@@ -20,6 +20,8 @@ export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncingNflverse, setSyncingNflverse] = useState(false);
+  const [nflverseSeason, setNflverseSeason] = useState(new Date().getFullYear());
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
@@ -64,17 +66,55 @@ export default function AdminPlayersPage() {
     }
   };
 
+  const syncNflverseStats = async () => {
+    setSyncingNflverse(true);
+    try {
+      const res = await fetch(`/api/nflverse/sync?season=${nflverseSeason}&type=stats`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const playersUpdated = data.result?.stats?.playersUpdated || 0;
+        success(`Synced ${playersUpdated} player stats for ${nflverseSeason}`);
+      } else {
+        error(data.error || "NFLverse sync failed");
+      }
+    } catch {
+      error("NFLverse sync failed");
+    } finally {
+      setSyncingNflverse(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-white">Player Management</h1>
-        <button
-          onClick={syncPlayers}
-          disabled={syncing}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
-        >
-          {syncing ? "Syncing..." : "Sync from Sleeper"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={syncPlayers}
+            disabled={syncing}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+          >
+            {syncing ? "Syncing..." : "Sync from Sleeper"}
+          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={nflverseSeason}
+              onChange={(e) => setNflverseSeason(Number(e.target.value))}
+              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-amber-500"
+            >
+              {[2025, 2024, 2023, 2022].map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+            <button
+              onClick={syncNflverseStats}
+              disabled={syncingNflverse}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+            >
+              {syncingNflverse ? "Syncing..." : "Sync NFLverse Stats"}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-gray-900 rounded-lg border border-gray-800 p-4 mb-6">
