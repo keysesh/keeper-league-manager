@@ -14,6 +14,12 @@ import {
   syncNFLVerseStats,
 } from "@/lib/nflverse/sync";
 import { NFLVerseClient } from "@/lib/nflverse/client";
+import {
+  checkRateLimit,
+  createRateLimitResponse,
+  addRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
 
 /**
  * POST /api/nflverse/sync
@@ -41,6 +47,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Admin access required" },
         { status: 403 }
+      );
+    }
+
+    // Apply strict rate limiting for this heavy operation
+    const rateLimit = checkRateLimit(session.user.id, RATE_LIMITS.nflverseSync);
+    if (rateLimit.isLimited) {
+      return createRateLimitResponse(
+        rateLimit.remaining,
+        rateLimit.resetIn,
+        rateLimit.limit
       );
     }
 
@@ -75,12 +91,18 @@ export async function POST(request: NextRequest) {
         break;
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       season,
       type,
       result,
     });
+    return addRateLimitHeaders(
+      response,
+      rateLimit.remaining,
+      rateLimit.resetIn,
+      rateLimit.limit
+    );
   } catch (error) {
     logger.error("NFLverse sync error", error);
     return NextResponse.json(

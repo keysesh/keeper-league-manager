@@ -4,6 +4,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { isTradeAfterDeadline, DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
+import {
+  checkRateLimit,
+  createRateLimitResponse,
+  addRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
 
 function getSeasonFromDate(date: Date): number {
   const month = date.getMonth();
@@ -135,6 +141,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Apply rate limiting
+    const rateLimit = checkRateLimit(session.user.id, RATE_LIMITS.admin);
+    if (rateLimit.isLimited) {
+      return createRateLimitResponse(
+        rateLimit.remaining,
+        rateLimit.resetIn,
+        rateLimit.limit
+      );
+    }
+
     // Get all keepers
     const keepers = await prisma.keeper.findMany({
       include: {
@@ -211,13 +227,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: `Recalculated ${updates.length} keeper costs`,
       total: keepers.length,
       updated: updates.length,
       updates,
     });
+    return addRateLimitHeaders(
+      response,
+      rateLimit.remaining,
+      rateLimit.resetIn,
+      rateLimit.limit
+    );
   } catch (error) {
     logger.error("Error recalculating keepers", error);
     return NextResponse.json({ error: "Failed to recalculate keepers" }, { status: 500 });

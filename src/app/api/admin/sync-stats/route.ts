@@ -4,6 +4,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { parse } from "csv-parse/sync";
+import {
+  checkRateLimit,
+  createRateLimitResponse,
+  addRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
 
 /**
  * POST /api/admin/sync-stats
@@ -15,6 +21,16 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Apply rate limiting
+    const rateLimit = checkRateLimit(session.user.id, RATE_LIMITS.admin);
+    if (rateLimit.isLimited) {
+      return createRateLimitResponse(
+        rateLimit.remaining,
+        rateLimit.resetIn,
+        rateLimit.limit
+      );
     }
 
     const body = await request.json();
@@ -198,13 +214,19 @@ export async function POST(request: NextRequest) {
       updated++;
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: `Synced ${updated} players for ${season} season`,
       season,
       playersUpdated: updated,
       totalNFLVersePlayers: playerStats.size,
     });
+    return addRateLimitHeaders(
+      response,
+      rateLimit.remaining,
+      rateLimit.resetIn,
+      rateLimit.limit
+    );
   } catch (error) {
     logger.error("Error syncing stats", error);
     return NextResponse.json({ error: "Failed to sync stats" }, { status: 500 });

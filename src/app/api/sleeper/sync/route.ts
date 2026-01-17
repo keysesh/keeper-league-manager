@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { routeSyncAction, SyncContext } from "@/lib/sync";
 import { SyncRequestSchema, validateBody } from "@/lib/validations";
 import { UnauthorizedError, createErrorResponse } from "@/lib/errors";
+import {
+  checkRateLimit,
+  createRateLimitResponse,
+  addRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
 
 // Extend timeout for sync operations (requires Vercel Pro for >10s)
 export const maxDuration = 60;
@@ -35,6 +41,16 @@ export async function POST(request: NextRequest) {
       throw new UnauthorizedError();
     }
 
+    // Apply rate limiting
+    const rateLimit = checkRateLimit(session.user.id, RATE_LIMITS.sync);
+    if (rateLimit.isLimited) {
+      return createRateLimitResponse(
+        rateLimit.remaining,
+        rateLimit.resetIn,
+        rateLimit.limit
+      );
+    }
+
     const body = await request.json();
     const validated = validateBody(SyncRequestSchema, body);
 
@@ -44,7 +60,13 @@ export async function POST(request: NextRequest) {
       sleeperLeagueId: validated.sleeperLeagueId,
     };
 
-    return routeSyncAction(validated.action, context, body);
+    const response = await routeSyncAction(validated.action, context, body);
+    return addRateLimitHeaders(
+      response,
+      rateLimit.remaining,
+      rateLimit.resetIn,
+      rateLimit.limit
+    );
   } catch (error) {
     return createErrorResponse(error, { action: "sync" });
   }

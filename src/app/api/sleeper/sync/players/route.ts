@@ -4,6 +4,12 @@ import { authOptions } from "@/lib/auth";
 import { syncAllPlayers } from "@/lib/sleeper/sync";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import {
+  checkRateLimit,
+  createRateLimitResponse,
+  addRateLimitHeaders,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
 
 /**
  * POST /api/sleeper/sync/players
@@ -34,14 +40,30 @@ export async function POST() {
       );
     }
 
+    // Apply strict rate limiting for this heavy operation
+    const rateLimit = checkRateLimit(session.user.id, RATE_LIMITS.playerSync);
+    if (rateLimit.isLimited) {
+      return createRateLimitResponse(
+        rateLimit.remaining,
+        rateLimit.resetIn,
+        rateLimit.limit
+      );
+    }
+
     logger.info("Starting player sync...");
     const result = await syncAllPlayers();
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: "Player sync complete",
       data: result,
     });
+    return addRateLimitHeaders(
+      response,
+      rateLimit.remaining,
+      rateLimit.resetIn,
+      rateLimit.limit
+    );
   } catch (error) {
     logger.error("Player sync error", error);
     return NextResponse.json(
