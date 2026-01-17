@@ -184,7 +184,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           role: tm.role,
         })),
         playerCount: roster._count.rosterPlayers,
-        keeperCount: roster._count.keepers,
+        keeperCount: roster.keepers.length, // Use filtered array length, not _count (which includes all seasons)
         currentKeepers: roster.keepers,
       })),
       recentDrafts: league.drafts,
