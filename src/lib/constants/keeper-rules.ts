@@ -118,6 +118,10 @@ export function isDraftSeason(): boolean {
 
 /**
  * Get the keeper deadline description and date
+ *
+ * Keeper planning is available:
+ * - January-August: Planning for current/upcoming draft
+ * - September-December: Season in progress, keepers locked
  */
 export function getKeeperDeadlineInfo(): {
   isActive: boolean;
@@ -127,32 +131,27 @@ export function getKeeperDeadlineInfo(): {
 } {
   const now = new Date();
   const month = now.getMonth();
-  const season = getCurrentSeason();
+  const year = now.getFullYear();
+  const planningSeason = getKeeperPlanningSeason();
 
-  if (month >= 1 && month <= 7) {
+  // January-August: Keeper selections are open for planning
+  if (month <= 7) {
     // Keeper deadline is typically August 31st before the season starts
-    const deadline = new Date(now.getFullYear(), 7, 31, 23, 59, 59); // August 31st
+    const deadline = new Date(year, 7, 31, 23, 59, 59); // August 31st
     return {
       isActive: true,
-      message: `${season} Keeper selections are open`,
+      message: `${planningSeason} Keeper selections are open`,
       deadline,
       deadlineLabel: "August 31st",
     };
-  } else if (month >= 8 && month <= 11) {
-    return {
-      isActive: false,
-      message: `${season} Season in progress - keepers locked`,
-      deadline: null,
-      deadlineLabel: null,
-    };
-  } else {
-    return {
-      isActive: false,
-      message: `${season} Playoffs - keepers locked`,
-      deadline: null,
-      deadlineLabel: null,
-    };
   }
+  // September-December: Season in progress, keepers locked for current season
+  return {
+    isActive: false,
+    message: `${planningSeason - 1} Season in progress - keepers locked`,
+    deadline: null,
+    deadlineLabel: null,
+  };
 }
 
 /**

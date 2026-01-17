@@ -601,6 +601,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           originSeason: eligibility.originSeason,
           acquisitionType: eligibility.acquisitionType,
           originalDraft: eligibility.originalDraft,
+          // Debug: internal calculation values
+          _debug: {
+            planningSeason: season,
+            originSeason: eligibility.originSeason,
+            yearsOnRoster: eligibility.consecutiveYears,
+            maxYearsForRegular: maxYears,
+            calculatedCanBeRegular: eligibility.consecutiveYears < maxYears,
+          },
         },
         costs: {
           franchise: franchiseCost,
@@ -647,6 +655,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         franchise: canAddFranchise,
         regular: regularCount < settings.maxRegularKeepers,
         any: currentSeasonKeepers.length < settings.maxKeepers,
+      },
+      // Debug: keeper year rules
+      keeperRules: {
+        regularKeeperMaxYears: maxYears,
+        undraftedRound,
+        minimumRound: minRound,
       },
     });
 
