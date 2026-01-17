@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { notifyTradeProposed } from "@/lib/notifications";
 import { TradeProposalStatus } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -194,7 +195,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("Error fetching trade proposals:", error);
+    logger.error("Error fetching trade proposals", error);
     return createApiError(
       "Failed to fetch trade proposals",
       500,
@@ -384,7 +385,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       leagueName: league.name,
       involvedUserIds,
       leagueUserIds: allLeagueUserIds,
-    }).catch(console.error); // Don't fail if notifications fail
+    }).catch((err) => logger.error("Failed to notify trade proposed", err)); // Don't fail if notifications fail
 
     return NextResponse.json({
       success: true,
@@ -400,7 +401,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (error instanceof z.ZodError) {
       return createApiError("Invalid proposal data", 400, error.issues);
     }
-    console.error("Error creating trade proposal:", error);
+    logger.error("Error creating trade proposal", error);
     return createApiError(
       "Failed to create trade proposal",
       500,

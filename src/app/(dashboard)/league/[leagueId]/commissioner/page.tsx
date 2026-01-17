@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   Shield,
@@ -54,7 +54,6 @@ interface SettingsData {
 
 export default function CommissionerPage() {
   const params = useParams();
-  const router = useRouter();
   const leagueId = params.leagueId as string;
 
   const [loading, setLoading] = useState(true);
@@ -64,19 +63,15 @@ export default function CommissionerPage() {
 
   const [leagueName, setLeagueName] = useState("");
   const [rosters, setRosters] = useState<RosterData[]>([]);
-  const [keepers, setKeepers] = useState<KeeperData[]>([]);
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [activity, setActivity] = useState<{ id: string; action: string; entity: string; createdAt: string }[]>([]);
 
   const [selectedRoster, setSelectedRoster] = useState<string | null>(null);
-  const [editingKeeper, setEditingKeeper] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [editingKeeper, setEditingKeeper] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [leagueId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/leagues/${leagueId}/commissioner`);
@@ -89,7 +84,6 @@ export default function CommissionerPage() {
       const data = await res.json();
       setLeagueName(data.league.name);
       setRosters(data.rosters);
-      setKeepers(data.keepers);
       setSettings(data.settings);
       setActivity(data.recentActivity);
     } catch {
@@ -97,7 +91,11 @@ export default function CommissionerPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leagueId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const performAction = async (action: Record<string, unknown>) => {
     try {

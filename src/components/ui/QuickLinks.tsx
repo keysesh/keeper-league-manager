@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode } from "react";
 import {
   LayoutGrid,
   ArrowLeftRight,

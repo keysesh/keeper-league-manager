@@ -3,6 +3,7 @@
 import React from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -36,8 +37,7 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     // Log the error
-    console.error("[ErrorBoundary] Caught error:", error.message);
-    console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
+    logger.error("[ErrorBoundary] Caught error", error, { componentStack: errorInfo.componentStack });
 
     this.setState({ error, errorInfo });
 
@@ -60,7 +60,7 @@ export class ErrorBoundary extends React.Component<
         timestamp: new Date().toISOString(),
       }),
     }).catch((e) => {
-      console.error("[ErrorBoundary] Failed to log error:", e);
+      logger.error("[ErrorBoundary] Failed to log error", e);
     });
   }
 
@@ -129,7 +129,7 @@ export function useErrorHandler(): {
 } {
   const handleError = React.useCallback(
     (error: Error, context?: Record<string, unknown>) => {
-      console.error("[useErrorHandler]", error.message, context);
+      logger.error("[useErrorHandler]", error, context);
 
       // Log to server
       fetch("/api/log/error", {

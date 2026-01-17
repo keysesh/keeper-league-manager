@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SleeperClient } from "@/lib/sleeper/client";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -169,7 +170,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       rosterIdMapping, // Maps Sleeper roster_id (1-10) to our DB roster UUID
     });
   } catch (error) {
-    console.error("Error fetching playoffs:", error);
+    logger.error("Error fetching playoffs", error);
     return NextResponse.json(
       { error: "Failed to fetch playoff data" },
       { status: 500 }

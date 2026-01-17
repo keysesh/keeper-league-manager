@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { getKeeperPlanningSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       byRoster: keepersByRoster,
     });
   } catch (error) {
-    console.error("Error fetching keepers:", error);
+    logger.error("Error fetching keepers", error);
     return NextResponse.json(
       { error: "Failed to fetch keepers" },
       { status: 500 }
@@ -309,7 +310,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("Error creating keeper:", error);
+    logger.error("Error creating keeper", error);
     return NextResponse.json(
       { error: "Failed to create keeper" },
       { status: 500 }
@@ -421,7 +422,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       message: "Keeper removed",
     });
   } catch (error) {
-    console.error("Error deleting keeper:", error);
+    logger.error("Error deleting keeper", error);
     return NextResponse.json(
       { error: "Failed to delete keeper" },
       { status: 500 }

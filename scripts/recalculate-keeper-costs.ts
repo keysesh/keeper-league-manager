@@ -9,7 +9,7 @@
  * Run with: npx tsx scripts/recalculate-keeper-costs.ts
  */
 
-import { PrismaClient, AcquisitionType } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { isTradeAfterDeadline, DEFAULT_KEEPER_RULES } from "../src/lib/constants/keeper-rules";
 
 const prisma = new PrismaClient();

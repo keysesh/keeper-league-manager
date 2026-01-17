@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { notifyTradeStatusChanged } from "@/lib/notifications";
-import { TradeProposalStatus, VoteType } from "@prisma/client";
+import { VoteType } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string; proposalId: string }>;
@@ -239,7 +240,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("Error fetching trade proposal:", error);
+    logger.error("Error fetching trade proposal", error);
     return createApiError(
       "Failed to fetch trade proposal",
       500,
@@ -364,7 +365,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           leagueId,
           leagueName: proposal.league.name,
           userIds: partyUserIds,
-        }).catch(console.error);
+        }).catch((err) => logger.error("Failed to notify trade status changed", err));
 
         return NextResponse.json({
           success: true,
@@ -435,7 +436,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             leagueId,
             leagueName: proposal.league.name,
             userIds: allUserIds,
-          }).catch(console.error);
+          }).catch((err) => logger.error("Failed to notify trade status changed", err));
 
           return NextResponse.json({
             success: true,
@@ -486,7 +487,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           leagueName: proposal.league.name,
           userIds: partyUserIds,
           actionByName: rejecterName,
-        }).catch(console.error);
+        }).catch((err) => logger.error("Failed to notify trade status changed", err));
 
         return NextResponse.json({
           success: true,
@@ -543,7 +544,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (error instanceof z.ZodError) {
       return createApiError("Invalid request data", 400, error.issues);
     }
-    console.error("Error responding to trade proposal:", error);
+    logger.error("Error responding to trade proposal", error);
     return createApiError(
       "Failed to process response",
       500,
@@ -615,7 +616,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       message: "Trade proposal cancelled",
     });
   } catch (error) {
-    console.error("Error cancelling trade proposal:", error);
+    logger.error("Error cancelling trade proposal", error);
     return createApiError(
       "Failed to cancel trade proposal",
       500,

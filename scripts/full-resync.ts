@@ -36,7 +36,7 @@ async function fullResync() {
 
   // Step 2: Get all league IDs in the chain for keeper population
   console.log("\n=== STEP 2: Populating keepers from draft picks ===");
-  const allLeagues = await prisma.league.findMany({
+  await prisma.league.findMany({
     where: {
       OR: [
         { id: league.id },
@@ -115,7 +115,7 @@ async function fullResync() {
           if (result.errors.length > 0) {
             console.log(`    Errors: ${result.errors.join(", ")}`);
           }
-        } catch (err) {
+        } catch {
           // Ignore errors for seasons with no keepers
         }
       }

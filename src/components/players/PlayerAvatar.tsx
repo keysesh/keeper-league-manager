@@ -90,11 +90,13 @@ export function PlayerAvatar({
 
   const dimension = sizes[size];
 
-  // Reset source index when props change
+  // Reset source index when props change - intentional derived state reset
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setCurrentSourceIndex(0);
     setAllFailed(false);
   }, [sleeperId, nflverseHeadshot, gsisId, espnId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleError = useCallback(() => {
     if (currentSourceIndex < sources.length - 1) {

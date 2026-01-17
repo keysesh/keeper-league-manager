@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, X, AlertTriangle, Bell, Lock, Unlock, ChevronRight, Sparkles } from "lucide-react";
+import { Clock, X, AlertTriangle, Bell, Lock, ChevronRight, Sparkles } from "lucide-react";
 import { getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
 
@@ -14,6 +14,8 @@ export function DeadlineBanner({ leagueId }: DeadlineBannerProps) {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const deadlineInfo = getKeeperDeadlineInfo();
 
+  // Initialize state from localStorage and set up countdown interval
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     // Check if user has dismissed this banner recently
     const dismissedKey = `deadline-banner-dismissed-${new Date().toDateString()}`;
@@ -55,6 +57,7 @@ export function DeadlineBanner({ leagueId }: DeadlineBannerProps) {
 
     return () => clearInterval(interval);
   }, [deadlineInfo.deadline]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleDismiss = () => {
     setDismissed(true);

@@ -111,7 +111,8 @@ export function mapSleeperDraftStatus(status: string): DraftStatus {
   }
 }
 
-export function mapSleeperDraftPick(pick: SleeperDraftPick, _draftId: string) {
+export function mapSleeperDraftPick(pick: SleeperDraftPick, draftId: string) {
+  void draftId; // Available for future use
   return {
     round: pick.round,
     pickNumber: pick.pick_no,

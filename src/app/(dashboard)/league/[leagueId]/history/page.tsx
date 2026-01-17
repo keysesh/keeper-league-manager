@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
@@ -51,11 +50,7 @@ export default function HistoryPage() {
 
   const [teams, setTeams] = useState<{ id: string; teamName: string | null }[]>([]);
 
-  useEffect(() => {
-    fetchHistory();
-  }, [leagueId]);
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       const res = await fetch(`/api/leagues/${leagueId}/history`);
       if (!res.ok) throw new Error("Failed to fetch keeper history");
@@ -75,7 +70,11 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leagueId]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const filteredHistory = history.filter((k) => {
     if (selectedSeason !== "all" && k.season !== selectedSeason) return false;

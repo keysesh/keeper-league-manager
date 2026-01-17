@@ -316,6 +316,8 @@ model DraftPick {
   @@unique([draftId, round, draftSlot])
   @@index([playerId])
   @@index([isKeeper])
+  @@index([rosterId])
+  @@index([rosterId, playerId])
   @@map("draft_picks")
 }
 
@@ -347,6 +349,7 @@ model Keeper {
   @@index([season])
   @@index([rosterId])
   @@index([playerId])
+  @@index([season, rosterId])
   @@map("keepers")
 }
 
@@ -441,6 +444,7 @@ model TransactionPlayer {
 
   @@index([playerId])
   @@index([toRosterId])
+  @@index([toRosterId, playerId])
   @@map("transaction_players")
 }
 

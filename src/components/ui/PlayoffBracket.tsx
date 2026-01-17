@@ -69,7 +69,6 @@ function getPlacementStyle(placement: number): { bg: string; text: string; icon?
 }
 
 function MatchupCard({ matchup, showRound = true }: { matchup: BracketMatchup; showRound?: boolean }) {
-  const isComplete = matchup.winner !== null;
 
   return (
     <div className="bg-zinc-900/50 rounded-lg border border-zinc-800 overflow-hidden min-w-[200px]">

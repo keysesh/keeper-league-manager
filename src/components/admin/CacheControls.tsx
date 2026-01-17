@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { RefreshCw, Trash2, Database } from "lucide-react";
+import { RefreshCw, Trash2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface CacheStats {
   cacheSize: number;
@@ -23,7 +24,7 @@ export function CacheControls() {
         setStats(await res.json());
       }
     } catch (error) {
-      console.error("Failed to fetch cache stats:", error);
+      logger.error("Failed to fetch cache stats", error);
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ export function CacheControls() {
       } else {
         setMessage({ text: data.error || "Failed to clear cache", type: "error" });
       }
-    } catch (error) {
+    } catch {
       setMessage({ text: "Failed to clear cache", type: "error" });
     } finally {
       setClearing(false);

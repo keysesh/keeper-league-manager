@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from "react";
 import Link from "next/link";
-import { Crown, Medal, Trophy, ChevronRight, Shield } from "lucide-react";
+import { Crown, Medal, Trophy, ChevronRight } from "lucide-react";
 
 interface RosterStanding {
   id: string;
@@ -66,7 +66,6 @@ export const StandingsTable = memo(function StandingsTable({
       <div className="divide-y divide-white/[0.03]">
         {sorted.map((roster, index) => {
           const isPlayoff = index < playoffSpots;
-          const isOnBubble = index === playoffSpots - 1 || index === playoffSpots;
           const pointsPercent = (roster.pointsFor / maxPoints) * 100;
 
           return (

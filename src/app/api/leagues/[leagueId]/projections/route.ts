@@ -8,6 +8,7 @@ import {
   calculateLeagueProjectionsSummary,
   calculateKeeperProjections,
 } from "@/lib/keeper/projections";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -144,7 +145,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       rosters: rosterProjections,
     });
   } catch (error) {
-    console.error("Error calculating projections:", error);
+    logger.error("Error calculating projections", error);
     return NextResponse.json(
       { error: "Failed to calculate projections" },
       { status: 500 }

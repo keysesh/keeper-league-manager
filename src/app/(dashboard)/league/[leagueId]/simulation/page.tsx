@@ -9,10 +9,8 @@ import {
   Plus,
   X,
   RotateCcw,
-  Users,
   Trophy,
   TrendingUp,
-  ArrowLeftRight,
   Search,
   Check,
   AlertTriangle,
@@ -20,6 +18,7 @@ import {
 } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { logger } from "@/lib/logger";
 
 const TEAM_COLORS = [
   { bg: "bg-rose-500", bgMuted: "bg-rose-500/20", border: "border-rose-500", text: "text-rose-300", accent: "text-rose-400" },
@@ -233,7 +232,7 @@ export default function SimulationPage() {
 
       setSimulationResults(results);
     } catch (err) {
-      console.error("Simulation error:", err);
+      logger.error("Simulation error", err);
       setError("Failed to run simulation");
     } finally {
       setIsSimulating(false);

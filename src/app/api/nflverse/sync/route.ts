@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import {
   syncNFLVerseData,
   syncNFLVerseIdMappings,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       result,
     });
   } catch (error) {
-    console.error("NFLverse sync error:", error);
+    logger.error("NFLverse sync error", error);
     return NextResponse.json(
       {
         error: "Sync failed",
@@ -120,7 +121,7 @@ export async function GET() {
       coverage: totalPlayers > 0 ? (playersWithNFLverse / totalPlayers) * 100 : 0,
     });
   } catch (error) {
-    console.error("NFLverse status error:", error);
+    logger.error("NFLverse status error", error);
     return NextResponse.json(
       { error: "Failed to get status" },
       { status: 500 }

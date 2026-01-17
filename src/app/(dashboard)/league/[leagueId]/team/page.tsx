@@ -10,10 +10,10 @@ import {
   Users,
   Trophy,
   Star,
-  ChevronRight,
   Crown,
   Medal,
   ChevronDown,
+  ChevronRight,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
@@ -345,7 +345,6 @@ export default function TeamsPage() {
               rankStyle={rankStyle}
               leagueId={leagueId}
               history={history}
-              availableSeasons={ownerHistory?.availableSeasons || []}
               playoffPlacement={playoffPlacement}
               draftPick={draftPick}
               isTopScorer={isTopScorer}
@@ -426,7 +425,6 @@ function TeamCard({
   rankStyle,
   leagueId,
   history,
-  availableSeasons,
   playoffPlacement,
   draftPick,
   isTopScorer,
@@ -438,7 +436,6 @@ function TeamCard({
   rankStyle: { bg: string; text: string; glow: string; icon?: React.ReactNode };
   leagueId: string;
   history?: OwnerHistory;
-  availableSeasons: string[];
   playoffPlacement?: number;
   draftPick?: number;
   isTopScorer?: boolean;

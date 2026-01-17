@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getKeeperPlanningSeason, isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { AcquisitionType, KeeperType } from "@prisma/client";
-import { cache, cacheKeys, cacheTTL } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 /**
  * Get the NFL season for a given date
@@ -41,6 +41,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify user has access to this league (is a team member)
+    const userAccess = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: {
+        rosters: {
+          select: {
+            teamMembers: {
+              where: { userId: session.user.id },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!userAccess || !userAccess.rosters.some((r) => r.teamMembers.length > 0)) {
+      return NextResponse.json({ error: "You don't have access to this league" }, { status: 403 });
     }
 
     const season = getKeeperPlanningSeason();
@@ -629,7 +648,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     return response;
   } catch (error) {
-    console.error("Error fetching eligible keepers:", error);
+    logger.error("Error fetching eligible keepers", error);
     return NextResponse.json({ error: "Failed to fetch eligible keepers" }, { status: 500 });
   }
 }

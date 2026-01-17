@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageLeague } from "@/lib/permissions";
 import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -195,7 +196,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     response.headers.set('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
     return response;
   } catch (error) {
-    console.error("Error fetching league:", error);
+    logger.error("Error fetching league", error);
     return NextResponse.json(
       { error: "Failed to fetch league" },
       { status: 500 }
@@ -263,7 +264,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       message: "League settings updated",
     });
   } catch (error) {
-    console.error("Error updating league:", error);
+    logger.error("Error updating league", error);
     return NextResponse.json(
       { error: "Failed to update league" },
       { status: 500 }

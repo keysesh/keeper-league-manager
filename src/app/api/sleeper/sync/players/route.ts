@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { syncAllPlayers } from "@/lib/sleeper/sync";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/sleeper/sync/players
@@ -33,7 +34,7 @@ export async function POST() {
       );
     }
 
-    console.log("Starting player sync...");
+    logger.info("Starting player sync...");
     const result = await syncAllPlayers();
 
     return NextResponse.json({
@@ -42,7 +43,7 @@ export async function POST() {
       data: result,
     });
   } catch (error) {
-    console.error("Player sync error:", error);
+    logger.error("Player sync error", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Player sync failed" },
       { status: 500 }
@@ -81,7 +82,7 @@ export async function GET() {
           new Date().getTime() - lastUpdated.updatedAt.getTime() > 86400000), // 24 hours
     });
   } catch (error) {
-    console.error("Error getting player sync status:", error);
+    logger.error("Error getting player sync status", error);
     return NextResponse.json(
       { error: "Failed to get player sync status" },
       { status: 500 }

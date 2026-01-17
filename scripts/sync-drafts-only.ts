@@ -80,7 +80,7 @@ async function syncDraftsOnly() {
           const slotMap = draftData.slot_to_roster_id as Record<string, number> | null;
           if (slotMap) {
             // Find which slot this roster_id corresponds to
-            for (const [slot, rId] of Object.entries(slotMap)) {
+            for (const rId of Object.values(slotMap)) {
               if (rId === parseInt(pick.roster_id)) {
                 // Now find the roster by matching owner_id
                 const matchingRoster = rosters.find((r) => r.sleeperId === String(rId));
@@ -137,7 +137,7 @@ async function syncDraftsOnly() {
             });
             picksCreated++;
             if (pick.is_keeper) keeperPicks++;
-          } catch (err) {
+          } catch {
             // Ignore duplicate errors
           }
         }

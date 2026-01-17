@@ -60,7 +60,7 @@ async function main() {
 
   const glitchPatterns: GlitchPattern[] = [];
 
-  for (const [playerId, playerTxns] of byPlayer) {
+  for (const playerTxns of byPlayer.values()) {
     // Sort by date
     const sorted = playerTxns.sort((a, b) =>
       a.transaction.createdAt.getTime() - b.transaction.createdAt.getTime()

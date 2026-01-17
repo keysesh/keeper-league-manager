@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ThumbsUp, ThumbsDown, MessageCircle, Clock, User, ArrowRight, Plus } from "lucide-react";
@@ -46,11 +46,7 @@ export default function TradeProposalsPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"active" | "closed" | "all">("active");
 
-  useEffect(() => {
-    fetchProposals();
-  }, [leagueId, filter]);
-
-  const fetchProposals = async () => {
+  const fetchProposals = useCallback(async () => {
     try {
       const res = await fetch(`/api/leagues/${leagueId}/trade-proposals?status=${filter}`);
       if (!res.ok) throw new Error("Failed to fetch proposals");
@@ -61,7 +57,11 @@ export default function TradeProposalsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leagueId, filter]);
+
+  useEffect(() => {
+    fetchProposals();
+  }, [fetchProposals]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

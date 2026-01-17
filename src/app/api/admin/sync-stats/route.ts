@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { parse } from "csv-parse/sync";
 
 /**
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const season = body.season || new Date().getFullYear() - 1;
 
-    console.log(`Syncing NFLverse stats for ${season}...`);
+    logger.info(`Syncing NFLverse stats for ${season}...`);
 
     // Fetch NFLverse stats
     const statsUrl = `https://github.com/nflverse/nflverse-data/releases/download/player_stats/player_stats_${season}.csv`;
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
       totalNFLVersePlayers: playerStats.size,
     });
   } catch (error) {
-    console.error("Error syncing stats:", error);
+    logger.error("Error syncing stats", error);
     return NextResponse.json({ error: "Failed to sync stats" }, { status: 500 });
   }
 }

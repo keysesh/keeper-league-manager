@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { canManageLeague } from "@/lib/permissions";
 import { z } from "zod";
 
@@ -20,12 +21,6 @@ const keeperSettingsSchema = z.object({
   costReductionPerYear: z.number().min(0).max(3).optional(),
 });
 
-// Validation schema for deadline settings
-const deadlineSettingsSchema = z.object({
-  keeperDeadline: z.string().datetime().optional(),
-  tradeDeadlineWeek: z.number().min(1).max(18).optional(),
-  lockKeepersAfterDeadline: z.boolean().optional(),
-});
 
 /**
  * GET /api/leagues/[leagueId]/settings
@@ -110,7 +105,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("Error fetching settings:", error);
+    logger.error("Error fetching settings", error);
     return NextResponse.json(
       { error: "Failed to fetch settings" },
       { status: 500 }
@@ -214,7 +209,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       message: "Settings updated successfully",
     });
   } catch (error) {
-    console.error("Error updating settings:", error);
+    logger.error("Error updating settings", error);
     return NextResponse.json(
       { error: "Failed to update settings" },
       { status: 500 }
@@ -310,7 +305,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error locking keepers:", error);
+    logger.error("Error locking keepers", error);
     return NextResponse.json(
       { error: "Failed to lock keepers" },
       { status: 500 }

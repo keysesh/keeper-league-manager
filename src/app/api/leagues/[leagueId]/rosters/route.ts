@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -165,7 +166,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       count: transformedRosters.length,
     });
   } catch (error) {
-    console.error("Error fetching rosters:", error);
+    logger.error("Error fetching rosters", error);
     return NextResponse.json(
       { error: "Failed to fetch rosters" },
       { status: 500 }

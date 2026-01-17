@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { SleeperClient } from "@/lib/sleeper/client";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
     response.headers.set('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
     return response;
   } catch (error) {
-    console.error("Error fetching leagues:", error);
+    logger.error("Error fetching leagues", error);
     return NextResponse.json(
       { error: "Failed to fetch leagues" },
       { status: 500 }

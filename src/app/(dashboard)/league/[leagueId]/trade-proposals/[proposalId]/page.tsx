@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ThumbsUp, ThumbsDown, MessageCircle, Clock, User, Copy, Check, Trash2, ArrowLeftRight } from "lucide-react";
@@ -57,11 +57,7 @@ export default function TradeProposalDetailPage() {
   const [userVote, setUserVote] = useState<"approve" | "reject" | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchProposal();
-  }, [leagueId, proposalId]);
-
-  const fetchProposal = async () => {
+  const fetchProposal = useCallback(async () => {
     try {
       const res = await fetch(`/api/leagues/${leagueId}/trade-proposals/${proposalId}`);
       if (!res.ok) throw new Error("Failed to fetch proposal");
@@ -72,7 +68,11 @@ export default function TradeProposalDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leagueId, proposalId]);
+
+  useEffect(() => {
+    fetchProposal();
+  }, [fetchProposal]);
 
   const submitVote = async (vote: "approve" | "reject") => {
     setVoting(true);

@@ -59,7 +59,7 @@ const positionConfig: Record<string, { gradient: string; glow: string; text: str
   },
 };
 
-export function KeeperCard({ keeper, showDetails = false }: KeeperCardProps) {
+export function KeeperCard({ keeper }: KeeperCardProps) {
   const config = positionConfig[keeper.player.position] || positionConfig.DEF;
   const isFranchise = keeper.type === "FRANCHISE";
 
@@ -148,7 +148,6 @@ interface KeepersSectionProps {
 
 export function KeepersSection({ keepers, leagueId, rosterId, maxKeepers = 7 }: KeepersSectionProps) {
   const franchiseCount = keepers.filter(k => k.type === "FRANCHISE").length;
-  const regularCount = keepers.filter(k => k.type === "REGULAR").length;
 
   return (
     <div className="rounded-2xl overflow-hidden bg-gradient-to-b from-[#13111a]/80 to-[#0c0a0f]/90 border border-white/[0.06] backdrop-blur-xl">

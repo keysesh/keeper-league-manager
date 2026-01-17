@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { SleeperClient } from "@/lib/sleeper/client";
 
 interface RouteParams {
@@ -264,7 +265,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           }
         });
       } catch (error) {
-        console.error(`Error fetching historical league ${historicalLeague.sleeperLeagueId}:`, error);
+        logger.error(`Error fetching historical league ${historicalLeague.sleeperLeagueId}`, error);
       }
     }
 
@@ -285,7 +286,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       owners: ownerHistories,
     });
   } catch (error) {
-    console.error("Error fetching owner history:", error);
+    logger.error("Error fetching owner history", error);
     return NextResponse.json(
       { error: "Failed to fetch owner history" },
       { status: 500 }

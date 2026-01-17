@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       lastSyncedAt: league?.lastSyncedAt,
     });
   } catch (error) {
-    console.error("Error fetching activity:", error);
+    logger.error("Error fetching activity", error);
     return NextResponse.json(
       { error: "Failed to fetch activity" },
       { status: 500 }

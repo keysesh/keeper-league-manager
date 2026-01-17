@@ -1,16 +1,15 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
+import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
-import { LayoutGrid, ArrowLeftRight, ChevronRight, Lock, AlertTriangle, Trophy, Users, TrendingUp } from "lucide-react";
+import { LayoutGrid, ArrowLeftRight, ChevronRight, Lock, AlertTriangle, Trophy, Users } from "lucide-react";
 import { KeeperDeadlineCountdown } from "@/components/KeeperDeadlineCountdown";
 import { SyncButton } from "@/components/SyncButton";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const currentSeason = getCurrentSeason();
-  const deadlineInfo = getKeeperDeadlineInfo();
 
   const [leagues, pendingProposals] = await Promise.all([
     session?.user?.id

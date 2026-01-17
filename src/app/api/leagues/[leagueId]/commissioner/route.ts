@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 interface RouteParams {
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (error instanceof Error && error.message.includes("commissioner")) {
       return createApiError(error.message, 403);
     }
-    console.error("Error fetching commissioner data:", error);
+    logger.error("Error fetching commissioner data", error);
     return createApiError(
       "Failed to fetch commissioner data",
       500,
@@ -442,7 +443,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (error instanceof Error && error.message.includes("commissioner")) {
       return createApiError(error.message, 403);
     }
-    console.error("Error performing commissioner action:", error);
+    logger.error("Error performing commissioner action", error);
     return createApiError(
       "Failed to perform action",
       500,

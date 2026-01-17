@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { calculateCascade, KeeperInput } from "@/lib/keeper/cascade";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
@@ -261,7 +262,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("Error simulating draft:", error);
+    logger.error("Error simulating draft", error);
     return NextResponse.json(
       { error: "Failed to simulate draft" },
       { status: 500 }

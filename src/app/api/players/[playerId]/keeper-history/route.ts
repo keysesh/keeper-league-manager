@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ playerId: string }>;
@@ -291,7 +292,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Add draft events and infer drops when re-drafted
     // Use league NAME as key since dynasty leagues have different IDs each season
-    let lastDraftByLeagueName: Record<string, { season: number; teamName: string; sleeperId: string | null; leagueId: string }> = {};
+    const lastDraftByLeagueName: Record<string, { season: number; teamName: string; sleeperId: string | null; leagueId: string }> = {};
 
     for (const pick of draftPicks) {
       const leagueName = pick.draft.league.name;
@@ -485,7 +486,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("Error fetching keeper history:", error);
+    logger.error("Error fetching keeper history", error);
     return NextResponse.json(
       { error: "Failed to fetch keeper history" },
       { status: 500 }

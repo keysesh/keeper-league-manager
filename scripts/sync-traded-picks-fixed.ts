@@ -56,7 +56,7 @@ async function syncTradedPicksAndCascade() {
           },
         });
         synced++;
-      } catch (err) {
+      } catch {
         // Duplicate - ignore
       }
     }

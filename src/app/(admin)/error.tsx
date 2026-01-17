@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ShieldAlert, RefreshCw, Shield } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -10,7 +11,7 @@ interface ErrorProps {
 
 export default function AdminError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    console.error("Admin panel error:", error);
+    logger.error("Admin panel error", error);
   }, [error]);
 
   return (

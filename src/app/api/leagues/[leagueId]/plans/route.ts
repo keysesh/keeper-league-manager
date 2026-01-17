@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import { KeeperType } from "@prisma/client";
 
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })),
     });
   } catch (error) {
-    console.error("Error fetching plans:", error);
+    logger.error("Error fetching plans", error);
     return NextResponse.json(
       { error: "Failed to fetch plans" },
       { status: 500 }
@@ -282,7 +283,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("Error saving plan:", error);
+    logger.error("Error saving plan", error);
     return NextResponse.json(
       { error: "Failed to save plan" },
       { status: 500 }
@@ -362,7 +363,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       message: "Plan deleted",
     });
   } catch (error) {
-    console.error("Error deleting plan:", error);
+    logger.error("Error deleting plan", error);
     return NextResponse.json(
       { error: "Failed to delete plan" },
       { status: 500 }

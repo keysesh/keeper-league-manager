@@ -14,15 +14,6 @@ interface KeeperData {
   keeperType?: string;
 }
 
-interface DraftSlot {
-  round: number;
-  rosterName: string | null;
-  status: "available" | "keeper" | "traded";
-  playerName?: string;
-  position?: string | null;
-  tradedTo?: string;
-}
-
 /**
  * Export keepers data to CSV format
  */

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })),
     });
   } catch (error) {
-    console.error("Error fetching draft picks:", error);
+    logger.error("Error fetching draft picks", error);
     return NextResponse.json({ error: "Failed to fetch draft picks" }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { CacheControls } from "@/components/admin/CacheControls";
-import { Database, Server, HardDrive, RefreshCw } from "lucide-react";
+import { HardDrive } from "lucide-react";
 
 async function getSystemStats() {
   const [playerCount, userCount, leagueCount, keeperCount, rosterCount] = await Promise.all([

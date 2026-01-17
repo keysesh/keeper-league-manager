@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { isTradeAfterDeadline, DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 
 function getSeasonFromDate(date: Date): number {
@@ -126,6 +127,7 @@ async function getOriginSeasonForOwner(
  * - Offseason trades reset years to 0
  */
 export async function POST(request: NextRequest) {
+  void request; // Required by Next.js but not used
   try {
     const session = await getServerSession(authOptions);
 
@@ -217,7 +219,7 @@ export async function POST(request: NextRequest) {
       updates,
     });
   } catch (error) {
-    console.error("Error recalculating keepers:", error);
+    logger.error("Error recalculating keepers", error);
     return NextResponse.json({ error: "Failed to recalculate keepers" }, { status: 500 });
   }
 }

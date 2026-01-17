@@ -205,6 +205,8 @@ export function KeeperHistoryModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Data fetching effect - setState calls here are intentional for loading/error states
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isOpen && playerId) {
       setLoading(true);
@@ -219,6 +221,7 @@ export function KeeperHistoryModal({
         .finally(() => setLoading(false));
     }
   }, [isOpen, playerId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!isOpen) return null;
 

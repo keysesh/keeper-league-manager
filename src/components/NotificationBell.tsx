@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Bell, Check, CheckCheck, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
+import { logger } from "@/lib/logger";
 
 interface Notification {
   id: string;
@@ -48,7 +49,7 @@ export function NotificationBell() {
         setUnreadCount(data.pagination.unread);
       }
     } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      logger.error("Failed to fetch notifications", error);
     }
   };
 
@@ -64,7 +65,7 @@ export function NotificationBell() {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Failed to mark notification as read:", error);
+      logger.error("Failed to mark notification as read", error);
     }
   };
 
@@ -79,7 +80,7 @@ export function NotificationBell() {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error("Failed to mark all as read:", error);
+      logger.error("Failed to mark all as read", error);
     } finally {
       setLoading(false);
     }
@@ -94,7 +95,7 @@ export function NotificationBell() {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error("Failed to delete notification:", error);
+      logger.error("Failed to delete notification", error);
     }
   };
 

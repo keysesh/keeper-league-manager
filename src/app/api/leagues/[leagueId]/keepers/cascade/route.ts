@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { calculateCascade } from "@/lib/keeper/cascade";
 import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
 
@@ -234,7 +235,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       conflicts: cascadeResult.conflicts,
     });
   } catch (error) {
-    console.error("Error calculating cascade:", error);
+    logger.error("Error calculating cascade", error);
     return NextResponse.json(
       { error: "Failed to calculate cascade" },
       { status: 500 }
@@ -324,7 +325,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       updatedCount,
     });
   } catch (error) {
-    console.error("Error applying cascade:", error);
+    logger.error("Error applying cascade", error);
     return NextResponse.json(
       { error: "Failed to apply cascade" },
       { status: 500 }

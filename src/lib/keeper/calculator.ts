@@ -3,6 +3,96 @@ import { AcquisitionType, KeeperSettings, KeeperType } from "@prisma/client";
 import { DEFAULT_KEEPER_RULES, isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
 
 // ============================================
+// PREFETCH CACHE FOR BATCH OPERATIONS
+// ============================================
+
+/**
+ * Cache structure for batch operations to avoid N+1 queries
+ */
+export interface BatchPrefetchCache {
+  leagueSettings: KeeperSettings | null;
+  allRosters: Map<string, { id: string; sleeperId: string | null; leagueId: string }>;
+  rosterToSleeperMap: Map<string, string>;
+  draftPicks: Map<string, { playerId: string; rosterId: string; round: number; season: number; pickedAt: Date | null }[]>;
+  transactions: Map<string, { playerId: string; toRosterId: string | null; fromRosterId: string | null; type: string; createdAt: Date }[]>;
+}
+
+/**
+ * Prefetch all data needed for batch keeper calculations
+ * Call this once before processing multiple keepers to avoid N+1 queries
+ */
+export async function prefetchBatchData(
+  leagueId: string,
+  playerIds: string[]
+): Promise<BatchPrefetchCache> {
+  // Fetch league with settings
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    include: { keeperSettings: true },
+  });
+
+  // Fetch all rosters in the league
+  const rosters = await prisma.roster.findMany({
+    where: { leagueId },
+    select: { id: true, sleeperId: true, leagueId: true },
+  });
+  const allRosters = new Map(rosters.map(r => [r.id, r]));
+  const rosterToSleeperMap = new Map<string, string>();
+  for (const r of rosters) {
+    if (r.sleeperId) {
+      rosterToSleeperMap.set(r.id, r.sleeperId);
+    }
+  }
+
+  // Batch fetch all draft picks for these players
+  const picks = await prisma.draftPick.findMany({
+    where: { playerId: { in: playerIds } },
+    include: { draft: { select: { season: true } } },
+    orderBy: { draft: { season: "asc" } },
+  });
+  const draftPicks = new Map<string, { playerId: string; rosterId: string; round: number; season: number; pickedAt: Date | null }[]>();
+  for (const pick of picks) {
+    if (!pick.playerId) continue; // Skip picks without player
+    const key = pick.playerId;
+    if (!draftPicks.has(key)) draftPicks.set(key, []);
+    draftPicks.get(key)!.push({
+      playerId: key,
+      rosterId: pick.rosterId,
+      round: pick.round,
+      season: pick.draft.season,
+      pickedAt: pick.pickedAt,
+    });
+  }
+
+  // Batch fetch all transactions for these players
+  const txPlayers = await prisma.transactionPlayer.findMany({
+    where: { playerId: { in: playerIds } },
+    include: { transaction: { select: { type: true, createdAt: true } } },
+    orderBy: { transaction: { createdAt: "desc" } },
+  });
+  const transactions = new Map<string, { playerId: string; toRosterId: string | null; fromRosterId: string | null; type: string; createdAt: Date }[]>();
+  for (const tp of txPlayers) {
+    const key = tp.playerId;
+    if (!transactions.has(key)) transactions.set(key, []);
+    transactions.get(key)!.push({
+      playerId: tp.playerId,
+      toRosterId: tp.toRosterId,
+      fromRosterId: tp.fromRosterId,
+      type: tp.transaction.type,
+      createdAt: tp.transaction.createdAt,
+    });
+  }
+
+  return {
+    leagueSettings: league?.keeperSettings || null,
+    allRosters,
+    rosterToSleeperMap,
+    draftPicks,
+    transactions,
+  };
+}
+
+// ============================================
 // TYPES
 // ============================================
 
@@ -457,6 +547,7 @@ async function getPlayerAcquisition(
   rosterId: string,
   targetSeason: number
 ): Promise<PlayerAcquisition> {
+  void targetSeason; // Available for future use
   // First, get the player record (playerId is the database ID)
   const player = await prisma.player.findUnique({
     where: { id: playerId },
@@ -671,15 +762,20 @@ export async function validateKeeperSelections(
     errors.push(`Too many regular keepers (${regularCount}/${maxRegular})`);
   }
 
-  // Check individual eligibility
-  for (const keeper of keepers) {
-    const eligibility = await calculateKeeperEligibility(
-      keeper.player.sleeperId,
-      rosterId,
-      leagueId,
-      season
-    );
+  // Check individual eligibility - run in parallel to reduce latency
+  const eligibilityChecks = await Promise.all(
+    keepers.map(async (keeper) => {
+      const eligibility = await calculateKeeperEligibility(
+        keeper.player.sleeperId,
+        rosterId,
+        leagueId,
+        season
+      );
+      return { keeper, eligibility };
+    })
+  );
 
+  for (const { keeper, eligibility } of eligibilityChecks) {
     if (!eligibility.isEligible && keeper.type !== "FRANCHISE") {
       errors.push(`${keeper.player.fullName}: ${eligibility.reason}`);
     }

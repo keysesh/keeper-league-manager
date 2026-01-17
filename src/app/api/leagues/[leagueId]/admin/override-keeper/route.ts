@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageLeague } from "@/lib/permissions";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    console.error("Error overriding keeper:", error);
+    logger.error("Error overriding keeper", error);
     return NextResponse.json(
       { error: "Failed to override keeper" },
       { status: 500 }
@@ -299,7 +300,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       auditLogs: logsWithUsers,
     });
   } catch (error) {
-    console.error("Error fetching override history:", error);
+    logger.error("Error fetching override history", error);
     return NextResponse.json(
       { error: "Failed to fetch override history" },
       { status: 500 }

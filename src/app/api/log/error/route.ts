@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     // Don't throw on error logging failures - just log to console
-    console.error("[ErrorLogging] Failed to log error:", error);
+    logger.error("[ErrorLogging] Failed to log error", error);
     return NextResponse.json(
       { error: "Failed to log error" },
       { status: 500 }
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error("[ErrorLogging] Failed to fetch errors:", error);
+    logger.error("[ErrorLogging] Failed to fetch errors", error);
     return NextResponse.json(
       { error: "Failed to fetch errors" },
       { status: 500 }

@@ -26,7 +26,7 @@ async function recalculateAllKeepers() {
   console.log(`Found ${keepers.length} keepers to recalculate\n`);
 
   let updated = 0;
-  let errors: string[] = [];
+  const errors: string[] = [];
 
   for (const keeper of keepers) {
     try {

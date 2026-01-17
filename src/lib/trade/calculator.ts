@@ -136,8 +136,7 @@ export async function analyzeTradeComprehensive(
   const allPlayerIds = [...team1PlayerIds, ...team2PlayerIds];
 
   // Determine trade deadline status
-  const tradeSeason = tradeDate.getMonth() >= 8 ? tradeDate.getFullYear() : tradeDate.getFullYear() - 1;
-  const isAfterDeadline = isTradeAfterDeadline(tradeDate, tradeSeason);
+  const isAfterDeadline = isTradeAfterDeadline(tradeDate, tradeDate.getMonth() >= 8 ? tradeDate.getFullYear() : tradeDate.getFullYear() - 1);
 
   // ========================================
   // BATCH QUERY 1: League + Settings + Both Rosters
@@ -426,7 +425,7 @@ export async function analyzeTradeComprehensive(
   );
 
   // Generate facts
-  const facts = generateTradeFacts(team1Analysis, team2Analysis, isAfterDeadline);
+  const facts = generateTradeFacts(team1Analysis, team2Analysis);
 
   // Calculate fairness score
   const totalValue = team1Analysis.totalValueGiven + team2Analysis.totalValueGiven;
@@ -454,8 +453,7 @@ export async function analyzeTradeComprehensive(
 
 function generateTradeFacts(
   team1: TeamTradeAnalysis,
-  team2: TeamTradeAnalysis,
-  isAfterDeadline: boolean
+  team2: TeamTradeAnalysis
 ): TradeFact[] {
   const facts: TradeFact[] = [];
 

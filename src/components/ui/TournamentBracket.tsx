@@ -154,7 +154,6 @@ const Matchup = memo(function Matchup({
 export const TournamentBracket = memo(function TournamentBracket({
   winnersBracket,
   losersBracket,
-  playoffTeams,
 }: TournamentBracketProps) {
   if (!winnersBracket || winnersBracket.length === 0) {
     return (

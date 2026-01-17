@@ -5,7 +5,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { KeeperSettings, KeeperType } from "@prisma/client";
+import { KeeperType } from "@prisma/client";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 
 export interface YearProjection {

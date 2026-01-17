@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { cache } from "@/lib/cache";
 
 /**
@@ -40,7 +41,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Error getting cache stats:", error);
+    logger.error("Error getting cache stats", error);
     return NextResponse.json(
       { error: "Failed to get cache stats" },
       { status: 500 }
@@ -95,7 +96,7 @@ export async function DELETE(request: NextRequest) {
       message: "All cache cleared",
     });
   } catch (error) {
-    console.error("Error clearing cache:", error);
+    logger.error("Error clearing cache", error);
     return NextResponse.json(
       { error: "Failed to clear cache" },
       { status: 500 }

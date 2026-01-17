@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { analyzeTradeComprehensive } from "@/lib/trade/calculator";
 
 interface RouteParams {
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(analysis);
   } catch (error) {
-    console.error("Error calculating trade:", error);
+    logger.error("Error calculating trade", error);
     return NextResponse.json(
       { error: "Failed to calculate trade" },
       { status: 500 }

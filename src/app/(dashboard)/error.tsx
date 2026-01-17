@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -10,7 +11,7 @@ interface ErrorProps {
 
 export default function DashboardError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    console.error("Dashboard error:", error);
+    logger.error("Dashboard error", error);
   }, [error]);
 
   return (

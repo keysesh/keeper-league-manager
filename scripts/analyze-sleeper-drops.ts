@@ -62,7 +62,7 @@ async function main() {
       if (tx.drops && Object.keys(tx.drops).length > 0) {
         transactionsWithDrops++;
 
-        for (const [playerId, rosterId] of Object.entries(tx.drops)) {
+        for (const playerId of Object.keys(tx.drops)) {
           // Check if this is a standalone drop (not in adds)
           const isStandalone = !tx.adds || !(playerId in tx.adds);
 

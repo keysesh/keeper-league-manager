@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
+import { logger } from "@/lib/logger";
 
 interface League {
   id: string;
@@ -50,7 +51,7 @@ export default function OnboardingPage() {
           fetchLeagues();
         }
       })
-      .catch(console.error);
+      .catch((err) => logger.error("Failed to check onboarding status", err));
   }, [router]);
 
   const fetchLeagues = async () => {
@@ -64,7 +65,7 @@ export default function OnboardingPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to fetch leagues:", error);
+      logger.error("Failed to fetch leagues", error);
     }
   };
 
@@ -109,8 +110,8 @@ export default function OnboardingPage() {
       } else {
         router.push("/");
       }
-    } catch {
-      console.error("Failed to complete onboarding");
+    } catch (error) {
+      logger.error("Failed to complete onboarding", error);
       router.push("/");
     }
   };

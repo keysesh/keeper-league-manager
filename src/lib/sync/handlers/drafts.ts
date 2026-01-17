@@ -3,6 +3,7 @@ import { SleeperClient } from "@/lib/sleeper/client";
 import { SleeperDraftPick } from "@/lib/sleeper/types";
 import { mapSleeperDraftStatus } from "@/lib/sleeper/mappers";
 import { SyncContext, createSyncResponse, createSyncError } from "../types";
+import { logger } from "@/lib/logger";
 
 interface DraftSyncResult {
   sleeperLeagueId: string;
@@ -55,7 +56,7 @@ async function getMaps(
       }
     }
     // Now build slot -> db roster id
-    for (const [slot, rosterIdNum] of Object.entries(slotToRosterId)) {
+    for (const rosterIdNum of Object.values(slotToRosterId)) {
       const ownerId = rosterIdToOwnerId.get(rosterIdNum);
       if (ownerId) {
         const dbRosterId = rosterMap.get(ownerId);
@@ -130,7 +131,7 @@ async function syncDraftPicks(
  * Lightweight sync that only syncs drafts
  */
 export async function handleSyncDraftsOnly(
-  context: SyncContext,
+  _context: SyncContext,
   body: Record<string, unknown>
 ) {
   const { leagueId } = body;
@@ -206,7 +207,7 @@ export async function handleSyncDraftsOnly(
  * Sync drafts from all historical seasons by following previous_league_id
  */
 export async function handleSyncLeagueHistory(
-  context: SyncContext,
+  _context: SyncContext,
   body: Record<string, unknown>
 ) {
   const { leagueId } = body;
@@ -288,7 +289,7 @@ export async function handleSyncLeagueHistory(
         currentSleeperLeagueId = leagueData.previous_league_id || null;
         seasonsProcessed++;
       } catch (err) {
-        console.error(`Error syncing league ${currentSleeperLeagueId}:`, err);
+        logger.error(`Error syncing league ${currentSleeperLeagueId}`, err);
         break;
       }
     }
@@ -316,7 +317,7 @@ export async function handleSyncLeagueHistory(
  * Sync drafts from multiple Sleeper league IDs (historical league chain)
  */
 export async function handleSyncLeagueChain(
-  context: SyncContext,
+  _context: SyncContext,
   body: Record<string, unknown>
 ) {
   const { leagueId, sleeperLeagueIds } = body;
@@ -393,7 +394,7 @@ export async function handleSyncLeagueChain(
           });
         }
       } catch (err) {
-        console.error(`Error syncing league ${sleeperLeagueId}:`, err);
+        logger.error(`Error syncing league ${sleeperLeagueId}`, err);
         results.push({
           sleeperLeagueId,
           season: "error",

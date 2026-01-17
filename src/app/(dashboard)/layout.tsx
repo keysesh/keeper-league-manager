@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { logger } from "@/lib/logger";
 
 export default async function DashboardLayout({
   children,
@@ -29,7 +30,7 @@ export default async function DashboardLayout({
     }
   } catch {
     // Column may not exist yet - skip onboarding check for existing users
-    console.warn("onboardingComplete field not available - skipping onboarding check");
+    logger.warn("onboardingComplete field not available - skipping onboarding check");
   }
 
   return (

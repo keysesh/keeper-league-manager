@@ -7,7 +7,6 @@ import {
   LayoutGrid,
   List,
   Users,
-  TrendingUp,
   ArrowLeftRight,
   Trophy,
   Clock,
@@ -30,7 +29,7 @@ import { PlayerAvatar, TeamLogo } from "@/components/players/PlayerAvatar";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
-import { getKeeperDeadlineInfo, getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import {
   exportKeepersToCSV,
   exportDraftBoardToCSV,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PositionBadge } from "@/components/ui/PositionBadge";
@@ -157,11 +157,7 @@ export default function TradeAnalyzerPage() {
   const [savedProposal, setSavedProposal] = useState<{ id: string; shareUrl: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    fetchLeagueData();
-  }, [leagueId]);
-
-  const fetchLeagueData = async () => {
+  const fetchLeagueData = useCallback(async () => {
     try {
       // Fetch rosters with players AND draft picks in parallel (just 2 API calls)
       const [rostersRes, picksRes] = await Promise.all([
@@ -203,7 +199,11 @@ export default function TradeAnalyzerPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leagueId]);
+
+  useEffect(() => {
+    fetchLeagueData();
+  }, [fetchLeagueData]);
 
   const analyzeTrade = async () => {
     if (!team1 || !team2) return;
