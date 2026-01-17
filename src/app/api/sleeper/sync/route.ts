@@ -42,11 +42,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Apply rate limiting
-    const rateLimit = checkRateLimit(session.user.id, RATE_LIMITS.sync);
-    if (rateLimit.isLimited) {
+    const rateLimit = await checkRateLimit(session.user.id, RATE_LIMITS.sync);
+    if (!rateLimit.success) {
       return createRateLimitResponse(
         rateLimit.remaining,
-        rateLimit.resetIn,
+        rateLimit.reset,
         rateLimit.limit
       );
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     return addRateLimitHeaders(
       response,
       rateLimit.remaining,
-      rateLimit.resetIn,
+      rateLimit.reset,
       rateLimit.limit
     );
   } catch (error) {
