@@ -76,8 +76,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             player: {
               include: {
                 seasonStats: {
+                  // Fetch last 4 seasons to ensure we have data even if recent seasons not synced
                   where: {
-                    season: { in: [season - 1, season - 2] }, // Last 2 seasons (current stats are in Player)
+                    season: { gte: season - 4 },
                   },
                   orderBy: { season: "desc" },
                 },
@@ -547,15 +548,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
       }
 
-      // Calculate PPG from season stats
+      // Calculate PPG from season stats - use most recent seasons with actual data
       const seasonStats = rp.player.seasonStats || [];
-      const lastSeasonStats = seasonStats.find(s => s.season === season - 1);
-      const prevSeasonStats = seasonStats.find(s => s.season === season - 2);
+      // Filter to seasons with games played and sort descending
+      const seasonsWithData = seasonStats
+        .filter(s => s.gamesPlayed > 0)
+        .sort((a, b) => b.season - a.season);
 
-      const lastSeasonPpg = lastSeasonStats && lastSeasonStats.gamesPlayed > 0
+      const lastSeasonStats = seasonsWithData[0] || null;
+      const prevSeasonStats = seasonsWithData[1] || null;
+
+      const lastSeasonPpg = lastSeasonStats
         ? Math.round((lastSeasonStats.fantasyPointsPpr / lastSeasonStats.gamesPlayed) * 10) / 10
         : null;
-      const prevSeasonPpg = prevSeasonStats && prevSeasonStats.gamesPlayed > 0
+      const prevSeasonPpg = prevSeasonStats
         ? Math.round((prevSeasonStats.fantasyPointsPpr / prevSeasonStats.gamesPlayed) * 10) / 10
         : null;
 
@@ -576,13 +582,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           fantasyPointsHalfPpr: rp.player.fantasyPointsHalfPpr,
           gamesPlayed: rp.player.gamesPlayed,
           pointsPerGame: rp.player.pointsPerGame,
-          // Season-specific PPG
+          // Season-specific PPG (uses most recent available data)
           lastSeasonPpg,
           lastSeasonGames: lastSeasonStats?.gamesPlayed ?? null,
           prevSeasonPpg,
           prevSeasonGames: prevSeasonStats?.gamesPlayed ?? null,
-          lastSeason: season - 1,
-          prevSeason: season - 2,
+          lastSeason: lastSeasonStats?.season ?? season - 1,
+          prevSeason: prevSeasonStats?.season ?? season - 2,
         },
         isStarter: rp.isStarter,
         eligibility: {
