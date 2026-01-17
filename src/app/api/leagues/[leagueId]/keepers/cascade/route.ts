@@ -169,31 +169,72 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }>;
     }> = [];
 
+    // Build a map of which picks each roster currently owns
+    const rosterOwnedPicks = new Map<string, Set<number>>();
+    for (const roster of league.rosters) {
+      // Start with all rounds
+      const ownedPicks = new Set<number>();
+      for (let r = 1; r <= league.draftRounds; r++) {
+        ownedPicks.add(r);
+      }
+      rosterOwnedPicks.set(roster.id, ownedPicks);
+    }
+
+    // Process trades: remove traded picks, add acquired picks
+    for (const trade of tradedPicks) {
+      const originalRoster = league.rosters.find(r => r.sleeperId === trade.originalOwnerId);
+      const currentRoster = league.rosters.find(r => r.sleeperId === trade.currentOwnerId);
+
+      if (originalRoster) {
+        rosterOwnedPicks.get(originalRoster.id)?.delete(trade.round);
+      }
+      if (currentRoster) {
+        rosterOwnedPicks.get(currentRoster.id)?.add(trade.round);
+      }
+    }
+
     for (let round = 1; round <= league.draftRounds; round++) {
       const slots = league.rosters.map(roster => {
-        // Check if this pick is traded away
-        const tradedPick = tradedPicks.find(
+        const ownedPicks = rosterOwnedPicks.get(roster.id) || new Set();
+        const rosterKeepers = keepersByRoster.get(roster.id) || [];
+
+        // Check if this roster OWNS this round's pick (original or acquired)
+        const ownsPick = ownedPicks.has(round);
+
+        // Check if this roster's original pick was traded away
+        const tradedAwayPick = tradedPicks.find(
           p => p.round === round &&
             p.originalOwnerId === roster.sleeperId &&
             p.currentOwnerId !== roster.sleeperId
         );
 
-        if (tradedPick) {
-          const newOwner = league.rosters.find(r => r.sleeperId === tradedPick.currentOwnerId);
+        // Check if this roster acquired a pick at this round
+        const acquiredPick = tradedPicks.find(
+          p => p.round === round &&
+            p.currentOwnerId === roster.sleeperId &&
+            p.originalOwnerId !== roster.sleeperId
+        );
+
+        // Check if this slot has a keeper
+        const keeperInSlot = rosterKeepers.find(k => k.finalCost === round);
+
+        // If they traded away their original pick and didn't acquire another at this round
+        if (tradedAwayPick && !ownsPick) {
+          const newOwner = league.rosters.find(r => r.sleeperId === tradedAwayPick.currentOwnerId);
           return {
             rosterId: roster.id,
             rosterName: roster.teamName,
             status: "traded" as const,
-            tradedTo: newOwner?.teamName || tradedPick.currentOwnerId,
+            tradedTo: newOwner?.teamName || tradedAwayPick.currentOwnerId,
           };
         }
 
-        // Check if this slot has a keeper
-        const rosterKeepers = keepersByRoster.get(roster.id) || [];
-        const keeperInSlot = rosterKeepers.find(k => k.finalCost === round);
-
-        if (keeperInSlot) {
+        // If they have a keeper at this round
+        if (keeperInSlot && ownsPick) {
           const keeper = keepers.find(k => k.playerId === keeperInSlot.playerId);
+          const fromTeam = acquiredPick
+            ? league.rosters.find(r => r.sleeperId === acquiredPick.originalOwnerId)?.teamName
+            : null;
           return {
             rosterId: roster.id,
             rosterName: roster.teamName,
@@ -206,6 +247,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
               yearsKept: keeper?.yearsKept || 1,
               keeperType: keeper?.type || "REGULAR",
             },
+            acquiredFrom: fromTeam || undefined,
+          };
+        }
+
+        // Available slot (own pick or acquired, no keeper)
+        if (ownsPick) {
+          const fromTeam = acquiredPick
+            ? league.rosters.find(r => r.sleeperId === acquiredPick.originalOwnerId)?.teamName
+            : null;
+          return {
+            rosterId: roster.id,
+            rosterName: roster.teamName,
+            status: "available" as const,
+            acquiredFrom: fromTeam || undefined,
+          };
+        }
+
+        // Traded away (shouldn't reach here, but fallback)
+        if (tradedAwayPick) {
+          const newOwner = league.rosters.find(r => r.sleeperId === tradedAwayPick.currentOwnerId);
+          return {
+            rosterId: roster.id,
+            rosterName: roster.teamName,
+            status: "traded" as const,
+            tradedTo: newOwner?.teamName || tradedAwayPick.currentOwnerId,
           };
         }
 

@@ -84,6 +84,7 @@ interface DraftSlot {
     keeperType?: string;
   };
   tradedTo?: string;
+  acquiredFrom?: string; // Shows when a pick was acquired via trade
 }
 
 interface CascadeResult {
@@ -916,6 +917,7 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
     const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
     const yearsKept = slot.keeper.yearsKept || 1;
+    const isAcquiredPick = !!slot.acquiredFrom;
 
     // Get the first name initial and last name for compact display
     const nameParts = slot.keeper.playerName.split(" ");
@@ -932,17 +934,26 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
           hover:scale-105 hover:z-20 hover:shadow-xl
           ${isFranchise
             ? "bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400 shadow-lg shadow-amber-500/40"
-            : "bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50 hover:ring-gray-500"
+            : isAcquiredPick
+              ? "bg-gradient-to-br from-emerald-800 via-gray-800 to-gray-900 ring-1 ring-emerald-500/50 hover:ring-emerald-400"
+              : "bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50 hover:ring-gray-500"
           }
         `}
       >
         {/* Decorative corner accent */}
-        <div className={`absolute top-0 left-0 w-12 h-12 ${isFranchise ? "bg-amber-500/30" : `bg-gradient-to-br ${posAccent.gradient}`} blur-xl`} />
+        <div className={`absolute top-0 left-0 w-12 h-12 ${isFranchise ? "bg-amber-500/30" : isAcquiredPick ? "bg-emerald-500/30" : `bg-gradient-to-br ${posAccent.gradient}`} blur-xl`} />
 
         {/* Position stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-          isFranchise ? "bg-amber-400" : posAccent.border.replace("border-l-", "bg-")
+          isFranchise ? "bg-amber-400" : isAcquiredPick ? "bg-emerald-400" : posAccent.border.replace("border-l-", "bg-")
         }`} />
+
+        {/* Acquired pick indicator */}
+        {isAcquiredPick && !isFranchise && (
+          <div className="absolute top-1.5 right-1.5 z-10" title={`Acquired from ${slot.acquiredFrom}`}>
+            <ArrowLeftRight size={12} className="text-emerald-400" />
+          </div>
+        )}
 
         {/* Franchise star badge */}
         {isFranchise && (
@@ -1024,9 +1035,23 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
     );
   }
 
-  // Empty cell - minimal
+  // Empty cell - minimal, but show if acquired via trade
+  const isAcquiredEmpty = !!slot.acquiredFrom;
   return (
-    <div className="h-[88px] rounded-lg bg-gray-900/20 border border-gray-800/20" />
+    <div className={`h-[88px] rounded-lg ${
+      isAcquiredEmpty
+        ? "bg-emerald-900/10 border border-emerald-500/20"
+        : "bg-gray-900/20 border border-gray-800/20"
+    } relative`}>
+      {isAcquiredEmpty && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+          <ArrowLeftRight size={14} className="text-emerald-500/50" />
+          <span className="text-[9px] text-emerald-500/70 text-center px-1">
+            via {slot.acquiredFrom?.split(' ')[0]}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1062,6 +1087,7 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
     const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
     const yearsKept = slot.keeper.yearsKept || 1;
+    const isAcquiredPick = !!slot.acquiredFrom;
 
     // Get last name for compact display
     const nameParts = slot.keeper.playerName.split(" ");
@@ -1074,14 +1100,23 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
           h-[72px] rounded-lg relative overflow-hidden cursor-pointer active:scale-95 transition-transform
           ${isFranchise
             ? "bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400"
-            : "bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50"
+            : isAcquiredPick
+              ? "bg-gradient-to-br from-emerald-800 via-gray-800 to-gray-900 ring-1 ring-emerald-500/50"
+              : "bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50"
           }
         `}
       >
         {/* Position stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-          isFranchise ? "bg-amber-400" : posAccent.border.replace("border-l-", "bg-")
+          isFranchise ? "bg-amber-400" : isAcquiredPick ? "bg-emerald-400" : posAccent.border.replace("border-l-", "bg-")
         }`} />
+
+        {/* Acquired pick indicator */}
+        {isAcquiredPick && !isFranchise && (
+          <div className="absolute top-1 right-1">
+            <ArrowLeftRight size={10} className="text-emerald-400" />
+          </div>
+        )}
 
         {/* Franchise star */}
         {isFranchise && (
@@ -1128,8 +1163,22 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
     );
   }
 
-  // Empty cell
+  // Empty cell - show if acquired via trade
+  const isAcquiredEmpty = !!slot.acquiredFrom;
   return (
-    <div className="h-[72px] rounded-lg bg-gray-900/20 border border-gray-800/20" />
+    <div className={`h-[72px] rounded-lg ${
+      isAcquiredEmpty
+        ? "bg-emerald-900/10 border border-emerald-500/20"
+        : "bg-gray-900/20 border border-gray-800/20"
+    } relative`}>
+      {isAcquiredEmpty && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+          <ArrowLeftRight size={12} className="text-emerald-500/50" />
+          <span className="text-[8px] text-emerald-500/70">
+            via {slot.acquiredFrom?.split(' ')[0]}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
