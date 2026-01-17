@@ -16,6 +16,10 @@ import {
   Edit,
   Users,
   History,
+  Mail,
+  Link as LinkIcon,
+  Copy,
+  Send,
 } from "lucide-react";
 import { BackLink } from "@/components/ui/BackLink";
 
@@ -52,6 +56,23 @@ interface SettingsData {
   costReductionPerYear: number;
 }
 
+interface InviteData {
+  id: string;
+  token: string;
+  email: string | null;
+  status: "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+  expiresAt: string;
+  acceptedAt: string | null;
+}
+
+interface RosterInviteData {
+  rosterId: string;
+  sleeperId: string;
+  teamName: string | null;
+  ownerId: string | null;
+  invite: InviteData | null;
+}
+
 export default function CommissionerPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -59,17 +80,20 @@ export default function CommissionerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
-  const [activeTab, setActiveTab] = useState<"keepers" | "settings" | "activity">("keepers");
+  const [activeTab, setActiveTab] = useState<"keepers" | "invites" | "settings" | "activity">("keepers");
 
   const [leagueName, setLeagueName] = useState("");
   const [rosters, setRosters] = useState<RosterData[]>([]);
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [activity, setActivity] = useState<{ id: string; action: string; entity: string; createdAt: string }[]>([]);
+  const [invites, setInvites] = useState<RosterInviteData[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
 
   const [selectedRoster, setSelectedRoster] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [editingKeeper, setEditingKeeper] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -132,6 +156,78 @@ export default function CommissionerPage() {
   const handleUpdateSettings = (updates: Partial<SettingsData>) => {
     performAction({ action: "updateSettings", settings: updates });
   };
+
+  const fetchInvites = async () => {
+    setInvitesLoading(true);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/invites`);
+      if (res.ok) {
+        const data = await res.json();
+        setInvites(data.rosters || []);
+      }
+    } catch {
+      setMessage({ text: "Failed to load invites", type: "error" });
+    } finally {
+      setInvitesLoading(false);
+    }
+  };
+
+  const generateAllInvites = async () => {
+    setInvitesLoading(true);
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/invites`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ createAll: true }),
+      });
+      if (res.ok) {
+        setMessage({ text: "Invites generated for all teams", type: "success" });
+        fetchInvites();
+      } else {
+        const data = await res.json();
+        setMessage({ text: data.error || "Failed to generate invites", type: "error" });
+      }
+    } catch {
+      setMessage({ text: "Failed to generate invites", type: "error" });
+    } finally {
+      setInvitesLoading(false);
+    }
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const regenerateInvite = async (rosterId: string) => {
+    try {
+      const res = await fetch(`/api/leagues/${leagueId}/invites`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rosterId, regenerate: true }),
+      });
+      if (res.ok) {
+        setMessage({ text: "Invite link regenerated", type: "success" });
+        fetchInvites();
+      } else {
+        const data = await res.json();
+        setMessage({ text: data.error || "Failed to regenerate invite", type: "error" });
+      }
+    } catch {
+      setMessage({ text: "Failed to regenerate invite", type: "error" });
+    }
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const copyInviteLink = (token: string) => {
+    const baseUrl = window.location.origin;
+    const url = `${baseUrl}/invite/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  useEffect(() => {
+    if (activeTab === "invites" && invites.length === 0) {
+      fetchInvites();
+    }
+  }, [activeTab]);
 
   if (loading) {
     return (
@@ -198,9 +294,10 @@ export default function CommissionerPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-gray-800/30 rounded-xl w-fit">
+      <div className="flex gap-2 p-1 bg-gray-800/30 rounded-xl w-fit overflow-x-auto">
         {[
           { id: "keepers", label: "Keepers", icon: Users },
+          { id: "invites", label: "Invites", icon: LinkIcon },
           { id: "settings", label: "Settings", icon: Settings },
           { id: "activity", label: "Activity", icon: History },
         ].map((tab) => (
@@ -350,6 +447,127 @@ export default function CommissionerPage() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "invites" && (
+        <div className="space-y-6">
+          {/* Info Banner */}
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+            <p className="text-amber-400 text-sm">
+              <strong>Invite-Only Access:</strong> Generate unique invite links for each team owner.
+              They&apos;ll use these links to create their account and access their team.
+            </p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={generateAllInvites}
+              disabled={invitesLoading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-800 text-white rounded-xl transition-colors"
+            >
+              <LinkIcon className="w-4 h-4" />
+              {invitesLoading ? "Generating..." : "Generate All Invites"}
+            </button>
+            <button
+              onClick={fetchInvites}
+              disabled={invitesLoading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 rounded-xl border border-gray-700/50 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${invitesLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          </div>
+
+          {/* Invites List */}
+          <div className="card-premium rounded-2xl overflow-hidden">
+            <div className="p-4 border-b border-gray-700/50">
+              <h3 className="font-semibold text-white">Team Invites</h3>
+            </div>
+
+            {invitesLoading && invites.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">Loading invites...</div>
+            ) : invites.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                No invites generated yet. Click &quot;Generate All Invites&quot; to create invite links.
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-700/50">
+                {invites.map((roster) => (
+                  <div key={roster.rosterId} className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-amber-400 font-bold flex-shrink-0">
+                        {roster.teamName?.[0] || "?"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-white truncate">{roster.teamName || `Team ${roster.sleeperId}`}</p>
+                        <div className="flex items-center gap-2 text-sm">
+                          {roster.invite ? (
+                            roster.invite.status === "ACCEPTED" ? (
+                              <span className="text-emerald-400 flex items-center gap-1">
+                                <Check className="w-3 h-3" /> Joined
+                              </span>
+                            ) : roster.invite.status === "PENDING" ? (
+                              <span className="text-amber-400">Pending</span>
+                            ) : (
+                              <span className="text-gray-500">{roster.invite.status}</span>
+                            )
+                          ) : (
+                            <span className="text-gray-500">No invite</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {roster.invite && roster.invite.status === "PENDING" && (
+                        <>
+                          <button
+                            onClick={() => copyInviteLink(roster.invite!.token)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm text-white transition-colors"
+                          >
+                            {copiedToken === roster.invite.token ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                Copy Link
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => regenerateInvite(roster.rosterId)}
+                            className="p-1.5 hover:bg-gray-700 rounded-lg transition-colors"
+                            title="Regenerate invite"
+                          >
+                            <RefreshCw className="w-4 h-4 text-gray-400" />
+                          </button>
+                        </>
+                      )}
+                      {roster.invite?.status === "ACCEPTED" && (
+                        <span className="text-xs text-gray-500">
+                          Joined {roster.invite.acceptedAt ? new Date(roster.invite.acceptedAt).toLocaleDateString() : ""}
+                        </span>
+                      )}
+                      {!roster.invite && (
+                        <button
+                          onClick={() => regenerateInvite(roster.rosterId)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 rounded-lg text-sm text-amber-400 transition-colors"
+                        >
+                          <LinkIcon className="w-3.5 h-3.5" />
+                          Generate
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

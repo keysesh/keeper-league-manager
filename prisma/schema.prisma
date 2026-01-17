@@ -47,6 +47,48 @@ model Session {
 }
 
 // ============================================
+// LEAGUE INVITES
+// ============================================
+
+model LeagueInvite {
+  id           String            @id @default(cuid())
+  leagueId     String            @map("league_id")
+  rosterId     String            @map("roster_id")
+  token        String            @unique
+  email        String?           // Optional: for magic link invites
+  status       LeagueInviteStatus @default(PENDING)
+  expiresAt    DateTime          @map("expires_at")
+  acceptedById String?           @map("accepted_by_id")
+  acceptedAt   DateTime?         @map("accepted_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  @@unique([leagueId, rosterId])
+  @@index([token])
+  @@index([email])
+  @@map("league_invites")
+}
+
+enum LeagueInviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model MagicLink {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([token])
+  @@map("magic_links")
+}
+
+// ============================================
 // LEAGUE & SEASON
 // ============================================
 
