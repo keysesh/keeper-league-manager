@@ -586,7 +586,7 @@ export default function TradeAnalyzerPage() {
                             className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                               pick.isOwn
                                 ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700/50 text-gray-300 hover:text-white"
-                                : "bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border border-emerald-500/30 text-emerald-400"
+                                : "bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 hover:from-emerald-500/20 hover:to-emerald-600/20 border border-emerald-500/30 text-emerald-400"
                             }`}
                             title={pick.isOwn ? "Own pick" : `Acquired from ${pick.originalOwner}`}
                           >
@@ -730,7 +730,7 @@ export default function TradeAnalyzerPage() {
                             className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                               pick.isOwn
                                 ? "bg-gray-800/50 hover:bg-gray-700 border border-gray-700/50 text-gray-300 hover:text-white"
-                                : "bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border border-emerald-500/30 text-emerald-400"
+                                : "bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 hover:from-emerald-500/20 hover:to-emerald-600/20 border border-emerald-500/30 text-emerald-400"
                             }`}
                             title={pick.isOwn ? "Own pick" : `Acquired from ${pick.originalOwner}`}
                           >

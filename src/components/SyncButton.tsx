@@ -49,13 +49,13 @@ export function SyncButton({ variant = "default", onSuccess }: SyncButtonProps) 
   const getStatusColor = () => {
     if (status === "success") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
     if (status === "error") return "border-red-500/30 bg-red-500/10 text-red-400";
-    return "border-white/[0.06] bg-white/[0.03] hover:border-violet-500/30 hover:bg-violet-500/5";
+    return "border-white/[0.06] bg-white/[0.03] hover:border-amber-500/30 hover:bg-amber-500/5";
   };
 
   const getIconColor = () => {
     if (status === "success") return "bg-emerald-500/20 text-emerald-400";
     if (status === "error") return "bg-red-500/20 text-red-400";
-    return "bg-violet-500/20 text-violet-400";
+    return "bg-amber-500/20 text-amber-400";
   };
 
   if (variant === "compact") {

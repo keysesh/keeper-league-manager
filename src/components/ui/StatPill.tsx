@@ -6,12 +6,12 @@ interface StatPillProps {
 }
 
 const variantStyles = {
-  primary: "bg-purple-500/20 text-purple-400",
+  primary: "bg-amber-500/20 text-amber-400",
   success: "bg-green-500/20 text-green-400",
   warning: "bg-amber-500/20 text-amber-400",
   danger: "bg-red-500/20 text-red-400",
   subtle: "bg-gray-500/20 text-gray-400",
-  info: "bg-cyan-500/20 text-cyan-400",
+  info: "bg-amber-500/20 text-amber-400",
 };
 
 const sizeStyles = {

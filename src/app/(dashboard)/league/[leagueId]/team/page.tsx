@@ -315,8 +315,8 @@ export default function TeamsPage() {
       <div>
         <BackLink href={`/league/${leagueId}`} label="Back to League" />
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/10 ring-1 ring-violet-500/20 flex items-center justify-center">
-            <Users className="w-5 h-5 text-violet-400" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center">
+            <Users className="w-5 h-5 text-amber-400" />
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">League Standings</h1>
@@ -477,8 +477,8 @@ function TeamCard({
         ${isChampion ? "ring-2 ring-amber-500/50 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent" : ""}
         ${isRunnerUp ? "ring-1 ring-zinc-400/40" : ""}
         border ${isPlayoff ? "border-emerald-500/20" : "border-white/[0.04]"}
-        hover:border-violet-500/30 hover:bg-zinc-900/80
-        hover:shadow-lg hover:shadow-violet-500/5
+        hover:border-amber-500/30 hover:bg-zinc-900/80
+        hover:shadow-lg hover:shadow-amber-500/5
       `}
     >
       {/* Rank Badge - Top Left */}
@@ -538,12 +538,12 @@ function TeamCard({
               className={`w-11 h-11 rounded-xl ring-2 ${isChampion ? "ring-amber-500/60" : "ring-white/10"}`}
             />
           ) : (
-            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500/40 to-purple-600/30 flex items-center justify-center text-white text-sm font-bold ring-2 ${isChampion ? "ring-amber-500/60" : "ring-white/10"}`}>
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500/40 to-amber-600/30 flex items-center justify-center text-white text-sm font-bold ring-2 ${isChampion ? "ring-amber-500/60" : "ring-white/10"}`}>
               {getInitials(roster.teamName)}
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate group-hover:text-violet-200 transition-colors">
+            <p className="text-sm font-bold text-white truncate group-hover:text-amber-200 transition-colors">
               {roster.teamName || "Unnamed Team"}
             </p>
             <p className="text-[11px] text-zinc-400 truncate">
@@ -556,7 +556,7 @@ function TeamCard({
         {accolades.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {accolades.slice(0, 2).map(accolade => (
-              <span key={accolade} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/20">
+              <span key={accolade} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/20">
                 {accolade}
               </span>
             ))}
@@ -607,10 +607,10 @@ function TeamCard({
                   key={season.season}
                   className={`
                     flex-1 text-center py-1.5 rounded-lg
-                    ${i === 0 ? "bg-violet-500/20 ring-1 ring-violet-500/30" : "bg-zinc-800/60"}
+                    ${i === 0 ? "bg-amber-500/20 ring-1 ring-amber-500/30" : "bg-zinc-800/60"}
                   `}
                 >
-                  <div className={`text-sm font-bold ${i === 0 ? "text-violet-300" : "text-zinc-400"}`}>
+                  <div className={`text-sm font-bold ${i === 0 ? "text-amber-300" : "text-zinc-400"}`}>
                     {season.wins}-{season.losses}
                   </div>
                   <div className="text-[9px] text-zinc-500">&apos;{season.season.slice(-2)}</div>

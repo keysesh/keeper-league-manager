@@ -110,8 +110,8 @@ const eventConfig: Record<string, {
     label: "Waiver Claim",
   },
   FREE_AGENT: {
-    color: "text-cyan-400",
-    bgColor: "bg-cyan-500/10",
+    color: "text-amber-400",
+    bgColor: "bg-amber-500/10",
     icon: <FAIcon />,
     label: "Free Agent",
   },

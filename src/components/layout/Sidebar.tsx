@@ -53,7 +53,7 @@ export function Sidebar() {
         <div className="px-5 pt-6">
           <Link
             href="/leagues"
-            className="flex items-center gap-2 text-sm text-zinc-500 hover:text-violet-400 transition-colors"
+            className="flex items-center gap-2 text-sm text-zinc-500 hover:text-amber-400 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             All Leagues
@@ -77,9 +77,9 @@ export function Sidebar() {
               className={`
                 group flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium
                 transition-all duration-300 ease-out
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70
                 ${isActive
-                  ? "bg-gradient-to-r from-violet-500/15 via-violet-500/10 to-transparent text-violet-400 border border-violet-500/20"
+                  ? "bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent text-amber-400 border border-amber-500/20"
                   : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03] border border-transparent"
                 }
               `}
@@ -88,7 +88,7 @@ export function Sidebar() {
                 className={`
                 flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-300
                 ${isActive
-                  ? "bg-violet-500/20 text-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.15)]"
+                  ? "bg-amber-500/20 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
                   : "bg-white/[0.03] text-zinc-500 group-hover:bg-white/[0.06] group-hover:text-zinc-300"
                 }
               `}
@@ -97,12 +97,12 @@ export function Sidebar() {
               </span>
               <span className="tracking-wide flex-1">{item.name}</span>
               {item.badge && item.badge > 0 && (
-                <span className="px-2 py-0.5 bg-violet-500/20 text-violet-400 text-xs font-semibold rounded-full">
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs font-semibold rounded-full">
                   {item.badge}
                 </span>
               )}
               {isActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
               )}
             </Link>
           );
@@ -111,7 +111,7 @@ export function Sidebar() {
 
       {/* Season Card */}
       <div className="mx-5 mb-6">
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-white/[0.06] backdrop-blur-sm">
+        <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-600/5 to-transparent border border-amber-500/10 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-semibold">
               Current Season
@@ -122,7 +122,7 @@ export function Sidebar() {
             </span>
           </div>
           <p className="text-3xl font-bold text-white tracking-tight">{new Date().getFullYear()}</p>
-          <p className="text-xs text-violet-400/90 mt-2 font-medium">Keeper selections open</p>
+          <p className="text-xs text-amber-400/90 mt-2 font-medium">Keeper selections open</p>
         </div>
       </div>
 

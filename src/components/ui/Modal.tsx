@@ -108,7 +108,7 @@ export function Modal({
         `}
       >
         {/* Top accent line */}
-        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+        <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
 
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
@@ -117,7 +117,7 @@ export function Modal({
             </h3>
             <button
               onClick={onClose}
-              className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
               aria-label="Close dialog"
             >
               <X size={18} strokeWidth={2} />
@@ -156,9 +156,9 @@ const variantConfig = {
   },
   info: {
     icon: Info,
-    iconBg: "bg-violet-500/20",
-    iconColor: "text-violet-400",
-    button: "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20 focus-visible:ring-violet-500/70",
+    iconBg: "bg-amber-500/20",
+    iconColor: "text-amber-400",
+    button: "bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-lg shadow-amber-500/20 focus-visible:ring-amber-500/70",
   },
 };
 

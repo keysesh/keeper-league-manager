@@ -154,10 +154,10 @@ export const STATUS_COLORS = {
 
 export const KEEPER_TYPE_COLORS = {
   FRANCHISE: {
-    bg: "bg-purple-900/50",
-    border: "border-purple-500",
-    text: "text-purple-400",
-    badge: "bg-purple-600",
+    bg: "bg-amber-900/50",
+    border: "border-amber-500",
+    text: "text-amber-400",
+    badge: "bg-amber-600",
   },
   REGULAR: {
     bg: "bg-blue-900/50",

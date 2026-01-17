@@ -106,10 +106,10 @@ export function NotificationBell() {
       TRADE_REJECTED: "bg-red-500/20 text-red-400",
       TRADE_COUNTERED: "bg-amber-500/20 text-amber-400",
       TRADE_EXPIRED: "bg-zinc-500/20 text-zinc-400",
-      TRADE_VOTE: "bg-violet-500/20 text-violet-400",
+      TRADE_VOTE: "bg-amber-500/20 text-amber-400",
       KEEPER_DEADLINE: "bg-orange-500/20 text-orange-400",
       KEEPER_LOCKED: "bg-emerald-500/20 text-emerald-400",
-      LEAGUE_SYNC: "bg-cyan-500/20 text-cyan-400",
+      LEAGUE_SYNC: "bg-amber-500/20 text-amber-400",
       SYSTEM: "bg-zinc-500/20 text-zinc-400",
     };
     return iconClasses[type] || iconClasses.SYSTEM;
@@ -140,7 +140,7 @@ export function NotificationBell() {
                 <button
                   onClick={markAllAsRead}
                   disabled={loading}
-                  className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50"
+                  className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 disabled:opacity-50"
                 >
                   <CheckCheck className="w-3 h-3" />
                   Mark all read
@@ -168,7 +168,7 @@ export function NotificationBell() {
                   <div
                     key={notification.id}
                     className={`px-4 py-3 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.03] transition-colors ${
-                      !notification.isRead ? "bg-violet-500/5" : ""
+                      !notification.isRead ? "bg-amber-500/5" : ""
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -243,7 +243,7 @@ export function NotificationBell() {
               <Link
                 href="/notifications"
                 onClick={() => setIsOpen(false)}
-                className="text-xs text-violet-400 hover:text-violet-300"
+                className="text-xs text-amber-400 hover:text-amber-300"
               >
                 View all notifications
               </Link>

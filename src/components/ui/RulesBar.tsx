@@ -56,7 +56,7 @@ export function RulesBar({ settings }: RulesBarProps) {
   return (
     <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#13111a]/80 via-[#0c0a0f]/60 to-[#13111a]/80 border border-white/[0.06] backdrop-blur-sm">
       {/* Subtle top accent */}
-      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
 
       <div className="flex items-center gap-2 px-4 py-2.5">
         {/* Label */}

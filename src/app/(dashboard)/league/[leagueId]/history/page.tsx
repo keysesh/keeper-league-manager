@@ -128,8 +128,8 @@ export default function HistoryPage() {
         <div>
           <BackLink href={`/league/${leagueId}`} label="Back to League" />
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 ring-1 ring-cyan-500/20 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-cyan-400" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-amber-400" />
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Keeper History</h1>

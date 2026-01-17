@@ -22,7 +22,7 @@ interface PageHeaderProps {
 }
 
 const badgeColors = {
-  purple: "bg-violet-500/20 text-violet-400 ring-violet-500/30",
+  purple: "bg-amber-500/20 text-amber-400 ring-amber-500/30",
   emerald: "bg-emerald-500/20 text-emerald-400 ring-emerald-500/30",
   amber: "bg-amber-500/20 text-amber-400 ring-amber-500/30",
   blue: "bg-blue-500/20 text-blue-400 ring-blue-500/30",
@@ -105,12 +105,12 @@ export function PageHeader({
             href={primaryAction.href}
             className="
               group flex items-center gap-1.5 px-4 py-2 rounded-xl
-              bg-gradient-to-r from-violet-600 to-purple-600
-              hover:from-violet-500 hover:to-purple-500
-              text-sm font-semibold text-white
-              shadow-lg shadow-violet-500/20
+              bg-gradient-to-r from-amber-600 to-amber-500
+              hover:from-amber-500 hover:to-amber-400
+              text-sm font-semibold text-black
+              shadow-lg shadow-amber-500/20
               transition-all duration-200
-              hover:shadow-violet-500/30
+              hover:shadow-amber-500/30
             "
           >
             {primaryAction.label}

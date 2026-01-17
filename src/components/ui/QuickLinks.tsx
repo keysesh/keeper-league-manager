@@ -73,8 +73,8 @@ export function QuickLinks({ leagueId, userRosterId }: QuickLinksProps) {
       icon: TrendingUp,
       label: "History",
       description: "Past seasons",
-      color: "text-cyan-400",
-      gradient: "from-cyan-500/10 to-cyan-600/5",
+      color: "text-amber-400",
+      gradient: "from-amber-500/10 to-amber-600/5",
     },
     {
       href: `/league/${leagueId}/settings`,

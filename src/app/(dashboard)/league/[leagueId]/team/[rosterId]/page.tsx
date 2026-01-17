@@ -266,8 +266,8 @@ export default function TeamRosterPage() {
           <div className="flex-1 min-w-0">
             <BackLink href={`/league/${leagueId}`} label="Back to League" />
             <div className="flex items-center gap-2 sm:gap-3 mt-1">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 ring-1 ring-violet-500/20 flex items-center justify-center flex-shrink-0">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight truncate">Manage Keepers</h1>
@@ -290,8 +290,8 @@ export default function TeamRosterPage() {
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="card-premium rounded-xl p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-              <Users size={16} className="sm:w-[18px] sm:h-[18px] text-violet-400" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <Users size={16} className="sm:w-[18px] sm:h-[18px] text-amber-400" />
             </div>
             <div>
               <p className="text-lg sm:text-2xl font-bold text-white">{data.currentKeepers.total}<span className="text-[10px] sm:text-sm text-zinc-500">/{data.limits.maxKeepers}</span></p>

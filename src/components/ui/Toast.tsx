@@ -51,9 +51,9 @@ const typeConfig: Record<ToastType, {
   },
   info: {
     bg: "bg-[#13111a]/90",
-    border: "border-violet-500/30",
-    icon: "text-violet-400",
-    iconBg: "bg-violet-500/20",
+    border: "border-amber-500/30",
+    icon: "text-amber-400",
+    iconBg: "bg-amber-500/20",
   },
   warning: {
     bg: "bg-[#13111a]/90",

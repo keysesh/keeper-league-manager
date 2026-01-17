@@ -154,8 +154,8 @@ export function KeepersSection({ keepers, leagueId, rosterId, maxKeepers = 7 }: 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04] bg-black/20">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-violet-500/10">
-            <Lock className="w-4 h-4 text-violet-400" />
+          <div className="p-2 rounded-lg bg-amber-500/10">
+            <Lock className="w-4 h-4 text-amber-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Your Keepers</h3>
@@ -168,8 +168,8 @@ export function KeepersSection({ keepers, leagueId, rosterId, maxKeepers = 7 }: 
         <Link
           href={`/league/${leagueId}/team/${rosterId}`}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-            text-violet-400 hover:text-violet-300
-            bg-violet-500/10 hover:bg-violet-500/20
+            text-amber-400 hover:text-amber-300
+            bg-amber-500/10 hover:bg-amber-500/20
             transition-all duration-200"
         >
           Manage
