@@ -4,6 +4,7 @@ import { memo } from "react";
 import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { InjuryIndicator } from "@/components/ui/InjuryIndicator";
+import { getAgeInfo } from "@/components/ui/AgeBadge";
 
 interface NFLVerseMetadata {
   ranking?: {
@@ -213,11 +214,23 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">Age</div>
-          <div className="text-[11px] sm:text-xs font-semibold text-white">{player.age || "—"}</div>
+          {(() => {
+            const ageInfo = getAgeInfo(player.age ?? null, player.position ?? null);
+            return (
+              <div
+                className={`text-[11px] sm:text-xs font-semibold ${ageInfo?.text || "text-white"}`}
+                title={ageInfo ? `${ageInfo.label} - Age ${player.age} for ${player.position || "player"}` : undefined}
+              >
+                {player.age || "—"}
+              </div>
+            );
+          })()}
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">Exp</div>
-          <div className="text-[11px] sm:text-xs font-semibold text-white">{player.yearsExp ?? 0}yr</div>
+          <div className={`text-[11px] sm:text-xs font-semibold ${player.yearsExp === 0 ? "text-purple-400" : "text-white"}`}>
+            {player.yearsExp === 0 ? "Rookie" : `${player.yearsExp ?? 0}yr`}
+          </div>
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">

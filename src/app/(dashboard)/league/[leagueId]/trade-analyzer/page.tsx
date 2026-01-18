@@ -7,6 +7,7 @@ import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
+import { AgeBadge } from "@/components/ui/AgeBadge";
 import { Share2, Save, FileText, Check, Copy, X, ArrowLeftRight } from "lucide-react";
 
 interface Player {
@@ -1182,10 +1183,9 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
             <span>{player.team || "FA"}</span>
-            {/* Only show bye week if we have the data */}
             {byeWeek && <span className="text-gray-400">Bye {byeWeek}</span>}
-            {player.age && <span>Age {player.age}</span>}
-            {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr`}</span>}
+            {/* Age with position-aware color coding */}
+            <AgeBadge age={player.age} yearsExp={player.yearsExp} position={player.position} size="xs" />
             <span className="text-gray-600">•</span>
             <span className="text-blue-400 font-medium">R{projection.newCost}</span>
             <span className="text-gray-600">kept {keeperStatus.yearsKept}/{keeperStatus.maxYearsAllowed}</span>
