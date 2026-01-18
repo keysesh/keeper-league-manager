@@ -9,7 +9,7 @@ export async function POST() {
   try {
     const updated = await prisma.user.updateMany({
       where: {
-        discordUsername: { contains: "keysesh", mode: "insensitive" },
+        sleeperUsername: { contains: "keysesh", mode: "insensitive" },
       },
       data: { isAdmin: true },
     });
