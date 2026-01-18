@@ -142,7 +142,7 @@ async function getPlayerTransactions(
     },
   });
 
-  return transactionPlayers.map((tp) => ({
+  const rawTrades = transactionPlayers.map((tp) => ({
     id: tp.transaction.id,
     type: tp.transaction.type,
     createdAt: tp.transaction.createdAt,
@@ -157,6 +157,29 @@ async function getPlayerTransactions(
       toSleeperId: p.toRosterId ? rosterMap.get(p.toRosterId) || null : null,
     })),
   }));
+
+  // Deduplicate same-day trades (likely data errors, especially in 2024)
+  // Keep only the LAST trade of each day (most likely to be correct)
+  const deduped: TransactionInfo[] = [];
+  for (const trade of rawTrades) {
+    const dateStr = trade.date.toISOString().split("T")[0];
+    const existingIdx = deduped.findIndex(
+      (t) => t.date.toISOString().split("T")[0] === dateStr
+    );
+    if (existingIdx >= 0) {
+      // Same day trade exists - replace with this one (later one is likely correct)
+      // But only if it's going to a DIFFERENT team (back-and-forth on same day = error)
+      if (deduped[existingIdx].toRosterSleeperId !== trade.toRosterSleeperId) {
+        // Keep the one that results in a different final destination
+        deduped[existingIdx] = trade;
+      }
+      // If same destination, skip (duplicate)
+    } else {
+      deduped.push(trade);
+    }
+  }
+
+  return deduped;
 }
 
 async function getLeagueChain(startLeagueId: string): Promise<string[]> {
