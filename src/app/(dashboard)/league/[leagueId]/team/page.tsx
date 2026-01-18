@@ -11,14 +11,10 @@ import {
   ChevronRight,
   Trophy,
   Medal,
+  Users,
+  Star,
+  Crown,
 } from "lucide-react";
-import {
-  UsersIcon,
-  TrophyIcon,
-  StarIcon,
-  CrownIcon,
-  IconGradientDefs,
-} from "@/components/ui/PremiumIcons";
 import { TournamentBracket } from "@/components/ui/TournamentBracket";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -168,7 +164,7 @@ export default function TeamsPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-40 rounded-xl" />
+            <Skeleton key={i} className="h-40 rounded-md" />
           ))}
         </div>
       </div>
@@ -178,7 +174,7 @@ export default function TeamsPage() {
   if (error || !league) {
     return (
       <div className="max-w-7xl mx-auto p-4 md:p-6">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+        <div className="bg-[#1a1a1a] border border-red-500/30 rounded-md p-6">
           <p className="text-red-400 font-medium">Failed to load teams</p>
         </div>
       </div>
@@ -243,24 +239,18 @@ export default function TeamsPage() {
     const totalTeams = league.rosters.length;
 
     if (placement !== undefined) {
-      // Playoff teams pick based on finish: Champion = last pick, Runner-up = second to last
-      // placement 1 (champion) → pick totalTeams
-      // placement 2 (runner-up) → pick totalTeams - 1
       return totalTeams - placement + 1;
     }
 
-    // Non-playoff teams: sorted by record (worst first gets pick 1)
     const nonPlayoffTeams = sortedRosters
       .filter(r => !playoffPlacements.has(r.id))
       .sort((a, b) => {
-        // Sort worst to best (ascending by wins, then points)
         if (a.wins !== b.wins) return a.wins - b.wins;
         return a.pointsFor - b.pointsFor;
       });
 
     const pickIndex = nonPlayoffTeams.findIndex(r => r.id === rosterId);
     if (pickIndex !== -1) {
-      // pickIndex 0 = worst record = pick 1
       return pickIndex + 1;
     }
     return undefined;
@@ -283,18 +273,16 @@ export default function TeamsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-      <IconGradientDefs />
-
       {/* Header */}
       <div>
         <BackLink href={`/league/${leagueId}`} label="Back to League" />
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 ring-1 ring-violet-500/20 flex items-center justify-center">
-            <UsersIcon size={20} />
+          <div className="w-10 h-10 rounded-md bg-[#222222] border border-[#333333] flex items-center justify-center">
+            <Users className="w-5 h-5 text-blue-400" />
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">League Standings</h1>
-            <p className="text-sm text-zinc-400">{league.name} • {league.season} Season</p>
+            <p className="text-sm text-gray-400">{league.name} • {league.season} Season</p>
           </div>
         </div>
       </div>
@@ -328,26 +316,26 @@ export default function TeamsPage() {
       </div>
 
       {/* Playoff Bracket Section */}
-      <div className="card-glass rounded-xl overflow-hidden">
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md overflow-hidden">
         <button
           onClick={() => setShowBracket(!showBracket)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#222222] transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
-              <TrophyIcon size={16} />
+            <div className="w-9 h-9 rounded-md bg-[#222222] border border-[#333333] flex items-center justify-center">
+              <Trophy className="w-4 h-4 text-blue-400" />
             </div>
             <div className="text-left">
               <h3 className="text-sm font-semibold text-white">Playoff Bracket</h3>
-              <p className="text-xs text-zinc-400">{playoffSpots} teams • Championship</p>
+              <p className="text-xs text-gray-400">{playoffSpots} teams • Championship</p>
             </div>
           </div>
           <ChevronDown
-            className={`w-5 h-5 text-zinc-400 transition-transform ${showBracket ? "rotate-180" : ""}`}
+            className={`w-5 h-5 text-gray-400 transition-transform ${showBracket ? "rotate-180" : ""}`}
           />
         </button>
         {showBracket && (
-          <div className="border-t border-white/[0.06]">
+          <div className="border-t border-[#2a2a2a]">
             <div className="p-4">
               {playoffs ? (
                 <TournamentBracket
@@ -357,7 +345,7 @@ export default function TeamsPage() {
                 />
               ) : (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-violet-400 border-t-transparent"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-400 border-t-transparent"></div>
                 </div>
               )}
             </div>
@@ -367,11 +355,11 @@ export default function TeamsPage() {
 
       {sortedRosters.length === 0 && (
         <div className="text-center py-16">
-          <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 flex items-center justify-center mx-auto mb-4">
-            <UsersIcon size={32} className="opacity-60" />
+          <div className="w-16 h-16 rounded-md bg-[#222222] border border-[#333333] flex items-center justify-center mx-auto mb-4">
+            <Users className="w-8 h-8 text-gray-600" />
           </div>
-          <p className="text-zinc-400 font-medium">No teams found</p>
-          <p className="text-sm text-zinc-500 mt-1">Teams will appear once the league syncs</p>
+          <p className="text-gray-400 font-medium">No teams found</p>
+          <p className="text-sm text-gray-500 mt-1">Teams will appear once the league syncs</p>
         </div>
       )}
     </div>
@@ -407,15 +395,15 @@ function TeamCard({
     <Link
       href={`/league/${leagueId}/team/${roster.id}`}
       className={`
-        group relative rounded-xl p-4 transition-all duration-200
-        card-glass overflow-hidden
-        ${isChampion ? "ring-2 ring-violet-500/50" : ""}
-        hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/10
+        group relative rounded-md p-4 transition-all duration-200
+        bg-[#1a1a1a] border border-[#2a2a2a] overflow-hidden
+        ${isChampion ? "ring-2 ring-blue-500/50" : ""}
+        hover:border-[#333333] hover:bg-[#222222]
       `}
     >
       {/* Champion Banner */}
       {isChampion && (
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-violet-400 to-violet-500" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
       )}
 
       {/* Top Row: Avatar + Name + Badges */}
@@ -425,33 +413,33 @@ function TeamCard({
           <img
             src={history.avatar}
             alt=""
-            className="w-12 h-12 rounded-xl ring-2 ring-white/10 flex-shrink-0"
+            className="w-12 h-12 rounded-md ring-2 ring-[#333333] flex-shrink-0"
           />
         ) : (
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/40 to-violet-600/30 flex items-center justify-center text-white text-sm font-bold ring-2 ring-white/10 flex-shrink-0">
+          <div className="w-12 h-12 rounded-md bg-[#222222] border border-[#333333] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
             {getInitials(roster.teamName)}
           </div>
         )}
 
         {/* Name + Owner */}
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-white truncate group-hover:text-violet-200 transition-colors">
+          <p className="text-base font-bold text-white truncate group-hover:text-blue-400 transition-colors">
             {roster.teamName || "Unnamed Team"}
           </p>
-          <p className="text-sm text-zinc-400 truncate">
+          <p className="text-sm text-gray-400 truncate">
             {history?.displayName || roster.owners?.[0]?.displayName || "Unknown"}
           </p>
         </div>
 
         {/* Rank Badge */}
         <div className={`
-          w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0
-          ${rank === 1 ? "bg-gradient-to-br from-violet-400 to-violet-600 text-white" : ""}
-          ${rank === 2 ? "bg-gradient-to-br from-zinc-300 to-zinc-400 text-black" : ""}
-          ${rank === 3 ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white" : ""}
-          ${rank > 3 ? "bg-zinc-800 text-zinc-400" : ""}
+          w-8 h-8 rounded-md flex items-center justify-center text-sm font-bold flex-shrink-0
+          ${rank === 1 ? "bg-blue-600 text-white" : ""}
+          ${rank === 2 ? "bg-gray-400 text-black" : ""}
+          ${rank === 3 ? "bg-amber-600 text-white" : ""}
+          ${rank > 3 ? "bg-[#222222] border border-[#333333] text-gray-400" : ""}
         `}>
-          {rank <= 3 ? (rank === 1 ? <CrownIcon size={16} /> : <Medal className="w-4 h-4" />) : rank}
+          {rank <= 3 ? (rank === 1 ? <Crown className="w-4 h-4" /> : <Medal className="w-4 h-4" />) : rank}
         </div>
       </div>
 
@@ -460,10 +448,10 @@ function TeamCard({
         {/* Playoff Finish Badge - only show for completed playoffs */}
         {placement && (
           <span className={`
-            inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold
-            ${placement === 1 ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30" : ""}
-            ${placement === 2 ? "bg-zinc-500/20 text-zinc-300 ring-1 ring-zinc-500/30" : ""}
-            ${placement >= 3 ? "bg-zinc-700/50 text-zinc-400" : ""}
+            inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold border
+            ${placement === 1 ? "bg-blue-500/20 text-blue-300 border-blue-500/30" : ""}
+            ${placement === 2 ? "bg-gray-500/20 text-gray-300 border-gray-500/30" : ""}
+            ${placement >= 3 ? "bg-[#222222] text-gray-400 border-[#333333]" : ""}
           `}>
             {placement === 1 && <Trophy className="w-3 h-3" />}
             {getPlayoffLabel(placement)}
@@ -473,10 +461,10 @@ function TeamCard({
         {/* Draft Pick Badge */}
         {draftPick !== undefined && (
           <span className={`
-            inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold
-            ${draftPick <= 3 ? "bg-emerald-500/20 text-emerald-300" : ""}
-            ${draftPick > 3 && draftPick < 8 ? "bg-zinc-600/30 text-zinc-300" : ""}
-            ${draftPick >= 8 ? "bg-red-500/20 text-red-300" : ""}
+            inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold border
+            ${draftPick <= 3 ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : ""}
+            ${draftPick > 3 && draftPick < 8 ? "bg-[#222222] text-gray-300 border-[#333333]" : ""}
+            ${draftPick >= 8 ? "bg-red-500/20 text-red-300 border-red-500/30" : ""}
           `}>
             Pick #{draftPick}
           </span>
@@ -484,40 +472,40 @@ function TeamCard({
 
         {/* Top Scorer */}
         {isTopScorer && (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-amber-500/20 text-amber-300">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
             Top Scorer
           </span>
         )}
 
         {/* Playoff Bound */}
         {isPlayoff && !placement && (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400">
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
             Playoff Bound
           </span>
         )}
       </div>
 
       {/* Stats Row */}
-      <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-black/20">
+      <div className="flex items-center justify-between py-2 px-3 rounded-md bg-[#111111] border border-[#222222]">
         <div>
           <span className={`text-2xl font-black ${winPct >= 0.5 ? "text-emerald-400" : winPct < 0.4 ? "text-red-400" : "text-white"}`}>
             {roster.wins}-{roster.losses}
           </span>
-          {roster.ties > 0 && <span className="text-lg text-zinc-400">-{roster.ties}</span>}
+          {roster.ties > 0 && <span className="text-lg text-gray-400">-{roster.ties}</span>}
         </div>
         <div className="text-right">
-          <div className="text-lg font-bold text-zinc-200">{roster.pointsFor.toFixed(0)}</div>
-          <div className="text-xs text-zinc-500">Points</div>
+          <div className="text-lg font-bold text-gray-200">{roster.pointsFor.toFixed(0)}</div>
+          <div className="text-xs text-gray-500">Points</div>
         </div>
       </div>
 
       {/* Historical Summary (compact) */}
       {history && history.totals.seasonsPlayed > 1 && (
-        <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-sm">
-          <span className="text-zinc-400">All-Time</span>
+        <div className="mt-3 pt-3 border-t border-[#2a2a2a] flex items-center justify-between text-sm">
+          <span className="text-gray-400">All-Time</span>
           <span className="font-semibold text-white">
             {history.totals.wins}-{history.totals.losses}
-            <span className="text-zinc-500 ml-1">
+            <span className="text-gray-500 ml-1">
               ({((history.totals.wins / (history.totals.wins + history.totals.losses)) * 100).toFixed(0)}%)
             </span>
           </span>
@@ -526,9 +514,9 @@ function TeamCard({
 
       {/* Championships */}
       {history && history.totals.championships > 0 && (
-        <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
-          <CrownIcon size={14} />
-          <span className="text-xs text-violet-300 font-semibold">
+        <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20">
+          <Crown className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-xs text-blue-300 font-semibold">
             {history.totals.championships}x Champion
           </span>
         </div>
@@ -536,14 +524,14 @@ function TeamCard({
 
       {/* Keepers Badge */}
       {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
-        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.06]">
-          <StarIcon size={14} />
-          <span className="text-xs text-violet-300 font-semibold">{roster.keeperCount} Keepers Locked</span>
+        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#2a2a2a]">
+          <Star className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-xs text-amber-300 font-semibold">{roster.keeperCount} Keepers Locked</span>
         </div>
       )}
 
       {/* Hover Arrow */}
-      <ChevronRight className="absolute bottom-4 right-3 w-5 h-5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+      <ChevronRight className="absolute bottom-4 right-3 w-5 h-5 text-gray-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
     </Link>
   );
 }

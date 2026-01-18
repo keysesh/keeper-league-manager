@@ -13,8 +13,9 @@ import {
   Search,
   Check,
   AlertTriangle,
+  Trophy,
+  Star,
 } from "lucide-react";
-import { TrophyIcon, StarIcon, IconGradientDefs } from "@/components/ui/PremiumIcons";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { logger } from "@/lib/logger";
@@ -373,8 +374,7 @@ export default function SimulationPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4">
       {/* Premium Icon Gradient Definitions */}
-      <IconGradientDefs />
-
+      
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div>
@@ -431,7 +431,7 @@ export default function SimulationPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          icon={<TrophyIcon size={20} />}
+          icon={<Trophy size={20} />}
           value={summary.totalKeepers}
           label="Total Keepers"
           color="white"
@@ -511,7 +511,7 @@ export default function SimulationPage() {
                           >
                             <div className="flex items-center gap-2">
                               {keeper.type === "FRANCHISE" && (
-                                <StarIcon size={12} />
+                                <Star size={12} />
                               )}
                               <PositionBadge position={keeper.position} size="xs" />
                               <span className="text-white text-sm">
@@ -593,7 +593,7 @@ export default function SimulationPage() {
                               >
                                 <div className="flex items-center gap-2">
                                   {keeper.type === "FRANCHISE" && (
-                                    <StarIcon size={12} />
+                                    <Star size={12} />
                                   )}
                                   <PositionBadge
                                     position={keeper.position}
