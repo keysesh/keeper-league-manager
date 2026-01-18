@@ -1019,65 +1019,6 @@ export default function TradeAnalyzerPage() {
         </>
       )}
 
-      {/* Trade Summary (always visible when players selected) */}
-      {(team1Players.length > 0 || team2Players.length > 0 || team1Picks.length > 0 || team2Picks.length > 0) && (
-        <div className="card-premium rounded-2xl p-6">
-          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <span className="w-1 h-5 bg-amber-500 rounded-full"></span>
-            Trade Summary
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-sm font-semibold text-blue-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                {team1Roster?.teamName || "Team 1"} sends
-              </h3>
-              <ul className="space-y-2">
-                {team1PlayerList
-                  .filter((p) => team1Players.includes(p.id))
-                  .map((player) => (
-                    <li key={player.id} className="flex items-center gap-3 text-white p-3 rounded-lg bg-gray-800/30">
-                      <PositionBadge position={player.position} size="xs" />
-                      <span className="font-medium">{player.fullName}</span>
-                    </li>
-                  ))}
-                {team1Picks.map((pick, i) => (
-                  <li key={i} className="text-blue-400 p-3 rounded-lg bg-blue-500/10 font-medium">
-                    {pick.season} Round {pick.round} pick
-                  </li>
-                ))}
-                {team1Players.length === 0 && team1Picks.length === 0 && (
-                  <li className="text-gray-500 p-3">Nothing selected</li>
-                )}
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-green-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                {team2Roster?.teamName || "Team 2"} sends
-              </h3>
-              <ul className="space-y-2">
-                {team2PlayerList
-                  .filter((p) => team2Players.includes(p.id))
-                  .map((player) => (
-                    <li key={player.id} className="flex items-center gap-3 text-white p-3 rounded-lg bg-gray-800/30">
-                      <PositionBadge position={player.position} size="xs" />
-                      <span className="font-medium">{player.fullName}</span>
-                    </li>
-                  ))}
-                {team2Picks.map((pick, i) => (
-                  <li key={i} className="text-blue-400 p-3 rounded-lg bg-blue-500/10 font-medium">
-                    {pick.season} Round {pick.round} pick
-                  </li>
-                ))}
-                {team2Players.length === 0 && team2Picks.length === 0 && (
-                  <li className="text-gray-500 p-3">Nothing selected</li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1115,10 +1056,10 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span>{player.team || "FA"}</span>
             {player.age && <span className={getAgeColor(player.age)}>Age {player.age}</span>}
-            {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr`}</span>}
+            {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr exp`}</span>}
             <span className="text-gray-600">•</span>
             <span className="text-amber-400 font-medium">R{projection.newCost}</span>
-            <span className="text-gray-500">{keeperStatus.yearsKept}/{keeperStatus.maxYearsAllowed}yr kept</span>
+            <span className="text-gray-500">kept {keeperStatus.yearsKept} of {keeperStatus.maxYearsAllowed}yr</span>
           </div>
         </div>
       </div>
@@ -1126,16 +1067,16 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
       {/* Stats Row - Always show for consistent height */}
       <div className="grid grid-cols-3 gap-2 mb-2">
         <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
-          <div className="text-emerald-400 font-bold">{stats.pointsPerGame?.toFixed(1) || "—"}</div>
-          <div className="text-gray-600 text-[10px]">ppg</div>
+          <div className="text-emerald-400 font-bold text-lg">{stats.pointsPerGame?.toFixed(1) || "—"}</div>
+          <div className="text-gray-500 text-[10px]">PPG</div>
         </div>
         <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
-          <div className="text-blue-400 font-bold">{stats.fantasyPointsPpr?.toFixed(0) || "—"}</div>
-          <div className="text-gray-600 text-[10px]">total</div>
+          <div className="text-blue-400 font-bold text-lg">{stats.fantasyPointsPpr?.toFixed(0) || "—"}</div>
+          <div className="text-gray-500 text-[10px]">Total Pts</div>
         </div>
         <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
-          <div className="text-gray-300 font-bold">{stats.gamesPlayed || "—"}</div>
-          <div className="text-gray-600 text-[10px]">gp</div>
+          <div className="text-gray-300 font-bold text-lg">{stats.gamesPlayed || "—"}</div>
+          <div className="text-gray-500 text-[10px]">Games</div>
         </div>
       </div>
 
