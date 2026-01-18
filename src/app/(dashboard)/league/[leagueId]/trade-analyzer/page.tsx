@@ -1193,6 +1193,31 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
         </div>
       </div>
 
+      {/* Cost Trajectory - Show future keeper costs */}
+      {projection.costTrajectory.length > 0 && (
+        <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-[#0f0f0f] rounded-md border border-[#222]">
+          <span className="text-[9px] text-gray-500 uppercase tracking-wider">Future Costs:</span>
+          <div className="flex items-center gap-1">
+            {projection.costTrajectory.map((year, idx) => (
+              <span
+                key={year.year}
+                className={`
+                  text-[10px] font-semibold px-1.5 py-0.5 rounded
+                  ${idx === 0 ? "bg-blue-500/20 text-blue-400" : "bg-gray-800 text-gray-400"}
+                  ${year.isFinalYear ? "ring-1 ring-amber-500/50" : ""}
+                `}
+                title={`Year ${year.year}: Round ${year.cost}${year.isFinalYear ? " (Final Year)" : ""}`}
+              >
+                R{year.cost}
+              </span>
+            ))}
+            {projection.costTrajectory.length > 0 && projection.costTrajectory[projection.costTrajectory.length - 1].isFinalYear && (
+              <span className="text-[9px] text-amber-400 ml-1">→ Expires</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Stats Section */}
       <div className="space-y-2">
         {/* Fantasy PPG - The key metric */}
