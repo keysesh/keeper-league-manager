@@ -135,7 +135,7 @@ export class NFLVerseClient {
   }
 
   /**
-   * Get weekly player stats for a season
+   * Get weekly player stats for a season (legacy - use getSeasonStats instead)
    * Contains passing, rushing, receiving yards/TDs
    */
   async getPlayerStats(season: number): Promise<NFLVersePlayerStats[]> {
@@ -148,107 +148,101 @@ export class NFLVerseClient {
   }
 
   /**
-   * Get aggregated season stats for a player
-   * Sums weekly stats into season totals
+   * Get pre-aggregated season stats from NFLverse stats_player release
+   * This is the preferred method - data is already aggregated by NFLverse
+   * URL: stats_player/stats_player_regpost_{season}.csv
    */
   async getSeasonStats(
     season: number,
     gsisId?: string
   ): Promise<NFLVerseSeasonStats[]> {
-    const weeklyStats = await this.getPlayerStats(season);
+    // Use the pre-aggregated stats_player data (regular + postseason combined)
+    const url = `${NFLVERSE_BASE_URL}/stats_player/stats_player_regpost_${season}.csv`;
 
-    // Group by player and aggregate
-    const playerMap = new Map<string, NFLVerseSeasonStats>();
-
-    for (const week of weeklyStats) {
-      // Filter by specific player if gsisId provided
-      if (gsisId && week.player_id !== gsisId) continue;
-
-      const playerId = week.player_id;
-      if (!playerId) continue;
-
-      let stats = playerMap.get(playerId);
-      if (!stats) {
-        stats = {
-          player_id: playerId,
-          player_name: week.player_name || "",
-          position: week.position,
-          team: week.recent_team,
-          season,
-          games_played: 0,
-          // Passing
-          completions: 0,
-          attempts: 0,
-          passing_yards: 0,
-          passing_tds: 0,
-          interceptions: 0,
-          sacks: 0,
-          passing_first_downs: 0,
-          // Rushing
-          carries: 0,
-          rushing_yards: 0,
-          rushing_tds: 0,
-          rushing_first_downs: 0,
-          // Receiving
-          receptions: 0,
-          targets: 0,
-          receiving_yards: 0,
-          receiving_tds: 0,
-          receiving_yards_after_catch: 0,
-          receiving_first_downs: 0,
-          // Fumbles
-          fumbles: 0,
-          fumbles_lost: 0,
-          // Fantasy
-          fantasy_points_ppr: 0,
-        };
-        playerMap.set(playerId, stats);
-      }
-
-      // Only count regular season games
-      if (week.season_type === "REG") {
-        stats.games_played += 1;
-      }
-
-      // Aggregate stats
-      stats.completions += week.completions || 0;
-      stats.attempts += week.attempts || 0;
-      stats.passing_yards += week.passing_yards || 0;
-      stats.passing_tds += week.passing_tds || 0;
-      stats.interceptions += week.interceptions || 0;
-      stats.sacks += week.sacks || 0;
-      stats.passing_first_downs += week.passing_first_downs || 0;
-
-      stats.carries += week.carries || 0;
-      stats.rushing_yards += week.rushing_yards || 0;
-      stats.rushing_tds += week.rushing_tds || 0;
-      stats.rushing_first_downs += week.rushing_first_downs || 0;
-
-      stats.receptions += week.receptions || 0;
-      stats.targets += week.targets || 0;
-      stats.receiving_yards += week.receiving_yards || 0;
-      stats.receiving_tds += week.receiving_tds || 0;
-      stats.receiving_yards_after_catch += week.receiving_yards_after_catch || 0;
-      stats.receiving_first_downs += week.receiving_first_downs || 0;
-
-      stats.fumbles +=
-        (week.rushing_fumbles || 0) +
-        (week.receiving_fumbles || 0) +
-        (week.sack_fumbles || 0);
-      stats.fumbles_lost +=
-        (week.rushing_fumbles_lost || 0) +
-        (week.receiving_fumbles_lost || 0) +
-        (week.sack_fumbles_lost || 0);
-
-      stats.fantasy_points_ppr += week.fantasy_points_ppr || 0;
-
-      // Update team to most recent
-      if (week.recent_team) {
-        stats.team = week.recent_team;
-      }
+    interface StatsPlayerRow {
+      player_id: string;
+      player_name: string;
+      player_display_name: string;
+      position: string;
+      recent_team: string;
+      season: number;
+      season_type: string;
+      games: number;
+      completions: number;
+      attempts: number;
+      passing_yards: number;
+      passing_tds: number;
+      passing_interceptions: number;
+      sacks_suffered: number;
+      passing_first_downs: number;
+      carries: number;
+      rushing_yards: number;
+      rushing_tds: number;
+      rushing_first_downs: number;
+      receptions: number;
+      targets: number;
+      receiving_yards: number;
+      receiving_tds: number;
+      receiving_yards_after_catch: number;
+      receiving_first_downs: number;
+      rushing_fumbles: number;
+      rushing_fumbles_lost: number;
+      receiving_fumbles: number;
+      receiving_fumbles_lost: number;
+      sack_fumbles: number;
+      sack_fumbles_lost: number;
+      fantasy_points: number;
+      fantasy_points_ppr: number;
     }
 
-    return Array.from(playerMap.values());
+    const rawStats = await this.fetchCSV<StatsPlayerRow>(
+      url,
+      `stats_player_regpost_${season}`,
+      CACHE_TTL.stats
+    );
+
+    // Filter by gsis_id if provided, and only include REG or REG+POST rows
+    const filteredStats = rawStats.filter((row) => {
+      if (gsisId && row.player_id !== gsisId) return false;
+      // Include regular season stats (REG or REG+POST combined)
+      return row.season_type === "REG" || row.season_type === "REG+POST";
+    });
+
+    // Convert to our NFLVerseSeasonStats format
+    return filteredStats.map((row) => ({
+      player_id: row.player_id,
+      player_name: row.player_display_name || row.player_name,
+      position: row.position,
+      team: row.recent_team,
+      season: row.season || season,
+      games_played: row.games || 0,
+      completions: row.completions || 0,
+      attempts: row.attempts || 0,
+      passing_yards: row.passing_yards || 0,
+      passing_tds: row.passing_tds || 0,
+      interceptions: row.passing_interceptions || 0,
+      sacks: row.sacks_suffered || 0,
+      passing_first_downs: row.passing_first_downs || 0,
+      carries: row.carries || 0,
+      rushing_yards: row.rushing_yards || 0,
+      rushing_tds: row.rushing_tds || 0,
+      rushing_first_downs: row.rushing_first_downs || 0,
+      receptions: row.receptions || 0,
+      targets: row.targets || 0,
+      receiving_yards: row.receiving_yards || 0,
+      receiving_tds: row.receiving_tds || 0,
+      receiving_yards_after_catch: row.receiving_yards_after_catch || 0,
+      receiving_first_downs: row.receiving_first_downs || 0,
+      fumbles:
+        (row.rushing_fumbles || 0) +
+        (row.receiving_fumbles || 0) +
+        (row.sack_fumbles || 0),
+      fumbles_lost:
+        (row.rushing_fumbles_lost || 0) +
+        (row.receiving_fumbles_lost || 0) +
+        (row.sack_fumbles_lost || 0),
+      fantasy_points_ppr: row.fantasy_points_ppr || 0,
+    }));
   }
 
   /**
