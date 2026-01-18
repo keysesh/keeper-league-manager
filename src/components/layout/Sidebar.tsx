@@ -45,7 +45,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className="hidden lg:flex lg:flex-col lg:w-72 lg:border-r lg:border-white/[0.06] bg-[#0c0a0f]/80 backdrop-blur-xl min-h-[calc(100vh-4rem)]"
+      className="hidden lg:flex lg:flex-col lg:w-56 lg:border-r lg:border-white/[0.06] bg-[#0c0a0f]/80 backdrop-blur-xl min-h-[calc(100vh-4rem)]"
       aria-label="Main navigation"
     >
       {/* Back to Leagues when in league view */}

@@ -6,15 +6,12 @@ import Link from "next/link";
 import {
   LayoutGrid,
   List,
-  Users,
   ArrowLeftRight,
-  Trophy,
   Clock,
   Lock,
   Unlock,
   Download,
   RefreshCw,
-  Star,
   AlertTriangle,
   ChevronDown,
   FlaskConical,
@@ -24,6 +21,12 @@ import {
   Check,
   Zap,
 } from "lucide-react";
+import {
+  TrophyIcon,
+  StarIcon,
+  UsersIcon,
+  IconGradientDefs,
+} from "@/components/ui/PremiumIcons";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar, TeamLogo } from "@/components/players/PlayerAvatar";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
@@ -363,6 +366,9 @@ export default function DraftBoardPage() {
 
   return (
     <div className="max-w-full mx-auto space-y-6 p-4 md:p-6">
+      {/* Premium Icon Gradient Definitions */}
+      <IconGradientDefs />
+
       {/* Header */}
       <div className="flex flex-col gap-6">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
@@ -508,7 +514,7 @@ export default function DraftBoardPage() {
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard
-            icon={<Trophy size={18} />}
+            icon={<TrophyIcon size={18} />}
             value={data.summary.totalKeepers}
             label="Total Keepers"
             color="emerald"
@@ -721,7 +727,7 @@ export default function DraftBoardPage() {
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               {keeper.keeperType === "FRANCHISE" && (
-                                <Star size={14} className="text-amber-400 shrink-0 fill-amber-400" />
+                                <StarIcon size={14} />
                               )}
                               <PositionBadge position={keeper.position} size="sm" />
                               <div className="min-w-0">
@@ -751,7 +757,9 @@ export default function DraftBoardPage() {
                     </div>
                   ) : (
                     <div className="text-center py-10">
-                      <Users size={32} className="mx-auto text-gray-700 mb-3" />
+                      <div className="mx-auto w-8 mb-3 opacity-40">
+                        <UsersIcon size={32} />
+                      </div>
                       <p className="text-gray-500 font-medium">No keepers selected</p>
                     </div>
                   )}
@@ -792,7 +800,7 @@ export default function DraftBoardPage() {
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 ring-2 ring-amber-400 relative flex items-center justify-center">
-              <Star size={8} className="md:w-2.5 md:h-2.5 text-amber-300 fill-amber-400" />
+              <StarIcon size={10} />
             </div>
             <span>Franchise</span>
           </div>
@@ -958,7 +966,7 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
         {/* Franchise star badge */}
         {isFranchise && (
           <div className="absolute top-1.5 right-1.5 z-10">
-            <Star size={16} className="text-amber-300 fill-amber-400 drop-shadow-lg" />
+            <StarIcon size={16} />
           </div>
         )}
 
@@ -1121,7 +1129,7 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
         {/* Franchise star */}
         {isFranchise && (
           <div className="absolute top-1 right-1">
-            <Star size={12} className="text-amber-300 fill-amber-400" />
+            <StarIcon size={12} />
           </div>
         )}
 

@@ -7,8 +7,6 @@ import {
   Settings,
   Save,
   Shield,
-  Users,
-  Star,
   Clock,
   Hash,
   Lock,
@@ -19,6 +17,7 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
+import { UsersIcon, StarIcon, IconGradientDefs } from "@/components/ui/PremiumIcons";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
@@ -179,6 +178,9 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+      {/* Premium Icon Gradient Definitions */}
+      <IconGradientDefs />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
@@ -234,7 +236,7 @@ export default function SettingsPage() {
       <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-700/40">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Star size={20} className="text-amber-400" />
+            <StarIcon size={20} />
             Keeper Rules
           </h2>
         </div>
@@ -243,7 +245,7 @@ export default function SettingsPage() {
           <SettingField
             label="Maximum Keepers"
             description="Total keepers allowed per team"
-            icon={<Users size={18} />}
+            icon={<UsersIcon size={18} />}
             value={formData.maxKeepers}
             onChange={(v) => handleChange("maxKeepers", v)}
             min={1}
@@ -254,7 +256,7 @@ export default function SettingsPage() {
           <SettingField
             label="Franchise Tags"
             description="Max franchise tags per team"
-            icon={<Star size={18} />}
+            icon={<StarIcon size={18} />}
             value={formData.maxFranchiseTags}
             onChange={(v) => handleChange("maxFranchiseTags", v)}
             min={0}
@@ -265,7 +267,7 @@ export default function SettingsPage() {
           <SettingField
             label="Regular Keepers"
             description="Max regular keepers per team"
-            icon={<Users size={18} />}
+            icon={<UsersIcon size={18} />}
             value={formData.maxRegularKeepers}
             onChange={(v) => handleChange("maxRegularKeepers", v)}
             min={0}
@@ -360,11 +362,11 @@ export default function SettingsPage() {
 
         <div className="p-6 space-y-3">
           <RuleSummaryItem
-            icon={<Users size={16} className="text-gray-400" />}
+            icon={<UsersIcon size={16} />}
             text={`Each team can keep up to ${formData.maxKeepers} players total`}
           />
           <RuleSummaryItem
-            icon={<Star size={16} className="text-amber-400" />}
+            icon={<StarIcon size={16} />}
             text={`Up to ${formData.maxFranchiseTags} can be franchise tags (Round 1, no year limit)`}
           />
           <RuleSummaryItem

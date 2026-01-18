@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import {
   Activity,
-  Trophy,
   ArrowLeftRight,
   Settings as SettingsIcon,
   Lock,
@@ -14,6 +13,7 @@ import {
   Clock,
   ChevronDown,
 } from "lucide-react";
+import { TrophyIcon, IconGradientDefs } from "@/components/ui/PremiumIcons";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
@@ -153,6 +153,9 @@ export default function ActivityPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-6">
+      {/* Premium Icon Gradient Definitions */}
+      <IconGradientDefs />
+
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div>
@@ -342,7 +345,7 @@ function ActivityCard({
 
         {activity.type === "KEEPER_ADDED" && (
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10">
-            <Trophy size={16} className="text-emerald-400" />
+            <TrophyIcon size={16} />
           </div>
         )}
       </div>

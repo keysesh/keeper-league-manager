@@ -173,12 +173,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Get current roster's sleeperId for matching across seasons
+    const currentSleeperId = roster.sleeperId;
+
     // Build keeper history map (player -> keepers)
+    // Combine data from:
+    // 1. Keeper table (explicit keeper designations in our app)
+    // 2. DraftPick.isKeeper = true (Sleeper's historical keeper data)
     const keepersByPlayer = new Map<string, typeof roster.keepers>();
     for (const keeper of roster.keepers) {
       const existing = keepersByPlayer.get(keeper.playerId) || [];
       existing.push(keeper);
       keepersByPlayer.set(keeper.playerId, existing);
+    }
+
+    // Also track keeper picks from Sleeper (isKeeper flag on draft picks)
+    // These represent historical keeper designations that may not be in our Keeper table
+    const keeperPicksByPlayer = new Map<string, number[]>(); // playerId -> array of seasons kept
+    for (const pick of draftPicks) {
+      if (pick.isKeeper && pick.playerId && pick.roster?.sleeperId === currentSleeperId) {
+        const seasons = keeperPicksByPlayer.get(pick.playerId) || [];
+        if (!seasons.includes(pick.draft.season)) {
+          seasons.push(pick.draft.season);
+        }
+        keeperPicksByPlayer.set(pick.playerId, seasons);
+      }
     }
 
     // Current season keepers
@@ -198,9 +217,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
       return null;
     }
-
-    // Get current roster's sleeperId for matching across seasons
-    const currentSleeperId = roster.sleeperId;
 
     /**
      * Get Origin Season for a player on the current roster
@@ -442,48 +458,96 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     /**
-     * Calculate eligibility using Origin Season approach
+     * Calculate eligibility using Keeper History approach
      *
      * Core rules:
+     * - "Years kept" = how many times a player has been designated as a keeper
+     * - Keeper history comes from:
+     *   1. Keeper table (our app's keeper designations)
+     *   2. DraftPick.isKeeper = true (Sleeper's historical data)
+     * - Players with NO keeper history would be Year 1 (first time being kept)
      * - Regular keeper: can be kept for up to `regularKeeperMaxYears` (default 2)
-     * - Years 1-2 (yearsKept 0-1): Regular OR Franchise
-     * - Year 3+ (yearsKept 2+): Must be Franchise tagged (no regular keeper option)
+     * - maxYears=1 means Year 1 is eligible, Year 2+ needs FT
+     * - maxYears=2 means Year 1-2 are eligible, Year 3+ needs FT
      * - Franchise tag has no year limit (can be used indefinitely)
      */
     function calculateEligibility(playerId: string) {
       const origin = getOriginSeason(playerId, currentSleeperId);
-      const yearsKept = season - origin.originSeason;
       const originalDraft = getOriginalDraft(playerId);
       const costResult = calculateBaseCost(playerId);
 
+      // Check keeper history from BOTH sources:
+      // 1. Keeper table (our app's explicit keeper designations)
+      const playerKeepers = keepersByPlayer.get(playerId) || [];
+      // 2. DraftPick.isKeeper = true (Sleeper's historical keeper data)
+      const keeperPickSeasons = keeperPicksByPlayer.get(playerId) || [];
+
+      // Determine how many times this player has been kept
+      // Use the most comprehensive data available
+      let displayYear: number;
+
+      if (playerKeepers.length > 0) {
+        // We have Keeper table records - use the most recent one
+        const mostRecentKeeper = playerKeepers.reduce((latest, k) =>
+          k.season > latest.season ? k : latest
+        );
+
+        if (mostRecentKeeper.season === season) {
+          // Already a keeper for current planning season - use their recorded yearsKept
+          displayYear = mostRecentKeeper.yearsKept;
+        } else {
+          // Last kept in a previous season - would be one more year if kept this season
+          displayYear = mostRecentKeeper.yearsKept + 1;
+        }
+      } else if (keeperPickSeasons.length > 0) {
+        // No Keeper table records, but have Sleeper isKeeper draft picks
+        // Count the number of seasons they were kept + 1 for the upcoming season
+        const pastKeeperCount = keeperPickSeasons.filter(s => s < season).length;
+        const isAlreadyKeptThisSeason = keeperPickSeasons.includes(season);
+
+        if (isAlreadyKeptThisSeason) {
+          // Already marked as keeper for this season in Sleeper
+          displayYear = pastKeeperCount + 1;
+        } else {
+          // Would be their next keeper year
+          displayYear = pastKeeperCount + 1;
+        }
+      } else {
+        // No keeper history = this would be Year 1 (first time keeping)
+        displayYear = 1;
+      }
+
       // A player can always be kept via Franchise Tag (no year limit)
-      // But regular keeper is limited to maxYears (default 2)
-      // yearsKept: 0 = year 1, 1 = year 2, 2 = year 3, etc.
-      const canBeRegularKeeper = yearsKept < maxYears; // Years 1-2 can be regular
-      const mustBeFranchise = yearsKept >= maxYears;   // Year 3+ must use franchise tag
+      // But regular keeper is limited to maxYears
+      // displayYear: 1 = year 1, 2 = year 2, etc.
+      // canBeRegularKeeper: Year 1 through maxYears are eligible
+      const canBeRegularKeeper = displayYear <= maxYears;
+      const mustBeFranchise = displayYear > maxYears;
       const isEligible = true; // Players are always eligible (via FT if needed)
-      const atMaxYears = mustBeFranchise; // Franchise tag required starting year 3
+      const atMaxYears = mustBeFranchise;
 
       // Build reason string
       let reason: string | undefined;
       if (mustBeFranchise) {
-        reason = `Year ${yearsKept + 1} - Franchise Tag required`;
-      } else if (yearsKept === maxYears - 1) {
-        reason = `Final regular keeper year (Year ${yearsKept + 1} of ${maxYears})`;
-      } else if (yearsKept === 0) {
-        reason = "Draft year";
+        reason = `Year ${displayYear} - Franchise Tag required`;
+      } else if (displayYear === maxYears) {
+        reason = `Final regular keeper year (Year ${displayYear} of ${maxYears})`;
+      } else if (displayYear === 1) {
+        reason = "First time keeping";
       }
 
-      // Cost calculation: base cost improves by 1 for each year kept
+      // Cost calculation: base cost improves by 1 for each year kept (0-indexed)
+      // displayYear 1 = 0 years of improvement, displayYear 2 = 1 year improvement, etc.
       const baseCost = costResult.baseCost;
-      const escalatedCost = Math.max(minRound, baseCost - yearsKept);
+      const yearsOfImprovement = displayYear - 1;
+      const escalatedCost = Math.max(minRound, baseCost - yearsOfImprovement);
 
       return {
         isEligible,
         canBeRegularKeeper,
         mustBeFranchise,
-        yearsKept: yearsKept + 1, // Display as "Year 1", "Year 2" (1-indexed for UI)
-        consecutiveYears: yearsKept, // Keep for backwards compatibility
+        yearsKept: displayYear, // Display value (1-indexed)
+        consecutiveYears: displayYear - 1, // Keep for backwards compatibility (0-indexed)
         originSeason: origin.originSeason,
         acquisitionType: origin.acquisitionType,
         atMaxYears, // Backwards compatibility

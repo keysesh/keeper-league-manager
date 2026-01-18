@@ -8,7 +8,13 @@ import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { BackLink } from "@/components/ui/BackLink";
-import { Trophy, Star, Users, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import {
+  TrophyIcon,
+  StarIcon,
+  UsersIcon,
+  IconGradientDefs,
+} from "@/components/ui/PremiumIcons";
 
 // SWR fetcher
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -259,7 +265,10 @@ export default function TeamRosterPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-3 py-4 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+    <div className="mx-auto px-3 py-4 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      {/* Premium Icon Gradient Definitions */}
+      <IconGradientDefs />
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:gap-4">
         <div className="flex items-start justify-between gap-2">
@@ -267,7 +276,7 @@ export default function TeamRosterPage() {
             <BackLink href={`/league/${leagueId}`} label="Back to League" />
             <div className="flex items-center gap-2 sm:gap-3 mt-1">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center flex-shrink-0">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
+                <TrophyIcon size={24} />
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight truncate">Manage Keepers</h1>
@@ -291,7 +300,7 @@ export default function TeamRosterPage() {
         <div className="card-premium rounded-xl p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-              <Users size={16} className="sm:w-[18px] sm:h-[18px] text-amber-400" />
+              <UsersIcon size={16} />
             </div>
             <div>
               <p className="text-lg sm:text-2xl font-bold text-white">{data.currentKeepers.total}<span className="text-[10px] sm:text-sm text-zinc-500">/{data.limits.maxKeepers}</span></p>
@@ -302,7 +311,7 @@ export default function TeamRosterPage() {
         <div className="card-premium rounded-xl p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-              <Star size={16} className="sm:w-[18px] sm:h-[18px] text-amber-400" />
+              <StarIcon size={16} />
             </div>
             <div>
               <p className="text-lg sm:text-2xl font-bold text-amber-400">{data.currentKeepers.franchise}<span className="text-[10px] sm:text-sm text-zinc-500">/{data.limits.maxFranchiseTags}</span></p>
@@ -313,7 +322,7 @@ export default function TeamRosterPage() {
         <div className="card-premium rounded-xl p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-              <Trophy size={16} className="sm:w-[18px] sm:h-[18px] text-emerald-400" />
+              <TrophyIcon size={16} />
             </div>
             <div>
               <p className="text-lg sm:text-2xl font-bold text-emerald-400">{data.currentKeepers.regular}<span className="text-[10px] sm:text-sm text-zinc-500">/{data.limits.maxRegularKeepers}</span></p>
@@ -328,7 +337,7 @@ export default function TeamRosterPage() {
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-amber-500/20 bg-gradient-to-r from-amber-500/10 to-transparent">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-              <Star size={14} className="sm:w-4 sm:h-4 text-amber-400" />
+              <StarIcon size={14} />
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-white">Current Keepers</h2>
             <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-bold">
@@ -338,7 +347,7 @@ export default function TeamRosterPage() {
         </div>
         <div className="p-3 sm:p-5">
           {currentKeepers.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
               {currentKeepers.map((p) => (
                 <PremiumPlayerCard
                   key={p.player.id}
@@ -354,7 +363,7 @@ export default function TeamRosterPage() {
           ) : (
             <div className="text-center py-6 sm:py-8">
               <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-zinc-800/50 flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-zinc-600" />
+                <TrophyIcon size={28} className="opacity-50" />
               </div>
               <p className="text-zinc-400 font-medium text-sm sm:text-base">No keepers selected yet</p>
               <p className="text-xs sm:text-sm text-zinc-600 mt-1">Add players from the eligible list below</p>
@@ -369,7 +378,7 @@ export default function TeamRosterPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <Users size={14} className="sm:w-4 sm:h-4 text-emerald-400" />
+                <UsersIcon size={14} />
               </div>
               <h2 className="text-base sm:text-lg font-semibold text-white">Eligible Players</h2>
               <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-xs font-bold">
@@ -390,7 +399,7 @@ export default function TeamRosterPage() {
         </div>
         <div className="p-3 sm:p-5">
           {eligiblePlayers.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
               {eligiblePlayers.map((p) => (
                 <PremiumPlayerCard
                   key={p.player.id}

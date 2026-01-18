@@ -7,16 +7,19 @@ import useSWR from "swr";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import {
-  Users,
-  Trophy,
-  Star,
-  Crown,
   Medal,
   ChevronDown,
   ChevronRight,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
+import {
+  UsersIcon,
+  TrophyIcon,
+  StarIcon,
+  CrownIcon,
+  IconGradientDefs,
+} from "@/components/ui/PremiumIcons";
 import { TournamentBracket } from "@/components/ui/TournamentBracket";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -102,7 +105,7 @@ function getRankStyle(rank: number): { bg: string; text: string; glow: string; i
         bg: "bg-gradient-to-br from-amber-400 to-amber-600",
         text: "text-black",
         glow: "shadow-lg shadow-amber-500/30",
-        icon: <Crown className="w-3.5 h-3.5" />
+        icon: <CrownIcon size={14} />
       };
     case 2:
       return {
@@ -311,12 +314,15 @@ export default function TeamsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+      {/* Premium Icon Gradient Definitions */}
+      <IconGradientDefs />
+
       {/* Header */}
       <div>
         <BackLink href={`/league/${leagueId}`} label="Back to League" />
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center">
-            <Users className="w-5 h-5 text-amber-400" />
+            <UsersIcon size={20} />
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">League Standings</h1>
@@ -361,7 +367,7 @@ export default function TeamsPage() {
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Trophy className="w-4 h-4 text-amber-400" />
+              <TrophyIcon size={16} />
             </div>
             <div className="text-left">
               <h3 className="text-sm font-semibold text-white">Playoff Bracket</h3>
@@ -394,7 +400,7 @@ export default function TeamsPage() {
       {sortedRosters.length === 0 && (
         <div className="text-center py-16">
           <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 flex items-center justify-center mx-auto mb-4">
-            <Users className="w-8 h-8 text-zinc-600" />
+            <UsersIcon size={32} className="opacity-60" />
           </div>
           <p className="text-zinc-400 font-medium">No teams found</p>
           <p className="text-sm text-zinc-600 mt-1">Teams will appear once the league syncs</p>
@@ -506,9 +512,9 @@ function TeamCard({
       {isChampion && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 shadow-lg shadow-amber-500/40">
           <div className="flex items-center gap-1.5">
-            <Crown className="w-4 h-4 text-amber-900" />
+            <CrownIcon size={16} />
             <span className="text-xs font-black text-amber-900 uppercase tracking-wide">Champion</span>
-            <Crown className="w-4 h-4 text-amber-900" />
+            <CrownIcon size={16} />
           </div>
         </div>
       )}
@@ -621,7 +627,7 @@ function TeamCard({
             {/* Past Championships */}
             {history.totals.championships > 0 && (
               <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <Crown className="w-4 h-4 text-amber-400" />
+                <CrownIcon size={16} />
                 <span className="text-[11px] text-amber-300 font-bold">
                   {history.totals.championships}x League Champion
                 </span>
@@ -633,7 +639,7 @@ function TeamCard({
         {/* Keepers Badge */}
         {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.06]">
-            <Star className="w-4 h-4 text-amber-400" />
+            <StarIcon size={16} />
             <span className="text-[11px] text-amber-300 font-semibold">{roster.keeperCount} Keepers Locked</span>
           </div>
         )}
