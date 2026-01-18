@@ -170,7 +170,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
             <span className="text-sm sm:text-base font-bold text-white truncate max-w-[140px] sm:max-w-none">{player.fullName}</span>
             {isRookie && <RookieBadge size="xs" />}
             {isStarter && (
-              <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400" title="Starter">
+              <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-blue-500/20 text-blue-400" title="Starter">
                 ST
               </span>
             )}
@@ -223,7 +223,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">
             {player.isProjected ? "Proj" : player.lastSeason ? `'${String(player.lastSeason).slice(-2)}` : ""}PPG
           </div>
-          <div className={`text-[11px] sm:text-xs font-semibold ${player.isProjected ? "text-blue-400" : "text-emerald-400"}`}>
+          <div className={`text-[11px] sm:text-xs font-semibold ${player.isProjected ? "text-blue-400" : "text-white"}`}>
             {player.lastSeasonPpg ? player.lastSeasonPpg.toFixed(1) : "—"}
           </div>
         </div>
@@ -248,7 +248,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">Status</div>
           <div
-            className={`text-[11px] sm:text-xs font-semibold ${(nflverseInjury?.status || player.injuryStatus) ? "text-red-400" : "text-emerald-400"}`}
+            className={`text-[11px] sm:text-xs font-semibold ${(nflverseInjury?.status || player.injuryStatus) ? "text-red-400" : "text-gray-300"}`}
             title={nflverseInjury?.primaryInjury || undefined}
           >
             {nflverseInjury?.status || player.injuryStatus || "Active"}

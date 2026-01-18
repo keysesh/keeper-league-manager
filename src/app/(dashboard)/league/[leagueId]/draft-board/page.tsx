@@ -374,7 +374,7 @@ export default function DraftBoardPage() {
               <div
                 className={`inline-flex items-center gap-2 px-3 py-1 rounded-md text-sm font-medium border ${
                   deadlineInfo.isActive
-                    ? "bg-[#222222] border-emerald-500/30 text-emerald-400"
+                    ? "bg-[#222222] border-blue-500/30 text-blue-400"
                     : "bg-[#222222] border-red-500/30 text-red-400"
                 }`}
               >
@@ -433,7 +433,7 @@ export default function DraftBoardPage() {
             <button
               onClick={syncData}
               disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-md bg-[#1a1a1a] border border-emerald-500/30 text-emerald-400 hover:bg-[#222222] text-sm font-medium transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-md bg-[#1a1a1a] border border-blue-500/30 text-blue-400 hover:bg-[#222222] text-sm font-medium transition-colors disabled:opacity-50"
               title="Sync keepers from Sleeper"
             >
               <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
@@ -482,7 +482,7 @@ export default function DraftBoardPage() {
                   onClick={() => handleExport("copy")}
                   className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-[#222222] hover:text-white flex items-center gap-3 transition-colors"
                 >
-                  {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-blue-400" />}
+                  {copied ? <Check size={14} className="text-blue-400" /> : <Copy size={14} className="text-blue-400" />}
                   {copied ? "Copied!" : "Copy to Clipboard"}
                 </button>
               </div>
@@ -495,7 +495,7 @@ export default function DraftBoardPage() {
           <div className={`px-4 py-2 rounded-md text-sm font-medium border ${
             syncMessage.includes("failed") || syncMessage.includes("Failed")
               ? "bg-red-500/10 border-red-500/30 text-red-400"
-              : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+              : "bg-blue-500/10 border-blue-500/30 text-blue-400"
           }`}>
             {syncMessage}
           </div>

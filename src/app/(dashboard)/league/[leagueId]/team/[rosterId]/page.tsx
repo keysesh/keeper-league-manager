@@ -363,10 +363,10 @@ export default function TeamRosterPage() {
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-4 h-4 text-green-500" />
+              <Trophy className="w-4 h-4 text-blue-500" />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold text-green-500">{data.currentKeepers.regular}<span className="text-[10px] sm:text-sm text-gray-500">/{data.limits.maxRegularKeepers}</span></p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-400">{data.currentKeepers.regular}<span className="text-[10px] sm:text-sm text-gray-500">/{data.limits.maxRegularKeepers}</span></p>
               <p className="text-[9px] sm:text-xs text-gray-500 uppercase tracking-wide">Regular</p>
             </div>
           </div>
@@ -419,10 +419,10 @@ export default function TeamRosterPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
-                <Users className="w-3.5 h-3.5 text-green-500" />
+                <Users className="w-3.5 h-3.5 text-blue-500" />
               </div>
               <h2 className="text-base sm:text-lg font-semibold text-white">Eligible Players</h2>
-              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-green-500/20 text-green-500 text-[10px] sm:text-xs font-bold">
+              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-blue-500/10 text-blue-400 text-[10px] sm:text-xs font-medium">
                 {eligiblePlayers.length}
               </span>
             </div>
@@ -432,7 +432,7 @@ export default function TeamRosterPage() {
                 Keep
               </span>
               <span className="flex items-center gap-1 sm:gap-1.5">
-                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-yellow-500"></span>
+                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500"></span>
                 Franchise Tag
               </span>
             </div>
