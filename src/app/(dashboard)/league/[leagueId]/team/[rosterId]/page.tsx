@@ -128,7 +128,40 @@ export default function TeamRosterPage() {
     playerName: string,
     costData?: { baseCost: number; finalCost: number; yearsKept: number }
   ) => {
-    setActionLoading(playerId);
+    if (!data) return;
+
+    // Find the player being added
+    const playerToAdd = data.players.find(p => p.player.id === playerId);
+    if (!playerToAdd) return;
+
+    // Optimistically update the UI immediately
+    // Mark the player as having an existing keeper
+    const optimisticData: RosterData = {
+      ...data,
+      players: data.players.map(p =>
+        p.player.id === playerId
+          ? {
+              ...p,
+              existingKeeper: {
+                id: `temp-${playerId}`,
+                type,
+                finalCost: costData?.finalCost || p.costs.regular?.finalCost || 1,
+                isLocked: false,
+              },
+            }
+          : p
+      ),
+      currentKeepers: {
+        franchise: type === "FRANCHISE" ? data.currentKeepers.franchise + 1 : data.currentKeepers.franchise,
+        regular: type === "REGULAR" ? data.currentKeepers.regular + 1 : data.currentKeepers.regular,
+        total: data.currentKeepers.total + 1,
+      },
+    };
+
+    // Update UI instantly (optimistic)
+    mutate(optimisticData, { revalidate: false });
+    success(`${playerName} added as ${type === "FRANCHISE" ? "FT" : "Keeper"}`);
+
     try {
       const res = await fetch(`/api/leagues/${leagueId}/keepers`, {
         method: "POST",
@@ -137,7 +170,6 @@ export default function TeamRosterPage() {
           rosterId,
           playerId,
           type,
-          // Pass pre-calculated cost data to avoid server-side recalculation
           baseCost: costData?.baseCost,
           finalCost: costData?.finalCost,
           yearsKept: costData?.yearsKept,
@@ -149,17 +181,43 @@ export default function TeamRosterPage() {
         throw new Error(err.error || "Failed to add keeper");
       }
 
-      success(`${playerName} added as ${type === "FRANCHISE" ? "FT" : "Keeper"}`);
+      // Revalidate to get actual server data (with real keeper ID)
       mutate();
     } catch (err) {
+      // Rollback on error
+      mutate(data, { revalidate: false });
       showError(err instanceof Error ? err.message : "Failed to add keeper");
-    } finally {
-      setActionLoading(null);
     }
   };
 
   const removeKeeper = async (keeperId: string, playerName: string) => {
-    setActionLoading(keeperId);
+    if (!data) return;
+
+    // Find the player with this keeper
+    const playerWithKeeper = data.players.find(p => p.existingKeeper?.id === keeperId);
+    if (!playerWithKeeper) return;
+
+    const keeperType = playerWithKeeper.existingKeeper?.type;
+
+    // Optimistically update the UI immediately
+    const optimisticData: RosterData = {
+      ...data,
+      players: data.players.map(p =>
+        p.existingKeeper?.id === keeperId
+          ? { ...p, existingKeeper: null }
+          : p
+      ),
+      currentKeepers: {
+        franchise: keeperType === "FRANCHISE" ? data.currentKeepers.franchise - 1 : data.currentKeepers.franchise,
+        regular: keeperType === "REGULAR" ? data.currentKeepers.regular - 1 : data.currentKeepers.regular,
+        total: data.currentKeepers.total - 1,
+      },
+    };
+
+    // Update UI instantly (optimistic)
+    mutate(optimisticData, { revalidate: false });
+    success(`${playerName} removed`);
+
     try {
       const res = await fetch(
         `/api/leagues/${leagueId}/keepers?keeperId=${keeperId}`,
@@ -171,12 +229,12 @@ export default function TeamRosterPage() {
         throw new Error(err.error || "Failed to remove keeper");
       }
 
-      success(`${playerName} removed`);
+      // Revalidate to get updated data
       mutate();
     } catch (err) {
+      // Rollback on error
+      mutate(data, { revalidate: false });
       showError(err instanceof Error ? err.message : "Failed to remove keeper");
-    } finally {
-      setActionLoading(null);
     }
   };
 
