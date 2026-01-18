@@ -21,7 +21,7 @@ export default function AdminPlayersPage() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncingNflverse, setSyncingNflverse] = useState(false);
-  const [nflverseSeason, setNflverseSeason] = useState(new Date().getFullYear());
+  const [nflverseSeason, setNflverseSeason] = useState(2025);
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
