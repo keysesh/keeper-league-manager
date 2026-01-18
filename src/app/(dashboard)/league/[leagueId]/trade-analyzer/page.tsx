@@ -900,233 +900,120 @@ export default function TradeAnalyzerPage() {
       {/* Analysis Results */}
       {analysis && analysis.success && (
         <>
-          {/* Trade Summary */}
-          <div className="card-premium rounded-2xl p-6">
-            {/* Trade Summary - What Each Team Gets */}
-            <div className="">
-              <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Trade Summary</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Team 1 Summary */}
-                <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                    <span className="text-white font-semibold text-sm">{analysis.team1.rosterName}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {analysis.team1.acquiring.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 text-xs font-semibold w-16">Receives</span>
-                        <span className="text-gray-300 text-sm">
-                          {analysis.team1.acquiring.map(p => `${p.position || '?'}`).join(', ')}
-                          {analysis.team1.picksReceived.length > 0 && (
-                            <span className="text-purple-400">
-                              {analysis.team1.acquiring.length > 0 ? ', ' : ''}
-                              {analysis.team1.picksReceived.map(p => `Rd ${p.round}`).join(', ')}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {analysis.team1.tradingAway.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-red-400 text-xs font-semibold w-16">Sends</span>
-                        <span className="text-gray-300 text-sm">
-                          {analysis.team1.tradingAway.map(p => `${p.position || '?'}`).join(', ')}
-                          {analysis.team1.picksGiven.length > 0 && (
-                            <span className="text-purple-400">
-                              {analysis.team1.tradingAway.length > 0 ? ', ' : ''}
-                              {analysis.team1.picksGiven.map(p => `Rd ${p.round}`).join(', ')}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {/* Team 2 Summary */}
-                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                    <span className="text-white font-semibold text-sm">{analysis.team2.rosterName}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {analysis.team2.acquiring.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-400 text-xs font-semibold w-16">Receives</span>
-                        <span className="text-gray-300 text-sm">
-                          {analysis.team2.acquiring.map(p => `${p.position || '?'}`).join(', ')}
-                          {analysis.team2.picksReceived.length > 0 && (
-                            <span className="text-purple-400">
-                              {analysis.team2.acquiring.length > 0 ? ', ' : ''}
-                              {analysis.team2.picksReceived.map(p => `Rd ${p.round}`).join(', ')}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {analysis.team2.tradingAway.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-red-400 text-xs font-semibold w-16">Sends</span>
-                        <span className="text-gray-300 text-sm">
-                          {analysis.team2.tradingAway.map(p => `${p.position || '?'}`).join(', ')}
-                          {analysis.team2.picksGiven.length > 0 && (
-                            <span className="text-purple-400">
-                              {analysis.team2.tradingAway.length > 0 ? ', ' : ''}
-                              {analysis.team2.picksGiven.map(p => `Rd ${p.round}`).join(', ')}
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Roster Impact - Objective facts only */}
-            <div className="mt-6 pt-6 border-t border-gray-700/50">
-              <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Roster Impact</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-xl bg-gray-800/30 border border-gray-700/30">
-                  <div className="text-gray-400 text-xs uppercase tracking-wider mb-2">{analysis.team1.rosterName}</div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500">Keepers: </span>
-                      <span className="text-white font-medium">
-                        {analysis.team1.keeperSlotsBefore} → {analysis.team1.keeperSlotsAfter}
-                      </span>
-                      <span className="text-gray-600 text-xs">/{analysis.team1.keeperSlotsMax}</span>
-                    </div>
-                    {analysis.team1.picksGiven.length > 0 && (
-                      <div>
-                        <span className="text-gray-500">Picks out: </span>
-                        <span className="text-red-400 font-medium">{analysis.team1.picksGiven.length}</span>
-                      </div>
-                    )}
-                    {analysis.team1.picksReceived.length > 0 && (
-                      <div>
-                        <span className="text-gray-500">Picks in: </span>
-                        <span className="text-emerald-400 font-medium">{analysis.team1.picksReceived.length}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="p-3 rounded-xl bg-gray-800/30 border border-gray-700/30">
-                  <div className="text-gray-400 text-xs uppercase tracking-wider mb-2">{analysis.team2.rosterName}</div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500">Keepers: </span>
-                      <span className="text-white font-medium">
-                        {analysis.team2.keeperSlotsBefore} → {analysis.team2.keeperSlotsAfter}
-                      </span>
-                      <span className="text-gray-600 text-xs">/{analysis.team2.keeperSlotsMax}</span>
-                    </div>
-                    {analysis.team2.picksGiven.length > 0 && (
-                      <div>
-                        <span className="text-gray-500">Picks out: </span>
-                        <span className="text-red-400 font-medium">{analysis.team2.picksGiven.length}</span>
-                      </div>
-                    )}
-                    {analysis.team2.picksReceived.length > 0 && (
-                      <div>
-                        <span className="text-gray-500">Picks in: </span>
-                        <span className="text-emerald-400 font-medium">{analysis.team2.picksReceived.length}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Player Cards */}
+          {/* Player Cards - Side by Side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Team 1 Players */}
-            <div className="card-premium rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                {analysis.team1.rosterName} Trading Away
-              </h3>
-              <div className="space-y-4">
+            {/* Team 1 Card */}
+            <div className="card-premium rounded-2xl overflow-hidden">
+              {/* Team Header with Roster Impact */}
+              <div className="p-4 bg-blue-500/5 border-b border-blue-500/20">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                    {analysis.team1.rosterName}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span>Keepers: <span className="text-white">{analysis.team1.keeperSlotsBefore}→{analysis.team1.keeperSlotsAfter}</span><span className="text-gray-600">/{analysis.team1.keeperSlotsMax}</span></span>
+                    {analysis.team1.picksGiven.length > 0 && <span className="text-red-400">−{analysis.team1.picksGiven.length} pick{analysis.team1.picksGiven.length > 1 ? 's' : ''}</span>}
+                    {analysis.team1.picksReceived.length > 0 && <span className="text-emerald-400">+{analysis.team1.picksReceived.length} pick{analysis.team1.picksReceived.length > 1 ? 's' : ''}</span>}
+                  </div>
+                </div>
+                {/* What they send/receive summary */}
+                <div className="mt-2 flex items-center gap-4 text-sm">
+                  {analysis.team1.tradingAway.length > 0 && (
+                    <span><span className="text-red-400 font-medium">Sends:</span> <span className="text-gray-300">{analysis.team1.tradingAway.map(p => p.position).join(', ')}</span></span>
+                  )}
+                  {analysis.team1.acquiring.length > 0 && (
+                    <span><span className="text-emerald-400 font-medium">Gets:</span> <span className="text-gray-300">{analysis.team1.acquiring.map(p => p.position).join(', ')}</span></span>
+                  )}
+                </div>
+              </div>
+
+              {/* Players */}
+              <div className="p-4 space-y-3">
                 {analysis.team1.tradingAway.map((player) => (
                   <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
                 ))}
                 {analysis.team1.tradingAway.length === 0 && analysis.team1.picksGiven.length === 0 && (
-                  <p className="text-gray-500 text-sm">No players being traded</p>
+                  <p className="text-gray-500 text-sm py-4 text-center">No players being traded</p>
+                )}
+
+                {/* Draft Picks */}
+                {(analysis.team1.picksGiven.length > 0 || analysis.team1.picksReceived.length > 0) && (
+                  <div className="pt-3 border-t border-gray-700/50">
+                    <div className="flex gap-2 flex-wrap">
+                      {analysis.team1.picksGiven.map((pick, i) => (
+                        <div key={`g${i}`} className="px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm">
+                          <span className="text-red-400 font-semibold">−Rd {pick.round}</span>
+                          <span className="text-gray-500 ml-1">({planningSeason})</span>
+                        </div>
+                      ))}
+                      {analysis.team1.picksReceived.map((pick, i) => (
+                        <div key={`r${i}`} className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
+                          <span className="text-emerald-400 font-semibold">+Rd {pick.round}</span>
+                          <span className="text-gray-500 ml-1">({planningSeason})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              {/* Draft Picks Given */}
-              {analysis.team1.picksGiven.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Draft Picks Given</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {analysis.team1.picksGiven.map((pick, i) => (
-                      <div key={i} className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                        <div className="text-red-400 font-bold">{planningSeason} Rd {pick.round}</div>
-                        <div className="text-gray-500 text-xs">Value: {pick.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* Draft Picks Received */}
-              {analysis.team1.picksReceived.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Draft Picks Received</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {analysis.team1.picksReceived.map((pick, i) => (
-                      <div key={i} className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                        <div className="text-emerald-400 font-bold">{planningSeason} Rd {pick.round}</div>
-                        <div className="text-gray-500 text-xs">Value: {pick.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Team 2 Players */}
-            <div className="card-premium rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                {analysis.team2.rosterName} Trading Away
-              </h3>
-              <div className="space-y-4">
+            {/* Team 2 Card */}
+            <div className="card-premium rounded-2xl overflow-hidden">
+              {/* Team Header with Roster Impact */}
+              <div className="p-4 bg-emerald-500/5 border-b border-emerald-500/20">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    {analysis.team2.rosterName}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span>Keepers: <span className="text-white">{analysis.team2.keeperSlotsBefore}→{analysis.team2.keeperSlotsAfter}</span><span className="text-gray-600">/{analysis.team2.keeperSlotsMax}</span></span>
+                    {analysis.team2.picksGiven.length > 0 && <span className="text-red-400">−{analysis.team2.picksGiven.length} pick{analysis.team2.picksGiven.length > 1 ? 's' : ''}</span>}
+                    {analysis.team2.picksReceived.length > 0 && <span className="text-emerald-400">+{analysis.team2.picksReceived.length} pick{analysis.team2.picksReceived.length > 1 ? 's' : ''}</span>}
+                  </div>
+                </div>
+                {/* What they send/receive summary */}
+                <div className="mt-2 flex items-center gap-4 text-sm">
+                  {analysis.team2.tradingAway.length > 0 && (
+                    <span><span className="text-red-400 font-medium">Sends:</span> <span className="text-gray-300">{analysis.team2.tradingAway.map(p => p.position).join(', ')}</span></span>
+                  )}
+                  {analysis.team2.acquiring.length > 0 && (
+                    <span><span className="text-emerald-400 font-medium">Gets:</span> <span className="text-gray-300">{analysis.team2.acquiring.map(p => p.position).join(', ')}</span></span>
+                  )}
+                </div>
+              </div>
+
+              {/* Players */}
+              <div className="p-4 space-y-3">
                 {analysis.team2.tradingAway.map((player) => (
                   <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
                 ))}
                 {analysis.team2.tradingAway.length === 0 && analysis.team2.picksGiven.length === 0 && (
-                  <p className="text-gray-500 text-sm">No players being traded</p>
+                  <p className="text-gray-500 text-sm py-4 text-center">No players being traded</p>
+                )}
+
+                {/* Draft Picks */}
+                {(analysis.team2.picksGiven.length > 0 || analysis.team2.picksReceived.length > 0) && (
+                  <div className="pt-3 border-t border-gray-700/50">
+                    <div className="flex gap-2 flex-wrap">
+                      {analysis.team2.picksGiven.map((pick, i) => (
+                        <div key={`g${i}`} className="px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-sm">
+                          <span className="text-red-400 font-semibold">−Rd {pick.round}</span>
+                          <span className="text-gray-500 ml-1">({planningSeason})</span>
+                        </div>
+                      ))}
+                      {analysis.team2.picksReceived.map((pick, i) => (
+                        <div key={`r${i}`} className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
+                          <span className="text-emerald-400 font-semibold">+Rd {pick.round}</span>
+                          <span className="text-gray-500 ml-1">({planningSeason})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              {/* Draft Picks Given */}
-              {analysis.team2.picksGiven.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Draft Picks Given</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {analysis.team2.picksGiven.map((pick, i) => (
-                      <div key={i} className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                        <div className="text-red-400 font-bold">{planningSeason} Rd {pick.round}</div>
-                        <div className="text-gray-500 text-xs">Value: {pick.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* Draft Picks Received */}
-              {analysis.team2.picksReceived.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Draft Picks Received</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {analysis.team2.picksReceived.map((pick, i) => (
-                      <div key={i} className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                        <div className="text-emerald-400 font-bold">{planningSeason} Rd {pick.round}</div>
-                        <div className="text-gray-500 text-xs">Value: {pick.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </>
