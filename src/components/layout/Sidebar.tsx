@@ -44,6 +44,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         { name: "Trades", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
         { name: "Teams", href: `/league/${leagueId}/team`, icon: Users },
         { name: "Settings", href: `/league/${leagueId}/settings`, icon: Settings },
+        ...(isAdmin ? [{ name: "Admin Panel", href: "/admin", icon: Shield }] : []),
       ]
     : [];
 
