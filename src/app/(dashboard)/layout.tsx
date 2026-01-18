@@ -29,9 +29,19 @@ export default async function DashboardLayout({
       redirect("/onboarding");
     }
     isAdmin = user?.isAdmin ?? false;
-  } catch {
+  } catch (error) {
     // Column may not exist yet - skip onboarding check for existing users
-    logger.warn("onboardingComplete field not available - skipping onboarding check");
+    logger.warn("onboardingComplete field not available - skipping onboarding check", error);
+    // Still try to get isAdmin separately
+    try {
+      const adminCheck = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isAdmin: true },
+      });
+      isAdmin = adminCheck?.isAdmin ?? false;
+    } catch {
+      // Ignore - isAdmin stays false
+    }
   }
 
   return (
