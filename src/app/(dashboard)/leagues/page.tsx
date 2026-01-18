@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ChevronRight, Lock, AlertTriangle, Trophy, Users, Target, Zap } from "lucide-react";
 import { KeeperDeadlineCountdown } from "@/components/KeeperDeadlineCountdown";
 import { SyncButton } from "@/components/SyncButton";
@@ -55,6 +56,11 @@ export default async function LeaguesPage() {
         })
       : 0,
   ]);
+
+  // Auto-redirect to league if user only has one league (single-league optimization)
+  if (leagues.length === 1) {
+    redirect(`/league/${leagues[0].id}`);
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6 md:space-y-8">

@@ -10,6 +10,7 @@ import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { TrendingPlayers } from "@/components/ui/TrendingPlayers";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
+import { DraftPickValueChart } from "@/components/ui/DraftPickValueChart";
 import { ChevronRight, Trophy, Shield, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -461,6 +462,17 @@ export default function LeaguePage() {
         {/* TRENDING PLAYERS */}
         <section>
           <TrendingPlayers type="both" limit={10} hours={24} />
+        </section>
+
+        {/* DRAFT PICK VALUES */}
+        <section>
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
+              <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+            </div>
+            <h2 className="text-base sm:text-lg font-semibold text-white">Draft Pick Values</h2>
+          </div>
+          <DraftPickValueChart />
         </section>
 
         {/* Footer */}
