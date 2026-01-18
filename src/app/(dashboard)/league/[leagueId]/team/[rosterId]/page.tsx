@@ -199,6 +199,11 @@ export default function TeamRosterPage() {
 
     const keeperType = playerWithKeeper.existingKeeper?.type;
 
+    // Calculate new counts
+    const newFranchiseCount = keeperType === "FRANCHISE" ? data.currentKeepers.franchise - 1 : data.currentKeepers.franchise;
+    const newRegularCount = keeperType === "REGULAR" ? data.currentKeepers.regular - 1 : data.currentKeepers.regular;
+    const newTotalCount = data.currentKeepers.total - 1;
+
     // Optimistically update the UI immediately
     const optimisticData: RosterData = {
       ...data,
@@ -208,9 +213,15 @@ export default function TeamRosterPage() {
           : p
       ),
       currentKeepers: {
-        franchise: keeperType === "FRANCHISE" ? data.currentKeepers.franchise - 1 : data.currentKeepers.franchise,
-        regular: keeperType === "REGULAR" ? data.currentKeepers.regular - 1 : data.currentKeepers.regular,
-        total: data.currentKeepers.total - 1,
+        franchise: newFranchiseCount,
+        regular: newRegularCount,
+        total: newTotalCount,
+      },
+      // Also update canAddMore flags so FT becomes available again
+      canAddMore: {
+        franchise: newFranchiseCount < data.limits.maxFranchiseTags && newTotalCount < data.limits.maxKeepers,
+        regular: newRegularCount < data.limits.maxRegularKeepers && newTotalCount < data.limits.maxKeepers,
+        any: newTotalCount < data.limits.maxKeepers,
       },
     };
 
