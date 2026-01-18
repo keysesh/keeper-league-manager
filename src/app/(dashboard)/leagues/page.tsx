@@ -3,7 +3,14 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
-import { LayoutGrid, ArrowLeftRight, ChevronRight, Lock, AlertTriangle, Trophy, Users } from "lucide-react";
+import { ChevronRight, Lock, AlertTriangle } from "lucide-react";
+import {
+  TrophyIcon,
+  UsersIcon,
+  TargetIcon,
+  LightningIcon,
+  IconGradientDefs,
+} from "@/components/ui/PremiumIcons";
 import { KeeperDeadlineCountdown } from "@/components/KeeperDeadlineCountdown";
 import { SyncButton } from "@/components/SyncButton";
 
@@ -57,6 +64,8 @@ export default async function LeaguesPage() {
   ]);
 
   return (
+    <>
+    <IconGradientDefs />
     <div className="max-w-6xl mx-auto space-y-8 p-4 md:p-6">
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -101,7 +110,7 @@ export default async function LeaguesPage() {
         {leagues.length === 0 ? (
           <div className="card-premium rounded-2xl p-12 text-center">
             <div className="w-16 h-16 rounded-2xl bg-gray-800/50 flex items-center justify-center mx-auto mb-4">
-              <Trophy className="w-8 h-8 text-gray-600" />
+              <TrophyIcon size={32} />
             </div>
             <p className="text-gray-400 font-medium">No leagues found</p>
             <p className="text-sm text-gray-600 mt-1">Join a league on Sleeper to get started</p>
@@ -136,16 +145,16 @@ export default async function LeaguesPage() {
 
                 {/* League info */}
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/10 ring-1 ring-purple-500/20 flex items-center justify-center flex-shrink-0">
-                    <Trophy className="w-6 h-6 text-purple-400" />
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <TrophyIcon size={24} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white group-hover:text-purple-400 truncate transition-colors text-lg">
+                    <h3 className="font-semibold text-white group-hover:text-amber-400 truncate transition-colors text-lg">
                       {league.name}
                     </h3>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <Users size={12} />
+                        <UsersIcon size={12} />
                         {league.totalRosters} teams
                       </span>
                       {league.keeperSettings && (
@@ -162,7 +171,7 @@ export default async function LeaguesPage() {
                 <div className="absolute right-4 top-1/2 -translate-y-1/2">
                   <ChevronRight
                     size={20}
-                    className="text-gray-600 group-hover:text-purple-400 group-hover:translate-x-1 transition-all"
+                    className="text-gray-600 group-hover:text-amber-400 group-hover:translate-x-1 transition-all"
                   />
                 </div>
               </Link>
@@ -183,10 +192,10 @@ export default async function LeaguesPage() {
               <>
                 <Link
                   href={`/league/${leagues[0].id}/draft-board`}
-                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-white/[0.06] hover:border-purple-500/30 transition-all duration-300 hover:scale-[1.02]"
+                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-white/[0.06] hover:border-amber-500/30 transition-all duration-300 hover:scale-[1.02]"
                 >
-                  <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/20 ring-1 ring-purple-500/20">
-                    <LayoutGrid size={20} className="text-purple-400" />
+                  <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/20 ring-1 ring-amber-500/20">
+                    <TargetIcon size={20} />
                   </span>
                   <div>
                     <span className="text-sm font-semibold text-white block">Draft Board</span>
@@ -198,7 +207,7 @@ export default async function LeaguesPage() {
                   className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-white/[0.06] hover:border-emerald-500/30 transition-all duration-300 hover:scale-[1.02]"
                 >
                   <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/20 ring-1 ring-emerald-500/20">
-                    <ArrowLeftRight size={20} className="text-emerald-400" />
+                    <LightningIcon size={20} />
                   </span>
                   <div>
                     <span className="text-sm font-semibold text-white block">Trade Analyzer</span>
@@ -211,5 +220,6 @@ export default async function LeaguesPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

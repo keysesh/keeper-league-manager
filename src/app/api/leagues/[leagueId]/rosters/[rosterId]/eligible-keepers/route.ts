@@ -522,8 +522,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         costBreakdown: `Franchise Tag: ${ftCostBreakdown}`,
       };
 
+      // Rule: After 2 consecutive years being kept, must use FT (Year 3+)
+      // Years 1-2 can be Regular OR FT, Year 3+ is FT only
       if (eligibility.canBeRegularKeeper) {
-        // Regular keeper cost with escalation (cost improves each year)
+        // Regular keeper available for Years 1 through maxYears
         const baseCost = eligibility.baseCost;
         const finalCost = eligibility.escalatedCost;
         const yearsKept = eligibility.consecutiveYears;
