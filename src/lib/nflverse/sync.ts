@@ -186,6 +186,17 @@ export async function syncNFLVerseStats(
     });
     logger.info("Found players in database", { count: dbPlayers.length });
 
+    // Debug: Log sample of what we're trying to match
+    const sampleDbPlayers = dbPlayers.slice(0, 5).map(p => p.sleeperId);
+    const sampleRosterIds = Array.from(sleeperToGsis.keys()).slice(0, 5);
+    logger.info("Debug matching", {
+      sampleDbSleeperIds: sampleDbPlayers,
+      sampleRosterSleeperIds: sampleRosterIds,
+      dbPlayerCount: dbPlayers.length,
+      rosterMappingCount: sleeperToGsis.size,
+      statsCount: gsisToStats.size,
+    });
+
     // Step 4: Process players in batches
     for (let i = 0; i < dbPlayers.length; i += BATCH_SIZE) {
       const batch = dbPlayers.slice(i, i + BATCH_SIZE);
@@ -309,6 +320,13 @@ export async function syncNFLVerseStats(
       playersFailed,
       errors: errors.slice(0, 10),
       duration,
+      debug: {
+        dbPlayerCount: dbPlayers.length,
+        rosterMappingCount: sleeperToGsis.size,
+        statsCount: gsisToStats.size,
+        sampleDbSleeperIds: dbPlayers.slice(0, 3).map(p => p.sleeperId),
+        sampleRosterSleeperIds: Array.from(sleeperToGsis.keys()).slice(0, 3),
+      },
     };
   } catch (error) {
     const duration = Date.now() - startTime;
