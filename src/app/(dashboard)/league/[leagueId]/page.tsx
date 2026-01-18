@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { PositionBadge } from "@/components/ui/PositionBadge";
+import { TrendingPlayers } from "@/components/ui/TrendingPlayers";
 import { ChevronRight, Trophy, Shield, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -443,6 +444,11 @@ export default function LeaguePage() {
             label="History"
             description="Past seasons"
           />
+        </section>
+
+        {/* TRENDING PLAYERS */}
+        <section>
+          <TrendingPlayers type="both" limit={10} hours={24} />
         </section>
 
         {/* Footer */}

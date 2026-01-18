@@ -5,6 +5,7 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { nflverseClient, NFLVerseClient } from "./client";
+import { sleeperClient } from "@/lib/sleeper/client";
 import {
   NFLVerseMetadata,
   NFLVerseSyncResult,
@@ -161,11 +162,7 @@ export async function syncNFLVerseStats(
   try {
     // Step 1: Fetch Sleeper API to get gsis_id → sleeper_id mapping
     logger.info("Fetching Sleeper player mappings...");
-    const sleeperResponse = await fetch("https://api.sleeper.app/v1/players/nfl");
-    if (!sleeperResponse.ok) {
-      throw new Error(`Failed to fetch Sleeper players: ${sleeperResponse.statusText}`);
-    }
-    const sleeperPlayers: Record<string, { gsis_id?: string; full_name?: string }> = await sleeperResponse.json();
+    const sleeperPlayers = await sleeperClient.getAllPlayers();
 
     // Build gsis_id → sleeper_id mapping
     const gsisToSleeperId = new Map<string, string>();
@@ -672,11 +669,7 @@ export async function syncDepthCharts(
 
   try {
     // Step 1: Fetch Sleeper API to get gsis_id → sleeper_id mapping
-    const sleeperResponse = await fetch("https://api.sleeper.app/v1/players/nfl");
-    if (!sleeperResponse.ok) {
-      throw new Error(`Failed to fetch Sleeper players: ${sleeperResponse.statusText}`);
-    }
-    const sleeperPlayers: Record<string, { gsis_id?: string }> = await sleeperResponse.json();
+    const sleeperPlayers = await sleeperClient.getAllPlayers();
 
     const gsisToSleeperId = new Map<string, string>();
     for (const [sleeperId, player] of Object.entries(sleeperPlayers)) {
@@ -818,11 +811,7 @@ export async function syncInjuries(
 
   try {
     // Step 1: Fetch Sleeper API to get gsis_id → sleeper_id mapping
-    const sleeperResponse = await fetch("https://api.sleeper.app/v1/players/nfl");
-    if (!sleeperResponse.ok) {
-      throw new Error(`Failed to fetch Sleeper players: ${sleeperResponse.statusText}`);
-    }
-    const sleeperPlayers: Record<string, { gsis_id?: string }> = await sleeperResponse.json();
+    const sleeperPlayers = await sleeperClient.getAllPlayers();
 
     const gsisToSleeperId = new Map<string, string>();
     for (const [sleeperId, player] of Object.entries(sleeperPlayers)) {

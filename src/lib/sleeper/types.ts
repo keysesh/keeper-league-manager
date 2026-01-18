@@ -148,6 +148,13 @@ export interface SleeperPlayer {
   college?: string;
   active?: boolean;
   metadata?: Record<string, unknown>;
+  // External IDs for cross-referencing with other data sources
+  gsis_id?: string;
+  espn_id?: string;
+  yahoo_id?: string;
+  rotowire_id?: number;
+  sportradar_id?: string;
+  fantasy_data_id?: number;
 }
 
 export interface SleeperTransaction {
