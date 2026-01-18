@@ -181,10 +181,13 @@ export async function analyzeTradeComprehensive(
   // ========================================
   // BATCH QUERY 2b: Season stats for all players
   // ========================================
+  // Stats season is always the previous calendar year (last completed full season)
+  // NFL season X runs Sept X to Feb X+1, so in Jan 2026, 2025 season just finished
+  const statsSeason = new Date().getFullYear() - 1;
   const seasonStats = await prisma.playerSeasonStats.findMany({
     where: {
       playerId: { in: allPlayerIds },
-      season: season - 1, // Get last completed season's stats
+      season: statsSeason,
     },
   });
   const seasonStatsMap = new Map(seasonStats.map(s => [s.playerId, s]));
