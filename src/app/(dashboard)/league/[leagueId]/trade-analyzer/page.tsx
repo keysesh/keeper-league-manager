@@ -156,6 +156,9 @@ export default function TradeAnalyzerPage() {
   const [analysis, setAnalysis] = useState<TradeAnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
+  // Schedule data for bye weeks
+  const [byeWeeks, setByeWeeks] = useState<Record<string, number>>({});
+
   // Save/Share state
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [proposalTitle, setProposalTitle] = useState("");
@@ -166,16 +169,23 @@ export default function TradeAnalyzerPage() {
 
   const fetchLeagueData = useCallback(async () => {
     try {
-      // Fetch rosters with players AND draft picks in parallel (just 2 API calls)
-      const [rostersRes, picksRes] = await Promise.all([
+      // Fetch rosters with players, draft picks, and schedule in parallel
+      const [rostersRes, picksRes, scheduleRes] = await Promise.all([
         fetch(`/api/leagues/${leagueId}/rosters?includePlayers=true`),
         fetch(`/api/leagues/${leagueId}/draft-picks`),
+        fetch(`/api/nflverse/schedule?season=${planningSeason}`),
       ]);
 
       if (!rostersRes.ok) throw new Error("Failed to fetch rosters");
 
       const rostersData = await rostersRes.json();
       const picksData = picksRes.ok ? await picksRes.json() : { picks: [] };
+      const scheduleData = scheduleRes.ok ? await scheduleRes.json() : { byeWeeks: {} };
+
+      // Set bye weeks if available
+      if (scheduleData.byeWeeks) {
+        setByeWeeks(scheduleData.byeWeeks);
+      }
 
       // Build roster list
       const rosterList = rostersData.rosters.map((r: { id: string; teamName: string | null; sleeperId: string }) => ({
@@ -930,7 +940,7 @@ export default function TradeAnalyzerPage() {
               {/* Players */}
               <div className="p-4 space-y-3">
                 {analysis.team1.tradingAway.map((player) => (
-                  <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
+                  <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} byeWeek={player.team ? byeWeeks[player.team] : undefined} />
                 ))}
                 {analysis.team1.tradingAway.length === 0 && analysis.team1.picksGiven.length === 0 && (
                   <p className="text-gray-600 text-sm py-4 text-center">No players being traded</p>
@@ -987,7 +997,7 @@ export default function TradeAnalyzerPage() {
               {/* Players */}
               <div className="p-4 space-y-3">
                 {analysis.team2.tradingAway.map((player) => (
-                  <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} />
+                  <PlayerInfoCard key={player.playerId} player={player} isAfterDeadline={analysis.isAfterDeadline} byeWeek={player.team ? byeWeeks[player.team] : undefined} />
                 ))}
                 {analysis.team2.tradingAway.length === 0 && analysis.team2.picksGiven.length === 0 && (
                   <p className="text-gray-600 text-sm py-4 text-center">No players being traded</p>
@@ -1023,7 +1033,7 @@ export default function TradeAnalyzerPage() {
 }
 
 // Player Info Card Component - Objective information only
-function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue; isAfterDeadline: boolean }) {
+function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTradeValue; isAfterDeadline: boolean; byeWeek?: number }) {
   const { keeperStatus, projection, stats } = player;
 
   // Get age color - younger players have more upside
@@ -1054,6 +1064,7 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span>{player.team || "FA"}</span>
+            {byeWeek && <span className="text-gray-400">Bye {byeWeek}</span>}
             {player.age && <span className={getAgeColor(player.age)}>Age {player.age}</span>}
             {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr exp`}</span>}
             <span className="text-gray-600">•</span>

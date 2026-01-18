@@ -72,6 +72,8 @@ interface PlayerModalProps {
   canAddFranchise?: boolean;
   canAddRegular?: boolean;
   isLoading?: boolean;
+  /** Team's bye week */
+  byeWeek?: number | null;
 }
 
 export function PlayerModal({
@@ -88,6 +90,7 @@ export function PlayerModal({
   canAddFranchise = true,
   canAddRegular = true,
   isLoading = false,
+  byeWeek,
 }: PlayerModalProps) {
   if (!player) return null;
 

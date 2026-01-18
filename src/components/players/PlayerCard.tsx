@@ -46,6 +46,8 @@ interface PlayerCardProps {
     yearsKept: number;
     type: string;
   } | null;
+  /** Team's bye week (pass from schedule context) */
+  byeWeek?: number | null;
   onClick?: () => void;
   compact?: boolean;
   className?: string;
@@ -54,6 +56,7 @@ interface PlayerCardProps {
 export const PlayerCard = memo(function PlayerCard({
   player,
   keeperInfo,
+  byeWeek,
   onClick,
   compact = false,
   className = "",
@@ -94,7 +97,7 @@ export const PlayerCard = memo(function PlayerCard({
             {isInjured && <InjuryIndicator status={injuryStatus} />}
           </div>
           <div className="text-xs text-zinc-400">
-            {player.team || "FA"} {ecr && `• ECR #${Math.round(ecr)}`} {keeperInfo && `• Rd ${keeperInfo.cost}`}
+            {player.team || "FA"} {byeWeek && `• Bye ${byeWeek}`} {ecr && `• ECR #${Math.round(ecr)}`} {keeperInfo && `• Rd ${keeperInfo.cost}`}
           </div>
         </div>
       </div>
@@ -144,6 +147,7 @@ export const PlayerCard = memo(function PlayerCard({
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
             {player.age && <span>Age: {player.age}</span>}
             {player.yearsExp !== null && <span>Exp: {player.yearsExp} yr{player.yearsExp !== 1 ? "s" : ""}</span>}
+            {byeWeek && <span>Bye: Wk {byeWeek}</span>}
             {nflverse?.injury?.primaryInjury && (
               <span className="text-red-400">{nflverse.injury.primaryInjury}</span>
             )}
@@ -175,10 +179,13 @@ export const PlayerCardList = memo(function PlayerCardList({
   players,
   onPlayerClick,
   compact = false,
+  byeWeeks,
 }: {
   players: PlayerCardProps["player"][];
   onPlayerClick?: (player: PlayerCardProps["player"]) => void;
   compact?: boolean;
+  /** Lookup of team -> bye week */
+  byeWeeks?: Record<string, number>;
 }) {
   return (
     <div className={compact ? "space-y-2" : "grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"}>
@@ -188,6 +195,7 @@ export const PlayerCardList = memo(function PlayerCardList({
           player={player}
           onClick={onPlayerClick ? () => onPlayerClick(player) : undefined}
           compact={compact}
+          byeWeek={player.team && byeWeeks ? byeWeeks[player.team] : undefined}
         />
       ))}
     </div>
