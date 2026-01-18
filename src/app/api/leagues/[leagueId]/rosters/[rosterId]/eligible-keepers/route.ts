@@ -624,9 +624,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const lastSeasonStats = seasonsWithData[0] || null;
       const prevSeasonStats = seasonsWithData[1] || null;
 
-      const lastSeasonPpg = lastSeasonStats
-        ? Math.round((lastSeasonStats.fantasyPointsPpr / lastSeasonStats.gamesPlayed) * 10) / 10
-        : null;
+      // Calculate PPG from actual stats, or fall back to projections for rookies
+      let lastSeasonPpg: number | null = null;
+      let isProjected = false;
+
+      if (lastSeasonStats) {
+        // Has actual stats from a recent season
+        lastSeasonPpg = Math.round((lastSeasonStats.fantasyPointsPpr / lastSeasonStats.gamesPlayed) * 10) / 10;
+      } else if (rp.player.projectedPoints && rp.player.projectedPoints > 0) {
+        // No historical stats - use projected points (divide by 17 games for PPG estimate)
+        lastSeasonPpg = Math.round((rp.player.projectedPoints / 17) * 10) / 10;
+        isProjected = true;
+      } else if (rp.player.pointsPerGame && rp.player.pointsPerGame > 0) {
+        // Fall back to player's overall PPG if available
+        lastSeasonPpg = Math.round(rp.player.pointsPerGame * 10) / 10;
+        isProjected = true;
+      }
+
       const prevSeasonPpg = prevSeasonStats
         ? Math.round((prevSeasonStats.fantasyPointsPpr / prevSeasonStats.gamesPlayed) * 10) / 10
         : null;
@@ -648,13 +662,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           fantasyPointsHalfPpr: rp.player.fantasyPointsHalfPpr,
           gamesPlayed: rp.player.gamesPlayed,
           pointsPerGame: rp.player.pointsPerGame,
-          // Season-specific PPG (uses most recent available data)
+          // Season-specific PPG (uses most recent available data, or projections for rookies)
           lastSeasonPpg,
           lastSeasonGames: lastSeasonStats?.gamesPlayed ?? null,
           prevSeasonPpg,
           prevSeasonGames: prevSeasonStats?.gamesPlayed ?? null,
-          lastSeason: lastSeasonStats?.season ?? season - 1,
+          lastSeason: lastSeasonStats?.season ?? (isProjected ? season : season - 1),
           prevSeason: prevSeasonStats?.season ?? season - 2,
+          isProjected, // true if lastSeasonPpg is from projections (rookie/no historical data)
         },
         isStarter: rp.isStarter,
         eligibility: {

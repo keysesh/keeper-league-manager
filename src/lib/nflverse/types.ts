@@ -155,6 +155,50 @@ export interface NFLVerseSeasonStats {
 }
 
 /**
+ * NFLverse Fantasy Projections
+ * Source: https://github.com/nflverse/nflverse-data/releases/download/projections/projections_{season}.csv
+ */
+export interface NFLVerseProjection {
+  // Identifiers
+  player_id?: string;        // GSIS ID
+  player_name: string;
+  position?: string;
+  team?: string;
+
+  // ID mappings
+  gsis_id?: string;
+  sleeper_id?: string;
+  espn_id?: string;
+  yahoo_id?: string;
+
+  // Season context
+  season?: number;
+  week?: number;             // 0 = full season projection
+
+  // Projected stats
+  pass_att?: number;
+  pass_cmp?: number;
+  pass_yds?: number;
+  pass_td?: number;
+  pass_int?: number;
+  rush_att?: number;
+  rush_yds?: number;
+  rush_td?: number;
+  rec?: number;
+  rec_yds?: number;
+  rec_td?: number;
+
+  // Fantasy projections from different sources
+  fantasy_points?: number;
+  fantasy_points_ppr?: number;
+
+  // Source-specific projections (may vary by file)
+  espn_fantasy_points?: number;
+  yahoo_fantasy_points?: number;
+  fantasypros_points?: number;
+}
+
+/**
  * NFLverse data stored in Player.metadata
  */
 export interface NFLVerseMetadata {

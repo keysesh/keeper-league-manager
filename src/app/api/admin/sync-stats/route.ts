@@ -214,11 +214,86 @@ export async function POST(request: NextRequest) {
       updated++;
     }
 
+    // Also sync projections for upcoming season
+    // Try current year first (upcoming season), fall back to previous year (pre-season projections)
+    // Example: In Jan 2026, try 2026 projections first, then 2025 if not available
+    const currentYear = new Date().getFullYear();
+    const projectionYearsToTry = [currentYear, currentYear - 1];
+    let projectionsUpdated = 0;
+    let projectionSeasonUsed = 0;
+
+    for (const projYear of projectionYearsToTry) {
+      try {
+        logger.info(`Trying projections for ${projYear}...`);
+        const projectionsUrl = `https://github.com/nflverse/nflverse-data/releases/download/projections/projections_${projYear}.csv`;
+        const projectionsResponse = await fetch(projectionsUrl);
+
+        if (!projectionsResponse.ok) {
+          logger.info(`Projections not available for ${projYear}: ${projectionsResponse.status}`);
+          continue; // Try next year
+        }
+
+        const projCsvText = await projectionsResponse.text();
+        const projRecords = parse(projCsvText, {
+          columns: true,
+          skip_empty_lines: true,
+        }) as Record<string, string>[];
+
+        // Aggregate projections by player (sum across weeks if weekly projections)
+        const playerProjections = new Map<string, { pprPoints: number; gsisId: string }>();
+
+        for (const record of projRecords) {
+          const gsisId = record.player_id || record.gsis_id;
+          if (!gsisId) continue;
+
+          // Get PPR projection (or calculate from components)
+          const pprPoints = parseFloat(record.fantasy_points_ppr) ||
+                          parseFloat(record.fpts_ppr) ||
+                          parseFloat(record.fantasy_points) || 0;
+
+          const existing = playerProjections.get(gsisId);
+          if (existing) {
+            existing.pprPoints += pprPoints;
+          } else {
+            playerProjections.set(gsisId, { pprPoints, gsisId });
+          }
+        }
+
+        // Update players with projections
+        for (const [gsisId, proj] of playerProjections) {
+          const sleeperId = gsisToSleeper.get(gsisId);
+          const dbPlayer = sleeperId ? dbPlayersBySleeperId.get(sleeperId) : undefined;
+
+          if (dbPlayer && proj.pprPoints > 0) {
+            await prisma.player.update({
+              where: { id: dbPlayer.id },
+              data: {
+                projectedPoints: Math.round(proj.pprPoints * 10) / 10,
+              },
+            });
+            projectionsUpdated++;
+          }
+        }
+
+        projectionSeasonUsed = projYear;
+        logger.info(`Updated projections for ${projectionsUpdated} players from ${projYear}`);
+        break; // Success, don't try other years
+      } catch (projError) {
+        logger.warn(`Failed to sync projections for ${projYear}`, { error: String(projError) });
+      }
+    }
+
+    if (projectionsUpdated === 0) {
+      logger.warn("No projections synced - data may not be available yet");
+    }
+
     const response = NextResponse.json({
       success: true,
-      message: `Synced ${updated} players for ${season} season`,
+      message: `Synced ${updated} players for ${season} season, ${projectionsUpdated} projections${projectionSeasonUsed ? ` for ${projectionSeasonUsed}` : ""}`,
       season,
       playersUpdated: updated,
+      projectionsUpdated,
+      projectionSeason: projectionSeasonUsed || null,
       totalNFLVersePlayers: playerStats.size,
     });
     return addRateLimitHeaders(

@@ -29,6 +29,7 @@ interface Player {
   prevSeasonGames?: number | null;
   lastSeason?: number;
   prevSeason?: number;
+  isProjected?: boolean; // true if lastSeasonPpg is from projections (rookie/no historical data)
 }
 
 interface Eligibility {
@@ -172,8 +173,10 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           <div className="text-[11px] sm:text-xs font-semibold text-white">{player.yearsExp ?? 0}yr</div>
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-white/[0.02] sm:bg-transparent">
-          <div className="text-[8px] sm:text-[9px] text-zinc-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)}` : ""}PPG</div>
-          <div className="text-[11px] sm:text-xs font-semibold text-emerald-400">
+          <div className="text-[8px] sm:text-[9px] text-zinc-500 uppercase">
+            {player.isProjected ? "Proj" : player.lastSeason ? `'${String(player.lastSeason).slice(-2)}` : ""}PPG
+          </div>
+          <div className={`text-[11px] sm:text-xs font-semibold ${player.isProjected ? "text-violet-400" : "text-emerald-400"}`}>
             {player.lastSeasonPpg ? player.lastSeasonPpg.toFixed(1) : "—"}
           </div>
         </div>
@@ -188,8 +191,12 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
       {/* Keeper Year + Status Row */}
       <div className="grid grid-cols-3 gap-1 sm:gap-2 mt-1.5 sm:mt-2 text-center">
         <div className="p-1.5 sm:p-0 rounded bg-white/[0.02] sm:bg-transparent">
-          <div className="text-[8px] sm:text-[9px] text-zinc-500 uppercase">{player.lastSeason ? `'${String(player.lastSeason).slice(-2)}` : ""}GP</div>
-          <div className="text-[11px] sm:text-xs font-semibold text-white">{player.lastSeasonGames || "—"}</div>
+          <div className="text-[8px] sm:text-[9px] text-zinc-500 uppercase">
+            {player.isProjected ? "Est GP" : player.lastSeason ? `'${String(player.lastSeason).slice(-2)}GP` : "GP"}
+          </div>
+          <div className="text-[11px] sm:text-xs font-semibold text-white">
+            {player.isProjected ? "17" : player.lastSeasonGames || "—"}
+          </div>
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-white/[0.02] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-zinc-500 uppercase">Status</div>

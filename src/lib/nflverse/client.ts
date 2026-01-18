@@ -10,6 +10,7 @@ import {
   NFLVerseRoster,
   NFLVersePlayerStats,
   NFLVerseSeasonStats,
+  NFLVerseProjection,
   NFLVerseCacheEntry,
 } from "./types";
 
@@ -248,6 +249,19 @@ export class NFLVerseClient {
     }
 
     return Array.from(playerMap.values());
+  }
+
+  /**
+   * Get fantasy projections for a season
+   * Contains projected fantasy points from various sources (ESPN, Yahoo, etc.)
+   */
+  async getProjections(season: number): Promise<NFLVerseProjection[]> {
+    const url = `${NFLVERSE_BASE_URL}/projections/projections_${season}.csv`;
+    return this.fetchCSV<NFLVerseProjection>(
+      url,
+      `projections_${season}`,
+      CACHE_TTL.stats
+    );
   }
 
   /**
