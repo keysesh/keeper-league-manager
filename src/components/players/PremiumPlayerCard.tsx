@@ -5,6 +5,28 @@ import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { InjuryIndicator } from "@/components/ui/InjuryIndicator";
 
+interface NFLVerseMetadata {
+  ranking?: {
+    ecr?: number;
+    positionRank?: number;
+    rankingDate?: string;
+  };
+  depthChart?: {
+    depthPosition?: number;
+    formation?: string;
+  };
+  injury?: {
+    status?: string;
+    primaryInjury?: string;
+    secondaryInjury?: string;
+    practiceStatus?: string;
+  };
+}
+
+interface PlayerMetadata {
+  nflverse?: NFLVerseMetadata;
+}
+
 interface Player {
   id: string;
   sleeperId: string;
@@ -28,6 +50,7 @@ interface Player {
   lastSeason?: number;
   prevSeason?: number;
   isProjected?: boolean;
+  metadata?: PlayerMetadata | null;
 }
 
 interface Eligibility {
@@ -106,6 +129,13 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
   const isEligible = eligibility?.isEligible ?? false;
   const isRookie = player.yearsExp === 0;
 
+  // Extract NFLverse metadata
+  const nflverse = player.metadata?.nflverse;
+  const positionRank = nflverse?.ranking?.positionRank;
+  const depthPosition = nflverse?.depthChart?.depthPosition;
+  const isStarter = depthPosition === 1;
+  const nflverseInjury = nflverse?.injury;
+
   return (
     <div
       className={`
@@ -139,10 +169,22 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
             <span className="text-sm sm:text-base font-bold text-white truncate max-w-[140px] sm:max-w-none">{player.fullName}</span>
             {isRookie && <RookieBadge size="xs" />}
-            {player.injuryStatus && <InjuryIndicator status={player.injuryStatus} />}
+            {isStarter && (
+              <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400" title="Starter">
+                ST
+              </span>
+            )}
+            {(nflverseInjury?.status || player.injuryStatus) && (
+              <InjuryIndicator status={nflverseInjury?.status || player.injuryStatus} />
+            )}
           </div>
           <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1">
             <PositionBadge position={player.position} size="xs" variant="filled" />
+            {positionRank && (
+              <span className="text-[9px] font-bold text-gray-300">
+                #{positionRank}
+              </span>
+            )}
             <TeamLogo team={player.team || null} size="xs" />
             <span className="text-[10px] sm:text-xs text-gray-400">{player.team || "FA"}</span>
           </div>
@@ -162,7 +204,13 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
       </div>
 
       {/* Player Info Grid */}
-      <div className="grid grid-cols-4 gap-1 sm:gap-2 mt-2 sm:mt-3 text-center">
+      <div className="grid grid-cols-5 gap-1 sm:gap-2 mt-2 sm:mt-3 text-center">
+        <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
+          <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">ECR</div>
+          <div className={`text-[11px] sm:text-xs font-semibold ${nflverse?.ranking?.ecr ? "text-purple-400" : "text-gray-500"}`}>
+            {nflverse?.ranking?.ecr ? `#${Math.round(nflverse.ranking.ecr)}` : "—"}
+          </div>
+        </div>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">Age</div>
           <div className="text-[11px] sm:text-xs font-semibold text-white">{player.age || "—"}</div>
@@ -199,8 +247,16 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">Status</div>
-          <div className={`text-[11px] sm:text-xs font-semibold ${player.injuryStatus ? "text-red-400" : "text-emerald-400"}`}>
-            {player.injuryStatus || "Active"}
+          <div
+            className={`text-[11px] sm:text-xs font-semibold ${(nflverseInjury?.status || player.injuryStatus) ? "text-red-400" : "text-emerald-400"}`}
+            title={nflverseInjury?.primaryInjury || undefined}
+          >
+            {nflverseInjury?.status || player.injuryStatus || "Active"}
+            {nflverseInjury?.primaryInjury && (
+              <span className="text-[8px] text-gray-500 block truncate">
+                {nflverseInjury.primaryInjury}
+              </span>
+            )}
           </div>
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">

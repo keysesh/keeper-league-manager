@@ -6,6 +6,24 @@ import { PositionBadge, RookieBadge } from "../ui/PositionBadge";
 import { StatPill } from "../ui/StatPill";
 import { InjuryIndicator } from "../ui/InjuryIndicator";
 
+interface NFLVerseMetadata {
+  ranking?: {
+    ecr?: number;
+    positionRank?: number;
+    rankingDate?: string;
+  };
+  depthChart?: {
+    depthPosition?: number;
+    formation?: string;
+  };
+  injury?: {
+    status?: string;
+    primaryInjury?: string;
+    secondaryInjury?: string;
+    practiceStatus?: string;
+  };
+}
+
 interface PlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,6 +39,7 @@ interface PlayerModalProps {
     yearsExp?: number | null;
     status?: string | null;
     injuryStatus?: string | null;
+    metadata?: { nflverse?: NFLVerseMetadata } | null;
   } | null;
   eligibility?: {
     isEligible: boolean;
@@ -76,6 +95,14 @@ export function PlayerModal({
   const isKeeper = !!existingKeeper;
   const isEligible = eligibility?.isEligible ?? false;
 
+  // Extract NFLverse metadata
+  const nflverse = player.metadata?.nflverse;
+  const ranking = nflverse?.ranking;
+  const depthChart = nflverse?.depthChart;
+  const injury = nflverse?.injury;
+  const injuryStatus = injury?.status || player.injuryStatus;
+  const isStarter = depthChart?.depthPosition === 1;
+
   const getYearsKeptLabel = (years: number): string => {
     if (years === 0) return "New (First Year)";
     if (years >= 2) return "Maxed Out";
@@ -101,14 +128,23 @@ export function PlayerModal({
           <div className="flex items-center gap-2 mb-1">
             <h2 className="text-2xl font-bold text-white">{player.fullName}</h2>
             {isRookie && <RookieBadge size="md" />}
-            {player.injuryStatus && <InjuryIndicator status={player.injuryStatus} compact={false} />}
+            {isStarter && (
+              <span className="text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/20 text-emerald-400">STARTER</span>
+            )}
+            {injuryStatus && <InjuryIndicator status={injuryStatus} compact={false} />}
           </div>
           <div className="flex items-center gap-3 text-gray-400">
             <PositionBadge position={player.position} size="md" />
+            {ranking?.positionRank && (
+              <span className="text-sm font-bold text-purple-400">#{ranking.positionRank}</span>
+            )}
             <div className="flex items-center gap-2">
               <TeamLogo team={player.team ?? null} size="sm" />
               <span>{player.team || "Free Agent"}</span>
             </div>
+            {ranking?.ecr && (
+              <span className="text-sm text-purple-400">ECR #{Math.round(ranking.ecr)}</span>
+            )}
           </div>
           {isKeeper && (
             <div className="flex items-center gap-2 mt-2">
@@ -129,9 +165,23 @@ export function PlayerModal({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatBox label="Age" value={player.age ?? "—"} />
         <StatBox label="Experience" value={player.yearsExp !== null ? `${player.yearsExp} yrs` : "—"} />
-        <StatBox label="Status" value={player.status || "Active"} />
-        <StatBox label="Injury" value={player.injuryStatus || "Healthy"} highlight={!!player.injuryStatus} />
+        <StatBox label="ECR Rank" value={ranking?.ecr ? `#${Math.round(ranking.ecr)}` : "—"} variant="purple" />
+        <StatBox label="Pos Rank" value={ranking?.positionRank ? `#${ranking.positionRank}` : "—"} variant="purple" />
       </div>
+
+      {/* Depth Chart & Injury Info */}
+      {(depthChart || injury) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatBox
+            label="Depth"
+            value={depthChart?.depthPosition === 1 ? "Starter" : depthChart?.depthPosition ? `${depthChart.depthPosition}${depthChart.depthPosition === 2 ? "nd" : depthChart.depthPosition === 3 ? "rd" : "th"} String` : "—"}
+            variant={depthChart?.depthPosition === 1 ? "green" : undefined}
+          />
+          <StatBox label="Formation" value={depthChart?.formation || "—"} />
+          <StatBox label="Status" value={injuryStatus || "Healthy"} highlight={!!injuryStatus} />
+          <StatBox label="Injury" value={injury?.primaryInjury || "None"} highlight={!!injury?.primaryInjury} />
+        </div>
+      )}
 
       {/* Keeper Eligibility Section */}
       {eligibility && (
@@ -270,11 +320,28 @@ export function PlayerModal({
   );
 }
 
-function StatBox({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+function StatBox({
+  label,
+  value,
+  highlight = false,
+  variant,
+}: {
+  label: string;
+  value: string | number;
+  highlight?: boolean;
+  variant?: "purple" | "green";
+}) {
+  const getValueColor = () => {
+    if (highlight) return "text-red-400";
+    if (variant === "purple") return "text-purple-400";
+    if (variant === "green") return "text-emerald-400";
+    return "text-white";
+  };
+
   return (
     <div className="bg-gray-900 rounded-lg p-3 text-center">
       <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{label}</div>
-      <div className={`text-lg font-semibold ${highlight ? "text-red-400" : "text-white"}`}>{value}</div>
+      <div className={`text-lg font-semibold ${getValueColor()}`}>{value}</div>
     </div>
   );
 }

@@ -3,11 +3,27 @@
 import { memo } from "react";
 import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "../ui/PositionBadge";
+import { InjuryIndicator } from "../ui/InjuryIndicator";
 
 interface NFLVerseMetadata {
   gsisId?: string;
   espnId?: string;
   headshotUrl?: string;
+  ranking?: {
+    ecr?: number;
+    positionRank?: number;
+    rankingDate?: string;
+  };
+  depthChart?: {
+    depthPosition?: number;
+    formation?: string;
+  };
+  injury?: {
+    status?: string;
+    primaryInjury?: string;
+    secondaryInjury?: string;
+    practiceStatus?: string;
+  };
 }
 
 interface PlayerCardProps {
@@ -43,8 +59,12 @@ export const PlayerCard = memo(function PlayerCard({
   className = "",
 }: PlayerCardProps) {
   const isRookie = player.yearsExp === 0;
-  const isInjured = !!player.injuryStatus;
   const nflverse = player.metadata?.nflverse;
+  const injuryStatus = nflverse?.injury?.status || player.injuryStatus;
+  const isInjured = !!injuryStatus;
+  const positionRank = nflverse?.ranking?.positionRank;
+  const ecr = nflverse?.ranking?.ecr;
+  const isStarter = nflverse?.depthChart?.depthPosition === 1;
 
   if (compact) {
     return (
@@ -64,10 +84,17 @@ export const PlayerCard = memo(function PlayerCard({
           <div className="flex items-center gap-2">
             <span className="font-medium text-white truncate">{player.fullName}</span>
             <PositionBadge position={player.position} size="xs" />
+            {positionRank && (
+              <span className="text-[9px] font-bold text-gray-400">#{positionRank}</span>
+            )}
             {isRookie && <RookieBadge size="xs" />}
+            {isStarter && (
+              <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400">ST</span>
+            )}
+            {isInjured && <InjuryIndicator status={injuryStatus} />}
           </div>
           <div className="text-xs text-zinc-400">
-            {player.team || "FA"} {keeperInfo && `• Rd ${keeperInfo.cost}`}
+            {player.team || "FA"} {ecr && `• ECR #${Math.round(ecr)}`} {keeperInfo && `• Rd ${keeperInfo.cost}`}
           </div>
         </div>
       </div>
@@ -92,19 +119,34 @@ export const PlayerCard = memo(function PlayerCard({
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-white text-lg truncate">{player.fullName}</h3>
             {isRookie && <RookieBadge />}
+            {isStarter && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">STARTER</span>
+            )}
+            {isInjured && <InjuryIndicator status={injuryStatus} compact={false} />}
           </div>
           <div className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
             <PositionBadge position={player.position} />
+            {positionRank && (
+              <span className="text-xs font-bold text-purple-400">#{positionRank}</span>
+            )}
             <span>•</span>
             <div className="flex items-center gap-1">
               <TeamLogo team={player.team ?? null} size="xs" />
               <span>{player.team || "Free Agent"}</span>
             </div>
+            {ecr && (
+              <>
+                <span>•</span>
+                <span className="text-purple-400">ECR #{Math.round(ecr)}</span>
+              </>
+            )}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
             {player.age && <span>Age: {player.age}</span>}
             {player.yearsExp !== null && <span>Exp: {player.yearsExp} yr{player.yearsExp !== 1 ? "s" : ""}</span>}
-            {isInjured && <span className="text-red-400">{player.injuryStatus}</span>}
+            {nflverse?.injury?.primaryInjury && (
+              <span className="text-red-400">{nflverse.injury.primaryInjury}</span>
+            )}
           </div>
         </div>
       </div>

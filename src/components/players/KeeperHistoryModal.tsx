@@ -9,6 +9,21 @@ interface PlayerMetadata {
     headshotUrl?: string;
     pfrId?: string;
     espnId?: string;
+    ranking?: {
+      ecr?: number;
+      positionRank?: number;
+      rankingDate?: string;
+    };
+    depthChart?: {
+      depthPosition?: number;
+      formation?: string;
+    };
+    injury?: {
+      status?: string;
+      primaryInjury?: string;
+      secondaryInjury?: string;
+      practiceStatus?: string;
+    };
   };
   rookie_year?: string;
   college?: string;
@@ -279,8 +294,18 @@ export function KeeperHistoryModal({
                         {data.player.fullName}
                       </h3>
                       <PositionBadge position={data.player.position} size="sm" />
+                      {data.player.metadata?.nflverse?.ranking?.positionRank && (
+                        <span className="text-xs font-bold text-purple-400">
+                          #{data.player.metadata.nflverse.ranking.positionRank}
+                        </span>
+                      )}
+                      {data.player.metadata?.nflverse?.depthChart?.depthPosition === 1 && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                          STARTER
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-3 flex-wrap">
                       <span className="font-medium">{data.player.team || "FA"}</span>
                       {data.player.age && (
                         <>
@@ -294,16 +319,30 @@ export function KeeperHistoryModal({
                           <span>{data.player.yearsExp === 0 ? "Rookie" : `Year ${data.player.yearsExp + 1}`}</span>
                         </>
                       )}
-                      {data.player.injuryStatus && (
+                      {(data.player.metadata?.nflverse?.injury?.status || data.player.injuryStatus) && (
                         <>
                           <span className="text-gray-600">•</span>
-                          <span className="text-red-400">{data.player.injuryStatus}</span>
+                          <span className="text-red-400">
+                            {data.player.metadata?.nflverse?.injury?.status || data.player.injuryStatus}
+                            {data.player.metadata?.nflverse?.injury?.primaryInjury && (
+                              <span className="text-gray-500 ml-1">
+                                ({data.player.metadata.nflverse.injury.primaryInjury})
+                              </span>
+                            )}
+                          </span>
                         </>
                       )}
                     </div>
 
                     {/* Stats Row */}
                     <div className="flex gap-2 flex-wrap">
+                      {data.player.metadata?.nflverse?.ranking?.ecr && (
+                        <StatPill
+                          label="ECR"
+                          value={`#${Math.round(data.player.metadata.nflverse.ranking.ecr)}`}
+                          color="text-purple-400"
+                        />
+                      )}
                       {data.player.fantasyPointsPpr !== null && data.player.fantasyPointsPpr !== undefined && (
                         <StatPill
                           label="PPR Pts"
