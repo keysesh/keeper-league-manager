@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
@@ -35,24 +35,11 @@ interface Player {
 }
 
 export default function AdminPlayersPage() {
-  const availableSeasons = useMemo(() => {
-    const current = getCurrentSeason();
-    return [current, current - 1, current - 2, current - 3];
-  }, []);
-
-  const projectionSeasons = useMemo(() => {
-    const upcoming = getUpcomingSeason();
-    // Include upcoming season and a couple previous for historical projections
-    return [upcoming, upcoming - 1, upcoming - 2];
-  }, []);
-
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncingNflverse, setSyncingNflverse] = useState(false);
   const [syncingProjections, setSyncingProjections] = useState(false);
-  const [nflverseSeason, setNflverseSeason] = useState(() => getCurrentSeason());
-  const [projectionSeason, setProjectionSeason] = useState(() => getUpcomingSeason());
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
@@ -100,11 +87,13 @@ export default function AdminPlayersPage() {
   const syncNflverseStats = async () => {
     setSyncingNflverse(true);
     try {
-      const res = await fetch(`/api/nflverse/sync?season=${nflverseSeason}&type=stats`, { method: "POST" });
+      // No season param - API defaults to most recent season with data
+      const res = await fetch("/api/nflverse/sync?type=stats", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         const playersUpdated = data.result?.stats?.playersUpdated || 0;
-        success(`Synced ${playersUpdated} player stats for ${nflverseSeason}`);
+        const season = data.season || getCurrentSeason();
+        success(`Synced ${playersUpdated} player stats from ${season} season`);
       } else {
         error(data.error || "NFLverse sync failed");
       }
@@ -118,17 +107,19 @@ export default function AdminPlayersPage() {
   const syncProjections = async () => {
     setSyncingProjections(true);
     try {
-      const res = await fetch(`/api/nflverse/sync?season=${projectionSeason}&type=projections`, { method: "POST" });
+      // No season param - API defaults to upcoming season
+      const res = await fetch("/api/nflverse/sync?type=projections", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         const playersUpdated = data.result?.projections?.playersUpdated || 0;
         const errors = data.result?.projections?.errors || [];
+        const season = data.season || getUpcomingSeason();
         if (playersUpdated > 0) {
-          success(`Synced ${playersUpdated} player projections for ${projectionSeason}`);
+          success(`Synced ${playersUpdated} player projections for ${season}`);
         } else if (errors.length > 0) {
           error(errors[0]);
         } else {
-          error(`No projections available for ${projectionSeason} yet`);
+          error(`No projections available for ${season} yet`);
         }
       } else {
         error(data.error || "Projections sync failed");
@@ -152,42 +143,20 @@ export default function AdminPlayersPage() {
           >
             {syncing ? "Syncing..." : "Sync from Sleeper"}
           </button>
-          <div className="flex items-center gap-2">
-            <select
-              value={nflverseSeason}
-              onChange={(e) => setNflverseSeason(Number(e.target.value))}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-amber-500"
-            >
-              {availableSeasons.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-            <button
-              onClick={syncNflverseStats}
-              disabled={syncingNflverse}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
-            >
-              {syncingNflverse ? "Syncing..." : "Sync Stats"}
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={projectionSeason}
-              onChange={(e) => setProjectionSeason(Number(e.target.value))}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
-            >
-              {projectionSeasons.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-            <button
-              onClick={syncProjections}
-              disabled={syncingProjections}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
-            >
-              {syncingProjections ? "Syncing..." : "Sync Projections"}
-            </button>
-          </div>
+          <button
+            onClick={syncNflverseStats}
+            disabled={syncingNflverse}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+          >
+            {syncingNflverse ? "Syncing..." : "Sync Stats"}
+          </button>
+          <button
+            onClick={syncProjections}
+            disabled={syncingProjections}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+          >
+            {syncingProjections ? "Syncing..." : "Sync Projections"}
+          </button>
         </div>
       </div>
 

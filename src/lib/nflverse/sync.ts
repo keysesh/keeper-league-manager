@@ -1,5 +1,5 @@
 /**
- * NFLverse Sync - Syncs ID mappings and data to database
+ * NFLverse Sync - Syncs player stats from NFLverse to database
  */
 
 import { prisma } from "@/lib/prisma";
@@ -131,7 +131,11 @@ export async function syncNFLVerseIdMappings(
 }
 
 /**
- * Sync NFLverse stats for all players to PlayerSeasonStats
+ * Sync NFLverse stats for all players - ONE BUTTON DOES EVERYTHING
+ * 1. Fetches roster data to get sleeper_id → gsis_id mapping
+ * 2. Fetches stats for the season
+ * 3. Updates Player model directly with latest stats
+ * 4. Also stores in PlayerSeasonStats for history
  */
 export async function syncNFLVerseStats(
   season?: number
@@ -146,69 +150,119 @@ export async function syncNFLVerseStats(
   const errors: string[] = [];
 
   try {
-    // Get all season stats from NFLverse
+    // Step 1: Get roster data to build sleeper_id → gsis_id mapping
+    const rosters = await nflverseClient.getRosters(targetSeason);
+    logger.info("Fetched NFLverse rosters", { count: rosters.length });
+
+    // Build sleeper_id → gsis_id mapping from rosters
+    const sleeperToGsis = new Map<string, string>();
+    for (const roster of rosters) {
+      if (roster.sleeper_id && roster.gsis_id) {
+        sleeperToGsis.set(roster.sleeper_id, roster.gsis_id);
+      }
+    }
+    logger.info("Built sleeper→gsis mapping", { count: sleeperToGsis.size });
+
+    // Step 2: Get all season stats from NFLverse
     const seasonStats = await nflverseClient.getSeasonStats(targetSeason);
     logger.info("Fetched NFLverse season stats", { count: seasonStats.length });
 
-    // Get players with GSIS IDs from our database
+    // Build gsis_id → stats mapping for quick lookup
+    const gsisToStats = new Map<string, typeof seasonStats[0]>();
+    for (const stats of seasonStats) {
+      if (stats.player_id) {
+        gsisToStats.set(stats.player_id, stats);
+      }
+    }
+
+    // Step 3: Get all players from our database
     const dbPlayers = await prisma.player.findMany({
       select: {
         id: true,
         sleeperId: true,
+        fullName: true,
         metadata: true,
       },
     });
+    logger.info("Found players in database", { count: dbPlayers.length });
 
-    // Build GSIS ID to player ID mapping
-    const gsisToPlayerId = new Map<string, string>();
-    for (const player of dbPlayers) {
-      const metadata = player.metadata as { nflverse?: NFLVerseMetadata } | null;
-      if (metadata?.nflverse?.gsisId) {
-        gsisToPlayerId.set(metadata.nflverse.gsisId, player.id);
-      }
-    }
+    // Step 4: Process players in batches
+    for (let i = 0; i < dbPlayers.length; i += BATCH_SIZE) {
+      const batch = dbPlayers.slice(i, i + BATCH_SIZE);
+      const updates: Promise<unknown>[] = [];
 
-    logger.info("GSIS mapping built", { count: gsisToPlayerId.size });
+      for (const player of batch) {
+        // Find GSIS ID for this player
+        const gsisId = sleeperToGsis.get(player.sleeperId);
+        if (!gsisId) continue;
 
-    // Process stats in batches
-    for (let i = 0; i < seasonStats.length; i += BATCH_SIZE) {
-      const batch = seasonStats.slice(i, i + BATCH_SIZE);
-      const upserts: Promise<unknown>[] = [];
+        // Find stats for this player
+        const stats = gsisToStats.get(gsisId);
+        if (!stats) continue;
 
-      for (const stats of batch) {
-        const playerId = gsisToPlayerId.get(stats.player_id);
-        if (!playerId) continue;
+        // Calculate points per game
+        const pointsPerGame = stats.games_played > 0
+          ? stats.fantasy_points_ppr / stats.games_played
+          : 0;
 
-        upserts.push(
+        // Update Player model directly with latest stats
+        updates.push(
+          prisma.player
+            .update({
+              where: { id: player.id },
+              data: {
+                fantasyPointsPpr: stats.fantasy_points_ppr,
+                fantasyPointsHalfPpr: stats.fantasy_points_ppr - (stats.receptions * 0.5),
+                gamesPlayed: stats.games_played,
+                pointsPerGame: Math.round(pointsPerGame * 10) / 10,
+                statsUpdatedAt: new Date(),
+                // Also store GSIS ID in metadata if not present
+                metadata: {
+                  ...((player.metadata as Record<string, unknown>) || {}),
+                  nflverse: {
+                    ...((player.metadata as { nflverse?: NFLVerseMetadata })?.nflverse || {}),
+                    gsisId,
+                    lastSync: Date.now(),
+                  },
+                } as unknown as Prisma.InputJsonValue,
+              },
+            })
+            .then(() => {
+              playersUpdated++;
+            })
+            .catch((error) => {
+              playersFailed++;
+              errors.push(`${player.fullName}: ${error.message}`);
+            })
+        );
+
+        // Also upsert to PlayerSeasonStats for historical data
+        updates.push(
           prisma.playerSeasonStats
             .upsert({
               where: {
                 playerId_season: {
-                  playerId,
+                  playerId: player.id,
                   season: targetSeason,
                 },
               },
               create: {
-                playerId,
+                playerId: player.id,
                 season: targetSeason,
                 gamesPlayed: stats.games_played,
-                // Passing
                 passingYards: stats.passing_yards,
                 passingTds: stats.passing_tds,
                 interceptions: stats.interceptions,
-                // Rushing
                 rushingYards: stats.rushing_yards,
                 rushingTds: stats.rushing_tds,
                 carries: stats.carries,
-                // Receiving
                 receptions: stats.receptions,
                 receivingYards: stats.receiving_yards,
                 receivingTds: stats.receiving_tds,
                 targets: stats.targets,
-                // Fantasy (calculated from NFLverse)
                 fantasyPointsPpr: stats.fantasy_points_ppr,
-                fantasyPointsHalfPpr: stats.fantasy_points_ppr * 0.9, // Approximate
-                fantasyPointsStd: stats.fantasy_points_ppr - stats.receptions, // PPR - receptions
+                fantasyPointsHalfPpr: stats.fantasy_points_ppr - (stats.receptions * 0.5),
+                fantasyPointsStd: stats.fantasy_points_ppr - stats.receptions,
               },
               update: {
                 gamesPlayed: stats.games_played,
@@ -223,21 +277,18 @@ export async function syncNFLVerseStats(
                 receivingTds: stats.receiving_tds,
                 targets: stats.targets,
                 fantasyPointsPpr: stats.fantasy_points_ppr,
-                fantasyPointsHalfPpr: stats.fantasy_points_ppr * 0.9,
+                fantasyPointsHalfPpr: stats.fantasy_points_ppr - (stats.receptions * 0.5),
                 fantasyPointsStd: stats.fantasy_points_ppr - stats.receptions,
               },
             })
-            .then(() => {
-              playersUpdated++;
-            })
             .catch((error) => {
-              playersFailed++;
-              errors.push(`${stats.player_name}: ${error.message}`);
+              // Don't count this as a failure, Player update is what matters
+              logger.warn("Failed to upsert season stats", { error: error.message });
             })
         );
       }
 
-      await Promise.all(upserts);
+      await Promise.all(updates);
 
       logger.debug("Stats batch processed", {
         batchIndex: Math.floor(i / BATCH_SIZE) + 1,
