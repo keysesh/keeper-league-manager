@@ -31,7 +31,7 @@ export default async function DashboardLayout({
     isAdmin = user?.isAdmin ?? false;
   } catch (error) {
     // Column may not exist yet - skip onboarding check for existing users
-    logger.warn("onboardingComplete field not available - skipping onboarding check", error);
+    logger.warn("onboardingComplete field not available - skipping onboarding check", { error: String(error) });
     // Still try to get isAdmin separately
     try {
       const adminCheck = await prisma.user.findUnique({
