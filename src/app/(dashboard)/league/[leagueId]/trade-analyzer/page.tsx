@@ -1094,148 +1094,74 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
     return "text-red-400";
   };
 
+  // Check if there are eligibility issues to show
+  const hasEligibilityIssue = !keeperStatus.isEligibleForRegular || !keeperStatus.isEligibleForFranchise;
+
   return (
-    <div className="rounded-xl bg-gradient-to-b from-gray-800/50 to-gray-900/50 border border-gray-700/50 overflow-hidden">
-      {/* Header - Player Info */}
-      <div className="p-4 border-b border-gray-700/50">
-        <div className="flex items-start gap-3">
-          <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="md" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-white font-bold text-lg">{player.playerName}</span>
-              <PositionBadge position={player.position} size="sm" />
-              {player.injuryStatus && player.injuryStatus !== "Active" && (
-                <span className="text-red-400 text-[10px] font-bold px-1.5 py-0.5 bg-red-500/20 rounded">
-                  {player.injuryStatus}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-3 mt-1 text-sm">
-              <span className="text-gray-400 font-medium">{player.team || "FA"}</span>
-              {player.age && (
-                <span className={`font-semibold ${getAgeColor(player.age)}`}>
-                  Age {player.age}
-                </span>
-              )}
-              {player.yearsExp !== null && player.yearsExp >= 0 && (
-                <span className="text-gray-500">
-                  {player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr exp`}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="p-4 space-y-3">
-        {/* Fantasy Performance Stats */}
-        {(stats.pointsPerGame || stats.gamesPlayed) && (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
-              <div className="text-emerald-400 font-bold text-lg">
-                {stats.pointsPerGame?.toFixed(1) || "—"}
-              </div>
-              <div className="text-gray-500 text-[10px] uppercase">PPG</div>
-            </div>
-            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
-              <div className="text-blue-400 font-bold text-lg">
-                {stats.fantasyPointsPpr?.toFixed(0) || "—"}
-              </div>
-              <div className="text-gray-500 text-[10px] uppercase">Total Pts</div>
-            </div>
-            <div className="p-2.5 rounded-lg bg-gray-800/50 border border-gray-700/30 text-center">
-              <div className="text-gray-300 font-bold text-lg">
-                {stats.gamesPlayed || "—"}
-              </div>
-              <div className="text-gray-500 text-[10px] uppercase">Games</div>
-            </div>
-          </div>
-        )}
-
-        {/* Keeper Info - Compact single row */}
-        <div className="p-3 rounded-lg bg-gray-900/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div>
-                <span className="text-gray-500 text-xs">Cost </span>
-                <span className="text-amber-400 font-bold text-lg">R{projection.newCost}</span>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs">Kept </span>
-                <span className={`font-bold text-lg ${isAfterDeadline ? "text-amber-400" : "text-white"}`}>
-                  {isAfterDeadline ? "0" : keeperStatus.yearsKept}
-                </span>
-                <span className="text-gray-600 text-xs">/{keeperStatus.maxYearsAllowed}yr</span>
-              </div>
-            </div>
-            {keeperStatus.keeperType && (
-              <span className={`text-xs font-medium px-2 py-1 rounded ${
-                keeperStatus.keeperType === "FRANCHISE"
-                  ? "bg-purple-500/20 text-purple-400"
-                  : "bg-blue-500/20 text-blue-400"
-              }`}>
-                {keeperStatus.keeperType === "FRANCHISE" ? "Franchise" : "Keeper"}
+    <div className="rounded-lg bg-gray-800/30 border border-gray-700/40 p-3">
+      {/* Player Header - Compact */}
+      <div className="flex items-center gap-3 mb-3">
+        <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="md" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white font-semibold">{player.playerName}</span>
+            <PositionBadge position={player.position} size="sm" />
+            {player.injuryStatus && player.injuryStatus !== "Active" && (
+              <span className="text-red-400 text-[10px] font-bold px-1.5 py-0.5 bg-red-500/20 rounded">
+                {player.injuryStatus}
               </span>
             )}
           </div>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>{player.team || "FA"}</span>
+            {player.age && <span className={getAgeColor(player.age)}>Age {player.age}</span>}
+            {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr`}</span>}
+            <span className="text-gray-600">•</span>
+            <span className="text-amber-400 font-medium">R{projection.newCost}</span>
+            <span className="text-gray-500">{keeperStatus.yearsKept}/{keeperStatus.maxYearsAllowed}yr kept</span>
+          </div>
         </div>
-
-        {/* Keeper Eligibility - Inline */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-gray-500">Eligible:</span>
-          <span className={keeperStatus.isEligibleForRegular ? "text-blue-400" : "text-gray-600"}>
-            {keeperStatus.isEligibleForRegular ? "✓" : "✗"} Regular
-          </span>
-          <span className={keeperStatus.isEligibleForFranchise ? "text-purple-400" : "text-gray-600"}>
-            {keeperStatus.isEligibleForFranchise ? "✓" : "✗"} Franchise
-          </span>
-        </div>
-
-        {/* Cost Trajectory - Compact */}
-        {projection.costTrajectory.length > 1 && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-500">Future costs:</span>
-            <div className="flex items-center gap-1">
-              {projection.costTrajectory.slice(0, 4).map((year, i) => (
-                <span
-                  key={year.year}
-                  className={`px-1.5 py-0.5 rounded ${
-                    year.isFinalYear
-                      ? "bg-red-500/20 text-red-400"
-                      : "bg-gray-800/50 text-gray-400"
-                  }`}
-                >
-                  R{year.cost}
-                </span>
-              ))}
-              {projection.costTrajectory.length > 4 && (
-                <span className="text-gray-600">+{projection.costTrajectory.length - 4} more</span>
-              )}
-            </div>
-          </div>
-        )}
-        {projection.costTrajectory.length === 1 && (
-          <div className="text-xs text-red-400">
-            ⚠ Final keepable year at R{projection.costTrajectory[0].cost}
-          </div>
-        )}
-
-        {/* Trade Impact Notice */}
-        {isAfterDeadline && (
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <div className="flex items-start gap-2">
-              <span className="text-amber-400">⚠️</span>
-              <div>
-                <div className="text-amber-400 text-xs font-semibold">Offseason Trade Impact</div>
-                <div className="text-amber-400/80 text-[11px]">
-                  Years kept resets to 0 for new owner. Cost (R{projection.newCost}) is preserved.
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Stats Row - Always show for consistent height */}
+      <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
+          <div className="text-emerald-400 font-bold">{stats.pointsPerGame?.toFixed(1) || "—"}</div>
+          <div className="text-gray-600 text-[10px]">ppg</div>
+        </div>
+        <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
+          <div className="text-blue-400 font-bold">{stats.fantasyPointsPpr?.toFixed(0) || "—"}</div>
+          <div className="text-gray-600 text-[10px]">total</div>
+        </div>
+        <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
+          <div className="text-gray-300 font-bold">{stats.gamesPlayed || "—"}</div>
+          <div className="text-gray-600 text-[10px]">gp</div>
+        </div>
+      </div>
+
+      {/* Warnings - Only show if relevant */}
+      {(hasEligibilityIssue || projection.costTrajectory.length === 1 || isAfterDeadline) && (
+        <div className="space-y-1 text-xs">
+          {/* Eligibility issues only */}
+          {hasEligibilityIssue && (
+            <div className="text-gray-500">
+              {!keeperStatus.isEligibleForRegular && <span className="text-red-400">✗ Not eligible as regular keeper</span>}
+              {!keeperStatus.isEligibleForRegular && !keeperStatus.isEligibleForFranchise && <span> • </span>}
+              {!keeperStatus.isEligibleForFranchise && <span className="text-red-400">✗ Not eligible for franchise</span>}
+            </div>
+          )}
+          {/* Final year warning - only if not showing trade impact */}
+          {projection.costTrajectory.length === 1 && !isAfterDeadline && (
+            <div className="text-amber-400">⚠ Final keepable year</div>
+          )}
+          {/* Trade impact - most important notice */}
+          {isAfterDeadline && (
+            <div className="text-amber-400 bg-amber-500/10 rounded px-2 py-1.5 mt-1">
+              ⚠ Offseason: Years reset to 0, cost R{projection.newCost} preserved
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
