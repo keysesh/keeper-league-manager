@@ -16,6 +16,11 @@ import {
   PlayerIdMapping,
   DepthChart,
   Injury,
+  NFLGame,
+  TeamSchedule,
+  TeamGameInfo,
+  TeamRecord,
+  StrengthOfSchedule,
 } from "./types";
 
 // NFLverse GitHub releases base URL
@@ -26,6 +31,10 @@ const NFLVERSE_BASE_URL =
 const DYNASTYPROCESS_BASE_URL =
   "https://raw.githubusercontent.com/dynastyprocess/data/master/files";
 
+// NFL schedule data (Lee Sharpe's games.csv via nflverse)
+const NFLDATA_BASE_URL =
+  "https://raw.githubusercontent.com/nflverse/nfldata/master/data";
+
 // Cache TTLs in milliseconds
 const CACHE_TTL = {
   rosters: 7 * 24 * 60 * 60 * 1000,   // 7 days
@@ -35,6 +44,7 @@ const CACHE_TTL = {
   depthCharts: 24 * 60 * 60 * 1000,   // 24 hours
   injuries: 2 * 60 * 60 * 1000,       // 2 hours (injuries update during week)
   playerIds: 7 * 24 * 60 * 60 * 1000, // 7 days (ID mappings rarely change)
+  schedule: 6 * 60 * 60 * 1000,       // 6 hours (updates during season)
 };
 
 // In-memory cache for CSV data
@@ -515,6 +525,266 @@ export class NFLVerseClient {
     });
 
     return latestByPlayer;
+  }
+
+  /**
+   * Get NFL schedule/games data
+   * Contains all games with scores, spreads, coaches, etc.
+   */
+  async getSchedule(season?: number): Promise<NFLGame[]> {
+    const url = `${NFLDATA_BASE_URL}/games.csv`;
+
+    // Fetch all games data
+    const allGames = await this.fetchCSV<NFLGame>(
+      url,
+      "schedule_all",
+      CACHE_TTL.schedule
+    );
+
+    // Filter by season if provided
+    if (season) {
+      return allGames.filter((g) => g.season === season);
+    }
+
+    return allGames;
+  }
+
+  /**
+   * Get team schedules for a season
+   * Returns schedule for each team including bye week
+   */
+  async getTeamSchedules(season: number): Promise<Map<string, TeamSchedule>> {
+    const games = await this.getSchedule(season);
+
+    // Only regular season games
+    const regularGames = games.filter((g) => g.game_type === "REG");
+
+    // Get all unique teams
+    const teams = new Set<string>();
+    regularGames.forEach((g) => {
+      teams.add(g.away_team);
+      teams.add(g.home_team);
+    });
+
+    // Find all weeks in the season
+    const weeks = [...new Set(regularGames.map((g) => g.week))].sort(
+      (a, b) => a - b
+    );
+
+    const schedules = new Map<string, TeamSchedule>();
+
+    for (const team of teams) {
+      const teamGames: TeamGameInfo[] = [];
+      const teamWeeks = new Set<number>();
+
+      for (const game of regularGames) {
+        if (game.away_team === team || game.home_team === team) {
+          const isHome = game.home_team === team;
+          const opponent = isHome ? game.away_team : game.home_team;
+
+          teamWeeks.add(game.week);
+
+          // Determine result if game has been played
+          let result: "W" | "L" | "T" | undefined;
+          let score: string | undefined;
+
+          if (game.home_score !== undefined && game.away_score !== undefined) {
+            const teamScore = isHome ? game.home_score : game.away_score;
+            const oppScore = isHome ? game.away_score : game.home_score;
+
+            if (teamScore > oppScore) result = "W";
+            else if (teamScore < oppScore) result = "L";
+            else result = "T";
+
+            score = `${teamScore}-${oppScore}`;
+          }
+
+          teamGames.push({
+            week: game.week,
+            opponent,
+            isHome,
+            gameday: game.gameday,
+            gametime: game.gametime,
+            result,
+            score,
+            spread: isHome ? game.spread_line : game.spread_line ? -game.spread_line : undefined,
+          });
+        }
+      }
+
+      // Sort games by week
+      teamGames.sort((a, b) => a.week - b.week);
+
+      // Find bye week (week not in teamWeeks)
+      const byeWeek = weeks.find((w) => !teamWeeks.has(w)) || 0;
+
+      schedules.set(team, {
+        team,
+        season,
+        byeWeek,
+        games: teamGames,
+      });
+    }
+
+    logger.info("Built team schedules", {
+      season,
+      teams: schedules.size,
+    });
+
+    return schedules;
+  }
+
+  /**
+   * Get team records for a season
+   */
+  async getTeamRecords(season: number): Promise<Map<string, TeamRecord>> {
+    const games = await this.getSchedule(season);
+    const regularGames = games.filter(
+      (g) => g.game_type === "REG" && g.home_score !== undefined
+    );
+
+    const records = new Map<string, TeamRecord>();
+
+    // Initialize all teams
+    const teams = new Set<string>();
+    regularGames.forEach((g) => {
+      teams.add(g.away_team);
+      teams.add(g.home_team);
+    });
+
+    for (const team of teams) {
+      records.set(team, {
+        team,
+        season,
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        winPct: 0,
+        pointsFor: 0,
+        pointsAgainst: 0,
+        divisionWins: 0,
+        divisionLosses: 0,
+      });
+    }
+
+    // Calculate records
+    for (const game of regularGames) {
+      if (game.home_score === undefined || game.away_score === undefined)
+        continue;
+
+      const homeRecord = records.get(game.home_team)!;
+      const awayRecord = records.get(game.away_team)!;
+
+      // Points
+      homeRecord.pointsFor += game.home_score;
+      homeRecord.pointsAgainst += game.away_score;
+      awayRecord.pointsFor += game.away_score;
+      awayRecord.pointsAgainst += game.home_score;
+
+      // W/L/T
+      if (game.home_score > game.away_score) {
+        homeRecord.wins++;
+        awayRecord.losses++;
+        if (game.div_game === 1) {
+          homeRecord.divisionWins++;
+          awayRecord.divisionLosses++;
+        }
+      } else if (game.home_score < game.away_score) {
+        homeRecord.losses++;
+        awayRecord.wins++;
+        if (game.div_game === 1) {
+          homeRecord.divisionLosses++;
+          awayRecord.divisionWins++;
+        }
+      } else {
+        homeRecord.ties++;
+        awayRecord.ties++;
+      }
+    }
+
+    // Calculate win percentages
+    for (const record of records.values()) {
+      const totalGames = record.wins + record.losses + record.ties;
+      record.winPct =
+        totalGames > 0
+          ? (record.wins + record.ties * 0.5) / totalGames
+          : 0;
+    }
+
+    logger.info("Built team records", {
+      season,
+      teams: records.size,
+    });
+
+    return records;
+  }
+
+  /**
+   * Calculate strength of schedule for all teams
+   * Based on opponent win percentages
+   */
+  async getStrengthOfSchedule(
+    season: number
+  ): Promise<Map<string, StrengthOfSchedule>> {
+    const schedules = await this.getTeamSchedules(season);
+    const records = await this.getTeamRecords(season);
+
+    const sosMap = new Map<string, StrengthOfSchedule>();
+    const sosValues: { team: string; sos: number }[] = [];
+
+    for (const [team, schedule] of schedules) {
+      // Get opponent win percentages
+      const opponentWinPcts: number[] = [];
+
+      for (const game of schedule.games) {
+        const oppRecord = records.get(game.opponent);
+        if (oppRecord) {
+          opponentWinPcts.push(oppRecord.winPct);
+        }
+      }
+
+      // Calculate average opponent win percentage (SOS)
+      const fullSOS =
+        opponentWinPcts.length > 0
+          ? opponentWinPcts.reduce((a, b) => a + b, 0) / opponentWinPcts.length
+          : 0.5;
+
+      sosValues.push({ team, sos: fullSOS });
+
+      sosMap.set(team, {
+        team,
+        season,
+        fullSOS: Math.round(fullSOS * 1000) / 1000,
+      });
+    }
+
+    // Calculate ranks (higher SOS = harder schedule = lower rank number)
+    sosValues.sort((a, b) => b.sos - a.sos);
+    sosValues.forEach((item, index) => {
+      const sos = sosMap.get(item.team)!;
+      sos.fullRank = index + 1;
+    });
+
+    logger.info("Calculated strength of schedule", {
+      season,
+      teams: sosMap.size,
+    });
+
+    return sosMap;
+  }
+
+  /**
+   * Get bye weeks for all teams in a season
+   */
+  async getByeWeeks(season: number): Promise<Map<string, number>> {
+    const schedules = await this.getTeamSchedules(season);
+    const byeWeeks = new Map<string, number>();
+
+    for (const [team, schedule] of schedules) {
+      byeWeeks.set(team, schedule.byeWeek);
+    }
+
+    return byeWeeks;
   }
 }
 

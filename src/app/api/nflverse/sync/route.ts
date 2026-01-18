@@ -16,6 +16,7 @@ import {
   syncFFRankings,
   syncDepthCharts,
   syncInjuries,
+  syncSchedule,
 } from "@/lib/nflverse/sync";
 import { NFLVerseClient } from "@/lib/nflverse/client";
 import {
@@ -110,6 +111,9 @@ export async function POST(request: NextRequest) {
         break;
       case "injuries":
         result = { injuries: await syncInjuries(season) };
+        break;
+      case "schedule":
+        result = { schedule: await syncSchedule(season) };
         break;
       case "all":
       default:

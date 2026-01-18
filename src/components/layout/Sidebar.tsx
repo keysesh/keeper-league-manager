@@ -116,31 +116,9 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         })}
       </nav>
 
-      {/* Season Card */}
-      <div className="mx-4 mb-5">
-        <div className="p-4 rounded-md bg-[#1a1a1a] border border-[#2a2a2a]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-gray-500 uppercase tracking-[0.15em] font-semibold">
-              Season
-            </span>
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-white tracking-tight">{new Date().getFullYear()}</p>
-          <p className="text-[11px] text-gray-400 mt-1.5 font-medium">Keepers open</p>
-        </div>
-      </div>
-
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-[#2a2a2a]">
-        <p className="text-[10px] text-gray-500 font-medium">
-          E Pluribus Fantasy Football
-        </p>
-        <p className="text-[9px] text-gray-600 mt-0.5">
-          Keeper Tracker v2.0
-        </p>
+      <div className="mt-auto px-4 py-4 border-t border-[#1a1a1a]">
+        <p className="text-xs text-gray-500">{new Date().getFullYear()} Season</p>
       </div>
     </aside>
   );

@@ -383,3 +383,129 @@ export interface NFLVerseMetadataExtended extends NFLVerseMetadata {
   depthChart?: DepthChartMetadata;
   injury?: InjuryMetadata;
 }
+
+/**
+ * NFL Game/Schedule data
+ * Source: https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv
+ */
+export interface NFLGame {
+  game_id: string;
+  season: number;
+  game_type: string;           // REG, WC, DIV, CON, SB
+  week: number;
+  gameday: string;             // Date in YYYY-MM-DD format
+  weekday: string;             // Sun, Mon, Thu, Sat
+  gametime: string;            // HH:MM format
+  away_team: string;
+  away_score?: number;
+  home_team: string;
+  home_score?: number;
+  location?: string;           // Home, Neutral
+  result?: number;             // Home score - away score
+  total?: number;              // Total points scored
+  overtime?: number;           // 1 if overtime, 0 otherwise
+  old_game_id?: string;
+  gsis?: number;
+  nfl_detail_id?: string;
+  pfr?: string;
+  pff?: string;
+  espn?: number;
+  ftn?: number;
+  away_rest?: number;          // Days of rest for away team
+  home_rest?: number;          // Days of rest for home team
+  away_moneyline?: number;
+  home_moneyline?: number;
+  spread_line?: number;        // Vegas spread (home perspective)
+  away_spread_odds?: number;
+  home_spread_odds?: number;
+  total_line?: number;         // Vegas over/under
+  under_odds?: number;
+  over_odds?: number;
+  div_game?: number;           // 1 if divisional game
+  roof?: string;               // dome, outdoors, open, closed
+  surface?: string;            // grass, fieldturf, etc.
+  temp?: number;               // Temperature (F)
+  wind?: number;               // Wind speed (mph)
+  away_qb_id?: string;
+  home_qb_id?: string;
+  away_qb_name?: string;
+  home_qb_name?: string;
+  away_coach?: string;
+  home_coach?: string;
+  referee?: string;
+  stadium_id?: string;
+  stadium?: string;
+}
+
+/**
+ * Team schedule info (computed from games)
+ */
+export interface TeamSchedule {
+  team: string;
+  season: number;
+  byeWeek: number;
+  games: TeamGameInfo[];
+}
+
+/**
+ * Single game info from team perspective
+ */
+export interface TeamGameInfo {
+  week: number;
+  opponent: string;
+  isHome: boolean;
+  gameday: string;
+  gametime: string;
+  result?: "W" | "L" | "T";
+  score?: string;              // e.g., "24-17"
+  spread?: number;
+}
+
+/**
+ * Team record and strength of schedule data
+ */
+export interface TeamRecord {
+  team: string;
+  season: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  winPct: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  divisionWins: number;
+  divisionLosses: number;
+}
+
+/**
+ * Strength of schedule for a team
+ */
+export interface StrengthOfSchedule {
+  team: string;
+  season: number;
+  // Past SOS (based on actual records)
+  pastSOS?: number;           // Average win% of opponents played
+  pastRank?: number;          // Rank 1-32 (1 = hardest)
+  // Future SOS (based on remaining opponents)
+  futureSOS?: number;
+  futureRank?: number;
+  // Full season SOS
+  fullSOS?: number;
+  fullRank?: number;
+  // Position-specific (based on fantasy points allowed)
+  qbSOS?: number;
+  rbSOS?: number;
+  wrSOS?: number;
+  teSOS?: number;
+}
+
+/**
+ * Schedule metadata stored at league/team level
+ */
+export interface ScheduleMetadata {
+  season: number;
+  lastSync: number;
+  teamSchedules: Record<string, TeamSchedule>;
+  teamRecords: Record<string, TeamRecord>;
+  strengthOfSchedule: Record<string, StrengthOfSchedule>;
+}

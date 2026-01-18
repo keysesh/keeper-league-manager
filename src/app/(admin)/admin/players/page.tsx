@@ -43,6 +43,7 @@ export default function AdminPlayersPage() {
   const [syncingRankings, setSyncingRankings] = useState(false);
   const [syncingDepthCharts, setSyncingDepthCharts] = useState(false);
   const [syncingInjuries, setSyncingInjuries] = useState(false);
+  const [syncingSchedule, setSyncingSchedule] = useState(false);
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
@@ -202,6 +203,31 @@ export default function AdminPlayersPage() {
     }
   };
 
+  const syncScheduleData = async () => {
+    setSyncingSchedule(true);
+    try {
+      const res = await fetch("/api/nflverse/sync?type=schedule", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const schedule = data.result?.schedule;
+        const teams = schedule?.teamsProcessed || 0;
+        const games = schedule?.gamesProcessed || 0;
+        const season = schedule?.season || getCurrentSeason();
+        if (teams > 0) {
+          success(`Synced schedule for ${season}: ${teams} teams, ${games} games`);
+        } else {
+          error(`No schedule data available for ${season}`);
+        }
+      } else {
+        error(data.error || "Schedule sync failed");
+      }
+    } catch {
+      error("Schedule sync failed");
+    } finally {
+      setSyncingSchedule(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -248,6 +274,13 @@ export default function AdminPlayersPage() {
             className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncingInjuries ? "Syncing..." : "Injuries"}
+          </button>
+          <button
+            onClick={syncScheduleData}
+            disabled={syncingSchedule}
+            className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
+          >
+            {syncingSchedule ? "Syncing..." : "Schedule"}
           </button>
         </div>
       </div>

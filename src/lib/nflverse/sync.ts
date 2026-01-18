@@ -11,6 +11,9 @@ import {
   RankingMetadata,
   DepthChartMetadata,
   InjuryMetadata,
+  TeamSchedule,
+  TeamRecord,
+  StrengthOfSchedule,
 } from "./types";
 import { Prisma } from "@prisma/client";
 
@@ -941,6 +944,137 @@ export async function syncInjuries(
       errors: [errorMessage, ...errors.slice(0, 9)],
       duration,
     };
+  }
+}
+
+/**
+ * Schedule sync result with team data
+ */
+export interface ScheduleSyncResult {
+  success: boolean;
+  season: number;
+  teamsProcessed: number;
+  gamesProcessed: number;
+  schedules: Record<string, TeamSchedule>;
+  records: Record<string, TeamRecord>;
+  strengthOfSchedule: Record<string, StrengthOfSchedule>;
+  errors: string[];
+  duration: number;
+}
+
+/**
+ * Sync NFL schedule data for a season
+ * Returns team schedules, bye weeks, records, and strength of schedule
+ */
+export async function syncSchedule(
+  season?: number
+): Promise<ScheduleSyncResult> {
+  const startTime = Date.now();
+  const targetSeason = season || NFLVerseClient.getCurrentSeason();
+
+  logger.info("Starting schedule sync", { season: targetSeason });
+
+  const errors: string[] = [];
+
+  try {
+    // Fetch schedule data
+    const games = await nflverseClient.getSchedule(targetSeason);
+    const regularGames = games.filter((g) => g.game_type === "REG");
+
+    logger.info("Fetched schedule", {
+      totalGames: games.length,
+      regularGames: regularGames.length
+    });
+
+    if (games.length === 0) {
+      return {
+        success: false,
+        season: targetSeason,
+        teamsProcessed: 0,
+        gamesProcessed: 0,
+        schedules: {},
+        records: {},
+        strengthOfSchedule: {},
+        errors: [`No schedule data available for ${targetSeason}`],
+        duration: Date.now() - startTime,
+      };
+    }
+
+    // Get team schedules (includes bye weeks)
+    const schedulesMap = await nflverseClient.getTeamSchedules(targetSeason);
+    const schedules: Record<string, TeamSchedule> = {};
+    for (const [team, schedule] of schedulesMap) {
+      schedules[team] = schedule;
+    }
+
+    // Get team records
+    const recordsMap = await nflverseClient.getTeamRecords(targetSeason);
+    const records: Record<string, TeamRecord> = {};
+    for (const [team, record] of recordsMap) {
+      records[team] = record;
+    }
+
+    // Get strength of schedule
+    const sosMap = await nflverseClient.getStrengthOfSchedule(targetSeason);
+    const strengthOfSchedule: Record<string, StrengthOfSchedule> = {};
+    for (const [team, sos] of sosMap) {
+      strengthOfSchedule[team] = sos;
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info("Schedule sync complete", {
+      season: targetSeason,
+      teams: Object.keys(schedules).length,
+      games: regularGames.length,
+      duration,
+    });
+
+    return {
+      success: true,
+      season: targetSeason,
+      teamsProcessed: Object.keys(schedules).length,
+      gamesProcessed: regularGames.length,
+      schedules,
+      records,
+      strengthOfSchedule,
+      errors,
+      duration,
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logger.error("Schedule sync failed", { error: errorMessage });
+
+    return {
+      success: false,
+      season: targetSeason,
+      teamsProcessed: 0,
+      gamesProcessed: 0,
+      schedules: {},
+      records: {},
+      strengthOfSchedule: {},
+      errors: [errorMessage],
+      duration,
+    };
+  }
+}
+
+/**
+ * Get bye week for a specific team
+ */
+export async function getTeamByeWeek(
+  team: string,
+  season?: number
+): Promise<number | null> {
+  const targetSeason = season || NFLVerseClient.getCurrentSeason();
+
+  try {
+    const byeWeeks = await nflverseClient.getByeWeeks(targetSeason);
+    return byeWeeks.get(team) || null;
+  } catch (error) {
+    logger.warn("Failed to get bye week", { team, season: targetSeason, error });
+    return null;
   }
 }
 

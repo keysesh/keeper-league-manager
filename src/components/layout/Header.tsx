@@ -230,13 +230,8 @@ export function Header({ user }: HeaderProps) {
             </div>
 
             {/* Footer */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#2a2a2a] bg-[#0d0d0d]">
-              <p className="text-xs text-gray-500 font-medium">
-                E Pluribus Fantasy Football
-              </p>
-              <p className="text-[10px] text-gray-600 mt-0.5">
-                Keeper Tracker v2.0
-              </p>
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#1a1a1a] bg-[#0d0d0d]">
+              <p className="text-xs text-gray-500">{new Date().getFullYear()} Season</p>
             </div>
           </div>
         </div>

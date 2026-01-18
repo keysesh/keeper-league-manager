@@ -66,7 +66,7 @@ export function Logo({ size = "md", className = "", showText = false }: LogoProp
       {showText && (
         <div className="flex flex-col">
           <span className="text-sm font-bold text-white tracking-tight">E Pluribus</span>
-          <span className="text-[10px] text-amber-400 font-medium -mt-0.5">Keeper Tracker</span>
+          <span className="text-[10px] text-gray-400 font-medium -mt-0.5">Keeper Manager</span>
         </div>
       )}
     </div>
