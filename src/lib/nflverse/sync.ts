@@ -194,6 +194,15 @@ export async function syncNFLVerseStats(
       sleeperToDbPlayer.set(player.sleeperId, player);
     }
 
+    // Build name-based lookup for fallback matching (when gsis_id missing)
+    // Key: normalized "firstname lastname|position" -> player
+    const nameToDbPlayer = new Map<string, typeof dbPlayers[0]>();
+    for (const player of dbPlayers) {
+      const normalizedName = player.fullName.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+      // We'll match by name only (position can vary between sources)
+      nameToDbPlayer.set(normalizedName, player);
+    }
+
     // Debug info
     const sampleStats = seasonStats.slice(0, 3).map(s => ({ gsis: s.player_id, name: s.player_name }));
     const sampleDbPlayers = dbPlayers.slice(0, 3).map(p => ({ sleeperId: p.sleeperId, name: p.fullName }));
@@ -217,10 +226,19 @@ export async function syncNFLVerseStats(
 
         // Find sleeper_id from gsis_id
         const sleeperId = gsisToSleeperId.get(gsisId);
-        if (!sleeperId) continue;
 
-        // Find player in our database
-        const player = sleeperToDbPlayer.get(sleeperId);
+        // Find player in our database - try gsis_id mapping first, then fallback to name
+        let player = sleeperId ? sleeperToDbPlayer.get(sleeperId) : null;
+
+        // Fallback: match by name if gsis_id lookup failed
+        if (!player && stats.player_name) {
+          const normalizedName = stats.player_name.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+          player = nameToDbPlayer.get(normalizedName);
+          if (player) {
+            logger.debug("Name-based match", { name: stats.player_name, playerId: player.id });
+          }
+        }
+
         if (!player) continue;
 
         // Calculate points per game
