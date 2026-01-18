@@ -965,12 +965,16 @@ export interface ScheduleSyncResult {
 /**
  * Sync NFL schedule data for a season
  * Returns team schedules, bye weeks, records, and strength of schedule
+ *
+ * For keeper planning: defaults to upcoming season
+ * Note: NFL schedule is typically released in May
  */
 export async function syncSchedule(
   season?: number
 ): Promise<ScheduleSyncResult> {
   const startTime = Date.now();
-  const targetSeason = season || NFLVerseClient.getCurrentSeason();
+  // Default to upcoming season for keeper planning
+  const targetSeason = season || NFLVerseClient.getUpcomingSeason();
 
   logger.info("Starting schedule sync", { season: targetSeason });
 
@@ -987,6 +991,9 @@ export async function syncSchedule(
     });
 
     if (games.length === 0) {
+      // Schedule not yet released - this is expected before May
+      const now = new Date();
+      const releaseMonth = now.getMonth() < 4 ? "May" : "soon";
       return {
         success: false,
         season: targetSeason,
@@ -995,7 +1002,7 @@ export async function syncSchedule(
         schedules: {},
         records: {},
         strengthOfSchedule: {},
-        errors: [`No schedule data available for ${targetSeason}`],
+        errors: [`${targetSeason} NFL schedule not yet released (typically available in ${releaseMonth})`],
         duration: Date.now() - startTime,
       };
     }

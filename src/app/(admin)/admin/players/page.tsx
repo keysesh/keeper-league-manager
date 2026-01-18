@@ -206,15 +206,21 @@ export default function AdminPlayersPage() {
   const syncScheduleData = async () => {
     setSyncingSchedule(true);
     try {
-      const res = await fetch("/api/nflverse/sync?type=schedule", { method: "POST" });
+      // Default to upcoming season (current year)
+      const upcomingSeason = new Date().getFullYear();
+      const res = await fetch(`/api/nflverse/sync?type=schedule&season=${upcomingSeason}`, { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         const schedule = data.result?.schedule;
         const teams = schedule?.teamsProcessed || 0;
         const games = schedule?.gamesProcessed || 0;
-        const season = schedule?.season || getCurrentSeason();
+        const season = schedule?.season || upcomingSeason;
+        const scheduleErrors = schedule?.errors || [];
         if (teams > 0) {
-          success(`Synced schedule for ${season}: ${teams} teams, ${games} games`);
+          success(`Synced ${season} schedule: ${teams} teams, ${games} games`);
+        } else if (scheduleErrors.length > 0) {
+          // Show the specific error (e.g., "schedule not yet released")
+          error(scheduleErrors[0]);
         } else {
           error(`No schedule data available for ${season}`);
         }

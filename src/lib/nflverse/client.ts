@@ -528,6 +528,16 @@ export class NFLVerseClient {
   }
 
   /**
+   * Get the upcoming NFL season (for schedule/projections)
+   * Before May: current year's season (schedule may not be available)
+   * May onwards: current year's season (schedule should be released)
+   */
+  static getUpcomingSeason(): number {
+    const now = new Date();
+    return now.getFullYear();
+  }
+
+  /**
    * Get NFL schedule/games data
    * Contains all games with scores, spreads, coaches, etc.
    */
@@ -547,6 +557,14 @@ export class NFLVerseClient {
     }
 
     return allGames;
+  }
+
+  /**
+   * Check if schedule is available for a season
+   */
+  async isScheduleAvailable(season: number): Promise<boolean> {
+    const games = await this.getSchedule(season);
+    return games.length > 0;
   }
 
   /**
