@@ -12,17 +12,29 @@ import {
   NFLVerseSeasonStats,
   NFLVerseProjection,
   NFLVerseCacheEntry,
+  FFRanking,
+  PlayerIdMapping,
+  DepthChart,
+  Injury,
 } from "./types";
 
 // NFLverse GitHub releases base URL
 const NFLVERSE_BASE_URL =
   "https://github.com/nflverse/nflverse-data/releases/download";
 
+// DynastyProcess data URLs (for FantasyPros rankings and ID mappings)
+const DYNASTYPROCESS_BASE_URL =
+  "https://raw.githubusercontent.com/dynastyprocess/data/master/files";
+
 // Cache TTLs in milliseconds
 const CACHE_TTL = {
-  rosters: 7 * 24 * 60 * 60 * 1000, // 7 days
-  stats: 24 * 60 * 60 * 1000,       // 24 hours
-  players: 7 * 24 * 60 * 60 * 1000, // 7 days
+  rosters: 7 * 24 * 60 * 60 * 1000,   // 7 days
+  stats: 24 * 60 * 60 * 1000,         // 24 hours
+  players: 7 * 24 * 60 * 60 * 1000,   // 7 days
+  rankings: 6 * 60 * 60 * 1000,       // 6 hours (rankings update frequently)
+  depthCharts: 24 * 60 * 60 * 1000,   // 24 hours
+  injuries: 2 * 60 * 60 * 1000,       // 2 hours (injuries update during week)
+  playerIds: 7 * 24 * 60 * 60 * 1000, // 7 days (ID mappings rarely change)
 };
 
 // In-memory cache for CSV data
@@ -340,6 +352,169 @@ export class NFLVerseClient {
   static getAvailableSeasons(): number[] {
     const currentSeason = NFLVerseClient.getCurrentSeason();
     return [currentSeason, currentSeason - 1, currentSeason - 2, currentSeason - 3];
+  }
+
+  /**
+   * Get player ID mappings from DynastyProcess
+   * Maps fantasypros_id, gsis_id, sleeper_id, etc.
+   */
+  async getPlayerIdMappings(): Promise<PlayerIdMapping[]> {
+    const url = `${DYNASTYPROCESS_BASE_URL}/db_playerids.csv`;
+    return this.fetchCSV<PlayerIdMapping>(
+      url,
+      "player_id_mappings",
+      CACHE_TTL.playerIds
+    );
+  }
+
+  /**
+   * Build a mapping from fantasypros_id to sleeper_id
+   */
+  async buildFantasyProsToSleeperMapping(): Promise<Map<string, string>> {
+    const mappings = await this.getPlayerIdMappings();
+    const map = new Map<string, string>();
+
+    for (const mapping of mappings) {
+      if (mapping.fantasypros_id && mapping.sleeper_id) {
+        map.set(mapping.fantasypros_id, mapping.sleeper_id);
+      }
+    }
+
+    logger.info("Built FantasyPros to Sleeper ID mapping", {
+      mappedPlayers: map.size,
+    });
+
+    return map;
+  }
+
+  /**
+   * Get FantasyPros rankings from DynastyProcess
+   * Returns latest weekly rankings with ECR (Expert Consensus Ranking)
+   */
+  async getFFRankings(): Promise<FFRanking[]> {
+    const url = `${DYNASTYPROCESS_BASE_URL}/fp_latest_weekly.csv`;
+
+    interface RawFFRanking {
+      page: string;
+      page_pos: string;
+      scrape_date: string;
+      fantasypros_id: string;
+      player_name: string;
+      pos: string;
+      team: string;
+      rank: number;
+      ecr: number;
+      sd: number;
+      best: number;
+      worst: number;
+    }
+
+    const rawRankings = await this.fetchCSV<RawFFRanking>(
+      url,
+      "ff_rankings",
+      CACHE_TTL.rankings
+    );
+
+    // Get ID mappings to add sleeper_id
+    const fpToSleeper = await this.buildFantasyProsToSleeperMapping();
+    const mappings = await this.getPlayerIdMappings();
+
+    // Build fantasypros_id to gsis_id mapping
+    const fpToGsis = new Map<string, string>();
+    for (const m of mappings) {
+      if (m.fantasypros_id && m.gsis_id) {
+        fpToGsis.set(m.fantasypros_id, m.gsis_id);
+      }
+    }
+
+    // Enrich rankings with IDs
+    return rawRankings.map((r) => ({
+      ...r,
+      sleeper_id: fpToSleeper.get(r.fantasypros_id),
+      gsis_id: fpToGsis.get(r.fantasypros_id),
+    }));
+  }
+
+  /**
+   * Get depth charts for a season
+   * Contains player depth position by team/position
+   */
+  async getDepthCharts(season: number): Promise<DepthChart[]> {
+    const url = `${NFLVERSE_BASE_URL}/depth_charts/depth_charts_${season}.csv`;
+    return this.fetchCSV<DepthChart>(
+      url,
+      `depth_charts_${season}`,
+      CACHE_TTL.depthCharts
+    );
+  }
+
+  /**
+   * Get latest depth chart entry for each player (most recent week)
+   * Returns only the most current depth chart position per player
+   */
+  async getLatestDepthCharts(season: number): Promise<Map<string, DepthChart>> {
+    const depthCharts = await this.getDepthCharts(season);
+    const latestByPlayer = new Map<string, DepthChart>();
+
+    // Sort by week descending to get latest first
+    const sorted = [...depthCharts].sort((a, b) => b.week - a.week);
+
+    for (const dc of sorted) {
+      if (dc.gsis_id && !latestByPlayer.has(dc.gsis_id)) {
+        latestByPlayer.set(dc.gsis_id, dc);
+      }
+    }
+
+    logger.info("Built latest depth chart mapping", {
+      season,
+      playersWithDepth: latestByPlayer.size,
+    });
+
+    return latestByPlayer;
+  }
+
+  /**
+   * Get injury reports for a season
+   * Note: 2025 data may not be available until season starts
+   */
+  async getInjuries(season: number): Promise<Injury[]> {
+    const url = `${NFLVERSE_BASE_URL}/injuries/injuries_${season}.csv`;
+
+    try {
+      return await this.fetchCSV<Injury>(
+        url,
+        `injuries_${season}`,
+        CACHE_TTL.injuries
+      );
+    } catch (error) {
+      // Injuries file may not exist for future/current seasons
+      logger.warn("Injuries data not available", { season, error });
+      return [];
+    }
+  }
+
+  /**
+   * Get latest injury status for each player (most recent week)
+   */
+  async getLatestInjuries(season: number): Promise<Map<string, Injury>> {
+    const injuries = await this.getInjuries(season);
+    const latestByPlayer = new Map<string, Injury>();
+
+    // Sort by week descending to get latest first
+    const sorted = [...injuries].sort((a, b) => b.week - a.week);
+
+    for (const inj of sorted) {
+      if (inj.gsis_id && !latestByPlayer.has(inj.gsis_id)) {
+        latestByPlayer.set(inj.gsis_id, inj);
+      }
+    }
+
+    logger.info("Built latest injury mapping", {
+      season,
+      playersWithInjuries: latestByPlayer.size,
+    });
+
+    return latestByPlayer;
   }
 }
 

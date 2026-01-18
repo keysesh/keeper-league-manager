@@ -237,3 +237,149 @@ export interface NFLVerseCacheEntry<T> {
   timestamp: number;
   expiresAt: number;
 }
+
+/**
+ * FantasyPros Rankings from DynastyProcess
+ * Source: https://raw.githubusercontent.com/dynastyprocess/data/master/files/fp_latest_weekly.csv
+ */
+export interface FFRanking {
+  page: string;
+  page_pos: string;
+  scrape_date: string;
+  fantasypros_id: string;
+  player_name: string;
+  pos: string;
+  team: string;
+  rank: number;
+  ecr: number;              // Expert Consensus Ranking
+  sd: number;               // Standard Deviation
+  best: number;
+  worst: number;
+  // Mapped IDs (from db_playerids.csv)
+  sleeper_id?: string;
+  gsis_id?: string;
+}
+
+/**
+ * Player ID mapping from DynastyProcess
+ * Source: https://raw.githubusercontent.com/dynastyprocess/data/master/files/db_playerids.csv
+ */
+export interface PlayerIdMapping {
+  mfl_id?: string;
+  sportradar_id?: string;
+  fantasypros_id?: string;
+  gsis_id?: string;
+  pff_id?: string;
+  sleeper_id?: string;
+  nfl_id?: string;
+  espn_id?: string;
+  yahoo_id?: string;
+  fleaflicker_id?: string;
+  cbs_id?: string;
+  pfr_id?: string;
+  cfbref_id?: string;
+  rotowire_id?: string;
+  rotoworld_id?: string;
+  ktc_id?: string;
+  stats_id?: string;
+  stats_global_id?: string;
+  fantasy_data_id?: string;
+  swish_id?: string;
+  name?: string;
+  merge_name?: string;
+  position?: string;
+  team?: string;
+  age?: number;
+  draft_year?: number;
+  draft_round?: string;
+  draft_pick?: string;
+  draft_ovr?: number;
+  twitter_username?: string;
+  height?: number;
+  weight?: number;
+  college?: string;
+  db_season?: number;
+}
+
+/**
+ * NFLverse Depth Chart Entry
+ * Source: https://github.com/nflverse/nflverse-data/releases/download/depth_charts/depth_charts_{season}.csv
+ */
+export interface DepthChart {
+  season: number;
+  club_code: string;
+  week: number;
+  game_type: string;
+  depth_team: number;
+  last_name: string;
+  first_name: string;
+  football_name: string;
+  formation: string;
+  gsis_id?: string;
+  jersey_number?: number;
+  position: string;
+  elias_id?: string;
+  depth_position?: number;
+  full_name?: string;
+}
+
+/**
+ * NFLverse Injury Report
+ * Source: https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_{season}.csv
+ */
+export interface Injury {
+  season: number;
+  game_type: string;
+  team: string;
+  week: number;
+  gsis_id?: string;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  report_primary_injury: string;
+  report_secondary_injury?: string;
+  report_status: string;         // Out, Doubtful, Questionable, Probable
+  practice_primary_injury?: string;
+  practice_secondary_injury?: string;
+  practice_status?: string;
+  date_modified?: string;
+}
+
+/**
+ * Stored ranking data in Player metadata
+ */
+export interface RankingMetadata {
+  ecr?: number;                  // Expert Consensus Ranking
+  positionRank?: number;         // Position-specific rank (e.g., RB12)
+  tier?: number;                 // Tier grouping
+  rankingDate?: string;          // When ranking was scraped
+}
+
+/**
+ * Stored depth chart data in Player metadata
+ */
+export interface DepthChartMetadata {
+  depthPosition?: number;        // 1 = starter, 2 = backup, etc.
+  formation?: string;
+  lastUpdated?: number;
+}
+
+/**
+ * Stored injury data in Player metadata
+ */
+export interface InjuryMetadata {
+  status?: string;               // Out, Doubtful, Questionable, Probable
+  primaryInjury?: string;
+  secondaryInjury?: string;
+  practiceStatus?: string;
+  lastUpdated?: number;
+}
+
+/**
+ * Extended NFLverse metadata to include new data sources
+ */
+export interface NFLVerseMetadataExtended extends NFLVerseMetadata {
+  ranking?: RankingMetadata;
+  depthChart?: DepthChartMetadata;
+  injury?: InjuryMetadata;
+}

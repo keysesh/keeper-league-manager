@@ -40,6 +40,9 @@ export default function AdminPlayersPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncingNflverse, setSyncingNflverse] = useState(false);
   const [syncingProjections, setSyncingProjections] = useState(false);
+  const [syncingRankings, setSyncingRankings] = useState(false);
+  const [syncingDepthCharts, setSyncingDepthCharts] = useState(false);
+  const [syncingInjuries, setSyncingInjuries] = useState(false);
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
@@ -131,31 +134,120 @@ export default function AdminPlayersPage() {
     }
   };
 
+  const syncRankings = async () => {
+    setSyncingRankings(true);
+    try {
+      const res = await fetch("/api/nflverse/sync?type=rankings", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const playersUpdated = data.result?.rankings?.playersUpdated || 0;
+        if (playersUpdated > 0) {
+          success(`Synced ${playersUpdated} player rankings`);
+        } else {
+          error("No rankings data available");
+        }
+      } else {
+        error(data.error || "Rankings sync failed");
+      }
+    } catch {
+      error("Rankings sync failed");
+    } finally {
+      setSyncingRankings(false);
+    }
+  };
+
+  const syncDepthCharts = async () => {
+    setSyncingDepthCharts(true);
+    try {
+      const res = await fetch("/api/nflverse/sync?type=depth_charts", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const playersUpdated = data.result?.depthCharts?.playersUpdated || 0;
+        const season = data.season || getCurrentSeason();
+        if (playersUpdated > 0) {
+          success(`Synced ${playersUpdated} depth chart entries for ${season}`);
+        } else {
+          error(`No depth chart data available for ${season}`);
+        }
+      } else {
+        error(data.error || "Depth charts sync failed");
+      }
+    } catch {
+      error("Depth charts sync failed");
+    } finally {
+      setSyncingDepthCharts(false);
+    }
+  };
+
+  const syncInjuriesData = async () => {
+    setSyncingInjuries(true);
+    try {
+      const res = await fetch("/api/nflverse/sync?type=injuries", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const playersUpdated = data.result?.injuries?.playersUpdated || 0;
+        const season = data.season || getCurrentSeason();
+        if (playersUpdated > 0) {
+          success(`Synced ${playersUpdated} injury reports for ${season}`);
+        } else {
+          error(`No injury data available for ${season} (may not be published yet)`);
+        }
+      } else {
+        error(data.error || "Injuries sync failed");
+      }
+    } catch {
+      error("Injuries sync failed");
+    } finally {
+      setSyncingInjuries(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-white">Player Management</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={syncPlayers}
             disabled={syncing}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
           >
-            {syncing ? "Syncing..." : "Sync from Sleeper"}
+            {syncing ? "Syncing..." : "Sync Players"}
           </button>
           <button
             onClick={syncNflverseStats}
             disabled={syncingNflverse}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+            className="px-3 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
           >
-            {syncingNflverse ? "Syncing..." : "Sync Stats"}
+            {syncingNflverse ? "Syncing..." : "Stats"}
           </button>
           <button
             onClick={syncProjections}
             disabled={syncingProjections}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+            className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
           >
-            {syncingProjections ? "Syncing..." : "Sync Projections"}
+            {syncingProjections ? "Syncing..." : "Projections"}
+          </button>
+          <button
+            onClick={syncRankings}
+            disabled={syncingRankings}
+            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+          >
+            {syncingRankings ? "Syncing..." : "Rankings"}
+          </button>
+          <button
+            onClick={syncDepthCharts}
+            disabled={syncingDepthCharts}
+            className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+          >
+            {syncingDepthCharts ? "Syncing..." : "Depth Charts"}
+          </button>
+          <button
+            onClick={syncInjuriesData}
+            disabled={syncingInjuries}
+            className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+          >
+            {syncingInjuries ? "Syncing..." : "Injuries"}
           </button>
         </div>
       </div>

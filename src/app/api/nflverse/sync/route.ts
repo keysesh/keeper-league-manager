@@ -13,6 +13,9 @@ import {
   syncNFLVerseIdMappings,
   syncNFLVerseStats,
   syncNFLVerseProjections,
+  syncFFRankings,
+  syncDepthCharts,
+  syncInjuries,
 } from "@/lib/nflverse/sync";
 import { NFLVerseClient } from "@/lib/nflverse/client";
 import {
@@ -98,6 +101,15 @@ export async function POST(request: NextRequest) {
         break;
       case "projections":
         result = { projections: await syncNFLVerseProjections(season) };
+        break;
+      case "rankings":
+        result = { rankings: await syncFFRankings() };
+        break;
+      case "depth_charts":
+        result = { depthCharts: await syncDepthCharts(season) };
+        break;
+      case "injuries":
+        result = { injuries: await syncInjuries(season) };
         break;
       case "all":
       default:

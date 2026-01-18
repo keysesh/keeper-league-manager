@@ -5,7 +5,13 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { nflverseClient, NFLVerseClient } from "./client";
-import { NFLVerseMetadata, NFLVerseSyncResult } from "./types";
+import {
+  NFLVerseMetadata,
+  NFLVerseSyncResult,
+  RankingMetadata,
+  DepthChartMetadata,
+  InjuryMetadata,
+} from "./types";
 import { Prisma } from "@prisma/client";
 
 const BATCH_SIZE = 100;
@@ -507,6 +513,433 @@ export async function syncNFLVerseData(
     idMapping: idMappingResult,
     stats: statsResult,
   };
+}
+
+/**
+ * Sync FantasyPros rankings for all players
+ * Updates Player.metadata with ECR (Expert Consensus Ranking)
+ */
+export async function syncFFRankings(): Promise<NFLVerseSyncResult> {
+  const startTime = Date.now();
+
+  logger.info("Starting FantasyPros rankings sync");
+
+  let playersUpdated = 0;
+  let playersFailed = 0;
+  const errors: string[] = [];
+
+  try {
+    // Step 1: Get rankings with sleeper_id mapping
+    const rankings = await nflverseClient.getFFRankings();
+    logger.info("Fetched FF rankings", { count: rankings.length });
+
+    if (rankings.length === 0) {
+      return {
+        success: true,
+        playersUpdated: 0,
+        playersFailed: 0,
+        errors: ["No rankings data available"],
+        duration: Date.now() - startTime,
+      };
+    }
+
+    // Get the scrape date from first ranking
+    const scrapeDate = rankings[0]?.scrape_date;
+
+    // Step 2: Get all players from database
+    const dbPlayers = await prisma.player.findMany({
+      select: {
+        id: true,
+        sleeperId: true,
+        fullName: true,
+        metadata: true,
+      },
+    });
+
+    // Build sleeper_id → db player mapping
+    const sleeperToDbPlayer = new Map<string, (typeof dbPlayers)[0]>();
+    for (const player of dbPlayers) {
+      sleeperToDbPlayer.set(player.sleeperId, player);
+    }
+
+    // Step 3: Process rankings in batches
+    for (let i = 0; i < rankings.length; i += BATCH_SIZE) {
+      const batch = rankings.slice(i, i + BATCH_SIZE);
+      const updates: Promise<unknown>[] = [];
+
+      for (const ranking of batch) {
+        if (!ranking.sleeper_id) continue;
+
+        const player = sleeperToDbPlayer.get(ranking.sleeper_id);
+        if (!player) continue;
+
+        // Extract position rank from page_pos (e.g., "RB12" -> 12)
+        const posRankMatch = ranking.page_pos?.match(/\d+$/);
+        const positionRank = posRankMatch ? parseInt(posRankMatch[0], 10) : undefined;
+
+        // Build ranking metadata
+        const rankingMetadata: RankingMetadata = {
+          ecr: ranking.ecr,
+          positionRank,
+          rankingDate: scrapeDate,
+        };
+
+        // Merge with existing metadata
+        const existingMetadata = (player.metadata as Record<string, unknown>) || {};
+        const existingNflverse = (existingMetadata.nflverse as NFLVerseMetadata) || {};
+        const newMetadata = {
+          ...existingMetadata,
+          nflverse: {
+            ...existingNflverse,
+            ranking: rankingMetadata,
+          },
+        } as unknown as Prisma.InputJsonValue;
+
+        updates.push(
+          prisma.player
+            .update({
+              where: { id: player.id },
+              data: { metadata: newMetadata },
+            })
+            .then(() => {
+              playersUpdated++;
+            })
+            .catch((error) => {
+              playersFailed++;
+              errors.push(`${player.fullName}: ${error.message}`);
+            })
+        );
+      }
+
+      await Promise.all(updates);
+
+      logger.debug("Rankings batch processed", {
+        batchIndex: Math.floor(i / BATCH_SIZE) + 1,
+        playersUpdated,
+      });
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info("FF rankings sync complete", {
+      playersUpdated,
+      playersFailed,
+      duration,
+    });
+
+    return {
+      success: true,
+      playersUpdated,
+      playersFailed,
+      errors: errors.slice(0, 10),
+      duration,
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logger.error("FF rankings sync failed", { error: errorMessage });
+
+    return {
+      success: false,
+      playersUpdated,
+      playersFailed,
+      errors: [errorMessage, ...errors.slice(0, 9)],
+      duration,
+    };
+  }
+}
+
+/**
+ * Sync depth charts for all players
+ * Updates Player.metadata with depth chart position
+ */
+export async function syncDepthCharts(
+  season?: number
+): Promise<NFLVerseSyncResult> {
+  const startTime = Date.now();
+  const targetSeason = season || NFLVerseClient.getCurrentSeason();
+
+  logger.info("Starting depth charts sync", { season: targetSeason });
+
+  let playersUpdated = 0;
+  let playersFailed = 0;
+  const errors: string[] = [];
+
+  try {
+    // Step 1: Fetch Sleeper API to get gsis_id → sleeper_id mapping
+    const sleeperResponse = await fetch("https://api.sleeper.app/v1/players/nfl");
+    if (!sleeperResponse.ok) {
+      throw new Error(`Failed to fetch Sleeper players: ${sleeperResponse.statusText}`);
+    }
+    const sleeperPlayers: Record<string, { gsis_id?: string }> = await sleeperResponse.json();
+
+    const gsisToSleeperId = new Map<string, string>();
+    for (const [sleeperId, player] of Object.entries(sleeperPlayers)) {
+      if (player.gsis_id) {
+        gsisToSleeperId.set(player.gsis_id, sleeperId);
+      }
+    }
+
+    // Step 2: Get latest depth charts from NFLverse
+    const depthCharts = await nflverseClient.getLatestDepthCharts(targetSeason);
+    logger.info("Fetched depth charts", { count: depthCharts.size });
+
+    if (depthCharts.size === 0) {
+      return {
+        success: true,
+        playersUpdated: 0,
+        playersFailed: 0,
+        errors: [`No depth chart data available for ${targetSeason}`],
+        duration: Date.now() - startTime,
+      };
+    }
+
+    // Step 3: Get all players from database
+    const dbPlayers = await prisma.player.findMany({
+      select: {
+        id: true,
+        sleeperId: true,
+        fullName: true,
+        metadata: true,
+      },
+    });
+
+    const sleeperToDbPlayer = new Map<string, (typeof dbPlayers)[0]>();
+    for (const player of dbPlayers) {
+      sleeperToDbPlayer.set(player.sleeperId, player);
+    }
+
+    // Step 4: Process depth charts
+    const dcEntries = Array.from(depthCharts.entries());
+    for (let i = 0; i < dcEntries.length; i += BATCH_SIZE) {
+      const batch = dcEntries.slice(i, i + BATCH_SIZE);
+      const updates: Promise<unknown>[] = [];
+
+      for (const [gsisId, dc] of batch) {
+        const sleeperId = gsisToSleeperId.get(gsisId);
+        if (!sleeperId) continue;
+
+        const player = sleeperToDbPlayer.get(sleeperId);
+        if (!player) continue;
+
+        // Build depth chart metadata
+        const depthChartMetadata: DepthChartMetadata = {
+          depthPosition: dc.depth_position || dc.depth_team,
+          formation: dc.formation,
+          lastUpdated: Date.now(),
+        };
+
+        // Merge with existing metadata
+        const existingMetadata = (player.metadata as Record<string, unknown>) || {};
+        const existingNflverse = (existingMetadata.nflverse as NFLVerseMetadata) || {};
+        const newMetadata = {
+          ...existingMetadata,
+          nflverse: {
+            ...existingNflverse,
+            depthChart: depthChartMetadata,
+          },
+        } as unknown as Prisma.InputJsonValue;
+
+        updates.push(
+          prisma.player
+            .update({
+              where: { id: player.id },
+              data: { metadata: newMetadata },
+            })
+            .then(() => {
+              playersUpdated++;
+            })
+            .catch((error) => {
+              playersFailed++;
+              errors.push(`${player.fullName}: ${error.message}`);
+            })
+        );
+      }
+
+      await Promise.all(updates);
+
+      logger.debug("Depth charts batch processed", {
+        batchIndex: Math.floor(i / BATCH_SIZE) + 1,
+        playersUpdated,
+      });
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info("Depth charts sync complete", {
+      playersUpdated,
+      playersFailed,
+      duration,
+    });
+
+    return {
+      success: true,
+      playersUpdated,
+      playersFailed,
+      errors: errors.slice(0, 10),
+      duration,
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logger.error("Depth charts sync failed", { error: errorMessage });
+
+    return {
+      success: false,
+      playersUpdated,
+      playersFailed,
+      errors: [errorMessage, ...errors.slice(0, 9)],
+      duration,
+    };
+  }
+}
+
+/**
+ * Sync injury reports for all players
+ * Updates Player.metadata with injury status
+ * Note: Injury data may not be available for future seasons
+ */
+export async function syncInjuries(
+  season?: number
+): Promise<NFLVerseSyncResult> {
+  const startTime = Date.now();
+  const targetSeason = season || NFLVerseClient.getCurrentSeason();
+
+  logger.info("Starting injuries sync", { season: targetSeason });
+
+  let playersUpdated = 0;
+  let playersFailed = 0;
+  const errors: string[] = [];
+
+  try {
+    // Step 1: Fetch Sleeper API to get gsis_id → sleeper_id mapping
+    const sleeperResponse = await fetch("https://api.sleeper.app/v1/players/nfl");
+    if (!sleeperResponse.ok) {
+      throw new Error(`Failed to fetch Sleeper players: ${sleeperResponse.statusText}`);
+    }
+    const sleeperPlayers: Record<string, { gsis_id?: string }> = await sleeperResponse.json();
+
+    const gsisToSleeperId = new Map<string, string>();
+    for (const [sleeperId, player] of Object.entries(sleeperPlayers)) {
+      if (player.gsis_id) {
+        gsisToSleeperId.set(player.gsis_id, sleeperId);
+      }
+    }
+
+    // Step 2: Get latest injuries from NFLverse
+    const injuries = await nflverseClient.getLatestInjuries(targetSeason);
+    logger.info("Fetched injuries", { count: injuries.size });
+
+    if (injuries.size === 0) {
+      return {
+        success: true,
+        playersUpdated: 0,
+        playersFailed: 0,
+        errors: [`No injury data available for ${targetSeason} (may not be published yet)`],
+        duration: Date.now() - startTime,
+      };
+    }
+
+    // Step 3: Get all players from database
+    const dbPlayers = await prisma.player.findMany({
+      select: {
+        id: true,
+        sleeperId: true,
+        fullName: true,
+        metadata: true,
+      },
+    });
+
+    const sleeperToDbPlayer = new Map<string, (typeof dbPlayers)[0]>();
+    for (const player of dbPlayers) {
+      sleeperToDbPlayer.set(player.sleeperId, player);
+    }
+
+    // Step 4: Process injuries
+    const injEntries = Array.from(injuries.entries());
+    for (let i = 0; i < injEntries.length; i += BATCH_SIZE) {
+      const batch = injEntries.slice(i, i + BATCH_SIZE);
+      const updates: Promise<unknown>[] = [];
+
+      for (const [gsisId, inj] of batch) {
+        const sleeperId = gsisToSleeperId.get(gsisId);
+        if (!sleeperId) continue;
+
+        const player = sleeperToDbPlayer.get(sleeperId);
+        if (!player) continue;
+
+        // Build injury metadata
+        const injuryMetadata: InjuryMetadata = {
+          status: inj.report_status,
+          primaryInjury: inj.report_primary_injury,
+          secondaryInjury: inj.report_secondary_injury || undefined,
+          practiceStatus: inj.practice_status || undefined,
+          lastUpdated: Date.now(),
+        };
+
+        // Merge with existing metadata
+        const existingMetadata = (player.metadata as Record<string, unknown>) || {};
+        const existingNflverse = (existingMetadata.nflverse as NFLVerseMetadata) || {};
+        const newMetadata = {
+          ...existingMetadata,
+          nflverse: {
+            ...existingNflverse,
+            injury: injuryMetadata,
+          },
+        } as unknown as Prisma.InputJsonValue;
+
+        updates.push(
+          prisma.player
+            .update({
+              where: { id: player.id },
+              data: { metadata: newMetadata },
+            })
+            .then(() => {
+              playersUpdated++;
+            })
+            .catch((error) => {
+              playersFailed++;
+              errors.push(`${player.fullName}: ${error.message}`);
+            })
+        );
+      }
+
+      await Promise.all(updates);
+
+      logger.debug("Injuries batch processed", {
+        batchIndex: Math.floor(i / BATCH_SIZE) + 1,
+        playersUpdated,
+      });
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info("Injuries sync complete", {
+      playersUpdated,
+      playersFailed,
+      duration,
+    });
+
+    return {
+      success: true,
+      playersUpdated,
+      playersFailed,
+      errors: errors.slice(0, 10),
+      duration,
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logger.error("Injuries sync failed", { error: errorMessage });
+
+    return {
+      success: false,
+      playersUpdated,
+      playersFailed,
+      errors: [errorMessage, ...errors.slice(0, 9)],
+      duration,
+    };
+  }
 }
 
 /**
