@@ -641,7 +641,7 @@ export default function DraftBoardPage() {
                             <span className={`text-xs font-bold ${color.accent} truncate max-w-[110px]`} title={roster.rosterName || undefined}>
                               {roster.rosterName || `Team ${index + 1}`}
                             </span>
-                            <span className={`text-[10px] font-medium ${keeperCount > 0 ? "text-amber-400" : "text-gray-600"}`}>
+                            <span className={`text-[10px] font-medium ${keeperCount > 0 ? "text-violet-400" : "text-gray-600"}`}>
                               {keeperCount} keeper{keeperCount !== 1 ? "s" : ""}
                             </span>
                           </div>

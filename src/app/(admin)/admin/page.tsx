@@ -52,7 +52,7 @@ export default async function AdminDashboard() {
           value={stats.leagueCount.toLocaleString()}
           icon={<Trophy size={20} strokeWidth={2} />}
           href="/admin/leagues"
-          color="amber"
+          color="violet"
         />
         <StatCard
           title="Keepers"
@@ -111,19 +111,19 @@ function StatCard({
   value: string;
   icon: React.ReactNode;
   href: string;
-  color: "blue" | "emerald" | "amber" | "purple";
+  color: "blue" | "emerald" | "violet" | "purple";
 }) {
   const colorClasses = {
     blue: "from-blue-500/20 to-blue-500/5 border-blue-500/20 hover:border-blue-500/40",
     emerald: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20 hover:border-emerald-500/40",
-    amber: "from-amber-500/20 to-amber-500/5 border-amber-500/20 hover:border-amber-500/40",
+    violet: "from-violet-500/20 to-violet-500/5 border-violet-500/20 hover:border-violet-500/40",
     purple: "from-purple-500/20 to-purple-500/5 border-purple-500/20 hover:border-purple-500/40",
   };
 
   const iconClasses = {
     blue: "bg-blue-500/20 text-blue-400",
     emerald: "bg-emerald-500/20 text-emerald-400",
-    amber: "bg-amber-500/20 text-amber-400",
+    violet: "bg-violet-500/20 text-violet-400",
     purple: "bg-purple-500/20 text-purple-400",
   };
 

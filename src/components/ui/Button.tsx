@@ -16,7 +16,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black border-transparent shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 focus:ring-amber-500",
+    "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white border-transparent shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 focus:ring-violet-500",
   secondary:
     "bg-white/[0.05] hover:bg-white/[0.08] text-zinc-100 border-white/[0.08] hover:border-white/[0.12] focus:ring-zinc-500",
   danger:
@@ -24,7 +24,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   ghost:
     "bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-white border-transparent focus:ring-zinc-500",
   glass:
-    "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border-amber-500/20 hover:border-amber-500/30 backdrop-blur-sm focus:ring-amber-500",
+    "bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 hover:text-violet-200 border-violet-500/20 hover:border-violet-500/30 backdrop-blur-sm focus:ring-violet-500",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -59,7 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           inline-flex items-center justify-center gap-2
           font-medium rounded-xl border
           transition-all duration-300 ease-out
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#09090b]
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0F0B1A]
           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
           ${variantStyles[variant]}
           ${sizeStyles[size]}
@@ -110,7 +110,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
           inline-flex items-center justify-center
           rounded-xl border border-transparent
           transition-all duration-300 ease-out
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#09090b]
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0F0B1A]
           disabled:opacity-50 disabled:cursor-not-allowed
           ${variantStyles[variant]}
           ${iconSizeStyles[size]}

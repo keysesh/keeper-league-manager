@@ -145,11 +145,11 @@ export default async function LeaguesPage() {
 
                 {/* League info */}
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 ring-1 ring-violet-500/20 flex items-center justify-center flex-shrink-0">
                     <TrophyIcon size={24} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white group-hover:text-amber-400 truncate transition-colors text-lg">
+                    <h3 className="font-semibold text-white group-hover:text-violet-400 truncate transition-colors text-lg">
                       {league.name}
                     </h3>
                     <div className="flex items-center gap-3 mt-1">
@@ -171,7 +171,7 @@ export default async function LeaguesPage() {
                 <div className="absolute right-4 top-1/2 -translate-y-1/2">
                   <ChevronRight
                     size={20}
-                    className="text-gray-600 group-hover:text-amber-400 group-hover:translate-x-1 transition-all"
+                    className="text-gray-600 group-hover:text-violet-400 group-hover:translate-x-1 transition-all"
                   />
                 </div>
               </Link>
@@ -192,9 +192,9 @@ export default async function LeaguesPage() {
               <>
                 <Link
                   href={`/league/${leagues[0].id}/draft-board`}
-                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-white/[0.06] hover:border-amber-500/30 transition-all duration-300 hover:scale-[1.02]"
+                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-violet-500/10 to-violet-600/5 border border-white/[0.06] hover:border-violet-500/30 transition-all duration-300 hover:scale-[1.02]"
                 >
-                  <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/20 ring-1 ring-amber-500/20">
+                  <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/20 ring-1 ring-violet-500/20">
                     <TargetIcon size={20} />
                   </span>
                   <div>

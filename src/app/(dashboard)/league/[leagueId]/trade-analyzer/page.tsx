@@ -49,6 +49,11 @@ interface PlayerTradeValue {
   age: number | null;
   yearsExp: number | null;
   injuryStatus: string | null;
+  stats: {
+    gamesPlayed: number | null;
+    pointsPerGame: number | null;
+    fantasyPointsPpr: number | null;
+  };
   keeperStatus: {
     isCurrentKeeper: boolean;
     currentCost: number | null;
@@ -946,14 +951,18 @@ export default function TradeAnalyzerPage() {
               {/* Value Comparison */}
               <div className="flex gap-4">
                 <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center min-w-[120px]">
-                  <div className="text-gray-400 text-xs uppercase tracking-wider mb-1">{analysis.team1.rosterName?.split(' ')[0]}</div>
+                  <div className="text-gray-400 text-xs uppercase tracking-wider mb-1 truncate max-w-[100px]" title={analysis.team1.rosterName || undefined}>
+                    {analysis.team1.rosterName?.slice(0, 12) || "Team 1"}{(analysis.team1.rosterName?.length || 0) > 12 ? "…" : ""}
+                  </div>
                   <div className={`text-2xl font-bold ${analysis.team1.netValue >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                     {analysis.team1.netValue >= 0 ? "+" : ""}{analysis.team1.netValue}
                   </div>
                   <div className="text-gray-500 text-xs">Net Value</div>
                 </div>
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center min-w-[120px]">
-                  <div className="text-gray-400 text-xs uppercase tracking-wider mb-1">{analysis.team2.rosterName?.split(' ')[0]}</div>
+                  <div className="text-gray-400 text-xs uppercase tracking-wider mb-1 truncate max-w-[100px]" title={analysis.team2.rosterName || undefined}>
+                    {analysis.team2.rosterName?.slice(0, 12) || "Team 2"}{(analysis.team2.rosterName?.length || 0) > 12 ? "…" : ""}
+                  </div>
                   <div className={`text-2xl font-bold ${analysis.team2.netValue >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                     {analysis.team2.netValue >= 0 ? "+" : ""}{analysis.team2.netValue}
                   </div>
@@ -962,43 +971,106 @@ export default function TradeAnalyzerPage() {
               </div>
             </div>
 
-            {/* Trade Facts */}
-            {analysis.summary.facts.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-gray-700/50">
-                <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Key Insights</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {analysis.summary.facts.map((fact, i) => (
-                    <div
-                      key={i}
-                      className={`flex items-start gap-2 p-3 rounded-lg ${
-                        fact.category === "keeper"
-                          ? "bg-amber-500/10 border border-amber-500/20"
-                          : fact.category === "roster"
-                            ? "bg-blue-500/10 border border-blue-500/20"
-                            : fact.category === "draft"
-                              ? "bg-purple-500/10 border border-purple-500/20"
-                              : "bg-gray-800/50 border border-gray-700/30"
-                      }`}
-                    >
-                      <span className="text-lg">
-                        {fact.category === "keeper" ? "📌" : fact.category === "roster" ? "👥" : fact.category === "draft" ? "🎯" : "📊"}
-                      </span>
-                      <span className={`text-sm ${
-                        fact.category === "keeper"
-                          ? "text-amber-400"
-                          : fact.category === "roster"
-                            ? "text-blue-400"
-                            : fact.category === "draft"
-                              ? "text-purple-400"
-                              : "text-gray-300"
-                      }`}>
-                        {fact.description}
-                      </span>
-                    </div>
-                  ))}
+            {/* Trade Summary - What Each Team Gets */}
+            <div className="mt-6 pt-6 border-t border-gray-700/50">
+              <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Trade Summary</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Team 1 Summary */}
+                <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                    <span className="text-white font-semibold text-sm">{analysis.team1.rosterName}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {analysis.team1.acquiring.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 text-xs font-semibold w-16">Receives</span>
+                        <span className="text-gray-300 text-sm">
+                          {analysis.team1.acquiring.map(p => `${p.position || '?'}`).join(', ')}
+                          {analysis.team1.picksReceived.length > 0 && (
+                            <span className="text-purple-400">
+                              {analysis.team1.acquiring.length > 0 ? ', ' : ''}
+                              {analysis.team1.picksReceived.map(p => `Rd ${p.round}`).join(', ')}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {analysis.team1.tradingAway.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-red-400 text-xs font-semibold w-16">Sends</span>
+                        <span className="text-gray-300 text-sm">
+                          {analysis.team1.tradingAway.map(p => `${p.position || '?'}`).join(', ')}
+                          {analysis.team1.picksGiven.length > 0 && (
+                            <span className="text-purple-400">
+                              {analysis.team1.tradingAway.length > 0 ? ', ' : ''}
+                              {analysis.team1.picksGiven.map(p => `Rd ${p.round}`).join(', ')}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* Team 2 Summary */}
+                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                    <span className="text-white font-semibold text-sm">{analysis.team2.rosterName}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {analysis.team2.acquiring.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400 text-xs font-semibold w-16">Receives</span>
+                        <span className="text-gray-300 text-sm">
+                          {analysis.team2.acquiring.map(p => `${p.position || '?'}`).join(', ')}
+                          {analysis.team2.picksReceived.length > 0 && (
+                            <span className="text-purple-400">
+                              {analysis.team2.acquiring.length > 0 ? ', ' : ''}
+                              {analysis.team2.picksReceived.map(p => `Rd ${p.round}`).join(', ')}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {analysis.team2.tradingAway.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-red-400 text-xs font-semibold w-16">Sends</span>
+                        <span className="text-gray-300 text-sm">
+                          {analysis.team2.tradingAway.map(p => `${p.position || '?'}`).join(', ')}
+                          {analysis.team2.picksGiven.length > 0 && (
+                            <span className="text-purple-400">
+                              {analysis.team2.tradingAway.length > 0 ? ', ' : ''}
+                              {analysis.team2.picksGiven.map(p => `Rd ${p.round}`).join(', ')}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
+              {/* Additional Insights */}
+              {analysis.summary.facts.filter(f => f.category === "value" || f.category === "keeper").length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {analysis.summary.facts
+                    .filter(f => f.category === "value" || f.category === "keeper")
+                    .map((fact, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                          fact.category === "keeper"
+                            ? "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                            : "bg-gray-800/50 border border-gray-700/30 text-gray-300"
+                        }`}
+                      >
+                        <span>{fact.category === "keeper" ? "📌" : "📊"}</span>
+                        <span>{fact.description}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
 
             {/* Keeper Impact Summary */}
             <div className="mt-6 pt-6 border-t border-gray-700/50">
@@ -1214,7 +1286,7 @@ export default function TradeAnalyzerPage() {
 
 // Player Info Card Component - Enhanced with comprehensive stats
 function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue; isAfterDeadline: boolean }) {
-  const { keeperStatus, valueBreakdown, projection } = player;
+  const { keeperStatus, valueBreakdown, projection, stats } = player;
 
   // Get age color based on value
   const getAgeColor = (age: number | null) => {
@@ -1275,6 +1347,30 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
 
       {/* Stats Grid */}
       <div className="p-4 space-y-3">
+        {/* Fantasy Performance Stats */}
+        {(stats.pointsPerGame || stats.gamesPlayed) && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
+              <div className="text-emerald-400 font-bold text-lg">
+                {stats.pointsPerGame?.toFixed(1) || "—"}
+              </div>
+              <div className="text-gray-500 text-[10px] uppercase">PPG</div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+              <div className="text-blue-400 font-bold text-lg">
+                {stats.fantasyPointsPpr?.toFixed(0) || "—"}
+              </div>
+              <div className="text-gray-500 text-[10px] uppercase">Total Pts</div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-gray-800/50 border border-gray-700/30 text-center">
+              <div className="text-gray-300 font-bold text-lg">
+                {stats.gamesPlayed || "—"}
+              </div>
+              <div className="text-gray-500 text-[10px] uppercase">Games</div>
+            </div>
+          </div>
+        )}
+
         {/* Value Breakdown */}
         <div className="p-3 rounded-lg bg-gray-900/50">
           <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-2 font-semibold">Value Breakdown</div>
@@ -1359,27 +1455,53 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
         {/* Cost Trajectory */}
         {projection.costTrajectory.length > 0 && (
           <div className="p-3 rounded-lg bg-gray-900/50">
-            <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-2 font-semibold">Cost Trajectory</div>
-            <div className="flex gap-1">
-              {projection.costTrajectory.slice(0, 4).map((year, i) => (
-                <div
-                  key={year.year}
-                  className={`flex-1 py-2 rounded-lg text-center ${
-                    i === 0
-                      ? "bg-amber-500/20 border border-amber-500/30"
-                      : year.isFinalYear
-                        ? "bg-red-500/10 border border-red-500/20"
-                        : "bg-gray-800/50 border border-gray-700/30"
-                  }`}
-                >
-                  <div className={`text-xs font-bold ${i === 0 ? "text-amber-400" : year.isFinalYear ? "text-red-400" : "text-gray-300"}`}>
-                    R{year.cost}
-                  </div>
-                  <div className="text-[9px] text-gray-500">{year.year}</div>
-                  {year.isFinalYear && <div className="text-[8px] text-red-400 font-medium">Final</div>}
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">
+                Cost Trajectory
+              </div>
+              <div className="text-gray-600 text-[10px]">
+                {projection.costTrajectory.length} yr{projection.costTrajectory.length !== 1 ? "s" : ""} remaining
+              </div>
             </div>
+            {projection.costTrajectory.length === 1 ? (
+              /* Single year - show prominently with context */
+              <div className="flex items-center gap-3">
+                <div className="flex-1 py-3 rounded-lg text-center bg-red-500/10 border border-red-500/20">
+                  <div className="text-red-400 font-bold text-xl">R{projection.costTrajectory[0].cost}</div>
+                  <div className="text-red-400 text-[10px] font-medium mt-0.5">Final Year</div>
+                </div>
+                <div className="text-gray-500 text-[10px] max-w-[100px]">
+                  Can only be kept this season at this cost
+                </div>
+              </div>
+            ) : (
+              /* Multiple years - show progression */
+              <div className="flex gap-1.5">
+                {projection.costTrajectory.slice(0, 4).map((year, i) => {
+                  const currentYear = new Date().getFullYear();
+                  const actualSeason = currentYear + (new Date().getMonth() >= 8 ? 1 : 0) + i;
+                  return (
+                    <div
+                      key={year.year}
+                      className={`flex-1 py-2 rounded-lg text-center ${
+                        i === 0
+                          ? "bg-violet-500/20 border border-violet-500/30"
+                          : year.isFinalYear
+                            ? "bg-red-500/10 border border-red-500/20"
+                            : "bg-gray-800/50 border border-gray-700/30"
+                      }`}
+                    >
+                      <div className={`text-sm font-bold ${i === 0 ? "text-violet-400" : year.isFinalYear ? "text-red-400" : "text-gray-300"}`}>
+                        R{year.cost}
+                      </div>
+                      <div className="text-[9px] text-gray-500">{actualSeason}</div>
+                      {i === 0 && <div className="text-[8px] text-violet-400 font-medium">Now</div>}
+                      {year.isFinalYear && i !== 0 && <div className="text-[8px] text-red-400 font-medium">Final</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

@@ -55,7 +55,7 @@ export function Header({ user }: HeaderProps) {
   return (
     <>
       <header
-        className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#0c0a0f]/80 backdrop-blur-xl"
+        className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#0F0B1A]/90 backdrop-blur-xl"
         role="banner"
       >
         <div className="flex h-16 items-center justify-between px-4 lg:px-8">
@@ -89,11 +89,11 @@ export function Header({ user }: HeaderProps) {
                   alt={`${displayName} avatar`}
                   width={32}
                   height={32}
-                  className="rounded-full ring-2 ring-amber-500/30"
+                  className="rounded-full ring-2 ring-violet-500/30"
                 />
               ) : (
                 <div
-                  className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-amber-500/20"
+                  className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-violet-500/20"
                   aria-hidden="true"
                 >
                   {displayName[0].toUpperCase()}
@@ -106,7 +106,7 @@ export function Header({ user }: HeaderProps) {
 
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-all duration-200 px-3 py-2.5 rounded-xl hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+              className="group flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-all duration-200 px-3 py-2.5 rounded-xl hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/70"
               aria-label="Sign out of your account"
             >
               <LogOut size={16} strokeWidth={2} className="text-zinc-500 group-hover:text-white transition-colors" />
@@ -126,7 +126,7 @@ export function Header({ user }: HeaderProps) {
           />
 
           {/* Slide-in Menu */}
-          <div className="fixed inset-y-0 left-0 w-72 bg-[#0c0a0f]/95 backdrop-blur-xl border-r border-white/[0.06] overflow-y-auto">
+          <div className="fixed inset-y-0 left-0 w-64 max-w-[85vw] bg-[#0F0B1A]/95 backdrop-blur-xl border-r border-white/[0.06] overflow-y-auto">
             {/* Menu Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
               <LogoMark size="sm" />
@@ -147,10 +147,10 @@ export function Header({ user }: HeaderProps) {
                     alt={`${displayName} avatar`}
                     width={40}
                     height={40}
-                    className="rounded-full ring-2 ring-amber-500/30"
+                    className="rounded-full ring-2 ring-violet-500/30"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-amber-500/20">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-violet-500/20">
                     {displayName[0].toUpperCase()}
                   </div>
                 )}
@@ -183,7 +183,7 @@ export function Header({ user }: HeaderProps) {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                        ? "bg-violet-500/15 text-violet-400 border border-violet-500/20"
                         : "text-zinc-400 hover:text-white hover:bg-white/[0.05] border border-transparent"
                     }`}
                   >

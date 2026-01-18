@@ -293,6 +293,11 @@ export async function analyzeTradeComprehensive(
       age: player.age,
       yearsExp: player.yearsExp,
       injuryStatus: player.injuryStatus,
+      stats: {
+        gamesPlayed: player.gamesPlayed,
+        pointsPerGame: player.pointsPerGame,
+        fantasyPointsPpr: player.fantasyPointsPpr,
+      },
       keeperStatus: {
         isCurrentKeeper: !!currentKeeper,
         currentCost: currentKeeper?.finalCost || null,

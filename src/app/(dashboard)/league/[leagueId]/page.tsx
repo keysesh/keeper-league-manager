@@ -161,8 +161,8 @@ export default function LeaguePage() {
         <section className="relative overflow-hidden rounded-3xl">
           {/* Layered background */}
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_-20%,rgba(212,160,18,0.15),transparent_50%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_100%,rgba(212,160,18,0.08),transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_20%_-20%,rgba(139,92,246,0.15),transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_100%,rgba(139,92,246,0.08),transparent_50%)]" />
 
           {/* Noise texture */}
           <div className="absolute inset-0 opacity-[0.015]" style={{
@@ -170,7 +170,7 @@ export default function LeaguePage() {
           }} />
 
           {/* Top edge highlight */}
-          <div className="absolute top-0 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+          <div className="absolute top-0 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-violet-400/50 to-transparent" />
 
           <div className="relative p-6 md:p-10">
             {/* Header Row */}
@@ -201,10 +201,10 @@ export default function LeaguePage() {
                 </button>
                 <Link
                   href={`/league/${leagueId}/draft-board`}
-                  className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl overflow-hidden text-sm font-semibold text-black transition-all"
+                  className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl overflow-hidden text-sm font-semibold text-white transition-all"
                 >
                   {/* Button gradient background */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 bg-[length:200%_100%] group-hover:animate-shimmer" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500 via-violet-600 to-indigo-600 bg-[length:200%_100%] group-hover:animate-shimmer" />
                   {/* Shine effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-black/10" />
                   <TargetIcon size={16} className="relative" />
@@ -247,12 +247,12 @@ export default function LeaguePage() {
                 </div>
 
                 {/* Keepers Card */}
-                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/[0.08] p-5 transition-all hover:border-amber-500/30">
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-amber-400/0 via-amber-400/40 to-amber-400/0" />
+                <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/[0.08] p-5 transition-all hover:border-violet-500/30">
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-violet-400/0 via-violet-400/40 to-violet-400/0" />
                   <div className="flex items-start justify-between mb-4">
                     <div className="relative">
-                      <div className="absolute inset-0 bg-amber-400/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-500/10 border border-amber-400/20 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-violet-400/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-violet-400/20 to-violet-500/10 border border-violet-400/20 flex items-center justify-center">
                         <ShieldIcon size={20} />
                       </div>
                     </div>
@@ -277,16 +277,16 @@ export default function LeaguePage() {
                 {/* CTA Card */}
                 <Link
                   href={`/league/${leagueId}/team/${userRoster.id}`}
-                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 p-5 transition-all hover:border-amber-400/40 hover:shadow-lg hover:shadow-amber-500/10"
+                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500/10 via-violet-500/5 to-transparent border border-violet-500/20 p-5 transition-all hover:border-violet-400/40 hover:shadow-lg hover:shadow-violet-500/10"
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-amber-400/0 via-amber-400/50 to-amber-400/0" />
-                  <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-amber-400/10 rounded-full blur-2xl group-hover:bg-amber-400/20 transition-colors" />
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-violet-400/0 via-violet-400/50 to-violet-400/0" />
+                  <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-violet-400/10 rounded-full blur-2xl group-hover:bg-violet-400/20 transition-colors" />
 
                   <div className="relative flex items-start justify-between mb-6">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400/30 to-amber-500/20 border border-amber-400/30 flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-400/30 to-violet-500/20 border border-violet-400/30 flex items-center justify-center">
                       <LightningIcon size={20} />
                     </div>
-                    <ArrowUpRight className="w-5 h-5 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    <ArrowUpRight className="w-5 h-5 text-violet-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
                   <p className="text-lg font-semibold text-white mb-1">Manage Keepers</p>
                   <p className="text-sm text-zinc-400">Select and lock your {league.season} keepers</p>
@@ -303,14 +303,14 @@ export default function LeaguePage() {
           <section>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400/20 to-amber-500/10 border border-amber-400/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-400/20 to-violet-500/10 border border-violet-400/20 flex items-center justify-center">
                   <CrownIcon size={16} />
                 </div>
                 <h2 className="text-lg font-semibold text-white">Your {league.season} Keepers</h2>
               </div>
               <Link
                 href={`/league/${leagueId}/team/${userRoster.id}`}
-                className="text-sm text-amber-400 hover:text-amber-300 font-medium flex items-center gap-1 transition-colors"
+                className="text-sm text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1 transition-colors"
               >
                 Manage <ChevronRight size={16} />
               </Link>
@@ -358,7 +358,7 @@ export default function LeaguePage() {
                 <Link
                   key={`empty-${i}`}
                   href={`/league/${leagueId}/team/${userRoster.id}`}
-                  className="group rounded-2xl p-4 border-2 border-dashed border-zinc-800 hover:border-amber-500/30 flex flex-col items-center justify-center text-zinc-600 hover:text-amber-400 transition-all min-h-[140px] hover:bg-amber-500/5"
+                  className="group rounded-2xl p-4 border-2 border-dashed border-zinc-800 hover:border-violet-500/30 flex flex-col items-center justify-center text-zinc-600 hover:text-violet-400 transition-all min-h-[140px] hover:bg-violet-500/5"
                 >
                   <div className="w-10 h-10 rounded-xl border-2 border-dashed border-current flex items-center justify-center mb-2 group-hover:border-solid">
                     <span className="text-xl">+</span>
@@ -401,13 +401,13 @@ export default function LeaguePage() {
                   href={`/league/${leagueId}/team/${roster.id}`}
                   className={`group relative flex items-center gap-4 p-4 rounded-2xl transition-all overflow-hidden ${
                     isUser
-                      ? "bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 hover:border-amber-400/40"
+                      ? "bg-gradient-to-r from-violet-500/10 via-violet-500/5 to-transparent border border-violet-500/20 hover:border-violet-400/40"
                       : "bg-white/[0.03] hover:bg-white/[0.05] border border-transparent hover:border-white/[0.08]"
                   }`}
                 >
                   {/* User indicator line */}
                   {isUser && (
-                    <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-amber-400 to-amber-600" />
+                    <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-violet-400 to-violet-600" />
                   )}
 
                   {/* Rank */}
@@ -431,11 +431,11 @@ export default function LeaguePage() {
                   {/* Team Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`font-semibold truncate ${isUser ? "text-amber-100" : "text-white"}`}>
+                      <span className={`font-semibold truncate ${isUser ? "text-violet-100" : "text-white"}`}>
                         {roster.teamName || `Team ${roster.sleeperId}`}
                       </span>
                       {isUser && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-400 uppercase tracking-wide">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-400/20 text-violet-400 uppercase tracking-wide">
                           You
                         </span>
                       )}
@@ -461,7 +461,7 @@ export default function LeaguePage() {
                     <div className="w-14 text-center">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${
                         roster.keeperCount >= maxKeepers ? "bg-emerald-500/15 text-emerald-400" :
-                        roster.keeperCount > 0 ? "bg-amber-500/15 text-amber-400" :
+                        roster.keeperCount > 0 ? "bg-violet-500/15 text-violet-400" :
                         "bg-zinc-800/50 text-zinc-600"
                       }`}>
                         {roster.keeperCount}/{maxKeepers}
@@ -484,7 +484,7 @@ export default function LeaguePage() {
             icon={<TargetIcon size={20} />}
             label="Draft Board"
             description="View keeper costs"
-            accentColor="amber"
+            accentColor="violet"
           />
           <QuickActionCard
             href={`/league/${leagueId}/trade-analyzer`}
@@ -532,13 +532,13 @@ function QuickActionCard({
   icon: React.ReactNode;
   label: string;
   description: string;
-  accentColor: "amber" | "emerald" | "blue" | "purple";
+  accentColor: "violet" | "emerald" | "blue" | "purple";
 }) {
   const colors = {
-    amber: {
-      icon: "from-amber-400/20 to-amber-500/10 border-amber-400/20 text-amber-400",
-      hover: "group-hover:border-amber-400/40 group-hover:shadow-amber-500/10",
-      glow: "group-hover:bg-amber-400/20",
+    violet: {
+      icon: "from-violet-400/20 to-violet-500/10 border-violet-400/20 text-violet-400",
+      hover: "group-hover:border-violet-400/40 group-hover:shadow-violet-500/10",
+      glow: "group-hover:bg-violet-400/20",
     },
     emerald: {
       icon: "from-emerald-400/20 to-emerald-500/10 border-emerald-400/20 text-emerald-400",

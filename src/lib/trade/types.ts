@@ -43,6 +43,13 @@ export interface PlayerTradeValue {
   yearsExp: number | null;
   injuryStatus: string | null;
 
+  // Fantasy performance stats
+  stats: {
+    gamesPlayed: number | null;
+    pointsPerGame: number | null;
+    fantasyPointsPpr: number | null;
+  };
+
   // Keeper value details on source team
   keeperStatus: KeeperStatus;
 

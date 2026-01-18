@@ -2,94 +2,104 @@
 
 :root {
   /* ============================================
-     E PLURIBUS - Fantasy Football Keeper League
-     Premium dark theme with championship gold accents
-     Inspired by luxury sports branding & trading cards
+     E PLURIBUS - Keeper League Manager
+     Modern purple gradient theme with glass effects
+     Premium web3/fintech aesthetic
      ============================================ */
 
-  /* Base colors - rich, deep blacks with warm undertones */
-  --background: #08080a;
-  --foreground: #fafafa;
-  --bg-base: #08080a;
-  --bg-primary: #0c0c0f;
-  --bg-secondary: #111114;
-  --bg-tertiary: #161619;
-  --bg-card: #0f0f12;
-  --bg-elevated: #1a1a1f;
+  /* Base colors - deep purple-black */
+  --background: #0F0B1A;
+  --foreground: #F8FAFC;
+  --bg-base: #0F0B1A;
+  --bg-primary: #13101E;
+  --bg-secondary: #1A1425;
+  --bg-tertiary: #1F1830;
+  --bg-card: #1A1425;
+  --bg-elevated: #241B35;
+  --bg-hover: #2D2245;
 
-  /* Primary accent - Championship Gold/Amber */
-  --color-primary: #d4a012;
-  --color-primary-light: #f5c542;
-  --color-primary-dark: #a67c00;
-  --color-accent: #fcd34d;
-  --color-accent-secondary: #fef3c7;
+  /* Primary accent - Royal Purple/Violet */
+  --color-primary: #8B5CF6;
+  --color-primary-light: #A78BFA;
+  --color-primary-dark: #7C3AED;
+  --color-accent: #A78BFA;
+  --color-accent-secondary: #C4B5FD;
+  --primary-glow: rgba(139, 92, 246, 0.3);
 
-  /* Secondary accent - Deep Emerald (Success/Win) */
-  --color-emerald: #059669;
-  --color-emerald-light: #34d399;
-  --color-emerald-dark: #047857;
+  /* Secondary accent - Indigo */
+  --color-indigo: #6366F1;
+  --color-indigo-light: #818CF8;
+  --color-indigo-dark: #4F46E5;
 
-  /* Tertiary - Royal Purple (Premium/Elite) */
-  --color-royal: #7c3aed;
-  --color-royal-light: #a78bfa;
-  --color-royal-dark: #5b21b6;
+  /* Success - Emerald */
+  --color-emerald: #10B981;
+  --color-emerald-light: #34D399;
+  --color-emerald-dark: #059669;
+  --color-success: #10B981;
 
-  /* Neutral accent - Warm silver */
-  --color-silver: #a1a1aa;
-  --color-silver-light: #d4d4d8;
-  --color-silver-dark: #71717a;
+  /* Warning - Amber (kept for FT badge contrast) */
+  --color-amber: #F59E0B;
+  --color-amber-light: #FBBF24;
+  --color-amber-dark: #D97706;
+  --color-warning: #F59E0B;
+
+  /* Error - Red */
+  --color-error: #EF4444;
+  --color-info: #6366F1;
 
   /* Gradient definitions */
-  --gradient-primary: linear-gradient(135deg, #a67c00, #d4a012, #f5c542);
-  --gradient-gold: linear-gradient(135deg, #92400e, #d97706, #fbbf24);
-  --gradient-emerald: linear-gradient(135deg, #047857, #059669, #34d399);
-  --gradient-royal: linear-gradient(135deg, #5b21b6, #7c3aed, #a78bfa);
-  --gradient-success: linear-gradient(135deg, #059669, #34d399);
+  --gradient-primary: linear-gradient(135deg, #8B5CF6, #6366F1);
+  --gradient-hero: linear-gradient(180deg, #1A1425, #0F0B1A);
+  --gradient-glass: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(99,102,241,0.05));
+  --gradient-accent: linear-gradient(135deg, #A78BFA, #8B5CF6, #7C3AED);
+  --gradient-success: linear-gradient(135deg, #059669, #34D399);
   --gradient-danger: linear-gradient(135deg, #dc2626, #f87171);
-  --gradient-card: linear-gradient(165deg, rgba(15, 15, 18, 0.98), rgba(10, 10, 12, 0.99));
-  --gradient-championship: linear-gradient(135deg, #a67c00, #d4a012, #f5c542, #d4a012, #a67c00);
-  --gradient-premium: linear-gradient(135deg, rgba(212, 160, 18, 0.15), transparent 60%);
+  --gradient-card: linear-gradient(165deg, rgba(26, 20, 37, 0.98), rgba(15, 11, 26, 0.99));
+  --gradient-premium: linear-gradient(135deg, rgba(139, 92, 246, 0.15), transparent 60%);
 
-  /* Premium surface effects */
-  --glass-bg: rgba(12, 12, 15, 0.85);
-  --glass-bg-solid: rgba(15, 15, 18, 0.95);
-  --glass-bg-light: rgba(20, 20, 24, 0.8);
-  --glass-border: rgba(212, 160, 18, 0.08);
-  --glass-border-light: rgba(212, 160, 18, 0.15);
-  --glass-border-gold: rgba(212, 160, 18, 0.25);
+  /* Premium surface effects - purple tinted glass */
+  --glass-bg: rgba(26, 20, 37, 0.85);
+  --glass-bg-solid: rgba(26, 20, 37, 0.95);
+  --glass-bg-light: rgba(36, 27, 53, 0.8);
+  --glass-border: rgba(139, 92, 246, 0.08);
+  --glass-border-light: rgba(139, 92, 246, 0.15);
+  --glass-border-purple: rgba(139, 92, 246, 0.25);
   --glass-blur: 20px;
   --glass-blur-heavy: 32px;
 
   /* Position colors (bold, saturated for visibility) */
-  --color-qb: #f43f5e;
-  --color-rb: #22c55e;
-  --color-wr: #0ea5e9;
-  --color-te: #f97316;
-  --color-k: #a855f7;
-  --color-def: #64748b;
+  --color-qb: #EF4444;
+  --color-rb: #22C55E;
+  --color-wr: #3B82F6;
+  --color-te: #F97316;
+  --color-k: #8B5CF6;
+  --color-def: #6B7280;
 
-  /* Shadow and glow effects - warmer, more luxurious */
+  /* Shadow and glow effects */
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.6);
   --shadow-glass-lg: 0 20px 60px rgba(0, 0, 0, 0.7);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.6);
-  --shadow-card-hover: 0 20px 60px rgba(0, 0, 0, 0.7);
-  --shadow-glow-gold: 0 0 60px rgba(212, 160, 18, 0.25);
+  --shadow-card: 0 4px 24px rgba(139, 92, 246, 0.1);
+  --shadow-card-hover: 0 20px 60px rgba(139, 92, 246, 0.15);
+  --shadow-glow-primary: 0 0 60px rgba(139, 92, 246, 0.25);
   --shadow-glow-emerald: 0 0 40px rgba(52, 211, 153, 0.25);
-  --shadow-glow-royal: 0 0 40px rgba(124, 58, 237, 0.25);
-  --shadow-inset-gold: inset 0 1px 0 rgba(212, 160, 18, 0.1);
+  --shadow-glow-purple: 0 0 40px rgba(139, 92, 246, 0.25);
+  --shadow-inset-purple: inset 0 1px 0 rgba(139, 92, 246, 0.1);
 
-  /* Unique border accents */
-  --border-glow: 0 0 0 1px rgba(212, 160, 18, 0.15);
-  --border-gold-subtle: 1px solid rgba(212, 160, 18, 0.1);
+  /* Border accents */
+  --border-glow: 0 0 0 1px rgba(139, 92, 246, 0.15);
+  --border-purple-subtle: 1px solid rgba(139, 92, 246, 0.1);
 
   /* Legacy aliases for compatibility */
-  --color-gold: #d4a012;
-  --color-gold-light: #f5c542;
-  --color-gold-dark: #a67c00;
-  --color-electric: #7c3aed;
-  --color-neon: #34d399;
-  --shadow-glow-primary: var(--shadow-glow-gold);
-  --shadow-glow-electric: var(--shadow-glow-royal);
+  --color-gold: #F59E0B;
+  --color-gold-light: #FBBF24;
+  --color-gold-dark: #D97706;
+  --color-electric: #8B5CF6;
+  --color-royal: #8B5CF6;
+  --color-royal-light: #A78BFA;
+  --color-royal-dark: #7C3AED;
+  --color-neon: #34D399;
+  --shadow-glow-gold: 0 0 40px rgba(245, 158, 11, 0.25);
+  --shadow-glow-electric: var(--shadow-glow-purple);
   --shadow-glow-green: var(--shadow-glow-emerald);
 }
 
@@ -112,8 +122,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0f;
-    --foreground: #f0f0f5;
+    --background: #0F0B1A;
+    --foreground: #F8FAFC;
   }
 }
 
@@ -124,8 +134,8 @@ body {
 }
 
 /* ============================================
-   CHAMPIONSHIP ATMOSPHERE
-   Luxury sports arena aesthetic with warm gold accents
+   PURPLE GRADIENT ATMOSPHERE
+   Modern web3/fintech aesthetic with purple accents
    ============================================ */
 
 body::before {
@@ -136,27 +146,27 @@ body::before {
   right: 0;
   bottom: 0;
   background:
-    /* Top-left championship gold spotlight */
-    radial-gradient(ellipse 80% 50% at 15% -15%, rgba(212, 160, 18, 0.08), transparent 50%),
-    /* Top-right emerald accent */
-    radial-gradient(ellipse 60% 40% at 85% -10%, rgba(5, 150, 105, 0.04), transparent 45%),
+    /* Top-left purple spotlight */
+    radial-gradient(ellipse 80% 50% at 15% -15%, rgba(139, 92, 246, 0.12), transparent 50%),
+    /* Top-right indigo accent */
+    radial-gradient(ellipse 60% 40% at 85% -10%, rgba(99, 102, 241, 0.08), transparent 45%),
     /* Center subtle warmth */
-    radial-gradient(ellipse 100% 60% at 50% 30%, rgba(212, 160, 18, 0.03), transparent 50%),
-    /* Bottom corner royal purple accent */
-    radial-gradient(ellipse 50% 50% at 100% 100%, rgba(124, 58, 237, 0.03), transparent 50%),
-    /* Diagonal luxury stripe pattern */
+    radial-gradient(ellipse 100% 60% at 50% 30%, rgba(139, 92, 246, 0.04), transparent 50%),
+    /* Bottom corner purple accent */
+    radial-gradient(ellipse 50% 50% at 100% 100%, rgba(139, 92, 246, 0.06), transparent 50%),
+    /* Diagonal subtle stripe pattern */
     repeating-linear-gradient(
       135deg,
       transparent,
       transparent 200px,
-      rgba(212, 160, 18, 0.008) 200px,
-      rgba(212, 160, 18, 0.008) 201px
+      rgba(139, 92, 246, 0.008) 200px,
+      rgba(139, 92, 246, 0.008) 201px
     );
   pointer-events: none;
   z-index: 0;
 }
 
-/* Premium leather-like texture overlay */
+/* Subtle texture overlay */
 body::after {
   content: '';
   position: fixed;
@@ -235,23 +245,23 @@ body::after {
 
 @keyframes glow-pulse {
   0%, 100% {
-    box-shadow: 0 0 30px rgba(212, 160, 18, 0.2), var(--border-glow);
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.2), var(--border-glow);
   }
   50% {
-    box-shadow: 0 0 60px rgba(212, 160, 18, 0.35), var(--border-glow);
+    box-shadow: 0 0 60px rgba(139, 92, 246, 0.35), var(--border-glow);
   }
 }
 
 @keyframes border-flow {
   0%, 100% {
-    border-color: rgba(212, 160, 18, 0.15);
+    border-color: rgba(139, 92, 246, 0.15);
   }
   50% {
-    border-color: rgba(212, 160, 18, 0.35);
+    border-color: rgba(139, 92, 246, 0.35);
   }
 }
 
-@keyframes championship-shimmer {
+@keyframes purple-shimmer {
   0% {
     background-position: -200% center;
   }
@@ -282,26 +292,26 @@ body::after {
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(212, 160, 18, 0) 0%,
-    rgba(212, 160, 18, 0.12) 50%,
-    rgba(212, 160, 18, 0) 100%
+    rgba(139, 92, 246, 0) 0%,
+    rgba(139, 92, 246, 0.12) 50%,
+    rgba(139, 92, 246, 0) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 2s infinite linear;
 }
 
-/* Championship shimmer - gold sweep effect */
-.animate-championship {
+/* Purple shimmer sweep effect */
+.animate-purple-shimmer {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(212, 160, 18, 0.15) 25%,
-    rgba(245, 197, 66, 0.25) 50%,
-    rgba(212, 160, 18, 0.15) 75%,
+    rgba(139, 92, 246, 0.15) 25%,
+    rgba(167, 139, 250, 0.25) 50%,
+    rgba(139, 92, 246, 0.15) 75%,
     transparent 100%
   );
   background-size: 400% 100%;
-  animation: championship-shimmer 3s ease-in-out infinite;
+  animation: purple-shimmer 3s ease-in-out infinite;
 }
 
 /* ============================================
@@ -325,26 +335,40 @@ body::after {
   box-shadow: var(--shadow-glass-lg);
 }
 
-/* Premium card with championship style */
+/* New card-glass class for modern look */
+.card-glass {
+  background: linear-gradient(135deg, rgba(26,20,37,0.9), rgba(15,11,26,0.95));
+  border: 1px solid rgba(139,92,246,0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(139,92,246,0.1);
+}
+
+.card-glass:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 8px 40px rgba(139, 92, 246, 0.15);
+}
+
+/* Premium card with purple accent */
 .card-premium {
   background: linear-gradient(
     165deg,
-    rgba(15, 15, 18, 0.98) 0%,
-    rgba(12, 12, 14, 0.99) 100%
+    rgba(26, 20, 37, 0.98) 0%,
+    rgba(15, 11, 26, 0.99) 100%
   );
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid rgba(212, 160, 18, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.08);
   box-shadow:
     var(--shadow-card),
     inset 0 1px 0 rgba(255, 255, 255, 0.02),
-    inset 0 0 0 1px rgba(212, 160, 18, 0.03);
+    inset 0 0 0 1px rgba(139, 92, 246, 0.03);
   position: relative;
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Top gold highlight line - championship trophy inspired */
+/* Top purple highlight line */
 .card-premium::before {
   content: '';
   position: absolute;
@@ -355,15 +379,15 @@ body::after {
   background: linear-gradient(
     90deg,
     transparent 5%,
-    rgba(212, 160, 18, 0.5) 25%,
-    rgba(245, 197, 66, 0.6) 50%,
-    rgba(212, 160, 18, 0.5) 75%,
+    rgba(139, 92, 246, 0.5) 25%,
+    rgba(167, 139, 250, 0.6) 50%,
+    rgba(139, 92, 246, 0.5) 75%,
     transparent 95%
   );
   pointer-events: none;
 }
 
-/* Corner accent - warm gold glow */
+/* Corner accent - purple glow */
 .card-premium::after {
   content: '';
   position: absolute;
@@ -373,17 +397,17 @@ body::after {
   height: 120px;
   background: radial-gradient(
     circle at 100% 0%,
-    rgba(212, 160, 18, 0.06) 0%,
+    rgba(139, 92, 246, 0.06) 0%,
     transparent 60%
   );
   pointer-events: none;
 }
 
 .card-premium:hover {
-  border-color: rgba(212, 160, 18, 0.25);
+  border-color: rgba(139, 92, 246, 0.25);
   box-shadow:
     var(--shadow-card-hover),
-    0 0 80px rgba(212, 160, 18, 0.12),
+    0 0 80px rgba(139, 92, 246, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   transform: translateY(-2px);
 }
@@ -392,8 +416,8 @@ body::after {
 .card-premium-elevated {
   background: linear-gradient(
     165deg,
-    rgba(28, 28, 42, 0.95),
-    rgba(20, 20, 30, 0.98)
+    rgba(36, 27, 53, 0.95),
+    rgba(26, 20, 37, 0.98)
   );
   backdrop-filter: blur(var(--glass-blur-heavy));
   -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
@@ -405,10 +429,10 @@ body::after {
 
 /* Subtle card variant */
 .card-premium-subtle {
-  background: rgba(20, 20, 30, 0.6);
+  background: rgba(26, 20, 37, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.08);
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
 }
 
@@ -416,14 +440,14 @@ body::after {
    BUTTONS
    ============================================ */
 
-/* Primary button - championship gold */
+/* Primary button - purple gradient */
 .btn-premium {
-  background: linear-gradient(135deg, #a67c00 0%, #d4a012 50%, #f5c542 100%);
+  background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #A78BFA 100%);
   border: none;
   font-weight: 600;
-  color: #0a0a0f;
+  color: #fff;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 24px rgba(212, 160, 18, 0.4);
+  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.4);
   position: relative;
   overflow: hidden;
 }
@@ -443,57 +467,72 @@ body::after {
 
 .btn-premium:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 40px rgba(212, 160, 18, 0.5);
+  box-shadow: 0 8px 40px rgba(139, 92, 246, 0.5);
 }
 
 .btn-premium:active {
   transform: translateY(0);
 }
 
-/* Gold button variant - same as premium for consistency */
-.btn-gold {
-  background: linear-gradient(135deg, #a67c00 0%, #d4a012 50%, #f5c542 100%);
+/* Purple button variant */
+.btn-purple {
+  background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #A78BFA 100%);
   border: none;
   font-weight: 600;
-  color: #0a0a0f;
+  color: #fff;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 24px rgba(212, 160, 18, 0.4);
+  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.4);
 }
 
-.btn-gold:hover {
+.btn-purple:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 40px rgba(212, 160, 18, 0.5);
+  box-shadow: 0 8px 40px rgba(139, 92, 246, 0.5);
 }
 
-/* Glass button variant - subtle gold tint */
+/* Glass button variant - purple tint */
 .btn-glass {
-  background: rgba(212, 160, 18, 0.08);
+  background: rgba(139, 92, 246, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(212, 160, 18, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   color: var(--color-primary-light);
   transition: all 0.3s ease;
 }
 
 .btn-glass:hover {
-  background: rgba(212, 160, 18, 0.15);
-  border-color: rgba(212, 160, 18, 0.35);
-  box-shadow: 0 0 30px rgba(212, 160, 18, 0.2);
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.2);
 }
 
-/* Emerald button variant for success actions */
+/* Legacy gold button for FT badges */
+.btn-gold {
+  background: linear-gradient(135deg, #D97706 0%, #F59E0B 50%, #FBBF24 100%);
+  border: none;
+  font-weight: 600;
+  color: #0a0a0f;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 24px rgba(245, 158, 11, 0.4);
+}
+
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 40px rgba(245, 158, 11, 0.5);
+}
+
+/* Emerald button for success actions */
 .btn-emerald {
-  background: linear-gradient(135deg, #047857 0%, #059669 50%, #34d399 100%);
+  background: linear-gradient(135deg, #059669 0%, #10B981 50%, #34D399 100%);
   border: none;
   font-weight: 600;
   color: #fff;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 24px rgba(5, 150, 105, 0.35);
+  box-shadow: 0 4px 24px rgba(16, 185, 129, 0.35);
 }
 
 .btn-emerald:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 40px rgba(5, 150, 105, 0.5);
+  box-shadow: 0 8px 40px rgba(16, 185, 129, 0.5);
 }
 
 /* ============================================
@@ -503,12 +542,12 @@ body::after {
 .stat-card {
   background: linear-gradient(
     145deg,
-    rgba(15, 15, 18, 0.9),
-    rgba(10, 10, 12, 0.95)
+    rgba(26, 20, 37, 0.9),
+    rgba(15, 11, 26, 0.95)
   );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(212, 160, 18, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.06);
   border-radius: 12px;
   padding: 0.75rem 1rem;
   transition: all 0.3s ease;
@@ -522,14 +561,14 @@ body::after {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, rgba(212, 160, 18, 0.4), transparent 70%);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.4), transparent 70%);
   border-radius: 12px 12px 0 0;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .stat-card:hover {
-  border-color: rgba(212, 160, 18, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
   transform: translateY(-1px);
 }
 
@@ -540,8 +579,8 @@ body::after {
 .card-compact {
   background: linear-gradient(
     145deg,
-    rgba(20, 20, 30, 0.75),
-    rgba(16, 16, 24, 0.85)
+    rgba(26, 20, 37, 0.75),
+    rgba(15, 11, 26, 0.85)
   );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -552,7 +591,7 @@ body::after {
 }
 
 .card-compact:hover {
-  border-color: rgba(6, 182, 212, 0.2);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 /* ============================================
@@ -560,7 +599,7 @@ body::after {
    ============================================ */
 
 .player-card {
-  background: rgba(20, 20, 30, 0.6);
+  background: rgba(26, 20, 37, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.04);
@@ -570,19 +609,19 @@ body::after {
 }
 
 .player-card:hover {
-  background: rgba(24, 24, 36, 0.8);
-  border-color: rgba(6, 182, 212, 0.2);
+  background: rgba(36, 27, 53, 0.8);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .premium-player-card {
   background: linear-gradient(
     155deg,
-    rgba(15, 15, 18, 0.95),
-    rgba(10, 10, 12, 0.98)
+    rgba(26, 20, 37, 0.95),
+    rgba(15, 11, 26, 0.98)
   );
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid rgba(212, 160, 18, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.08);
   border-radius: 14px;
   padding: 12px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -590,7 +629,7 @@ body::after {
   overflow: hidden;
 }
 
-/* Trading card style corner accent */
+/* Corner accent */
 .premium-player-card::after {
   content: '';
   position: absolute;
@@ -600,7 +639,7 @@ body::after {
   height: 80px;
   background: radial-gradient(
     circle at 0% 100%,
-    rgba(212, 160, 18, 0.05) 0%,
+    rgba(139, 92, 246, 0.05) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -608,8 +647,8 @@ body::after {
 
 .premium-player-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(212, 160, 18, 0.25);
-  box-shadow: 0 0 50px rgba(212, 160, 18, 0.15);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 50px rgba(139, 92, 246, 0.15);
 }
 
 .premium-player-card:active {
@@ -627,11 +666,12 @@ body::after {
 .border-position-k { border-left: 4px solid var(--color-k); }
 .border-position-def { border-left: 4px solid var(--color-def); }
 
+/* Franchise badge - kept amber/gold for contrast and meaning */
 .badge-franchise {
-  background: linear-gradient(135deg, #a67c00, #d4a012, #f5c542);
+  background: linear-gradient(135deg, #D97706, #F59E0B, #FBBF24);
   color: #0a0a0f;
   font-weight: 700;
-  box-shadow: 0 2px 16px rgba(212, 160, 18, 0.45);
+  box-shadow: 0 2px 16px rgba(245, 158, 11, 0.45);
   position: relative;
 }
 
@@ -643,11 +683,12 @@ body::after {
   border-radius: inherit;
 }
 
+/* Keeper badge - purple themed */
 .badge-keeper {
-  background: linear-gradient(135deg, #047857, #059669, #34d399);
+  background: linear-gradient(135deg, #7C3AED, #8B5CF6, #A78BFA);
   color: #fff;
   font-weight: 600;
-  box-shadow: 0 2px 12px rgba(5, 150, 105, 0.35);
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.35);
 }
 
 /* ============================================
@@ -655,14 +696,15 @@ body::after {
    ============================================ */
 
 .glow-primary { box-shadow: var(--shadow-glow-primary); }
-.glow-gold { box-shadow: var(--shadow-glow-gold); }
-.glow-electric { box-shadow: var(--shadow-glow-electric); }
-.glow-green { box-shadow: var(--shadow-glow-green); }
+.glow-purple { box-shadow: var(--shadow-glow-purple); }
+.glow-emerald { box-shadow: var(--shadow-glow-emerald); }
+.glow-green { box-shadow: var(--shadow-glow-emerald); }
 
 /* Legacy aliases */
-.glow-purple { box-shadow: var(--shadow-glow-electric); }
+.glow-gold { box-shadow: var(--shadow-glow-gold); }
+.glow-electric { box-shadow: var(--shadow-glow-purple); }
 .glow-violet { box-shadow: var(--shadow-glow-primary); }
-.glow-accent { box-shadow: var(--shadow-glow-gold); }
+.glow-accent { box-shadow: var(--shadow-glow-primary); }
 
 /* Gradient text */
 .text-gradient-primary {
@@ -672,23 +714,23 @@ body::after {
   background-clip: text;
 }
 
-.text-gradient-gold {
-  background: var(--gradient-gold);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.text-gradient-electric {
-  background: var(--gradient-electric);
+.text-gradient-purple {
+  background: var(--gradient-accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 /* Legacy aliases */
-.text-gradient-purple {
-  background: var(--gradient-electric);
+.text-gradient-gold {
+  background: linear-gradient(135deg, #D97706, #F59E0B, #FBBF24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-electric {
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -702,7 +744,7 @@ body::after {
 }
 
 .text-gradient-amber {
-  background: var(--gradient-gold);
+  background: linear-gradient(135deg, #D97706, #F59E0B, #FBBF24);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -710,10 +752,10 @@ body::after {
 
 /* ============================================
    E PLURIBUS SIGNATURE ELEMENTS
-   Premium sports branding & visual identity
+   Modern premium branding & visual identity
    ============================================ */
 
-/* Championship banner style header accent */
+/* Banner style header accent */
 .banner-accent {
   position: relative;
 }
@@ -729,31 +771,31 @@ body::after {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(212, 160, 18, 0.6) 20%,
-    rgba(245, 197, 66, 0.8) 50%,
-    rgba(212, 160, 18, 0.6) 80%,
+    rgba(139, 92, 246, 0.6) 20%,
+    rgba(167, 139, 250, 0.8) 50%,
+    rgba(139, 92, 246, 0.6) 80%,
     transparent
   );
   border-radius: 0 0 2px 2px;
 }
 
-/* Trophy-style number display */
+/* Scoreboard number display */
 .scoreboard-number {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
-  text-shadow: 0 0 30px rgba(212, 160, 18, 0.5);
+  text-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
   letter-spacing: -0.02em;
 }
 
-/* Championship divider with gold accent */
+/* Divider with purple accent */
 .field-divider {
   position: relative;
   height: 1px;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(212, 160, 18, 0.25) 20%,
-    rgba(212, 160, 18, 0.25) 80%,
+    rgba(139, 92, 246, 0.25) 20%,
+    rgba(139, 92, 246, 0.25) 80%,
     transparent
   );
 }
@@ -768,15 +810,15 @@ body::after {
   height: 6px;
   background: var(--color-primary);
   border-radius: 50%;
-  box-shadow: 0 0 12px rgba(212, 160, 18, 0.6);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
 }
 
-/* Elite badge - for franchise tags and premium content */
+/* Elite badge - purple primary */
 .badge-elite {
-  background: linear-gradient(135deg, #a67c00, #d4a012, #f5c542);
-  color: #0a0a0f;
+  background: linear-gradient(135deg, #7C3AED, #8B5CF6, #A78BFA);
+  color: #fff;
   font-weight: 700;
-  box-shadow: 0 2px 16px rgba(212, 160, 18, 0.4);
+  box-shadow: 0 2px 16px rgba(139, 92, 246, 0.4);
   position: relative;
 }
 
@@ -788,17 +830,17 @@ body::after {
   border-radius: inherit;
 }
 
-/* Championship ring indicator */
-.ring-championship {
+/* Ring indicator */
+.ring-premium {
   position: relative;
 }
 
-.ring-championship::after {
+.ring-premium::after {
   content: '';
   position: absolute;
   inset: -3px;
   border-radius: inherit;
-  background: linear-gradient(135deg, #a67c00, #f5c542, #a67c00);
+  background: linear-gradient(135deg, #7C3AED, #A78BFA, #7C3AED);
   z-index: -1;
   opacity: 0.6;
 }
@@ -831,18 +873,18 @@ body::after {
 }
 
 .table-premium th {
-  background: rgba(15, 15, 18, 0.95);
+  background: rgba(26, 20, 37, 0.95);
   backdrop-filter: blur(8px);
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
-  color: rgba(212, 160, 18, 0.85);
-  border-bottom: 1px solid rgba(212, 160, 18, 0.1);
+  color: rgba(139, 92, 246, 0.85);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
 }
 
 .table-premium tr:hover td {
-  background: rgba(212, 160, 18, 0.04);
+  background: rgba(139, 92, 246, 0.04);
 }
 
 /* ============================================
