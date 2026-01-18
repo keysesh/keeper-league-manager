@@ -48,6 +48,8 @@ export interface PlayerTradeValue {
     gamesPlayed: number | null;
     pointsPerGame: number | null;
     fantasyPointsPpr: number | null;
+    adp: number | null;
+    projectedPoints: number | null;
   };
 
   // Keeper value details on source team

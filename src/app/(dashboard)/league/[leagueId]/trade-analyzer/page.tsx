@@ -53,6 +53,8 @@ interface PlayerTradeValue {
     gamesPlayed: number | null;
     pointsPerGame: number | null;
     fantasyPointsPpr: number | null;
+    adp: number | null;
+    projectedPoints: number | null;
   };
   keeperStatus: {
     isCurrentKeeper: boolean;
@@ -1064,19 +1066,27 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
         </div>
       </div>
 
-      {/* Stats Row - Always show for consistent height */}
-      <div className="grid grid-cols-3 gap-2 mb-2">
-        <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
-          <div className="text-emerald-400 font-bold text-lg">{stats.pointsPerGame?.toFixed(1) || "—"}</div>
-          <div className="text-gray-500 text-[10px]">PPG</div>
+      {/* Stats Grid - 5 columns for all stats */}
+      <div className="grid grid-cols-5 gap-1.5 mb-2">
+        <div className="py-1.5 px-2 rounded bg-gray-900/50 text-center">
+          <div className="text-emerald-400 font-bold">{stats.pointsPerGame?.toFixed(1) || "—"}</div>
+          <div className="text-gray-500 text-[9px]">PPG</div>
         </div>
-        <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
-          <div className="text-blue-400 font-bold text-lg">{stats.fantasyPointsPpr?.toFixed(0) || "—"}</div>
-          <div className="text-gray-500 text-[10px]">Total Pts</div>
+        <div className="py-1.5 px-2 rounded bg-gray-900/50 text-center">
+          <div className="text-blue-400 font-bold">{stats.fantasyPointsPpr?.toFixed(0) || "—"}</div>
+          <div className="text-gray-500 text-[9px]">Total</div>
         </div>
-        <div className="py-2 px-3 rounded bg-gray-900/50 text-center">
-          <div className="text-gray-300 font-bold text-lg">{stats.gamesPlayed || "—"}</div>
-          <div className="text-gray-500 text-[10px]">Games</div>
+        <div className="py-1.5 px-2 rounded bg-gray-900/50 text-center">
+          <div className="text-gray-300 font-bold">{stats.gamesPlayed || "—"}</div>
+          <div className="text-gray-500 text-[9px]">Games</div>
+        </div>
+        <div className="py-1.5 px-2 rounded bg-gray-900/50 text-center">
+          <div className="text-violet-400 font-bold">{stats.adp?.toFixed(1) || "—"}</div>
+          <div className="text-gray-500 text-[9px]">ADP</div>
+        </div>
+        <div className="py-1.5 px-2 rounded bg-gray-900/50 text-center">
+          <div className="text-amber-400 font-bold">{stats.projectedPoints?.toFixed(0) || "—"}</div>
+          <div className="text-gray-500 text-[9px]">Proj</div>
         </div>
       </div>
 

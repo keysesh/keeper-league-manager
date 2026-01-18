@@ -297,6 +297,8 @@ export async function analyzeTradeComprehensive(
         gamesPlayed: player.gamesPlayed,
         pointsPerGame: player.pointsPerGame,
         fantasyPointsPpr: player.fantasyPointsPpr,
+        adp: player.adp,
+        projectedPoints: player.projectedPoints,
       },
       keeperStatus: {
         isCurrentKeeper: !!currentKeeper,
