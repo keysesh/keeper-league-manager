@@ -105,7 +105,7 @@ export class ErrorBoundary extends React.Component<
                 Try Again
               </button>
               <Link
-                href="/dashboard"
+                href="/leagues"
                 className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium transition-colors"
               >
                 <Home className="w-4 h-4" />

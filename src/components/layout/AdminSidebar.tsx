@@ -100,7 +100,7 @@ export function AdminSidebar() {
       {/* Back Link */}
       <div className="p-4 border-t border-slate-800/50">
         <Link
-          href="/dashboard"
+          href="/leagues"
           className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-white/[0.03] transition-all duration-200 group"
         >
           <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-800/50 text-slate-500 group-hover:bg-slate-700/50 group-hover:text-slate-300 transition-all duration-200">

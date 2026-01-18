@@ -40,7 +40,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
             Try again
           </button>
           <a
-            href="/dashboard"
+            href="/leagues"
             className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800 rounded-xl font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/70"
           >
             <Home size={16} strokeWidth={2} />
