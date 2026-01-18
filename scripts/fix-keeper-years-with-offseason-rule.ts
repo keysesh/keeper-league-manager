@@ -213,7 +213,9 @@ async function fixKeeperYears(leagueId: string, playerSleeperId?: string) {
   // Build sleeperId -> teamName map (use most recent team name for each sleeperId)
   const sleeperIdToTeamName = new Map<string, string>();
   for (const r of allRosters) {
-    sleeperIdToTeamName.set(r.sleeperId, r.teamName);
+    if (r.teamName) {
+      sleeperIdToTeamName.set(r.sleeperId, r.teamName);
+    }
   }
   console.log(`Loaded ${rosterMap.size} rosters for roster ID lookup`);
 
