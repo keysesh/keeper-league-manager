@@ -11,6 +11,7 @@ import {
   type LucideIcon,
   Home,
   ChevronLeft,
+  Shield,
 } from "lucide-react";
 
 interface NavItem {
@@ -20,7 +21,11 @@ interface NavItem {
   badge?: number;
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  isAdmin?: boolean;
+}
+
+export function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
   const params = useParams();
   const leagueId = params?.leagueId as string | undefined;
@@ -29,6 +34,7 @@ export function Sidebar() {
 
   const dashboardNav: NavItem[] = [
     { name: "My Leagues", href: "/leagues", icon: LayoutDashboard },
+    ...(isAdmin ? [{ name: "Admin Panel", href: "/admin", icon: Shield }] : []),
   ];
 
   const leagueNav: NavItem[] = leagueId

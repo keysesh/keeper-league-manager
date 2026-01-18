@@ -17,17 +17,18 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // Check if user has completed onboarding
-  // Wrapped in try-catch to handle case where onboardingComplete column doesn't exist yet
+  // Check if user has completed onboarding and if they're an admin
+  let isAdmin = false;
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { onboardingComplete: true },
+      select: { onboardingComplete: true, isAdmin: true },
     });
 
     if (user && !user.onboardingComplete) {
       redirect("/onboarding");
     }
+    isAdmin = user?.isAdmin ?? false;
   } catch {
     // Column may not exist yet - skip onboarding check for existing users
     logger.warn("onboardingComplete field not available - skipping onboarding check");
@@ -37,7 +38,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-gray-950">
       <Header user={session.user} />
       <div className="flex">
-        <Sidebar />
+        <Sidebar isAdmin={isAdmin} />
         <main className="flex-1 p-6 lg:p-8">{children}</main>
       </div>
     </div>
