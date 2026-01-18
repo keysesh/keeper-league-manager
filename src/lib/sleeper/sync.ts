@@ -600,6 +600,172 @@ export async function syncTransactions(leagueId: string): Promise<number> {
 }
 
 // ============================================
+// PLAYER OWNERSHIP HISTORY
+// ============================================
+
+interface OwnershipPeriod {
+  rosterId: string;
+  rosterSleeperId: string;
+  startDate: Date;
+  endDate: Date | null; // null = still owned
+  acquisitionType: "DRAFT" | "TRADE" | "WAIVER" | "FREE_AGENT";
+  season: number;
+}
+
+/**
+ * Build complete ownership history for a player in a league
+ * Uses transactions and draft picks to track all ownership changes
+ *
+ * IMPORTANT: Only uses ORIGINAL draft picks (not keeper picks) for initial ownership.
+ * Keeper picks confirm continued ownership, they don't start new ownership periods.
+ */
+export async function buildPlayerOwnershipHistory(
+  playerId: string,
+  leagueId: string
+): Promise<OwnershipPeriod[]> {
+  // Get league chain (current + historical seasons)
+  const leagueChain = await getLeagueChainForSync(leagueId);
+
+  // Get all relevant data in batch
+  const [transactions, draftPicks, rosters] = await Promise.all([
+    prisma.transactionPlayer.findMany({
+      where: {
+        playerId,
+        transaction: { leagueId: { in: leagueChain } },
+      },
+      include: {
+        transaction: true,
+      },
+      orderBy: { transaction: { createdAt: "asc" } },
+    }),
+    prisma.draftPick.findMany({
+      where: {
+        playerId,
+        draft: { leagueId: { in: leagueChain } },
+        // Only get original draft (non-keeper picks)
+        isKeeper: false,
+      },
+      include: {
+        draft: true,
+        roster: true,
+      },
+      orderBy: { draft: { season: "asc" } },
+    }),
+    prisma.roster.findMany({
+      where: { leagueId: { in: leagueChain } },
+      select: { id: true, sleeperId: true, leagueId: true },
+    }),
+  ]);
+
+  const rosterMap = new Map(rosters.map(r => [r.id, r]));
+  const periods: OwnershipPeriod[] = [];
+
+  // Process ONLY original draft pick (first non-keeper draft)
+  // There should only be one original draft per player
+  const originalDraft = draftPicks[0];
+  if (originalDraft?.rosterId && originalDraft?.roster) {
+    periods.push({
+      rosterId: originalDraft.rosterId,
+      rosterSleeperId: originalDraft.roster.sleeperId,
+      startDate: new Date(originalDraft.draft.season, 7, 1), // August of draft year
+      endDate: null,
+      acquisitionType: "DRAFT",
+      season: originalDraft.draft.season,
+    });
+  }
+
+  // Process transactions (trades, waivers, FA)
+  for (const tp of transactions) {
+    const txDate = tp.transaction.createdAt;
+    const txSeason = txDate.getMonth() >= 2 ? txDate.getFullYear() : txDate.getFullYear() - 1;
+
+    // If player was added to a roster (trade in, waiver claim, FA pickup)
+    if (tp.toRosterId) {
+      const roster = rosterMap.get(tp.toRosterId);
+      if (!roster) continue;
+
+      // Close previous ownership period
+      const lastPeriod = periods[periods.length - 1];
+      if (lastPeriod && !lastPeriod.endDate) {
+        lastPeriod.endDate = txDate;
+      }
+
+      // Start new ownership period
+      let acqType: OwnershipPeriod["acquisitionType"] = "FREE_AGENT";
+      if (tp.transaction.type === "TRADE") acqType = "TRADE";
+      else if (tp.transaction.type === "WAIVER") acqType = "WAIVER";
+
+      periods.push({
+        rosterId: tp.toRosterId,
+        rosterSleeperId: roster.sleeperId,
+        startDate: txDate,
+        endDate: null,
+        acquisitionType: acqType,
+        season: txSeason,
+      });
+    }
+    // If player was dropped (no toRosterId)
+    else if (tp.fromRosterId && !tp.toRosterId) {
+      const lastPeriod = periods[periods.length - 1];
+      if (lastPeriod && lastPeriod.rosterId === tp.fromRosterId && !lastPeriod.endDate) {
+        lastPeriod.endDate = txDate;
+      }
+    }
+  }
+
+  return periods;
+}
+
+/**
+ * Determine who owned a player at a specific point in time
+ */
+export async function getPlayerOwnerAtDate(
+  playerId: string,
+  leagueId: string,
+  date: Date
+): Promise<{ rosterId: string; rosterSleeperId: string } | null> {
+  const history = await buildPlayerOwnershipHistory(playerId, leagueId);
+
+  for (const period of history.reverse()) {
+    const endDate = period.endDate || new Date();
+    if (date >= period.startDate && date <= endDate) {
+      return { rosterId: period.rosterId, rosterSleeperId: period.rosterSleeperId };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a player was owned by the same roster at end of previous season
+ * Used to determine if keeper years should continue or reset
+ *
+ * Trade deadline considerations:
+ * - Before deadline: Player must have been on roster at previous season end
+ * - After deadline (offseason): Years always reset for new owner
+ */
+export async function wasOwnedAtSeasonEnd(
+  playerId: string,
+  leagueId: string,
+  currentRosterSleeperId: string,
+  previousSeason: number
+): Promise<boolean> {
+  const history = await buildPlayerOwnershipHistory(playerId, leagueId);
+
+  // Find ownership at end of previous season (roughly February of next year)
+  const seasonEndDate = new Date(previousSeason + 1, 1, 28); // Feb 28 of following year
+
+  for (const period of history) {
+    const endDate = period.endDate || new Date();
+    if (period.startDate <= seasonEndDate && endDate >= seasonEndDate) {
+      return period.rosterSleeperId === currentRosterSleeperId;
+    }
+  }
+
+  return false;
+}
+
+// ============================================
 // FAST SYNC (optimized for serverless timeouts)
 // ============================================
 
@@ -1024,6 +1190,10 @@ export async function getKeeperHistoryFromDB(
 /**
  * Populate Keeper records from draft picks marked as keepers
  * This reconstructs historical keeper data from Sleeper's is_keeper flag
+ *
+ * IMPORTANT: Uses transaction history to properly handle trades:
+ * - If player was traded to new owner, years reset to 1
+ * - If player was on same roster at end of previous season, years continue
  */
 export async function populateKeepersFromDraftPicks(
   leagueId: string
@@ -1051,32 +1221,45 @@ export async function populateKeepersFromDraftPicks(
   let skipped = 0;
 
   for (const pick of keeperPicks) {
-    if (!pick.playerId || !pick.player || !pick.rosterId) continue;
+    if (!pick.playerId || !pick.player || !pick.rosterId || !pick.roster) continue;
 
     try {
     const season = pick.draft.season;
+    const rosterSleeperId = pick.roster.sleeperId;
 
-    // Count previous consecutive years this player was kept by this roster
-    // This must be calculated FIRST, even for existing records
-    const previousKeepers = await prisma.keeper.findMany({
-      where: {
-        playerId: pick.playerId,
-        rosterId: pick.rosterId,
-        season: { lt: season },
-      },
-      orderBy: { season: "desc" },
-    });
+    // Check if player was owned by this roster at end of previous season
+    // This uses transaction history to account for trades
+    const ownedAtPrevSeasonEnd = await wasOwnedAtSeasonEnd(
+      pick.playerId,
+      leagueId,
+      rosterSleeperId,
+      season - 1
+    );
 
     let consecutiveYears = 0;
-    let checkSeason = season - 1;
-    for (const keeper of previousKeepers) {
-      if (keeper.season === checkSeason) {
-        consecutiveYears++;
-        checkSeason--;
-      } else {
-        break;
+
+    if (ownedAtPrevSeasonEnd) {
+      // Player was on this roster last season - check for consecutive years
+      const previousKeepers = await prisma.keeper.findMany({
+        where: {
+          playerId: pick.playerId,
+          roster: { sleeperId: rosterSleeperId },
+          season: { lt: season },
+        },
+        orderBy: { season: "desc" },
+      });
+
+      let checkSeason = season - 1;
+      for (const keeper of previousKeepers) {
+        if (keeper.season === checkSeason) {
+          consecutiveYears++;
+          checkSeason--;
+        } else {
+          break;
+        }
       }
     }
+    // If not owned at previous season end, consecutiveYears stays 0 (years reset)
 
     const correctYearsKept = consecutiveYears + 1;
 
@@ -1168,7 +1351,9 @@ async function getLeagueChainForSync(startLeagueId: string): Promise<string[]> {
 
 /**
  * Recalculate yearsKept for all keepers in a league
- * Now looks across the entire league chain to find consecutive years
+ * Uses transaction history to properly handle trades:
+ * - If player was traded to current owner, years reset to 1
+ * - If player was continuously owned by same roster, years continue
  */
 export async function recalculateKeeperYears(
   leagueId: string
@@ -1216,30 +1401,43 @@ export async function recalculateKeeperYears(
     }
 
     try {
-      // Get all roster IDs for the same team across seasons
-      const teamRosterIds = rosterChainMap.get(keeper.roster.sleeperId) || [keeper.rosterId];
+      const rosterSleeperId = keeper.roster.sleeperId;
 
-      // Find previous keepers for this player on ANY of the team's rosters across seasons
-      const previousKeepers = await prisma.keeper.findMany({
-        where: {
-          playerId: keeper.playerId,
-          rosterId: { in: teamRosterIds },
-          season: { lt: keeper.season },
-        },
-        orderBy: { season: "desc" },
-      });
+      // Check if player was owned by this roster at end of previous season
+      // This uses transaction history to account for trades
+      const ownedAtPrevSeasonEnd = await wasOwnedAtSeasonEnd(
+        keeper.playerId,
+        leagueId,
+        rosterSleeperId,
+        keeper.season - 1
+      );
 
-      // Count consecutive years
       let consecutiveYears = 0;
-      let checkSeason = keeper.season - 1;
-      for (const prev of previousKeepers) {
-        if (prev.season === checkSeason) {
-          consecutiveYears++;
-          checkSeason--;
-        } else {
-          break;
+
+      if (ownedAtPrevSeasonEnd) {
+        // Player was on this roster last season - check for consecutive keeper years
+        const teamRosterIds = rosterChainMap.get(rosterSleeperId) || [keeper.rosterId];
+
+        const previousKeepers = await prisma.keeper.findMany({
+          where: {
+            playerId: keeper.playerId,
+            rosterId: { in: teamRosterIds },
+            season: { lt: keeper.season },
+          },
+          orderBy: { season: "desc" },
+        });
+
+        let checkSeason = keeper.season - 1;
+        for (const prev of previousKeepers) {
+          if (prev.season === checkSeason) {
+            consecutiveYears++;
+            checkSeason--;
+          } else {
+            break;
+          }
         }
       }
+      // If not owned at previous season end (traded), consecutiveYears stays 0
 
       const correctYearsKept = consecutiveYears + 1;
 
@@ -1257,6 +1455,7 @@ export async function recalculateKeeperYears(
           season: keeper.season,
           oldYearsKept: keeper.yearsKept,
           newYearsKept: correctYearsKept,
+          ownedAtPrevSeasonEnd,
         });
         updated++;
       }
