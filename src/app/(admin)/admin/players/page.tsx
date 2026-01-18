@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+/** Get the most recent NFL season with available data */
+function getCurrentSeason(): number {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  // Before September, previous year's season is most recent with data
+  return month >= 8 ? year : year - 1;
+}
 
 interface Player {
   id: string;
@@ -17,11 +26,16 @@ interface Player {
 }
 
 export default function AdminPlayersPage() {
+  const availableSeasons = useMemo(() => {
+    const current = getCurrentSeason();
+    return [current, current - 1, current - 2, current - 3];
+  }, []);
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncingNflverse, setSyncingNflverse] = useState(false);
-  const [nflverseSeason, setNflverseSeason] = useState(2025);
+  const [nflverseSeason, setNflverseSeason] = useState(() => getCurrentSeason());
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
@@ -102,7 +116,7 @@ export default function AdminPlayersPage() {
               onChange={(e) => setNflverseSeason(Number(e.target.value))}
               className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-amber-500"
             >
-              {[2025, 2024, 2023, 2022].map((year) => (
+              {availableSeasons.map((year) => (
                 <option key={year} value={year}>{year}</option>
               ))}
             </select>

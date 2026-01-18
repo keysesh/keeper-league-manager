@@ -326,15 +326,26 @@ export class NFLVerseClient {
   }
 
   /**
-   * Get current season (after March = current year, else previous)
+   * Get the most recent NFL season with available data
+   * NFL season X runs Sept X - Feb X+1, data available during/after
    */
   static getCurrentSeason(): number {
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth(); // 0-indexed
 
-    // NFL season starts in September, data available after March
-    return month >= 2 ? year : year - 1;
+    // Before September, the previous year's season is the most recent with full data
+    // September onwards, current year's season is in progress
+    return month >= 8 ? year : year - 1;
+  }
+
+  /**
+   * Get array of available NFLverse seasons (most recent first)
+   * Returns last 4 seasons with data
+   */
+  static getAvailableSeasons(): number[] {
+    const currentSeason = NFLVerseClient.getCurrentSeason();
+    return [currentSeason, currentSeason - 1, currentSeason - 2, currentSeason - 3];
   }
 }
 
