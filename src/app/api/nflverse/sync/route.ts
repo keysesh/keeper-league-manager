@@ -32,27 +32,37 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Check for admin secret key (for CLI/testing)
+    const adminKey = request.headers.get("x-admin-key");
+    const validAdminKey = process.env.ADMIN_API_KEY;
+    const isAdminKeyAuth = adminKey && validAdminKey && adminKey === validAdminKey;
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { isAdmin: true },
-    });
+    let userId = "admin-key-user";
 
-    if (!user?.isAdmin) {
-      return NextResponse.json(
-        { error: "Admin access required" },
-        { status: 403 }
-      );
+    if (!isAdminKeyAuth) {
+      // Check authentication
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      // Check if user is admin
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isAdmin: true },
+      });
+
+      if (!user?.isAdmin) {
+        return NextResponse.json(
+          { error: "Admin access required" },
+          { status: 403 }
+        );
+      }
+      userId = session.user.id;
     }
 
     // Apply strict rate limiting for this heavy operation
-    const rateLimit = await checkRateLimit(session.user.id, RATE_LIMITS.nflverseSync);
+    const rateLimit = await checkRateLimit(userId, RATE_LIMITS.nflverseSync);
     if (!rateLimit.success) {
       return createRateLimitResponse(
         rateLimit.remaining,
