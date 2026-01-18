@@ -570,7 +570,9 @@ export async function syncFFRankings(): Promise<NFLVerseSyncResult> {
       for (const ranking of batch) {
         if (!ranking.sleeper_id) continue;
 
-        const player = sleeperToDbPlayer.get(ranking.sleeper_id);
+        // Convert to string since DB stores sleeperId as string
+        const sleeperId = String(ranking.sleeper_id);
+        const player = sleeperToDbPlayer.get(sleeperId);
         if (!player) continue;
 
         // Extract position rank from page_pos (e.g., "RB12" -> 12)
