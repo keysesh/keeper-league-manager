@@ -27,6 +27,8 @@ import {
   PositionBreakdown,
   PositionChange,
   CostTrajectoryYear,
+  PlayerSeasonStatsData,
+  PlayerRankingData,
   BASE_POSITION_VALUES,
   DRAFT_PICK_BASE_VALUE,
   DRAFT_PICK_DECAY,
@@ -169,12 +171,23 @@ export async function analyzeTradeComprehensive(
   if (!roster1 || !roster2) throw new Error("One or both rosters not found");
 
   // ========================================
-  // BATCH QUERY 2: All Players being traded
+  // BATCH QUERY 2: All Players being traded (with metadata)
   // ========================================
   const players = await prisma.player.findMany({
     where: { id: { in: allPlayerIds } },
   });
   const playerMap = new Map(players.map(p => [p.id, p]));
+
+  // ========================================
+  // BATCH QUERY 2b: Season stats for all players
+  // ========================================
+  const seasonStats = await prisma.playerSeasonStats.findMany({
+    where: {
+      playerId: { in: allPlayerIds },
+      season: season - 1, // Get last completed season's stats
+    },
+  });
+  const seasonStatsMap = new Map(seasonStats.map(s => [s.playerId, s]));
 
   // ========================================
   // BATCH QUERY 3: All Draft Picks for traded players
@@ -284,6 +297,36 @@ export async function analyzeTradeComprehensive(
     const regularCount = sourceRoster?.keepers.filter(k => k.type === "REGULAR").length ?? 0;
     const atMaxYears = yearsKept >= maxYears;
 
+    // Get detailed season stats
+    const playerSeasonStats = seasonStatsMap.get(playerId);
+    const seasonStatsData: PlayerSeasonStatsData | null = playerSeasonStats ? {
+      season: playerSeasonStats.season,
+      gamesPlayed: playerSeasonStats.gamesPlayed,
+      fantasyPointsPpr: playerSeasonStats.fantasyPointsPpr,
+      fantasyPointsHalfPpr: playerSeasonStats.fantasyPointsHalfPpr,
+      fantasyPointsStd: playerSeasonStats.fantasyPointsStd,
+      passingYards: playerSeasonStats.passingYards,
+      passingTds: playerSeasonStats.passingTds,
+      interceptions: playerSeasonStats.interceptions,
+      rushingYards: playerSeasonStats.rushingYards,
+      rushingTds: playerSeasonStats.rushingTds,
+      carries: playerSeasonStats.carries,
+      receptions: playerSeasonStats.receptions,
+      receivingYards: playerSeasonStats.receivingYards,
+      receivingTds: playerSeasonStats.receivingTds,
+      targets: playerSeasonStats.targets,
+    } : null;
+
+    // Extract ranking data from player metadata
+    const metadata = player.metadata as { nflverse?: { ranking?: { ecr?: number; positionRank?: number }; depthChart?: { depthPosition?: number } } } | null;
+    const nflverse = metadata?.nflverse;
+    const rankingData: PlayerRankingData = {
+      ecr: nflverse?.ranking?.ecr ?? null,
+      positionRank: nflverse?.ranking?.positionRank ?? null,
+      depthChart: nflverse?.depthChart?.depthPosition ?? null,
+      sosRank: null, // SOS is team-level, would need separate lookup
+    };
+
     return {
       playerId: player.id,
       sleeperId: player.sleeperId,
@@ -300,6 +343,8 @@ export async function analyzeTradeComprehensive(
         adp: player.adp,
         projectedPoints: player.projectedPoints,
       },
+      seasonStats: seasonStatsData,
+      ranking: rankingData,
       keeperStatus: {
         isCurrentKeeper: !!currentKeeper,
         currentCost: currentKeeper?.finalCost || null,

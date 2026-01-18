@@ -33,6 +33,37 @@ export interface KeeperProjection {
   costTrajectory: CostTrajectoryYear[];
 }
 
+/** Detailed season statistics */
+export interface PlayerSeasonStatsData {
+  season: number;
+  gamesPlayed: number;
+  // Fantasy points in different scoring formats
+  fantasyPointsPpr: number;
+  fantasyPointsHalfPpr: number;
+  fantasyPointsStd: number;
+  // Passing (QB)
+  passingYards: number;
+  passingTds: number;
+  interceptions: number;
+  // Rushing (RB/QB)
+  rushingYards: number;
+  rushingTds: number;
+  carries: number;
+  // Receiving (WR/TE/RB)
+  receptions: number;
+  receivingYards: number;
+  receivingTds: number;
+  targets: number;
+}
+
+/** NFLverse ranking/metadata */
+export interface PlayerRankingData {
+  ecr: number | null;           // Expert Consensus Ranking (overall)
+  positionRank: number | null;  // Position rank (e.g., WR12)
+  depthChart: number | null;    // Depth chart position (1 = starter)
+  sosRank: number | null;       // Strength of schedule rank (1 = hardest)
+}
+
 export interface PlayerTradeValue {
   playerId: string;
   sleeperId: string;
@@ -43,7 +74,7 @@ export interface PlayerTradeValue {
   yearsExp: number | null;
   injuryStatus: string | null;
 
-  // Fantasy performance stats
+  // Summary stats (for quick display)
   stats: {
     gamesPlayed: number | null;
     pointsPerGame: number | null;
@@ -51,6 +82,12 @@ export interface PlayerTradeValue {
     adp: number | null;
     projectedPoints: number | null;
   };
+
+  // Detailed season stats
+  seasonStats: PlayerSeasonStatsData | null;
+
+  // Rankings and metadata from NFLverse
+  ranking: PlayerRankingData;
 
   // Keeper value details on source team
   keeperStatus: KeeperStatus;

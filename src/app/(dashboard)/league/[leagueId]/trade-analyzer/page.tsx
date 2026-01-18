@@ -40,6 +40,31 @@ interface CostTrajectoryYear {
   isFinalYear: boolean;
 }
 
+interface PlayerSeasonStatsData {
+  season: number;
+  gamesPlayed: number;
+  fantasyPointsPpr: number;
+  fantasyPointsHalfPpr: number;
+  fantasyPointsStd: number;
+  passingYards: number;
+  passingTds: number;
+  interceptions: number;
+  rushingYards: number;
+  rushingTds: number;
+  carries: number;
+  receptions: number;
+  receivingYards: number;
+  receivingTds: number;
+  targets: number;
+}
+
+interface PlayerRankingData {
+  ecr: number | null;
+  positionRank: number | null;
+  depthChart: number | null;
+  sosRank: number | null;
+}
+
 interface PlayerTradeValue {
   playerId: string;
   sleeperId: string;
@@ -56,6 +81,8 @@ interface PlayerTradeValue {
     adp: number | null;
     projectedPoints: number | null;
   };
+  seasonStats: PlayerSeasonStatsData | null;
+  ranking: PlayerRankingData;
   keeperStatus: {
     isCurrentKeeper: boolean;
     currentCost: number | null;
@@ -1032,9 +1059,34 @@ export default function TradeAnalyzerPage() {
   );
 }
 
+// Tooltip wrapper component
+function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
+  return (
+    <div className="relative group cursor-help">
+      {children}
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-[10px] text-gray-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// Stat cell with tooltip
+function StatCell({ value, label, tooltip, highlight }: { value: string | number; label: string; tooltip: string; highlight?: boolean }) {
+  return (
+    <Tooltip text={tooltip}>
+      <div className="py-1.5 px-2 rounded bg-[#0a0a0a] text-center">
+        <div className={`font-semibold text-sm ${highlight ? "text-purple-400" : "text-white"}`}>{value}</div>
+        <div className="text-gray-600 text-[9px]">{label}</div>
+      </div>
+    </Tooltip>
+  );
+}
+
 // Player Info Card Component - Objective information only
-function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTradeValue; isAfterDeadline: boolean; byeWeek?: number }) {
-  const { keeperStatus, projection, stats } = player;
+function PlayerInfoCard({ player, isAfterDeadline, byeWeek, statsSeason }: { player: PlayerTradeValue; isAfterDeadline: boolean; byeWeek?: number; statsSeason?: number }) {
+  const { keeperStatus, projection, stats, seasonStats, ranking } = player;
+  const displaySeason = statsSeason || seasonStats?.season || new Date().getFullYear() - 1;
 
   // Get age color - younger players have more upside
   const getAgeColor = (age: number | null) => {
@@ -1047,22 +1099,76 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
   // Check if there are eligibility issues to show
   const hasEligibilityIssue = !keeperStatus.isEligibleForRegular || !keeperStatus.isEligibleForFranchise;
 
+  // Position-specific stats rendering
+  const renderPositionStats = () => {
+    if (!seasonStats) return null;
+
+    const pos = player.position?.toUpperCase();
+
+    if (pos === "QB") {
+      return (
+        <div className="grid grid-cols-5 gap-1.5">
+          <StatCell value={seasonStats.passingYards.toLocaleString()} label="Pass Yds" tooltip="Total passing yards" />
+          <StatCell value={seasonStats.passingTds} label="Pass TD" tooltip="Passing touchdowns" />
+          <StatCell value={seasonStats.interceptions} label="INT" tooltip="Interceptions thrown" />
+          <StatCell value={seasonStats.rushingYards} label="Rush Yds" tooltip="Rushing yards" />
+          <StatCell value={seasonStats.rushingTds} label="Rush TD" tooltip="Rushing touchdowns" />
+        </div>
+      );
+    }
+
+    if (pos === "RB") {
+      const ypc = seasonStats.carries > 0 ? (seasonStats.rushingYards / seasonStats.carries).toFixed(1) : "—";
+      return (
+        <div className="grid grid-cols-5 gap-1.5">
+          <StatCell value={seasonStats.rushingYards.toLocaleString()} label="Rush Yds" tooltip="Total rushing yards" />
+          <StatCell value={seasonStats.rushingTds} label="Rush TD" tooltip="Rushing touchdowns" />
+          <StatCell value={seasonStats.carries} label="Carries" tooltip="Rushing attempts" />
+          <StatCell value={ypc} label="YPC" tooltip="Yards per carry" />
+          <StatCell value={seasonStats.receptions} label="Rec" tooltip="Receptions" />
+        </div>
+      );
+    }
+
+    if (pos === "WR" || pos === "TE") {
+      const catchRate = seasonStats.targets > 0 ? Math.round((seasonStats.receptions / seasonStats.targets) * 100) + "%" : "—";
+      const ypr = seasonStats.receptions > 0 ? (seasonStats.receivingYards / seasonStats.receptions).toFixed(1) : "—";
+      return (
+        <div className="grid grid-cols-5 gap-1.5">
+          <StatCell value={seasonStats.targets} label="Targets" tooltip="Total targets" />
+          <StatCell value={seasonStats.receptions} label="Rec" tooltip="Receptions" />
+          <StatCell value={seasonStats.receivingYards.toLocaleString()} label="Rec Yds" tooltip="Receiving yards" />
+          <StatCell value={seasonStats.receivingTds} label="Rec TD" tooltip="Receiving touchdowns" />
+          <StatCell value={catchRate} label="Catch%" tooltip="Catch rate (receptions/targets)" />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="rounded-md bg-[#1a1a1a] border border-[#2a2a2a] p-3">
-      {/* Player Header - Compact */}
+      {/* Player Header */}
       <div className="flex items-center gap-3 mb-3">
         <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="md" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white font-medium">{player.playerName}</span>
             <PositionBadge position={player.position} size="sm" />
+            {ranking.positionRank && (
+              <span className="text-purple-400 text-[10px] font-bold">#{ranking.positionRank}</span>
+            )}
+            {ranking.depthChart === 1 && (
+              <span className="text-emerald-400 text-[9px] font-bold px-1 py-0.5 bg-emerald-500/10 rounded">STARTER</span>
+            )}
             {player.injuryStatus && player.injuryStatus !== "Active" && (
               <span className="text-red-400 text-[10px] font-medium px-1.5 py-0.5 bg-red-500/10 rounded">
                 {player.injuryStatus}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
             <span>{player.team || "FA"}</span>
             {byeWeek ? (
               <span className="text-gray-400">Bye {byeWeek}</span>
@@ -1070,42 +1176,65 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
               <span className="text-gray-600 cursor-help" title="Bye week available after NFL schedule release (May)">Bye TBD</span>
             ) : null}
             {player.age && <span className={getAgeColor(player.age)}>Age {player.age}</span>}
-            {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr exp`}</span>}
+            {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr`}</span>}
+            {ranking.ecr && (
+              <Tooltip text="Expert Consensus Ranking (overall)">
+                <span className="text-purple-400">ECR #{Math.round(ranking.ecr)}</span>
+              </Tooltip>
+            )}
             <span className="text-gray-600">•</span>
             <span className="text-blue-400 font-medium">R{projection.newCost}</span>
-            <span className="text-gray-600">kept {keeperStatus.yearsKept} of {keeperStatus.maxYearsAllowed}yr</span>
+            <span className="text-gray-600">kept {keeperStatus.yearsKept}/{keeperStatus.maxYearsAllowed}yr</span>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid - 5 columns for all stats */}
-      <div className="grid grid-cols-5 gap-1.5 mb-2">
-        <div className="py-1.5 px-2 rounded bg-[#0a0a0a] text-center">
-          <div className="text-white font-semibold text-sm">{stats.pointsPerGame?.toFixed(1) || "—"}</div>
-          <div className="text-gray-600 text-[9px]">PPG</div>
-        </div>
-        <div className="py-1.5 px-2 rounded bg-[#0a0a0a] text-center">
-          <div className="text-white font-semibold text-sm">{stats.fantasyPointsPpr?.toFixed(0) || "—"}</div>
-          <div className="text-gray-600 text-[9px]">Total</div>
-        </div>
-        <div className="py-1.5 px-2 rounded bg-[#0a0a0a] text-center">
-          <div className="text-gray-400 font-semibold text-sm">{stats.gamesPlayed || "—"}</div>
-          <div className="text-gray-600 text-[9px]">Games</div>
-        </div>
-        <div className="py-1.5 px-2 rounded bg-[#0a0a0a] text-center">
-          <div className="text-gray-400 font-semibold text-sm">{stats.adp?.toFixed(1) || "—"}</div>
-          <div className="text-gray-600 text-[9px]">ADP</div>
-        </div>
-        <div className="py-1.5 px-2 rounded bg-[#0a0a0a] text-center">
-          <div className="text-blue-400 font-semibold text-sm">{stats.projectedPoints?.toFixed(0) || "—"}</div>
-          <div className="text-gray-600 text-[9px]">Proj</div>
-        </div>
+      {/* Season Header */}
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] text-gray-500 uppercase tracking-wider">{displaySeason} Season Stats (PPR)</span>
+        {stats.gamesPlayed && <span className="text-[10px] text-gray-600">{stats.gamesPlayed} games</span>}
       </div>
+
+      {/* Fantasy Points Row */}
+      <div className="grid grid-cols-5 gap-1.5 mb-2">
+        <StatCell
+          value={stats.pointsPerGame?.toFixed(1) || "—"}
+          label="PPG"
+          tooltip="Points per game (PPR scoring)"
+          highlight
+        />
+        <StatCell
+          value={seasonStats?.fantasyPointsPpr?.toFixed(0) || stats.fantasyPointsPpr?.toFixed(0) || "—"}
+          label="PPR"
+          tooltip="Total fantasy points (PPR)"
+        />
+        <StatCell
+          value={seasonStats?.fantasyPointsHalfPpr?.toFixed(0) || "—"}
+          label="Half"
+          tooltip="Total fantasy points (Half-PPR)"
+        />
+        <StatCell
+          value={seasonStats?.fantasyPointsStd?.toFixed(0) || "—"}
+          label="Std"
+          tooltip="Total fantasy points (Standard)"
+        />
+        <StatCell
+          value={stats.adp?.toFixed(1) || "—"}
+          label="ADP"
+          tooltip="Average Draft Position"
+        />
+      </div>
+
+      {/* Position-Specific Stats */}
+      {renderPositionStats() && (
+        <div className="mb-2">
+          {renderPositionStats()}
+        </div>
+      )}
 
       {/* Warnings - Only show if relevant */}
       {(hasEligibilityIssue || projection.costTrajectory.length === 1 || isAfterDeadline) && (
-        <div className="space-y-1 text-xs">
-          {/* Eligibility issues only */}
+        <div className="space-y-1 text-xs mt-2">
           {hasEligibilityIssue && (
             <div className="text-gray-500">
               {!keeperStatus.isEligibleForRegular && <span className="text-red-400">Not eligible as regular keeper</span>}
@@ -1113,13 +1242,11 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
               {!keeperStatus.isEligibleForFranchise && <span className="text-red-400">Not eligible for franchise</span>}
             </div>
           )}
-          {/* Final year warning - only if not showing trade impact */}
           {projection.costTrajectory.length === 1 && !isAfterDeadline && (
             <div className="text-amber-400">Final keepable year</div>
           )}
-          {/* Trade impact - most important notice */}
           {isAfterDeadline && (
-            <div className="text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5 mt-1">
+            <div className="text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded px-2 py-1.5">
               Offseason: Years reset to 0, cost R{projection.newCost} preserved
             </div>
           )}
