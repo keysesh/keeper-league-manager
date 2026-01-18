@@ -15,6 +15,15 @@ function getCurrentSeason(): number {
   return month >= 8 ? year : year - 1;
 }
 
+/** Get the upcoming NFL season for projections */
+function getUpcomingSeason(): number {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  // Before September, current year is upcoming; after September, next year
+  return month >= 8 ? year + 1 : year;
+}
+
 interface Player {
   id: string;
   sleeperId: string;
@@ -31,11 +40,19 @@ export default function AdminPlayersPage() {
     return [current, current - 1, current - 2, current - 3];
   }, []);
 
+  const projectionSeasons = useMemo(() => {
+    const upcoming = getUpcomingSeason();
+    // Include upcoming season and a couple previous for historical projections
+    return [upcoming, upcoming - 1, upcoming - 2];
+  }, []);
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncingNflverse, setSyncingNflverse] = useState(false);
+  const [syncingProjections, setSyncingProjections] = useState(false);
   const [nflverseSeason, setNflverseSeason] = useState(() => getCurrentSeason());
+  const [projectionSeason, setProjectionSeason] = useState(() => getUpcomingSeason());
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
@@ -98,6 +115,31 @@ export default function AdminPlayersPage() {
     }
   };
 
+  const syncProjections = async () => {
+    setSyncingProjections(true);
+    try {
+      const res = await fetch(`/api/nflverse/sync?season=${projectionSeason}&type=projections`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const playersUpdated = data.result?.projections?.playersUpdated || 0;
+        const errors = data.result?.projections?.errors || [];
+        if (playersUpdated > 0) {
+          success(`Synced ${playersUpdated} player projections for ${projectionSeason}`);
+        } else if (errors.length > 0) {
+          error(errors[0]);
+        } else {
+          error(`No projections available for ${projectionSeason} yet`);
+        }
+      } else {
+        error(data.error || "Projections sync failed");
+      }
+    } catch {
+      error("Projections sync failed");
+    } finally {
+      setSyncingProjections(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -125,7 +167,25 @@ export default function AdminPlayersPage() {
               disabled={syncingNflverse}
               className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
             >
-              {syncingNflverse ? "Syncing..." : "Sync NFLverse Stats"}
+              {syncingNflverse ? "Syncing..." : "Sync Stats"}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={projectionSeason}
+              onChange={(e) => setProjectionSeason(Number(e.target.value))}
+              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-green-500"
+            >
+              {projectionSeasons.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+            <button
+              onClick={syncProjections}
+              disabled={syncingProjections}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-white font-medium"
+            >
+              {syncingProjections ? "Syncing..." : "Sync Projections"}
             </button>
           </div>
         </div>

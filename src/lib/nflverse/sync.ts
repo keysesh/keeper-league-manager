@@ -276,6 +276,138 @@ export async function syncNFLVerseStats(
 }
 
 /**
+ * Sync NFLverse projections for upcoming season
+ * Updates Player.projectedPoints for keeper planning
+ */
+export async function syncNFLVerseProjections(
+  season?: number
+): Promise<NFLVerseSyncResult> {
+  const startTime = Date.now();
+  // For projections, default to next season (current year if before Sept, else next year)
+  const now = new Date();
+  const defaultSeason = now.getMonth() >= 8 ? now.getFullYear() + 1 : now.getFullYear();
+  const targetSeason = season || defaultSeason;
+
+  logger.info("Starting NFLverse projections sync", { season: targetSeason });
+
+  let playersUpdated = 0;
+  let playersFailed = 0;
+  const errors: string[] = [];
+
+  try {
+    // Fetch projections from NFLverse
+    const projections = await nflverseClient.getProjections(targetSeason);
+    logger.info("Fetched NFLverse projections", { count: projections.length });
+
+    if (projections.length === 0) {
+      return {
+        success: true,
+        playersUpdated: 0,
+        playersFailed: 0,
+        errors: [`No projections available for ${targetSeason} season yet`],
+        duration: Date.now() - startTime,
+      };
+    }
+
+    // Get all players from database
+    const dbPlayers = await prisma.player.findMany({
+      select: {
+        id: true,
+        sleeperId: true,
+        fullName: true,
+        metadata: true,
+      },
+    });
+
+    // Build lookup maps (sleeper ID and GSIS ID)
+    const sleeperToPlayer = new Map<string, { id: string; fullName: string }>();
+    const gsisToPlayer = new Map<string, { id: string; fullName: string }>();
+
+    for (const player of dbPlayers) {
+      sleeperToPlayer.set(player.sleeperId, { id: player.id, fullName: player.fullName });
+      const metadata = player.metadata as { nflverse?: NFLVerseMetadata } | null;
+      if (metadata?.nflverse?.gsisId) {
+        gsisToPlayer.set(metadata.nflverse.gsisId, { id: player.id, fullName: player.fullName });
+      }
+    }
+
+    // Process projections in batches
+    for (let i = 0; i < projections.length; i += BATCH_SIZE) {
+      const batch = projections.slice(i, i + BATCH_SIZE);
+      const updates: Promise<unknown>[] = [];
+
+      for (const proj of batch) {
+        // Try to match by sleeper_id first, then gsis_id
+        let playerMatch = proj.sleeper_id ? sleeperToPlayer.get(proj.sleeper_id) : null;
+        if (!playerMatch && proj.gsis_id) {
+          playerMatch = gsisToPlayer.get(proj.gsis_id);
+        }
+        if (!playerMatch && proj.player_id) {
+          playerMatch = gsisToPlayer.get(proj.player_id);
+        }
+
+        if (!playerMatch) continue;
+
+        // Calculate projected fantasy points (prefer PPR)
+        const projectedPoints = proj.fantasy_points_ppr || proj.fantasy_points || 0;
+
+        if (projectedPoints <= 0) continue;
+
+        updates.push(
+          prisma.player
+            .update({
+              where: { id: playerMatch.id },
+              data: { projectedPoints },
+            })
+            .then(() => {
+              playersUpdated++;
+            })
+            .catch((error) => {
+              playersFailed++;
+              errors.push(`${playerMatch!.fullName}: ${error.message}`);
+            })
+        );
+      }
+
+      await Promise.all(updates);
+
+      logger.debug("Projections batch processed", {
+        batchIndex: Math.floor(i / BATCH_SIZE) + 1,
+        playersUpdated,
+      });
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info("NFLverse projections sync complete", {
+      playersUpdated,
+      playersFailed,
+      duration,
+    });
+
+    return {
+      success: true,
+      playersUpdated,
+      playersFailed,
+      errors: errors.slice(0, 10),
+      duration,
+    };
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    logger.error("NFLverse projections sync failed", { error: errorMessage });
+
+    return {
+      success: false,
+      playersUpdated,
+      playersFailed,
+      errors: [errorMessage, ...errors.slice(0, 9)],
+      duration,
+    };
+  }
+}
+
+/**
  * Run full NFLverse sync (ID mappings + stats)
  */
 export async function syncNFLVerseData(

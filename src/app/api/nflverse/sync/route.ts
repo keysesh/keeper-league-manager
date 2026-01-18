@@ -12,6 +12,7 @@ import {
   syncNFLVerseData,
   syncNFLVerseIdMappings,
   syncNFLVerseStats,
+  syncNFLVerseProjections,
 } from "@/lib/nflverse/sync";
 import { NFLVerseClient } from "@/lib/nflverse/client";
 import {
@@ -84,6 +85,9 @@ export async function POST(request: NextRequest) {
         break;
       case "stats":
         result = { stats: await syncNFLVerseStats(season) };
+        break;
+      case "projections":
+        result = { projections: await syncNFLVerseProjections(season) };
         break;
       case "all":
       default:
