@@ -97,7 +97,7 @@ export const PlayerCard = memo(function PlayerCard({
             {isInjured && <InjuryIndicator status={injuryStatus} />}
           </div>
           <div className="text-xs text-zinc-400">
-            {player.team || "FA"} {byeWeek && `• Bye ${byeWeek}`} {ecr && `• ECR #${Math.round(ecr)}`} {keeperInfo && `• Rd ${keeperInfo.cost}`}
+            {player.team || "FA"} {byeWeek ? `• Bye ${byeWeek}` : player.team ? <span className="text-zinc-600 cursor-help" title="Bye week available after NFL schedule release (May)">• Bye TBD</span> : null} {ecr && `• ECR #${Math.round(ecr)}`} {keeperInfo && `• Rd ${keeperInfo.cost}`}
           </div>
         </div>
       </div>
@@ -147,7 +147,7 @@ export const PlayerCard = memo(function PlayerCard({
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
             {player.age && <span>Age: {player.age}</span>}
             {player.yearsExp !== null && <span>Exp: {player.yearsExp} yr{player.yearsExp !== 1 ? "s" : ""}</span>}
-            {byeWeek && <span>Bye: Wk {byeWeek}</span>}
+            {byeWeek ? <span>Bye: Wk {byeWeek}</span> : player.team ? <span className="text-zinc-600 cursor-help" title="Bye week available after NFL schedule release (May)">Bye: TBD</span> : null}
             {nflverse?.injury?.primaryInjury && (
               <span className="text-red-400">{nflverse.injury.primaryInjury}</span>
             )}

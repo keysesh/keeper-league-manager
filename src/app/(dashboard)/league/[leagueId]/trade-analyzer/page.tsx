@@ -1064,7 +1064,11 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <span>{player.team || "FA"}</span>
-            {byeWeek && <span className="text-gray-400">Bye {byeWeek}</span>}
+            {byeWeek ? (
+              <span className="text-gray-400">Bye {byeWeek}</span>
+            ) : player.team ? (
+              <span className="text-gray-600 cursor-help" title="Bye week available after NFL schedule release (May)">Bye TBD</span>
+            ) : null}
             {player.age && <span className={getAgeColor(player.age)}>Age {player.age}</span>}
             {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr exp`}</span>}
             <span className="text-gray-600">•</span>
