@@ -12,19 +12,39 @@ import {
 } from "@/lib/rate-limit";
 
 /**
+ * Verify admin access via session or API key
+ * Returns user ID for rate limiting, or null if unauthorized
+ */
+async function verifyAdminAccess(request: NextRequest): Promise<string | null> {
+  // Check for API key in header (for CLI/automation)
+  const apiKey = request.headers.get("x-admin-api-key");
+  const envApiKey = process.env.ADMIN_API_KEY;
+
+  if (apiKey && envApiKey && apiKey === envApiKey) {
+    return "api-key-admin"; // Use fixed ID for rate limiting
+  }
+
+  // Fall back to session auth
+  const session = await getServerSession(authOptions);
+  return session?.user?.id || null;
+}
+
+/**
  * POST /api/admin/sync-stats
  * Sync NFLverse stats for a given season
+ *
+ * Auth: Session OR x-admin-api-key header matching ADMIN_API_KEY env var
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const adminId = await verifyAdminAccess(request);
 
-    if (!session?.user?.id) {
+    if (!adminId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Apply rate limiting
-    const rateLimit = await checkRateLimit(session.user.id, RATE_LIMITS.admin);
+    const rateLimit = await checkRateLimit(adminId, RATE_LIMITS.admin);
     if (!rateLimit.success) {
       return createRateLimitResponse(
         rateLimit.remaining,
