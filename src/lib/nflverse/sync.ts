@@ -132,14 +132,14 @@ export async function syncNFLVerseIdMappings(
 
 /**
  * Sync NFLverse stats for all players - ONE BUTTON DOES EVERYTHING
- * 1. Fetches roster data to get sleeper_id → gsis_id mapping
- * 2. Fetches stats for the season
+ * 1. Fetches Sleeper API to get gsis_id → sleeper_id mapping
+ * 2. Fetches stats for the season from NFLverse
  * 3. Updates Player model directly with latest stats
  * 4. Also stores in PlayerSeasonStats for history
  */
 export async function syncNFLVerseStats(
   season?: number
-): Promise<NFLVerseSyncResult> {
+): Promise<NFLVerseSyncResult & { debug?: Record<string, unknown> }> {
   const startTime = Date.now();
   const targetSeason = season || NFLVerseClient.getCurrentSeason();
 
@@ -150,30 +150,26 @@ export async function syncNFLVerseStats(
   const errors: string[] = [];
 
   try {
-    // Step 1: Get roster data to build sleeper_id → gsis_id mapping
-    const rosters = await nflverseClient.getRosters(targetSeason);
-    logger.info("Fetched NFLverse rosters", { count: rosters.length });
+    // Step 1: Fetch Sleeper API to get gsis_id → sleeper_id mapping
+    logger.info("Fetching Sleeper player mappings...");
+    const sleeperResponse = await fetch("https://api.sleeper.app/v1/players/nfl");
+    if (!sleeperResponse.ok) {
+      throw new Error(`Failed to fetch Sleeper players: ${sleeperResponse.statusText}`);
+    }
+    const sleeperPlayers: Record<string, { gsis_id?: string; full_name?: string }> = await sleeperResponse.json();
 
-    // Build sleeper_id → gsis_id mapping from rosters
-    const sleeperToGsis = new Map<string, string>();
-    for (const roster of rosters) {
-      if (roster.sleeper_id && roster.gsis_id) {
-        sleeperToGsis.set(roster.sleeper_id, roster.gsis_id);
+    // Build gsis_id → sleeper_id mapping
+    const gsisToSleeperId = new Map<string, string>();
+    for (const [sleeperId, player] of Object.entries(sleeperPlayers)) {
+      if (player.gsis_id) {
+        gsisToSleeperId.set(player.gsis_id, sleeperId);
       }
     }
-    logger.info("Built sleeper→gsis mapping", { count: sleeperToGsis.size });
+    logger.info("Built gsis→sleeper mapping from Sleeper API", { count: gsisToSleeperId.size });
 
     // Step 2: Get all season stats from NFLverse
     const seasonStats = await nflverseClient.getSeasonStats(targetSeason);
     logger.info("Fetched NFLverse season stats", { count: seasonStats.length });
-
-    // Build gsis_id → stats mapping for quick lookup
-    const gsisToStats = new Map<string, typeof seasonStats[0]>();
-    for (const stats of seasonStats) {
-      if (stats.player_id) {
-        gsisToStats.set(stats.player_id, stats);
-      }
-    }
 
     // Step 3: Get all players from our database
     const dbPlayers = await prisma.player.findMany({
@@ -186,30 +182,40 @@ export async function syncNFLVerseStats(
     });
     logger.info("Found players in database", { count: dbPlayers.length });
 
-    // Debug: Log sample of what we're trying to match
-    const sampleDbPlayers = dbPlayers.slice(0, 5).map(p => p.sleeperId);
-    const sampleRosterIds = Array.from(sleeperToGsis.keys()).slice(0, 5);
+    // Build sleeper_id → db player mapping for quick lookup
+    const sleeperToDbPlayer = new Map<string, typeof dbPlayers[0]>();
+    for (const player of dbPlayers) {
+      sleeperToDbPlayer.set(player.sleeperId, player);
+    }
+
+    // Debug info
+    const sampleStats = seasonStats.slice(0, 3).map(s => ({ gsis: s.player_id, name: s.player_name }));
+    const sampleDbPlayers = dbPlayers.slice(0, 3).map(p => ({ sleeperId: p.sleeperId, name: p.fullName }));
     logger.info("Debug matching", {
-      sampleDbSleeperIds: sampleDbPlayers,
-      sampleRosterSleeperIds: sampleRosterIds,
+      sampleStats,
+      sampleDbPlayers,
+      gsisToSleeperCount: gsisToSleeperId.size,
       dbPlayerCount: dbPlayers.length,
-      rosterMappingCount: sleeperToGsis.size,
-      statsCount: gsisToStats.size,
+      statsCount: seasonStats.length,
     });
 
-    // Step 4: Process players in batches
-    for (let i = 0; i < dbPlayers.length; i += BATCH_SIZE) {
-      const batch = dbPlayers.slice(i, i + BATCH_SIZE);
+    // Step 4: Process NFLverse stats and match to DB players
+    for (let i = 0; i < seasonStats.length; i += BATCH_SIZE) {
+      const batch = seasonStats.slice(i, i + BATCH_SIZE);
       const updates: Promise<unknown>[] = [];
 
-      for (const player of batch) {
-        // Find GSIS ID for this player
-        const gsisId = sleeperToGsis.get(player.sleeperId);
+      for (const stats of batch) {
+        // NFLverse stats use gsis_id as player_id
+        const gsisId = stats.player_id;
         if (!gsisId) continue;
 
-        // Find stats for this player
-        const stats = gsisToStats.get(gsisId);
-        if (!stats) continue;
+        // Find sleeper_id from gsis_id
+        const sleeperId = gsisToSleeperId.get(gsisId);
+        if (!sleeperId) continue;
+
+        // Find player in our database
+        const player = sleeperToDbPlayer.get(sleeperId);
+        if (!player) continue;
 
         // Calculate points per game
         const pointsPerGame = stats.games_played > 0
@@ -227,7 +233,7 @@ export async function syncNFLVerseStats(
                 gamesPlayed: stats.games_played,
                 pointsPerGame: Math.round(pointsPerGame * 10) / 10,
                 statsUpdatedAt: new Date(),
-                // Also store GSIS ID in metadata if not present
+                // Also store GSIS ID in metadata
                 metadata: {
                   ...((player.metadata as Record<string, unknown>) || {}),
                   nflverse: {
@@ -322,10 +328,10 @@ export async function syncNFLVerseStats(
       duration,
       debug: {
         dbPlayerCount: dbPlayers.length,
-        rosterMappingCount: sleeperToGsis.size,
-        statsCount: gsisToStats.size,
-        sampleDbSleeperIds: dbPlayers.slice(0, 3).map(p => p.sleeperId),
-        sampleRosterSleeperIds: Array.from(sleeperToGsis.keys()).slice(0, 3),
+        gsisToSleeperCount: gsisToSleeperId.size,
+        statsCount: seasonStats.length,
+        sampleDbPlayers,
+        sampleStats,
       },
     };
   } catch (error) {
