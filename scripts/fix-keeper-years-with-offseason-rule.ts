@@ -147,15 +147,15 @@ async function getLeagueChain(startLeagueId: string): Promise<string[]> {
 
   while (currentId && depth < 10) {
     leagueIds.push(currentId);
-    const league = await prisma.league.findUnique({
+    const leagueData: { previousLeagueId: string | null } | null = await prisma.league.findUnique({
       where: { id: currentId },
       select: { previousLeagueId: true },
     });
 
-    if (!league?.previousLeagueId) break;
+    if (!leagueData?.previousLeagueId) break;
 
-    const prevLeague = await prisma.league.findUnique({
-      where: { sleeperId: league.previousLeagueId },
+    const prevLeague: { id: string } | null = await prisma.league.findUnique({
+      where: { sleeperId: leagueData.previousLeagueId },
       select: { id: true },
     });
 
