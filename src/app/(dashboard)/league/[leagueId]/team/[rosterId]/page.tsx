@@ -399,11 +399,28 @@ export default function TeamRosterPage() {
         </div>
       </div>
 
-      {/* Draft Capital */}
+      {/* Draft Capital - only shows if there's notable activity (trades) */}
       {draftPicksData && (() => {
         // Find this roster's sleeperId
         const thisRoster = draftPicksData.rosters.find(r => r.id === rosterId);
         if (!thisRoster?.sleeperId) return null;
+
+        // Check if there's any notable draft capital activity
+        const teamPicks = draftPicksData.picks.filter(
+          p => p.currentOwnerSleeperId === thisRoster.sleeperId
+        );
+        const acquiredPicks = teamPicks.filter(
+          p => p.originalOwnerSleeperId !== thisRoster.sleeperId
+        );
+        const tradedAwayPicks = draftPicksData.picks.filter(
+          p => p.originalOwnerSleeperId === thisRoster.sleeperId &&
+               p.currentOwnerSleeperId !== thisRoster.sleeperId
+        );
+
+        // Hide section if nothing notable (all own picks, no trades)
+        if (acquiredPicks.length === 0 && tradedAwayPicks.length === 0) {
+          return null;
+        }
 
         return (
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md overflow-hidden">
@@ -413,6 +430,16 @@ export default function TeamRosterPage() {
                   <FileText className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
                 <h2 className="text-base sm:text-lg font-semibold text-white">Draft Capital</h2>
+                {acquiredPicks.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                    +{acquiredPicks.length} acquired
+                  </span>
+                )}
+                {tradedAwayPicks.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                    -{tradedAwayPicks.length} traded
+                  </span>
+                )}
               </div>
             </div>
             <div className="p-3 sm:p-5">

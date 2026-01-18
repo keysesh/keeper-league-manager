@@ -1090,6 +1090,11 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
   const gamesPlayed = seasonStats?.gamesPlayed || stats.gamesPlayed || 0;
   const displaySeason = seasonStats?.season || new Date().getFullYear() - 1;
 
+  // Detect if stats are missing (sync issue or truly no data)
+  const hasNoStats = !stats.pointsPerGame && !seasonStats?.fantasyPointsPpr;
+  const isRookie = player.yearsExp === 0;
+  const statsMissing = hasNoStats && !isRookie; // Likely a sync issue if not a rookie
+
   // Check if there are eligibility issues to show
   const hasEligibilityIssue = !keeperStatus.isEligibleForRegular || !keeperStatus.isEligibleForFranchise;
 
@@ -1166,12 +1171,20 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
                 <span className="text-purple-400 text-[10px] font-bold ml-0.5">{ranking.positionRank}</span>
               )}
             </div>
-            {/* Games played - PROMINENT */}
-            {gamesPlayed > 0 && (
+            {/* Games played indicator */}
+            {gamesPlayed > 0 ? (
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-800 text-gray-300">
                 {gamesPlayed}G
               </span>
-            )}
+            ) : isRookie && hasNoStats ? (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                Rookie
+              </span>
+            ) : statsMissing ? (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30" title="Stats not synced - run NFLverse sync">
+                No Stats
+              </span>
+            ) : null}
             {ranking.depthChart === 1 && (
               <span className="text-emerald-400 text-[9px] font-bold px-1 py-0.5 bg-emerald-500/10 rounded">ST</span>
             )}
@@ -1222,39 +1235,55 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
       <div className="space-y-2">
         {/* Fantasy PPG - The key metric */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24">{displaySeason} PPR</span>
+          <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24">
+            {hasNoStats && isRookie ? "Projected" : `${displaySeason} PPR`}
+          </span>
           <div className="flex-1 grid grid-cols-4 gap-1.5">
             <StatCell
-              value={stats.pointsPerGame?.toFixed(1) || "—"}
+              value={
+                stats.pointsPerGame?.toFixed(1) ||
+                (hasNoStats && stats.projectedPoints ? `~${(stats.projectedPoints / 17).toFixed(1)}` : "—")
+              }
               label="PPG"
-              tooltip="Fantasy points per game (PPR)"
+              tooltip={hasNoStats && stats.projectedPoints ? "Projected PPG (17 games)" : "Fantasy points per game (PPR)"}
               highlight
             />
             <StatCell
-              value={seasonStats?.fantasyPointsPpr?.toFixed(0) || stats.fantasyPointsPpr?.toFixed(0) || "—"}
-              label="Total"
-              tooltip="Total fantasy points (PPR)"
+              value={
+                seasonStats?.fantasyPointsPpr?.toFixed(0) ||
+                stats.fantasyPointsPpr?.toFixed(0) ||
+                (hasNoStats && stats.projectedPoints ? `~${stats.projectedPoints.toFixed(0)}` : "—")
+              }
+              label={hasNoStats && stats.projectedPoints ? "Proj" : "Total"}
+              tooltip={hasNoStats && stats.projectedPoints ? "Projected fantasy points" : "Total fantasy points (PPR)"}
               muted
+            />
+            <StatCell
+              value={ranking.ecr ? `#${Math.round(ranking.ecr)}` : "—"}
+              label="ECR"
+              tooltip="Expert Consensus Ranking"
             />
             {posRankDisplay ? (
               <StatCell
                 value={posRankDisplay}
-                label="Rank"
+                label="Pos Rank"
                 tooltip={`Position rank: ${posRankDisplay}`}
                 highlight
               />
+            ) : ranking.sosRank ? (
+              <StatCell
+                value={`#${ranking.sosRank}`}
+                label="SOS"
+                tooltip="Strength of Schedule rank (lower = harder)"
+              />
             ) : (
               <StatCell
-                value={ranking.ecr ? `#${Math.round(ranking.ecr)}` : "—"}
-                label="ECR"
-                tooltip="Expert Consensus Ranking (overall)"
+                value={player.yearsExp !== null ? `${player.yearsExp}yr` : "—"}
+                label="Exp"
+                tooltip="Years of NFL experience"
+                muted
               />
             )}
-            <StatCell
-              value={stats.adp?.toFixed(0) || "—"}
-              label="ADP"
-              tooltip="Average Draft Position"
-            />
           </div>
         </div>
 

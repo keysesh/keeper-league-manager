@@ -17,6 +17,8 @@ interface DraftCapitalProps {
   maxRounds?: number;
   showSeasons?: number;
   compact?: boolean;
+  /** Hide component if team has all their picks and no acquired picks */
+  hideIfDefault?: boolean;
 }
 
 /**
@@ -29,6 +31,7 @@ export function DraftCapital({
   maxRounds = 16,
   showSeasons = 3,
   compact = false,
+  hideIfDefault = false,
 }: DraftCapitalProps) {
   const currentYear = new Date().getFullYear();
   const seasons = useMemo(
@@ -75,14 +78,23 @@ export function DraftCapital({
       }
     }
 
+    // Check if there's anything notable (acquired picks or missing picks)
+    const hasNotableActivity = acquiredPicks > 0 || totalOwned < totalPossible;
+
     return {
       totalOwned,
       totalPossible,
       ownPicks,
       acquiredPicks,
       percentage: Math.round((totalOwned / totalPossible) * 100),
+      hasNotableActivity,
     };
   }, [picksBySeason, seasons, maxRounds, teamSleeperId]);
+
+  // Hide if nothing notable and hideIfDefault is true
+  if (hideIfDefault && !summary.hasNotableActivity) {
+    return null;
+  }
 
   if (compact) {
     return (
