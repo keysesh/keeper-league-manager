@@ -210,42 +210,42 @@ export default function AdminPlayersPage() {
           <button
             onClick={syncPlayers}
             disabled={syncing}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+            className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncing ? "Syncing..." : "Sync Players"}
           </button>
           <button
             onClick={syncNflverseStats}
             disabled={syncingNflverse}
-            className="px-3 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncingNflverse ? "Syncing..." : "Stats"}
           </button>
           <button
             onClick={syncProjections}
             disabled={syncingProjections}
-            className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncingProjections ? "Syncing..." : "Projections"}
           </button>
           <button
             onClick={syncRankings}
             disabled={syncingRankings}
-            className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncingRankings ? "Syncing..." : "Rankings"}
           </button>
           <button
             onClick={syncDepthCharts}
             disabled={syncingDepthCharts}
-            className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-cyan-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncingDepthCharts ? "Syncing..." : "Depth Charts"}
           </button>
           <button
             onClick={syncInjuriesData}
             disabled={syncingInjuries}
-            className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium"
+            className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncingInjuries ? "Syncing..." : "Injuries"}
           </button>

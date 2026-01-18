@@ -390,7 +390,7 @@ export default function SimulationPage() {
             <span>Back to Draft Board</span>
           </Link>
           <div className="flex items-center gap-3">
-            <FlaskConical className="w-8 h-8 text-purple-400" />
+            <FlaskConical className="w-8 h-8 text-blue-400" />
             <h1 className="text-3xl font-bold text-white tracking-tight">
               Draft Simulation
             </h1>
@@ -411,7 +411,7 @@ export default function SimulationPage() {
           <button
             onClick={runSimulation}
             disabled={isSimulating}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm font-medium transition-all hover:from-purple-600 hover:to-purple-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50"
           >
             {isSimulating ? (
               <>
@@ -446,7 +446,7 @@ export default function SimulationPage() {
           icon={<FlaskConical size={20} />}
           value={summary.simulatedKeepers}
           label="Simulated"
-          color="purple"
+          color="blue"
         />
         <StatCard
           icon={<Check size={20} />}
@@ -464,7 +464,7 @@ export default function SimulationPage() {
             <h2 className="text-lg font-semibold text-white">Simulated Keepers</h2>
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm font-medium transition-colors"
             >
               <Plus size={16} />
               Add Keeper
@@ -505,7 +505,7 @@ export default function SimulationPage() {
                             key={keeper.playerId}
                             className={`flex items-center justify-between px-3 py-2 rounded-lg ${
                               keeper.isSimulated
-                                ? "bg-purple-500/10 border border-purple-500/30"
+                                ? "bg-blue-500/10 border border-blue-500/30"
                                 : "bg-gray-800/50 border border-gray-700/30"
                             }`}
                           >
@@ -518,7 +518,7 @@ export default function SimulationPage() {
                                 {keeper.playerName}
                               </span>
                               {keeper.isSimulated && (
-                                <span className="text-[10px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">
+                                <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
                                   SIM
                                 </span>
                               )}
@@ -587,7 +587,7 @@ export default function SimulationPage() {
                                 key={keeper.playerId}
                                 className={`flex items-center justify-between px-3 py-2 rounded-lg ${
                                   keeper.isSimulated
-                                    ? "bg-purple-500/10 border border-purple-500/30"
+                                    ? "bg-blue-500/10 border border-blue-500/30"
                                     : "bg-gray-800/50 border border-gray-700/30"
                                 }`}
                               >
@@ -736,7 +736,7 @@ export default function SimulationPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search players..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
                       />
                     </div>
                   </div>
@@ -763,7 +763,7 @@ export default function SimulationPage() {
                             onClick={() =>
                               addSimulatedKeeper(player, selectedRoster, "REGULAR")
                             }
-                            className="px-2.5 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded text-xs font-medium transition-colors"
+                            className="px-2.5 py-1 bg-purple-500/20 hover:bg-blue-500/30 text-purple-400 rounded text-xs font-medium transition-colors"
                           >
                             Keeper
                           </button>
@@ -803,49 +803,23 @@ function StatCard({
   icon: React.ReactNode;
   value: number | string;
   label: string;
-  color: "white" | "amber" | "purple" | "emerald";
+  color: "white" | "amber" | "blue" | "emerald";
 }) {
   const colorClasses = {
-    white: {
-      bg: "from-gray-700/30 to-gray-800/30",
-      border: "border-gray-600/30",
-      text: "text-white",
-      icon: "bg-gray-700/50 text-gray-300",
-    },
-    amber: {
-      bg: "from-amber-500/20 to-amber-500/5",
-      border: "border-amber-500/20",
-      text: "text-amber-400",
-      icon: "bg-amber-500/20 text-amber-400",
-    },
-    purple: {
-      bg: "from-purple-500/20 to-purple-500/5",
-      border: "border-purple-500/20",
-      text: "text-purple-400",
-      icon: "bg-purple-500/20 text-purple-400",
-    },
-    emerald: {
-      bg: "from-emerald-500/20 to-emerald-500/5",
-      border: "border-emerald-500/20",
-      text: "text-emerald-400",
-      icon: "bg-emerald-500/20 text-emerald-400",
-    },
+    white: "text-white",
+    amber: "text-amber-400",
+    blue: "text-blue-400",
+    emerald: "text-emerald-400",
   };
 
-  const styles = colorClasses[color];
-
   return (
-    <div
-      className={`bg-gradient-to-b ${styles.bg} rounded-2xl p-5 border ${styles.border}`}
-    >
+    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-5">
       <div className="flex items-center justify-between mb-3">
-        <span
-          className={`flex items-center justify-center w-10 h-10 rounded-xl ${styles.icon}`}
-        >
+        <span className={`flex items-center justify-center w-10 h-10 rounded-md bg-[#222222] border border-[#333333] ${colorClasses[color]}`}>
           {icon}
         </span>
       </div>
-      <p className={`text-3xl font-bold ${styles.text} tracking-tight`}>
+      <p className={`text-3xl font-bold ${colorClasses[color]} tracking-tight`}>
         {value}
       </p>
       <p className="text-gray-500 text-xs mt-1 font-medium">{label}</p>

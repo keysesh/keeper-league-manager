@@ -16,17 +16,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:from-violet-700 active:to-indigo-700 text-white border-transparent shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-[0.98] focus:ring-violet-500",
+    "bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white border-transparent focus:ring-blue-500",
   secondary:
-    "bg-white/[0.05] hover:bg-white/[0.08] active:bg-white/[0.12] text-zinc-100 border-white/[0.08] hover:border-white/[0.12] active:scale-[0.98] focus:ring-zinc-500",
+    "bg-[#1a1a1a] hover:bg-[#222222] active:bg-[#2a2a2a] text-gray-200 border-[#2a2a2a] hover:border-[#333333] focus:ring-gray-500",
   danger:
-    "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:from-red-700 active:to-rose-700 text-white border-transparent shadow-lg shadow-red-500/25 active:scale-[0.98] focus:ring-red-500",
+    "bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-transparent focus:ring-red-500",
   ghost:
-    "bg-transparent hover:bg-white/[0.05] active:bg-white/[0.08] text-zinc-400 hover:text-white border-transparent active:scale-[0.98] focus:ring-zinc-500",
+    "bg-transparent hover:bg-[#1a1a1a] active:bg-[#222222] text-gray-400 hover:text-white border-transparent focus:ring-gray-500",
   glass:
-    "bg-violet-500/10 hover:bg-violet-500/20 active:bg-violet-500/30 text-violet-300 hover:text-violet-200 border-violet-500/20 hover:border-violet-500/30 backdrop-blur-sm active:scale-[0.98] focus:ring-violet-500",
+    "bg-blue-500/10 hover:bg-blue-500/20 active:bg-blue-500/30 text-blue-400 hover:text-blue-300 border-blue-500/20 hover:border-blue-500/30 focus:ring-blue-500",
   outline:
-    "bg-transparent hover:bg-violet-500/10 active:bg-violet-500/20 text-violet-400 hover:text-violet-300 border-violet-500/50 hover:border-violet-500 active:scale-[0.98] focus:ring-violet-500",
+    "bg-transparent hover:bg-blue-500/10 active:bg-blue-500/20 text-blue-400 hover:text-blue-300 border-blue-500/50 hover:border-blue-500 focus:ring-blue-500",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -59,9 +59,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isDisabled}
         className={`
           inline-flex items-center justify-center gap-2
-          font-medium rounded-xl border
-          transition-all duration-300 ease-out
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0F0B1A]
+          font-medium rounded-md border
+          transition-all duration-200
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0d0d0d]
           disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none
           ${variantStyles[variant]}
           ${sizeStyles[size]}
@@ -110,9 +110,9 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         className={`
           inline-flex items-center justify-center
-          rounded-xl border border-transparent
-          transition-all duration-300 ease-out
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0F0B1A]
+          rounded-md border border-transparent
+          transition-all duration-200
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0d0d0d]
           disabled:opacity-50 disabled:cursor-not-allowed
           ${variantStyles[variant]}
           ${iconSizeStyles[size]}

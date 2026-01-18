@@ -1081,7 +1081,7 @@ function PlayerInfoCard({ player, isAfterDeadline }: { player: PlayerTradeValue;
           <div className="text-gray-500 text-[9px]">Games</div>
         </div>
         <div className="py-1.5 px-2 rounded bg-gray-900/50 text-center">
-          <div className="text-violet-400 font-bold">{stats.adp?.toFixed(1) || "—"}</div>
+          <div className="text-blue-400 font-bold">{stats.adp?.toFixed(1) || "—"}</div>
           <div className="text-gray-500 text-[9px]">ADP</div>
         </div>
         <div className="py-1.5 px-2 rounded bg-gray-900/50 text-center">

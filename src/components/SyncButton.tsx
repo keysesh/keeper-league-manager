@@ -49,13 +49,13 @@ export function SyncButton({ variant = "default", onSuccess }: SyncButtonProps) 
   const getStatusColor = () => {
     if (status === "success") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
     if (status === "error") return "border-red-500/30 bg-red-500/10 text-red-400";
-    return "border-white/[0.06] bg-white/[0.03] hover:border-amber-500/30 hover:bg-amber-500/5";
+    return "border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#333333] hover:bg-[#222222]";
   };
 
   const getIconColor = () => {
     if (status === "success") return "bg-emerald-500/20 text-emerald-400";
     if (status === "error") return "bg-red-500/20 text-red-400";
-    return "bg-amber-500/20 text-amber-400";
+    return "bg-[#222222] text-blue-400";
   };
 
   if (variant === "compact") {
@@ -63,7 +63,7 @@ export function SyncButton({ variant = "default", onSuccess }: SyncButtonProps) 
       <button
         onClick={handleSync}
         disabled={syncing}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 ${getStatusColor()}`}
+        className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all disabled:opacity-50 ${getStatusColor()}`}
       >
         {getIcon()}
         <span>{syncing ? "Syncing..." : status === "success" ? "Synced!" : status === "error" ? "Failed" : "Sync"}</span>
@@ -75,12 +75,12 @@ export function SyncButton({ variant = "default", onSuccess }: SyncButtonProps) 
     <button
       onClick={handleSync}
       disabled={syncing}
-      className={`group flex items-center gap-3 px-5 py-3 rounded-xl border backdrop-blur-sm transition-all duration-150 disabled:opacity-50 ${getStatusColor()}`}
+      className={`group flex items-center gap-3 px-5 py-3 rounded-md border transition-all duration-150 disabled:opacity-50 ${getStatusColor()}`}
     >
-      <span className={`flex items-center justify-center w-9 h-9 rounded-lg ${getIconColor()}`}>
+      <span className={`flex items-center justify-center w-9 h-9 rounded-md ${getIconColor()}`}>
         {getIcon()}
       </span>
-      <span className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">
+      <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
         {syncing ? "Syncing..." : status === "success" ? "Synced!" : status === "error" ? "Sync Failed" : "Sync Leagues"}
       </span>
     </button>

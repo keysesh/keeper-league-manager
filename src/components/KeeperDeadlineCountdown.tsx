@@ -51,7 +51,7 @@ export function KeeperDeadlineCountdown() {
 
   if (!timeRemaining) {
     return (
-      <div className="animate-pulse bg-gray-800 rounded-xl h-12 w-48" />
+      <div className="animate-pulse bg-[#1a1a1a] rounded-md h-12 w-48" />
     );
   }
 
@@ -61,7 +61,7 @@ export function KeeperDeadlineCountdown() {
 
   if (isExpired) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-700/50 border border-gray-600/30">
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-md bg-[#1a1a1a] border border-[#2a2a2a]">
         <Lock className="w-4 h-4 text-gray-400" />
         <span className="text-sm font-medium text-gray-400">Keepers Locked</span>
       </div>
@@ -72,12 +72,12 @@ export function KeeperDeadlineCountdown() {
     ? "bg-red-500/10 border-red-500/30 text-red-400"
     : isWarning
     ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400";
+    : "bg-blue-500/10 border-blue-500/30 text-blue-400";
 
   const Icon = isUrgent ? AlertTriangle : isWarning ? Clock : CheckCircle;
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${containerClasses}`}>
+    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-md border ${containerClasses}`}>
       <Icon className="w-4 h-4 flex-shrink-0" />
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">
@@ -136,10 +136,10 @@ export function KeeperDeadlineBanner({ leagueName }: { leagueName?: string }) {
 
   return (
     <div
-      className={`w-full px-4 py-3 ${
+      className={`w-full px-4 py-3 border-b ${
         isUrgent
-          ? "bg-gradient-to-r from-red-500/20 to-orange-500/20 border-b border-red-500/30"
-          : "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-b border-amber-500/30"
+          ? "bg-red-500/10 border-red-500/30"
+          : "bg-amber-500/10 border-amber-500/30"
       }`}
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between">
