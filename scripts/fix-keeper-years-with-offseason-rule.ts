@@ -40,6 +40,12 @@ interface TransactionInfo {
   toRosterSleeperId: string | null;
   fromRosterId: string | null;
   fromRosterSleeperId: string | null;
+  // Full trade details
+  allPlayersInTrade: Array<{
+    playerName: string;
+    fromSleeperId: string | null;
+    toSleeperId: string | null;
+  }>;
 }
 
 /**
@@ -121,7 +127,15 @@ async function getPlayerTransactions(
       },
     },
     include: {
-      transaction: true,
+      transaction: {
+        include: {
+          players: {
+            include: {
+              player: { select: { fullName: true } },
+            },
+          },
+        },
+      },
     },
     orderBy: {
       transaction: { createdAt: "asc" },
@@ -137,6 +151,11 @@ async function getPlayerTransactions(
     toRosterSleeperId: tp.toRosterId ? rosterMap.get(tp.toRosterId) || null : null,
     fromRosterId: tp.fromRosterId,
     fromRosterSleeperId: tp.fromRosterId ? rosterMap.get(tp.fromRosterId) || null : null,
+    allPlayersInTrade: tp.transaction.players.map((p) => ({
+      playerName: p.player?.fullName || "Unknown",
+      fromSleeperId: p.fromRosterId ? rosterMap.get(p.fromRosterId) || null : null,
+      toSleeperId: p.toRosterId ? rosterMap.get(p.toRosterId) || null : null,
+    })),
   }));
 }
 
@@ -271,6 +290,22 @@ async function fixKeeperYears(leagueId: string, playerSleeperId?: string) {
       const fromTeam = trade.fromRosterSleeperId ? sleeperIdToTeamName.get(trade.fromRosterSleeperId) || trade.fromRosterSleeperId : "N/A";
       const toTeam = trade.toRosterSleeperId ? sleeperIdToTeamName.get(trade.toRosterSleeperId) || trade.toRosterSleeperId : "N/A";
       console.log(`    ${trade.date.toISOString().split("T")[0]}: ${fromTeam} -> ${toTeam}`);
+
+      // Show all players in this trade grouped by direction
+      const playersTo: string[] = [];
+      const playersFrom: string[] = [];
+      for (const p of trade.allPlayersInTrade) {
+        if (p.toSleeperId === trade.toRosterSleeperId) {
+          playersTo.push(p.playerName);
+        }
+        if (p.fromSleeperId === trade.toRosterSleeperId) {
+          playersFrom.push(p.playerName);
+        }
+      }
+      if (playersTo.length > 0 || playersFrom.length > 0) {
+        console.log(`      ${toTeam} received: ${playersTo.join(", ") || "N/A"}`);
+        console.log(`      ${toTeam} gave up: ${playersFrom.join(", ") || "N/A"}`);
+      }
     }
 
     // Sort keepers by season
