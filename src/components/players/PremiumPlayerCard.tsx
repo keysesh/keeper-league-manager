@@ -5,6 +5,7 @@ import { PlayerAvatar, TeamLogo } from "./PlayerAvatar";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { InjuryIndicator } from "@/components/ui/InjuryIndicator";
 import { getAgeInfo } from "@/components/ui/AgeBadge";
+import { calculateCostTrajectory, CostTrajectory } from "@/components/ui/CostTrajectory";
 
 interface NFLVerseMetadata {
   ranking?: {
@@ -318,6 +319,22 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           {costs?.regular && !isKeeper && (eligibility.consecutiveYears ?? 0) > 0 && (
             <div className="mt-1.5 sm:mt-2 text-[8px] sm:text-[9px] text-gray-500 text-center">
               {costs.regular.costBreakdown}
+            </div>
+          )}
+
+          {/* Cost Trajectory - show future keeper costs */}
+          {costs?.regular && eligibility.yearsKept < 3 && (
+            <div className="mt-2 sm:mt-3">
+              <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase mb-1 text-center">
+                Future Costs
+              </div>
+              <CostTrajectory
+                trajectory={calculateCostTrajectory(costs.regular.finalCost, eligibility.yearsKept, 3)}
+                currentCost={costs.regular.finalCost}
+                yearsKept={eligibility.yearsKept}
+                maxYears={3}
+                compact={true}
+              />
             </div>
           )}
 

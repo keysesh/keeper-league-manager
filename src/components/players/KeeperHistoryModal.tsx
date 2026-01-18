@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { PlayerAvatar } from "./PlayerAvatar";
 import { PositionBadge } from "@/components/ui/PositionBadge";
+import { AgeBadge } from "@/components/ui/AgeBadge";
 
 interface PlayerMetadata {
   nflverse?: {
@@ -136,6 +137,12 @@ const eventConfig: Record<string, {
     icon: <DropIcon />,
     label: "Dropped",
   },
+  NOT_KEPT: {
+    color: "text-gray-400",
+    bgColor: "bg-gray-500/10",
+    icon: <NotKeptIcon />,
+    label: "Not Kept",
+  },
 };
 
 function DraftIcon() {
@@ -190,6 +197,14 @@ function DropIcon() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  );
+}
+
+function NotKeptIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }
@@ -307,16 +322,15 @@ export function KeeperHistoryModal({
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-400 mb-3 flex-wrap">
                       <span className="font-medium">{data.player.team || "FA"}</span>
-                      {data.player.age && (
+                      {(data.player.age !== null && data.player.age !== undefined) && (
                         <>
                           <span className="text-gray-600">•</span>
-                          <span>{data.player.age} yrs old</span>
-                        </>
-                      )}
-                      {data.player.yearsExp !== null && data.player.yearsExp !== undefined && (
-                        <>
-                          <span className="text-gray-600">•</span>
-                          <span>{data.player.yearsExp === 0 ? "Rookie" : `Year ${data.player.yearsExp + 1}`}</span>
+                          <AgeBadge
+                            age={data.player.age}
+                            yearsExp={data.player.yearsExp ?? null}
+                            position={data.player.position ?? null}
+                            size="sm"
+                          />
                         </>
                       )}
                       {(data.player.metadata?.nflverse?.injury?.status || data.player.injuryStatus) && (
@@ -493,6 +507,8 @@ function getEventDescription(event: TimelineEvent): string {
       return `Signed by ${event.teamName}`;
     case "DROPPED":
       return `By ${event.teamName}`;
+    case "NOT_KEPT":
+      return `Released by ${event.teamName}`;
     default:
       return event.teamName;
   }

@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { TrendingPlayers } from "@/components/ui/TrendingPlayers";
+import { AgeIndicator } from "@/components/ui/AgeBadge";
 import { ChevronRight, Trophy, Shield, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -40,6 +41,8 @@ interface Roster {
       fullName: string;
       position: string;
       team: string;
+      age: number | null;
+      yearsExp: number | null;
     };
     type: string;
     finalCost: number;
@@ -294,7 +297,16 @@ export default function LeaguePage() {
                     </div>
                   )}
 
-                  <PositionBadge position={keeper.player.position} size="xs" className="mb-1.5 sm:mb-2" />
+                  <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+                    <PositionBadge position={keeper.player.position} size="xs" />
+                    {keeper.player.age && (
+                      <AgeIndicator
+                        age={keeper.player.age}
+                        position={keeper.player.position}
+                        size="xs"
+                      />
+                    )}
+                  </div>
                   <p className="text-xs sm:text-sm font-semibold text-white truncate">{keeper.player.fullName}</p>
                   <p className="text-[10px] sm:text-xs text-gray-500 mb-1.5 sm:mb-2">{keeper.player.team}</p>
 

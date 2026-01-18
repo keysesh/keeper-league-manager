@@ -76,6 +76,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                     fullName: true,
                     position: true,
                     team: true,
+                    age: true,
+                    yearsExp: true,
                   },
                 },
               },

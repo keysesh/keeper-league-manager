@@ -8,7 +8,8 @@ import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { BackLink } from "@/components/ui/BackLink";
-import { RefreshCw, Trophy, Star, Users } from "lucide-react";
+import { RefreshCw, Trophy, Star, Users, FileText } from "lucide-react";
+import { DraftCapital } from "@/components/ui/DraftCapital";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -93,6 +94,25 @@ interface RosterData {
   };
 }
 
+interface DraftPick {
+  season: number;
+  round: number;
+  originalOwnerSleeperId: string;
+  currentOwnerSleeperId: string;
+  originalOwnerName: string;
+  currentOwnerRosterId: string;
+}
+
+interface DraftPicksData {
+  season: number;
+  picks: DraftPick[];
+  rosters: Array<{
+    id: string;
+    sleeperId: string | null;
+    teamName: string | null;
+  }>;
+}
+
 export default function TeamRosterPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -110,6 +130,12 @@ export default function TeamRosterPage() {
       revalidateIfStale: true,
       dedupingInterval: 0,
     }
+  );
+
+  // Fetch draft picks for this league
+  const { data: draftPicksData } = useSWR<DraftPicksData>(
+    `/api/leagues/${leagueId}/draft-picks`,
+    fetcher
   );
 
   const addKeeper = async (
@@ -372,6 +398,34 @@ export default function TeamRosterPage() {
           </div>
         </div>
       </div>
+
+      {/* Draft Capital */}
+      {draftPicksData && (() => {
+        // Find this roster's sleeperId
+        const thisRoster = draftPicksData.rosters.find(r => r.id === rosterId);
+        if (!thisRoster?.sleeperId) return null;
+
+        return (
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a]">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
+                  <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                </div>
+                <h2 className="text-base sm:text-lg font-semibold text-white">Draft Capital</h2>
+              </div>
+            </div>
+            <div className="p-3 sm:p-5">
+              <DraftCapital
+                picks={draftPicksData.picks}
+                teamSleeperId={thisRoster.sleeperId}
+                teamName={thisRoster.teamName || undefined}
+                showSeasons={1}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Current Keepers */}
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md overflow-hidden">
