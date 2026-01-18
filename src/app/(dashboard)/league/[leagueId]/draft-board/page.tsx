@@ -406,12 +406,12 @@ export default function DraftBoardPage() {
           {/* Controls - responsive layout */}
           <div className="flex flex-wrap gap-2">
             {/* View mode toggle */}
-            <div className="flex rounded-xl overflow-hidden ring-1 ring-white/10">
+            <div className="flex rounded-xl overflow-hidden ring-1 ring-violet-500/20">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 text-sm font-medium transition-all ${
                   viewMode === "grid"
-                    ? "bg-white/10 text-white"
+                    ? "bg-violet-500/20 text-violet-300"
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
                 }`}
               >
@@ -422,7 +422,7 @@ export default function DraftBoardPage() {
                 onClick={() => setViewMode("list")}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 text-sm font-medium transition-all ${
                   viewMode === "list"
-                    ? "bg-white/10 text-white"
+                    ? "bg-violet-500/20 text-violet-300"
                     : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
                 }`}
               >
@@ -434,7 +434,7 @@ export default function DraftBoardPage() {
             {/* Primary actions - always visible */}
             <Link
               href={`/league/${leagueId}/simulation`}
-              className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 ring-1 ring-purple-500/30 text-sm font-medium transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 text-sm font-medium transition-all active:scale-[0.98]"
             >
               <FlaskConical size={16} />
               <span className="hidden md:inline">Simulate</span>
@@ -466,33 +466,33 @@ export default function DraftBoardPage() {
                 <span className="hidden md:inline">Export</span>
                 <ChevronDown size={14} className="hidden sm:block" />
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700/50 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-48 bg-[#1A1425]/95 backdrop-blur-xl border border-violet-500/20 rounded-xl shadow-2xl shadow-violet-500/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
                 <button
                   onClick={() => handleExport("print")}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-3"
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-violet-500/10 hover:text-white flex items-center gap-3 transition-colors"
                 >
-                  <Printer size={14} />
+                  <Printer size={14} className="text-violet-400" />
                   Print / PDF
                 </button>
                 <button
                   onClick={() => handleExport("csv-board")}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-3"
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-violet-500/10 hover:text-white flex items-center gap-3 transition-colors"
                 >
-                  <FileSpreadsheet size={14} />
+                  <FileSpreadsheet size={14} className="text-violet-400" />
                   Draft Board CSV
                 </button>
                 <button
                   onClick={() => handleExport("csv-keepers")}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-3"
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-violet-500/10 hover:text-white flex items-center gap-3 transition-colors"
                 >
-                  <FileSpreadsheet size={14} />
+                  <FileSpreadsheet size={14} className="text-violet-400" />
                   Keepers CSV
                 </button>
                 <button
                   onClick={() => handleExport("copy")}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-white/5 flex items-center gap-3"
+                  className="w-full px-4 py-3 text-left text-sm text-gray-300 hover:bg-violet-500/10 hover:text-white flex items-center gap-3 transition-colors"
                 >
-                  {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                  {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-violet-400" />}
                   {copied ? "Copied!" : "Copy to Clipboard"}
                 </button>
               </div>
@@ -517,7 +517,7 @@ export default function DraftBoardPage() {
             icon={<TrophyIcon size={18} />}
             value={data.summary.totalKeepers}
             label="Total Keepers"
-            color="emerald"
+            color="violet"
           />
           <StatCard
             icon={<Zap size={18} />}
@@ -529,7 +529,7 @@ export default function DraftBoardPage() {
             icon={<ArrowLeftRight size={18} />}
             value={data.summary.tradedPicks}
             label="Traded Picks"
-            color="blue"
+            color="violet"
           />
           <StatCard
             icon={<Clock size={18} />}
@@ -543,14 +543,14 @@ export default function DraftBoardPage() {
 
       {/* Position Filter */}
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-gray-600 text-[10px] font-medium uppercase tracking-widest">Filter</span>
+        <span className="text-violet-400/60 text-[10px] font-medium uppercase tracking-widest">Filter</span>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setFilterPosition(null)}
-            className={`px-3 py-1.5 rounded text-[11px] font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
               filterPosition === null
-                ? "bg-white/10 text-white"
-                : "text-gray-500 hover:text-gray-300"
+                ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30"
+                : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
             }`}
           >
             All · {data.summary.totalKeepers}
@@ -559,10 +559,10 @@ export default function DraftBoardPage() {
             <button
               key={pos}
               onClick={() => setFilterPosition(filterPosition === pos ? null : pos)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 filterPosition === pos
-                  ? "bg-white/10 text-white"
-                  : "text-gray-500 hover:text-gray-300"
+                  ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30"
+                  : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
               }`}
             >
               <PositionBadge position={pos} size="xs" variant="minimal" />
@@ -578,14 +578,14 @@ export default function DraftBoardPage() {
           /* Mobile Grid View - Stacked rounds with horizontal scrolling */
           <div className="space-y-4">
             {data.draftBoard.map((row) => (
-              <div key={row.round} className="rounded-xl border border-gray-700/50 bg-gray-950 overflow-hidden">
+              <div key={row.round} className="rounded-xl border border-violet-500/20 bg-gray-950 overflow-hidden">
                 {/* Round Header */}
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-700">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 text-white font-bold text-sm">
+                <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#1A1425] to-[#0F0B1A] border-b border-violet-500/20">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/20 text-violet-300 font-bold text-sm ring-1 ring-violet-500/30">
                     {row.round}
                   </span>
-                  <span className="text-gray-400 text-sm font-medium">Round {row.round}</span>
-                  <span className="ml-auto text-gray-600 text-xs">
+                  <span className="text-gray-300 text-sm font-medium">Round {row.round}</span>
+                  <span className="ml-auto text-violet-400/70 text-xs">
                     {row.slots.filter(s => s.status === "keeper").length} keepers
                   </span>
                 </div>
@@ -621,14 +621,14 @@ export default function DraftBoardPage() {
           </div>
         ) : (
           /* Desktop Grid View - Traditional table */
-          <div className="rounded-xl overflow-hidden border border-gray-700/50 bg-gray-950">
+          <div className="rounded-xl overflow-hidden border border-violet-500/20 bg-gray-950">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse" style={{ minWidth: `${rosters.length * 145 + 70}px` }}>
                 {/* Sticky Header */}
                 <thead className="sticky top-0 z-30">
-                  <tr className="bg-gray-900 border-b-2 border-gray-700">
-                    <th className="sticky left-0 z-40 bg-gray-900 px-3 py-3 text-center w-14 border-r border-gray-700">
-                      <span className="text-gray-400 text-xs font-bold">RD</span>
+                  <tr className="bg-gradient-to-r from-[#1A1425] to-[#0F0B1A] border-b-2 border-violet-500/30">
+                    <th className="sticky left-0 z-40 bg-[#1A1425] px-3 py-3 text-center w-14 border-r border-violet-500/20">
+                      <span className="text-violet-400 text-xs font-bold">RD</span>
                     </th>
                     {rosters.map((roster, index) => {
                       const color = getTeamColor(index);
@@ -655,12 +655,12 @@ export default function DraftBoardPage() {
                     <tr
                       key={row.round}
                       className={`
-                        ${rowIndex % 2 === 0 ? "bg-gray-950" : "bg-gray-900/50"}
-                        hover:bg-gray-800/30 transition-colors
+                        ${rowIndex % 2 === 0 ? "bg-gray-950" : "bg-[#0F0B1A]/50"}
+                        hover:bg-violet-500/5 transition-colors
                       `}
                     >
-                      <td className="sticky left-0 z-20 px-3 py-2 border-r border-gray-700 bg-inherit">
-                        <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-800 text-white font-bold text-sm">
+                      <td className="sticky left-0 z-20 px-3 py-2 border-r border-violet-500/10 bg-inherit">
+                        <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/10 text-violet-300 font-bold text-sm ring-1 ring-violet-500/20">
                           {row.round}
                         </span>
                       </td>
@@ -789,12 +789,12 @@ export default function DraftBoardPage() {
       )}
 
       {/* Legend - responsive grid on mobile */}
-      <div className="pt-4 border-t border-gray-700/50">
+      <div className="pt-4 border-t border-violet-500/20">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-6 text-xs md:text-sm text-gray-400">
-          <span className="text-gray-500 text-[10px] md:text-xs uppercase tracking-wide font-medium w-full md:w-auto">Legend:</span>
+          <span className="text-violet-400/60 text-[10px] md:text-xs uppercase tracking-wide font-medium w-full md:w-auto">Legend:</span>
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ring-1 ring-gray-600/50 relative">
-              <div className="absolute left-0 top-0 bottom-0 w-0.5 md:w-1 bg-emerald-500 rounded-l" />
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 md:w-1 bg-violet-500 rounded-l" />
             </div>
             <span>Keeper</span>
           </div>
@@ -805,17 +805,17 @@ export default function DraftBoardPage() {
             <span>Franchise</span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gradient-to-br from-gray-800/40 to-gray-900/60 border-2 border-dashed border-gray-600/50 flex items-center justify-center">
-              <ArrowLeftRight size={6} className="md:w-2 md:h-2 text-gray-500" />
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gradient-to-br from-gray-800/40 to-gray-900/60 border-2 border-dashed border-violet-500/30 flex items-center justify-center">
+              <ArrowLeftRight size={6} className="md:w-2 md:h-2 text-violet-400/50" />
             </div>
             <span>Traded</span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gray-900/20 border border-gray-800/20" />
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-gray-900/20 border border-violet-500/10" />
             <span>Open</span>
           </div>
-          <div className="flex items-center gap-2 md:gap-3 md:ml-4 md:pl-4 md:border-l md:border-gray-700 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-800">
-            <span className="text-gray-500 text-[10px] md:text-xs uppercase tracking-wide font-medium">Years:</span>
+          <div className="flex items-center gap-2 md:gap-3 md:ml-4 md:pl-4 md:border-l md:border-violet-500/20 w-full md:w-auto mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-violet-500/10">
+            <span className="text-violet-400/60 text-[10px] md:text-xs uppercase tracking-wide font-medium">Years:</span>
             <div className="flex items-center gap-1">
               <span className="px-1 md:px-1.5 py-0.5 rounded bg-white/10 text-gray-300 text-[9px] md:text-[10px] font-bold">Y1</span>
               <span className="px-1 md:px-1.5 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-[9px] md:text-[10px] font-bold">Y2</span>
@@ -845,18 +845,19 @@ function StatCard({
   icon: React.ReactNode;
   value: number | string;
   label: string;
-  color: "emerald" | "amber" | "blue" | "gray";
+  color: "emerald" | "amber" | "blue" | "violet" | "gray";
   isText?: boolean;
 }) {
   const colorClasses = {
     emerald: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
     amber: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
     blue: "bg-blue-500/10 text-blue-400 ring-blue-500/20",
+    violet: "bg-violet-500/10 text-violet-400 ring-violet-500/20",
     gray: "bg-white/5 text-gray-400 ring-white/10",
   };
 
   return (
-    <div className="bg-white/[0.02] rounded-xl p-4 ring-1 ring-white/5">
+    <div className="bg-white/[0.02] rounded-xl p-4 ring-1 ring-violet-500/10 hover:ring-violet-500/20 transition-all">
       <div className="flex items-center gap-3">
         <span className={`flex items-center justify-center w-10 h-10 rounded-xl ring-1 ${colorClasses[color]}`}>
           {icon}

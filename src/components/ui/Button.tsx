@@ -2,7 +2,7 @@
 
 import { forwardRef, ButtonHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "glass";
+type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "glass" | "outline";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,15 +16,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white border-transparent shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 focus:ring-violet-500",
+    "bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:from-violet-700 active:to-indigo-700 text-white border-transparent shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-[0.98] focus:ring-violet-500",
   secondary:
-    "bg-white/[0.05] hover:bg-white/[0.08] text-zinc-100 border-white/[0.08] hover:border-white/[0.12] focus:ring-zinc-500",
+    "bg-white/[0.05] hover:bg-white/[0.08] active:bg-white/[0.12] text-zinc-100 border-white/[0.08] hover:border-white/[0.12] active:scale-[0.98] focus:ring-zinc-500",
   danger:
-    "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border-transparent shadow-lg shadow-red-500/25 focus:ring-red-500",
+    "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 active:from-red-700 active:to-rose-700 text-white border-transparent shadow-lg shadow-red-500/25 active:scale-[0.98] focus:ring-red-500",
   ghost:
-    "bg-transparent hover:bg-white/[0.05] text-zinc-400 hover:text-white border-transparent focus:ring-zinc-500",
+    "bg-transparent hover:bg-white/[0.05] active:bg-white/[0.08] text-zinc-400 hover:text-white border-transparent active:scale-[0.98] focus:ring-zinc-500",
   glass:
-    "bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 hover:text-violet-200 border-violet-500/20 hover:border-violet-500/30 backdrop-blur-sm focus:ring-violet-500",
+    "bg-violet-500/10 hover:bg-violet-500/20 active:bg-violet-500/30 text-violet-300 hover:text-violet-200 border-violet-500/20 hover:border-violet-500/30 backdrop-blur-sm active:scale-[0.98] focus:ring-violet-500",
+  outline:
+    "bg-transparent hover:bg-violet-500/10 active:bg-violet-500/20 text-violet-400 hover:text-violet-300 border-violet-500/50 hover:border-violet-500 active:scale-[0.98] focus:ring-violet-500",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

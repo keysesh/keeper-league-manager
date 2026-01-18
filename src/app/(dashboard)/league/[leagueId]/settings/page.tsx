@@ -186,8 +186,8 @@ export default function SettingsPage() {
         <div>
           <BackLink href={`/league/${leagueId}`} label="Back to League" />
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500/20 to-gray-600/10 ring-1 ring-gray-500/20 flex items-center justify-center">
-              <Settings className="w-6 h-6 text-gray-400" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-600/10 ring-1 ring-violet-500/30 flex items-center justify-center">
+              <Settings className="w-6 h-6 text-violet-400" />
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">League Settings</h1>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold rounded-xl transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all disabled:opacity-50"
           >
             {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
             {saving ? "Saving..." : "Save Changes"}
@@ -209,23 +209,23 @@ export default function SettingsPage() {
       </div>
 
       {/* Commissioner Info */}
-      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl p-5 border border-gray-700/40">
+      <div className="bg-gradient-to-b from-[#1A1425]/80 to-[#0F0B1A]/80 rounded-2xl p-5 border border-violet-500/20 ring-1 ring-violet-500/10">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/20">
-            <Shield size={20} className="text-purple-400" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-500/20 ring-1 ring-violet-500/30">
+            <Shield size={20} className="text-violet-400" />
           </div>
           <div>
             <p className="text-sm text-gray-400">Commissioner</p>
             <p className="text-white font-medium">{data.commissioner?.name || "Not assigned"}</p>
           </div>
           {data.isCommissioner && (
-            <span className="ml-auto px-3 py-1 bg-purple-500/20 text-purple-400 text-xs font-medium rounded-lg">
+            <span className="ml-auto px-3 py-1 bg-violet-500/20 text-violet-300 text-xs font-medium rounded-lg ring-1 ring-violet-500/30">
               You
             </span>
           )}
         </div>
         {!data.isCommissioner && (
-          <div className="mt-4 flex items-center gap-2 text-amber-400 text-sm">
+          <div className="mt-4 flex items-center gap-2 text-violet-400 text-sm">
             <Info size={16} />
             <span>Only the commissioner can modify settings</span>
           </div>
@@ -233,8 +233,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Keeper Settings */}
-      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700/40">
+      <div className="bg-gradient-to-b from-[#1A1425]/80 to-[#0F0B1A]/80 rounded-2xl border border-violet-500/20 overflow-hidden">
+        <div className="px-6 py-4 border-b border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-transparent">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <StarIcon size={20} />
             Keeper Rules
@@ -333,8 +333,8 @@ export default function SettingsPage() {
       </div>
 
       {/* Draft Info */}
-      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700/40">
+      <div className="bg-gradient-to-b from-[#1A1425]/80 to-[#0F0B1A]/80 rounded-2xl border border-violet-500/20 overflow-hidden">
+        <div className="px-6 py-4 border-b border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-transparent">
           <h2 className="text-lg font-semibold text-white">Draft Settings</h2>
           <p className="text-gray-500 text-sm mt-1">Synced from Sleeper</p>
         </div>
@@ -352,10 +352,10 @@ export default function SettingsPage() {
       </div>
 
       {/* Rules Summary */}
-      <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700/40">
+      <div className="bg-gradient-to-b from-[#1A1425]/80 to-[#0F0B1A]/80 rounded-2xl border border-violet-500/20 overflow-hidden">
+        <div className="px-6 py-4 border-b border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-transparent">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Info size={20} className="text-blue-400" />
+            <Info size={20} className="text-violet-400" />
             Rules Summary
           </h2>
         </div>
@@ -370,7 +370,7 @@ export default function SettingsPage() {
             text={`Up to ${formData.maxFranchiseTags} can be franchise tags (Round 1, no year limit)`}
           />
           <RuleSummaryItem
-            icon={<Clock size={16} className="text-purple-400" />}
+            icon={<Clock size={16} className="text-violet-400" />}
             text={`Regular keepers can be kept max ${formData.regularKeeperMaxYears} consecutive years`}
           />
           <RuleSummaryItem
@@ -378,7 +378,7 @@ export default function SettingsPage() {
             text={`Keeper cost improves ${formData.costReductionPerYear} round per year (min Round ${formData.minimumRound})`}
           />
           <RuleSummaryItem
-            icon={<Hash size={16} className="text-blue-400" />}
+            icon={<Hash size={16} className="text-violet-400" />}
             text={`Waiver/FA pickups cost Round ${formData.undraftedRound}`}
           />
         </div>
@@ -386,16 +386,16 @@ export default function SettingsPage() {
 
       {/* Commissioner Actions */}
       {data.isCommissioner && (
-        <div className="bg-gradient-to-b from-gray-800/40 to-gray-800/20 rounded-2xl border border-gray-700/40 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-700/40">
+        <div className="bg-gradient-to-b from-[#1A1425]/80 to-[#0F0B1A]/80 rounded-2xl border border-violet-500/20 overflow-hidden">
+          <div className="px-6 py-4 border-b border-violet-500/20 bg-gradient-to-r from-violet-500/5 to-transparent">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Shield size={20} className="text-purple-400" />
+              <Shield size={20} className="text-violet-400" />
               Commissioner Actions
             </h2>
           </div>
 
           <div className="p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-900/50 rounded-xl border border-gray-700/30">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-[#0F0B1A]/50 rounded-xl border border-violet-500/10">
               <div>
                 <p className="text-white font-medium">Lock All Keepers</p>
                 <p className="text-gray-500 text-sm mt-1">Prevent changes to keeper selections league-wide</p>
@@ -423,13 +423,13 @@ export default function SettingsPage() {
             {/* Link to advanced commissioner tools */}
             <Link
               href={`/league/${leagueId}/commissioner`}
-              className="flex items-center justify-between p-4 bg-gray-900/50 rounded-xl border border-gray-700/30 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group"
+              className="flex items-center justify-between p-4 bg-[#0F0B1A]/50 rounded-xl border border-violet-500/10 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all group"
             >
               <div>
-                <p className="text-white font-medium group-hover:text-purple-400 transition-colors">Advanced Tools</p>
+                <p className="text-white font-medium group-hover:text-violet-400 transition-colors">Advanced Tools</p>
                 <p className="text-gray-500 text-sm mt-1">Manage keepers across all teams, view activity logs</p>
               </div>
-              <ChevronRight size={20} className="text-gray-500 group-hover:text-purple-400 transition-colors" />
+              <ChevronRight size={20} className="text-gray-500 group-hover:text-violet-400 transition-colors" />
             </Link>
           </div>
         </div>
@@ -462,7 +462,7 @@ function SettingField({
   return (
     <div className={`space-y-2 ${disabled ? "opacity-60" : ""}`}>
       <div className="flex items-center gap-2">
-        <span className="text-gray-400">{icon}</span>
+        <span className="text-violet-400">{icon}</span>
         <label className="text-white font-medium">{label}</label>
       </div>
       <p className="text-gray-500 text-xs">{description}</p>
@@ -474,7 +474,7 @@ function SettingField({
           min={min}
           max={max}
           disabled={disabled}
-          className="w-24 px-3 py-2 bg-gray-900/50 border border-gray-700/50 rounded-lg text-white text-center font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 disabled:cursor-not-allowed"
+          className="w-24 px-3 py-2 bg-[#0F0B1A]/50 border border-violet-500/20 rounded-lg text-white text-center font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 disabled:cursor-not-allowed transition-colors"
         />
         {suffix && <span className="text-gray-500 text-sm">{suffix}</span>}
       </div>
@@ -490,7 +490,7 @@ function RuleSummaryItem({
   text: string;
 }) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-900/30">
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0F0B1A]/50 border border-violet-500/10">
       <span className="mt-0.5">{icon}</span>
       <p className="text-gray-300 text-sm leading-relaxed">{text}</p>
     </div>
