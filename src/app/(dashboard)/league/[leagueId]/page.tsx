@@ -8,19 +8,21 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { PositionBadge } from "@/components/ui/PositionBadge";
+import { ChevronRight, ArrowUpRight } from "lucide-react";
 import {
-  RefreshCw,
-  Crown,
-  ChevronRight,
-  Trophy,
-  Target,
-  Zap,
-  Users,
-  TrendingUp,
-  Shield,
-  Star,
-  ArrowUpRight,
-} from "lucide-react";
+  IconGradientDefs,
+  TrophyIcon,
+  ShieldIcon,
+  CrownIcon,
+  TargetIcon,
+  LightningIcon,
+  ChartIcon,
+  UsersIcon,
+  SyncIcon,
+  StarIcon,
+  RankBadge,
+  IconContainer,
+} from "@/components/ui/PremiumIcons";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -149,6 +151,7 @@ export default function LeaguePage() {
 
   return (
     <>
+      <IconGradientDefs />
       <DeadlineBanner leagueId={leagueId} />
       <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8 space-y-10">
 
@@ -174,12 +177,9 @@ export default function LeaguePage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-10">
               <div className="flex items-center gap-4">
                 {/* Trophy icon with glow */}
-                <div className="relative">
-                  <div className="absolute inset-0 bg-amber-400/20 rounded-2xl blur-xl" />
-                  <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 flex items-center justify-center shadow-2xl shadow-amber-500/30">
-                    <Trophy className="w-7 h-7 text-amber-900" strokeWidth={2.5} />
-                  </div>
-                </div>
+                <IconContainer variant="gold" className="w-14 h-14">
+                  <TrophyIcon size={28} />
+                </IconContainer>
                 <div>
                   <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white tracking-tight">
                     {league.name}
@@ -196,7 +196,7 @@ export default function LeaguePage() {
                   disabled={syncing}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-sm font-medium text-zinc-300 hover:text-white transition-all disabled:opacity-50 backdrop-blur-sm"
                 >
-                  <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+                  <SyncIcon size={16} spinning={syncing} />
                   <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync"}</span>
                 </button>
                 <Link
@@ -207,7 +207,7 @@ export default function LeaguePage() {
                   <div className="absolute inset-0 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 bg-[length:200%_100%] group-hover:animate-shimmer" />
                   {/* Shine effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-black/10" />
-                  <Target size={16} className="relative" />
+                  <TargetIcon size={16} className="relative" />
                   <span className="relative">Draft Board</span>
                 </Link>
               </div>
@@ -223,7 +223,7 @@ export default function LeaguePage() {
                     <div className="relative">
                       <div className="absolute inset-0 bg-emerald-400/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-400/20 to-emerald-500/10 border border-emerald-400/20 flex items-center justify-center">
-                        <TrendingUp className="w-5 h-5 text-emerald-400" />
+                        <ChartIcon size={20} />
                       </div>
                     </div>
                     <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Standing</span>
@@ -253,7 +253,7 @@ export default function LeaguePage() {
                     <div className="relative">
                       <div className="absolute inset-0 bg-amber-400/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-500/10 border border-amber-400/20 flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-amber-400" />
+                        <ShieldIcon size={20} />
                       </div>
                     </div>
                     <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Keepers</span>
@@ -284,7 +284,7 @@ export default function LeaguePage() {
 
                   <div className="relative flex items-start justify-between mb-6">
                     <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400/30 to-amber-500/20 border border-amber-400/30 flex items-center justify-center">
-                      <Zap className="w-5 h-5 text-amber-400" />
+                      <LightningIcon size={20} />
                     </div>
                     <ArrowUpRight className="w-5 h-5 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                   </div>
@@ -304,7 +304,7 @@ export default function LeaguePage() {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400/20 to-amber-500/10 border border-amber-400/20 flex items-center justify-center">
-                  <Crown className="w-4 h-4 text-amber-400" />
+                  <CrownIcon size={16} />
                 </div>
                 <h2 className="text-lg font-semibold text-white">Your {league.season} Keepers</h2>
               </div>
@@ -335,7 +335,7 @@ export default function LeaguePage() {
 
                   {keeper.type === "FRANCHISE" && (
                     <div className="absolute top-2 right-2">
-                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <StarIcon size={16} />
                     </div>
                   )}
 
@@ -377,7 +377,7 @@ export default function LeaguePage() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
-                <Users className="w-4 h-4 text-zinc-400" />
+                <UsersIcon size={16} />
               </div>
               <h2 className="text-lg font-semibold text-white">League Standings</h2>
             </div>
@@ -424,7 +424,7 @@ export default function LeaguePage() {
                       isPlayoff ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" :
                       "bg-zinc-800/80 text-zinc-500"
                     }`}>
-                      {rank === 1 ? <Crown className="w-5 h-5" /> : rank}
+                      {rank === 1 ? <CrownIcon size={20} /> : rank}
                     </div>
                   </div>
 
@@ -481,28 +481,28 @@ export default function LeaguePage() {
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <QuickActionCard
             href={`/league/${leagueId}/draft-board`}
-            icon={<Target className="w-5 h-5" />}
+            icon={<TargetIcon size={20} />}
             label="Draft Board"
             description="View keeper costs"
             accentColor="amber"
           />
           <QuickActionCard
             href={`/league/${leagueId}/trade-analyzer`}
-            icon={<Zap className="w-5 h-5" />}
+            icon={<LightningIcon size={20} />}
             label="Trade Analyzer"
             description="Evaluate trades"
             accentColor="emerald"
           />
           <QuickActionCard
             href={`/league/${leagueId}/team`}
-            icon={<Users className="w-5 h-5" />}
+            icon={<UsersIcon size={20} />}
             label="All Teams"
             description="League rosters"
             accentColor="blue"
           />
           <QuickActionCard
             href={`/league/${leagueId}/history`}
-            icon={<TrendingUp className="w-5 h-5" />}
+            icon={<ChartIcon size={20} />}
             label="History"
             description="Past seasons"
             accentColor="purple"
