@@ -1072,11 +1072,11 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
 }
 
 // Stat cell with tooltip
-function StatCell({ value, label, tooltip, highlight }: { value: string | number; label: string; tooltip: string; highlight?: boolean }) {
+function StatCell({ value, label, tooltip, highlight, muted }: { value: string | number; label: string; tooltip: string; highlight?: boolean; muted?: boolean }) {
   return (
     <Tooltip text={tooltip}>
       <div className="py-1.5 px-2 rounded bg-[#0a0a0a] text-center">
-        <div className={`font-semibold text-sm ${highlight ? "text-purple-400" : "text-white"}`}>{value}</div>
+        <div className={`font-semibold text-sm ${highlight ? "text-purple-400" : muted ? "text-gray-500" : "text-white"}`}>{value}</div>
         <div className="text-gray-600 text-[9px]">{label}</div>
       </div>
     </Tooltip>
@@ -1084,34 +1084,36 @@ function StatCell({ value, label, tooltip, highlight }: { value: string | number
 }
 
 // Player Info Card Component - Objective information only
-function PlayerInfoCard({ player, isAfterDeadline, byeWeek, statsSeason }: { player: PlayerTradeValue; isAfterDeadline: boolean; byeWeek?: number; statsSeason?: number }) {
+function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTradeValue; isAfterDeadline: boolean; byeWeek?: number }) {
   const { keeperStatus, projection, stats, seasonStats, ranking } = player;
-  const displaySeason = statsSeason || seasonStats?.season || new Date().getFullYear() - 1;
-
-  // Get age color - younger players have more upside
-  const getAgeColor = (age: number | null) => {
-    if (!age) return "text-gray-400";
-    if (age <= 25) return "text-blue-400";
-    if (age <= 28) return "text-gray-300";
-    return "text-gray-500";
-  };
+  const gamesPlayed = seasonStats?.gamesPlayed || stats.gamesPlayed || 0;
+  const displaySeason = seasonStats?.season || new Date().getFullYear() - 1;
 
   // Check if there are eligibility issues to show
   const hasEligibilityIssue = !keeperStatus.isEligibleForRegular || !keeperStatus.isEligibleForFranchise;
 
-  // Position-specific stats rendering
+  // Format position rank as "WR12" or "RB5"
+  const posRankDisplay = ranking.positionRank && player.position
+    ? `${player.position}${ranking.positionRank}`
+    : null;
+
+  // Calculate per-game stats for position-specific display
+  const perGame = (total: number) => gamesPlayed > 0 ? (total / gamesPlayed).toFixed(1) : "—";
+
+  // Position-specific stats rendering - PER GAME focused
   const renderPositionStats = () => {
-    if (!seasonStats) return null;
+    if (!seasonStats || gamesPlayed === 0) return null;
 
     const pos = player.position?.toUpperCase();
 
     if (pos === "QB") {
+      const ydsPerGame = perGame(seasonStats.passingYards);
+      const tdPerGame = perGame(seasonStats.passingTds);
       return (
-        <div className="grid grid-cols-5 gap-1.5">
-          <StatCell value={seasonStats.passingYards.toLocaleString()} label="Pass Yds" tooltip="Total passing yards" />
-          <StatCell value={seasonStats.passingTds} label="Pass TD" tooltip="Passing touchdowns" />
-          <StatCell value={seasonStats.interceptions} label="INT" tooltip="Interceptions thrown" />
-          <StatCell value={seasonStats.rushingYards} label="Rush Yds" tooltip="Rushing yards" />
+        <div className="grid grid-cols-4 gap-1.5">
+          <StatCell value={ydsPerGame} label="Yds/G" tooltip={`Pass yards per game (${seasonStats.passingYards.toLocaleString()} total)`} />
+          <StatCell value={tdPerGame} label="TD/G" tooltip={`Pass TDs per game (${seasonStats.passingTds} total)`} />
+          <StatCell value={seasonStats.interceptions} label="INT" tooltip="Total interceptions" />
           <StatCell value={seasonStats.rushingTds} label="Rush TD" tooltip="Rushing touchdowns" />
         </div>
       );
@@ -1119,26 +1121,27 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek, statsSeason }: { pla
 
     if (pos === "RB") {
       const ypc = seasonStats.carries > 0 ? (seasonStats.rushingYards / seasonStats.carries).toFixed(1) : "—";
+      const rushYdsPerGame = perGame(seasonStats.rushingYards);
+      const recPerGame = perGame(seasonStats.receptions);
       return (
-        <div className="grid grid-cols-5 gap-1.5">
-          <StatCell value={seasonStats.rushingYards.toLocaleString()} label="Rush Yds" tooltip="Total rushing yards" />
-          <StatCell value={seasonStats.rushingTds} label="Rush TD" tooltip="Rushing touchdowns" />
-          <StatCell value={seasonStats.carries} label="Carries" tooltip="Rushing attempts" />
+        <div className="grid grid-cols-4 gap-1.5">
+          <StatCell value={rushYdsPerGame} label="Rush/G" tooltip={`Rush yards per game (${seasonStats.rushingYards.toLocaleString()} total)`} />
+          <StatCell value={seasonStats.rushingTds} label="Rush TD" tooltip="Total rushing touchdowns" />
           <StatCell value={ypc} label="YPC" tooltip="Yards per carry" />
-          <StatCell value={seasonStats.receptions} label="Rec" tooltip="Receptions" />
+          <StatCell value={recPerGame} label="Rec/G" tooltip={`Receptions per game (${seasonStats.receptions} total)`} />
         </div>
       );
     }
 
     if (pos === "WR" || pos === "TE") {
       const catchRate = seasonStats.targets > 0 ? Math.round((seasonStats.receptions / seasonStats.targets) * 100) + "%" : "—";
-      const ypr = seasonStats.receptions > 0 ? (seasonStats.receivingYards / seasonStats.receptions).toFixed(1) : "—";
+      const tgtPerGame = perGame(seasonStats.targets);
+      const recYdsPerGame = perGame(seasonStats.receivingYards);
       return (
-        <div className="grid grid-cols-5 gap-1.5">
-          <StatCell value={seasonStats.targets} label="Targets" tooltip="Total targets" />
-          <StatCell value={seasonStats.receptions} label="Rec" tooltip="Receptions" />
-          <StatCell value={seasonStats.receivingYards.toLocaleString()} label="Rec Yds" tooltip="Receiving yards" />
-          <StatCell value={seasonStats.receivingTds} label="Rec TD" tooltip="Receiving touchdowns" />
+        <div className="grid grid-cols-4 gap-1.5">
+          <StatCell value={tgtPerGame} label="Tgt/G" tooltip={`Targets per game (${seasonStats.targets} total)`} />
+          <StatCell value={recYdsPerGame} label="Yds/G" tooltip={`Receiving yards per game (${seasonStats.receivingYards.toLocaleString()} total)`} />
+          <StatCell value={seasonStats.receivingTds} label="Rec TD" tooltip="Total receiving touchdowns" />
           <StatCell value={catchRate} label="Catch%" tooltip="Catch rate (receptions/targets)" />
         </div>
       );
@@ -1155,12 +1158,21 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek, statsSeason }: { pla
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white font-medium">{player.playerName}</span>
-            <PositionBadge position={player.position} size="sm" />
-            {ranking.positionRank && (
-              <span className="text-purple-400 text-[10px] font-bold">#{ranking.positionRank}</span>
+            {/* Position + Rank combined: "WR" badge then "12" */}
+            <div className="flex items-center">
+              <PositionBadge position={player.position} size="sm" />
+              {ranking.positionRank && (
+                <span className="text-purple-400 text-[10px] font-bold ml-0.5">{ranking.positionRank}</span>
+              )}
+            </div>
+            {/* Games played - PROMINENT */}
+            {gamesPlayed > 0 && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-800 text-gray-300">
+                {gamesPlayed}G
+              </span>
             )}
             {ranking.depthChart === 1 && (
-              <span className="text-emerald-400 text-[9px] font-bold px-1 py-0.5 bg-emerald-500/10 rounded">STARTER</span>
+              <span className="text-emerald-400 text-[9px] font-bold px-1 py-0.5 bg-emerald-500/10 rounded">ST</span>
             )}
             {player.injuryStatus && player.injuryStatus !== "Active" && (
               <span className="text-red-400 text-[10px] font-medium px-1.5 py-0.5 bg-red-500/10 rounded">
@@ -1170,71 +1182,71 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek, statsSeason }: { pla
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
             <span>{player.team || "FA"}</span>
-            {byeWeek ? (
-              <span className="text-gray-400">Bye {byeWeek}</span>
-            ) : player.team ? (
-              <span className="text-gray-600 cursor-help" title="Bye week available after NFL schedule release (May)">Bye TBD</span>
-            ) : null}
-            {player.age && <span className={getAgeColor(player.age)}>Age {player.age}</span>}
+            {/* Only show bye week if we have the data */}
+            {byeWeek && <span className="text-gray-400">Bye {byeWeek}</span>}
+            {player.age && <span>Age {player.age}</span>}
             {player.yearsExp !== null && <span>{player.yearsExp === 0 ? "Rookie" : `${player.yearsExp}yr`}</span>}
-            {ranking.ecr && (
-              <Tooltip text="Expert Consensus Ranking (overall)">
-                <span className="text-purple-400">ECR #{Math.round(ranking.ecr)}</span>
-              </Tooltip>
-            )}
             <span className="text-gray-600">•</span>
             <span className="text-blue-400 font-medium">R{projection.newCost}</span>
-            <span className="text-gray-600">kept {keeperStatus.yearsKept}/{keeperStatus.maxYearsAllowed}yr</span>
+            <span className="text-gray-600">kept {keeperStatus.yearsKept}/{keeperStatus.maxYearsAllowed}</span>
           </div>
         </div>
       </div>
 
-      {/* Season Header */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider">{displaySeason} Season Stats (PPR)</span>
-        {stats.gamesPlayed && <span className="text-[10px] text-gray-600">{stats.gamesPlayed} games</span>}
-      </div>
-
-      {/* Fantasy Points Row */}
-      <div className="grid grid-cols-5 gap-1.5 mb-2">
-        <StatCell
-          value={stats.pointsPerGame?.toFixed(1) || "—"}
-          label="PPG"
-          tooltip="Points per game (PPR scoring)"
-          highlight
-        />
-        <StatCell
-          value={seasonStats?.fantasyPointsPpr?.toFixed(0) || stats.fantasyPointsPpr?.toFixed(0) || "—"}
-          label="PPR"
-          tooltip="Total fantasy points (PPR)"
-        />
-        <StatCell
-          value={seasonStats?.fantasyPointsHalfPpr?.toFixed(0) || "—"}
-          label="Half"
-          tooltip="Total fantasy points (Half-PPR)"
-        />
-        <StatCell
-          value={seasonStats?.fantasyPointsStd?.toFixed(0) || "—"}
-          label="Std"
-          tooltip="Total fantasy points (Standard)"
-        />
-        <StatCell
-          value={stats.adp?.toFixed(1) || "—"}
-          label="ADP"
-          tooltip="Average Draft Position"
-        />
-      </div>
-
-      {/* Position-Specific Stats */}
-      {renderPositionStats() && (
-        <div className="mb-2">
-          {renderPositionStats()}
+      {/* Stats Section */}
+      <div className="space-y-2">
+        {/* Fantasy PPG - The key metric */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24">{displaySeason} PPR</span>
+          <div className="flex-1 grid grid-cols-4 gap-1.5">
+            <StatCell
+              value={stats.pointsPerGame?.toFixed(1) || "—"}
+              label="PPG"
+              tooltip="Fantasy points per game (PPR)"
+              highlight
+            />
+            <StatCell
+              value={seasonStats?.fantasyPointsPpr?.toFixed(0) || stats.fantasyPointsPpr?.toFixed(0) || "—"}
+              label="Total"
+              tooltip="Total fantasy points (PPR)"
+              muted
+            />
+            {posRankDisplay ? (
+              <StatCell
+                value={posRankDisplay}
+                label="Rank"
+                tooltip={`Position rank: ${posRankDisplay}`}
+                highlight
+              />
+            ) : (
+              <StatCell
+                value={ranking.ecr ? `#${Math.round(ranking.ecr)}` : "—"}
+                label="ECR"
+                tooltip="Expert Consensus Ranking (overall)"
+              />
+            )}
+            <StatCell
+              value={stats.adp?.toFixed(0) || "—"}
+              label="ADP"
+              tooltip="Average Draft Position"
+            />
+          </div>
         </div>
-      )}
+
+        {/* Position-Specific Per-Game Stats */}
+        {renderPositionStats() && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider w-24">Per Game</span>
+            <div className="flex-1">
+              {renderPositionStats()}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Warnings - Only show if relevant */}
       {(hasEligibilityIssue || projection.costTrajectory.length === 1 || isAfterDeadline) && (
-        <div className="space-y-1 text-xs mt-2">
+        <div className="space-y-1 text-xs mt-3">
           {hasEligibilityIssue && (
             <div className="text-gray-500">
               {!keeperStatus.isEligibleForRegular && <span className="text-red-400">Not eligible as regular keeper</span>}
