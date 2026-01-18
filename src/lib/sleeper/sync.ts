@@ -1194,6 +1194,12 @@ export async function getKeeperHistoryFromDB(
  * IMPORTANT: Uses transaction history to properly handle trades:
  * - If player was traded to new owner, years reset to 1
  * - If player was on same roster at end of previous season, years continue
+ *
+ * IMPORTANT: Handles draft/drop/re-draft scenarios:
+ * - When a player is drafted, dropped, then re-drafted in the same draft,
+ *   Sleeper may mark the FIRST pick as isKeeper=true even though the player
+ *   ended up on a different roster.
+ * - This function finds the LAST pick for each player to determine the correct owner.
  */
 export async function populateKeepersFromDraftPicks(
   leagueId: string
@@ -1225,7 +1231,42 @@ export async function populateKeepersFromDraftPicks(
 
     try {
     const season = pick.draft.season;
-    const rosterSleeperId = pick.roster.sleeperId;
+
+    // FIX: Check if this player was drafted multiple times in this SEASON (draft/drop/re-draft)
+    // Query by season, not draftId, because there may be multiple drafts per season
+    // If so, use the LAST pick's roster as the correct owner
+    const allPicksForPlayer = await prisma.draftPick.findMany({
+      where: {
+        playerId: pick.playerId,
+        draft: {
+          season: season,
+          leagueId: leagueId,
+        },
+      },
+      include: {
+        roster: true,
+      },
+      orderBy: {
+        pickNumber: "asc",
+      },
+    });
+
+    // Use the LAST pick's roster as the actual owner (they ended up with the player)
+    const finalPick = allPicksForPlayer[allPicksForPlayer.length - 1];
+    const correctRoster = finalPick?.roster || pick.roster;
+    const correctRosterId = finalPick?.rosterId || pick.rosterId;
+    const rosterSleeperId = correctRoster.sleeperId;
+
+    // Log if there's a mismatch (for debugging)
+    if (allPicksForPlayer.length > 1 && finalPick?.rosterId !== pick.rosterId) {
+      logger.info("Keeper pick mismatch detected - using final owner", {
+        player: pick.player?.fullName,
+        season,
+        originalRoster: pick.roster.teamName,
+        correctRoster: correctRoster.teamName,
+        pickCount: allPicksForPlayer.length,
+      });
+    }
 
     // Check if player was owned by this roster at end of previous season
     // This uses transaction history to account for trades
@@ -1263,14 +1304,45 @@ export async function populateKeepersFromDraftPicks(
 
     const correctYearsKept = consecutiveYears + 1;
 
-    // Check if Keeper record already exists
+    // Check if Keeper record already exists for the CORRECT roster
     const existingKeeper = await prisma.keeper.findFirst({
       where: {
         playerId: pick.playerId,
-        rosterId: pick.rosterId,
+        rosterId: correctRosterId,
         season: season,
       },
     });
+
+    // Also check for a keeper on the WRONG roster (draft/drop/re-draft fix)
+    const wrongRosterKeeper = correctRosterId !== pick.rosterId
+      ? await prisma.keeper.findFirst({
+          where: {
+            playerId: pick.playerId,
+            rosterId: pick.rosterId,
+            season: season,
+          },
+        })
+      : null;
+
+    // Fix wrong roster keeper by moving it to correct roster
+    if (wrongRosterKeeper) {
+      await prisma.keeper.update({
+        where: { id: wrongRosterKeeper.id },
+        data: {
+          rosterId: correctRosterId,
+          yearsKept: correctYearsKept,
+          finalCost: Math.max(1, wrongRosterKeeper.baseCost - consecutiveYears),
+        },
+      });
+      logger.info("Fixed keeper roster assignment", {
+        player: pick.player?.fullName,
+        season,
+        oldRoster: pick.roster.teamName,
+        newRoster: correctRoster.teamName,
+      });
+      skipped++;
+      continue;
+    }
 
     if (existingKeeper) {
       // Update yearsKept if it's incorrect
@@ -1292,11 +1364,11 @@ export async function populateKeepersFromDraftPicks(
       continue;
     }
 
-    // Create Keeper record
+    // Create Keeper record with CORRECT roster
     await prisma.keeper.create({
       data: {
         playerId: pick.playerId,
-        rosterId: pick.rosterId,
+        rosterId: correctRosterId,
         season: season,
         type: "REGULAR", // Default to regular keeper
         baseCost: pick.round,

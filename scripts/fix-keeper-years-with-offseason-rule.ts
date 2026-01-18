@@ -420,21 +420,19 @@ async function fixKeeperYears(leagueId: string, playerSleeperId?: string) {
         }
       }
 
-      // Calculate correct years
-      let correctYearsKept: number;
+      // Calculate correct years - based on TOTAL keeper records for this player
+      // Years continue through trades (cost also continues)
+      const keeperIndex = playerKeepers.indexOf(keeper);
+      const correctYearsKept = keeperIndex + 1; // 1-indexed: first keeper = Year 1, second = Year 2, etc.
+
       if (shouldReset) {
-        correctYearsKept = 1;
-        yearsWithCurrentOwner = 1;
-        console.log(`  ${keeper.season}: RESET to Year 1 (${resetReason})`);
-      } else {
-        // Continue from previous
-        yearsWithCurrentOwner++;
-        correctYearsKept = yearsWithCurrentOwner;
+        console.log(`  ${keeper.season}: Trade noted (${resetReason})`);
       }
 
-      // Calculate correct final cost
-      const costReduction = correctYearsKept - 1;
-      const correctFinalCost = Math.max(1, keeper.baseCost - costReduction);
+      // Calculate correct final cost based on TOTAL league keeper years
+      // Cost continues to reduce even through trades
+      const totalLeagueKeeperYears = keeperIndex; // 0 for first keeper, 1 for second, etc.
+      const correctFinalCost = Math.max(1, keeper.baseCost - totalLeagueKeeperYears);
 
       // Check if update needed
       if (keeper.yearsKept !== correctYearsKept || keeper.finalCost !== correctFinalCost) {

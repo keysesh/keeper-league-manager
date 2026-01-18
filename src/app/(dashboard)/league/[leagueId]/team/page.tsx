@@ -7,11 +7,10 @@ import useSWR from "swr";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import {
-  Medal,
   ChevronDown,
   ChevronRight,
-  TrendingUp,
-  TrendingDown,
+  Trophy,
+  Medal,
 } from "lucide-react";
 import {
   UsersIcon,
@@ -91,45 +90,6 @@ interface OwnerHistoryData {
   owners: OwnerHistory[];
 }
 
-// Get initials from team name
-function getInitials(name: string | null): string {
-  if (!name) return "??";
-  return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-}
-
-// Get rank styling based on position
-function getRankStyle(rank: number): { bg: string; text: string; glow: string; icon?: React.ReactNode } {
-  switch (rank) {
-    case 1:
-      return {
-        bg: "bg-gradient-to-br from-amber-400 to-amber-600",
-        text: "text-black",
-        glow: "shadow-lg shadow-amber-500/30",
-        icon: <CrownIcon size={14} />
-      };
-    case 2:
-      return {
-        bg: "bg-gradient-to-br from-zinc-300 to-zinc-400",
-        text: "text-black",
-        glow: "shadow-lg shadow-zinc-400/30",
-        icon: <Medal className="w-3.5 h-3.5" />
-      };
-    case 3:
-      return {
-        bg: "bg-gradient-to-br from-amber-600 to-amber-800",
-        text: "text-white",
-        glow: "shadow-lg shadow-amber-700/30",
-        icon: <Medal className="w-3.5 h-3.5" />
-      };
-    default:
-      return {
-        bg: "bg-zinc-800/80",
-        text: "text-zinc-400",
-        glow: ""
-      };
-  }
-}
-
 interface BracketTeam {
   id: string;
   teamName: string | null;
@@ -157,7 +117,26 @@ interface PlayoffData {
     placement?: number;
   }>;
   playoffTeams: number;
-  rosterIdMapping?: Record<number, string>; // Sleeper roster_id -> DB roster UUID
+  rosterIdMapping?: Record<number, string>;
+}
+
+// Get initials from team name
+function getInitials(name: string | null): string {
+  if (!name) return "??";
+  return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+// Playoff finish labels
+function getPlayoffLabel(placement: number): string {
+  switch (placement) {
+    case 1: return "Champion";
+    case 2: return "Runner-Up";
+    case 3: return "3rd Place";
+    case 4: return "4th Place";
+    case 5: return "5th Place";
+    case 6: return "6th Place";
+    default: return `${placement}th`;
+  }
 }
 
 export default function TeamsPage() {
@@ -170,13 +149,11 @@ export default function TeamsPage() {
     fetcher
   );
 
-  // Fetch historical owner data
   const { data: ownerHistory } = useSWR<OwnerHistoryData>(
     `/api/leagues/${leagueId}/owner-history`,
     fetcher
   );
 
-  // Always fetch playoffs to determine final standings
   const { data: playoffs } = useSWR<PlayoffData>(
     `/api/leagues/${leagueId}/playoffs`,
     fetcher
@@ -189,9 +166,9 @@ export default function TeamsPage() {
           <Skeleton className="h-4 w-24 mb-3" />
           <Skeleton className="h-10 w-48" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <Skeleton key={i} className="h-48 rounded-xl" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-40 rounded-xl" />
           ))}
         </div>
       </div>
@@ -211,101 +188,93 @@ export default function TeamsPage() {
   const playoffSpots = league.settings?.playoff_teams ?? Math.min(6, Math.floor(league.rosters.length / 2));
 
   // Build playoff placement map from bracket data
-  // Only use winners bracket for 1st-6th place
-  // Losers bracket is for toilet bowl/consolation and doesn't affect draft order
   const playoffPlacements = new Map<string, number>();
 
-  // Helper to resolve DB roster ID from bracket team
   const resolveRosterId = (team: BracketTeam | null): string | null => {
     if (!team) return null;
-    // If we have a sleeperRosterId and mapping, use that
     if (team.sleeperRosterId && playoffs?.rosterIdMapping) {
       const mappedId = playoffs.rosterIdMapping[team.sleeperRosterId];
       if (mappedId) return mappedId;
     }
-    // Otherwise use the id directly (might be a UUID or a string number)
     return team.id;
   };
 
   if (playoffs?.winnersBracket) {
-    // Sort matchups by round descending to process finals first
     const sortedMatchups = [...playoffs.winnersBracket].sort((a, b) => b.round - a.round);
 
     sortedMatchups.forEach(matchup => {
       const winnerId = resolveRosterId(matchup.winner);
       const loserId = resolveRosterId(matchup.loser);
 
-      // Championship game (placement 1)
       if (matchup.placement === 1) {
         if (winnerId && !playoffPlacements.has(winnerId)) {
-          playoffPlacements.set(winnerId, 1); // Champion
+          playoffPlacements.set(winnerId, 1);
         }
         if (loserId && !playoffPlacements.has(loserId)) {
-          playoffPlacements.set(loserId, 2); // Runner-up
+          playoffPlacements.set(loserId, 2);
         }
-      }
-      // 3rd place game (placement 2 in Sleeper means 3rd place game)
-      else if (matchup.placement === 2) {
+      } else if (matchup.placement === 2) {
         if (winnerId && !playoffPlacements.has(winnerId)) {
-          playoffPlacements.set(winnerId, 3); // 3rd place
+          playoffPlacements.set(winnerId, 3);
         }
         if (loserId && !playoffPlacements.has(loserId)) {
-          playoffPlacements.set(loserId, 4); // 4th place
+          playoffPlacements.set(loserId, 4);
         }
-      }
-      // 5th place game (placement 3 in Sleeper)
-      else if (matchup.placement === 3) {
+      } else if (matchup.placement === 3) {
         if (winnerId && !playoffPlacements.has(winnerId)) {
-          playoffPlacements.set(winnerId, 5); // 5th place
+          playoffPlacements.set(winnerId, 5);
         }
         if (loserId && !playoffPlacements.has(loserId)) {
-          playoffPlacements.set(loserId, 6); // 6th place
+          playoffPlacements.set(loserId, 6);
         }
       }
     });
   }
 
-  // Losers bracket handles 7th place and below (teams that didn't make playoffs)
-  // These are toilet bowl/consolation matchups - we skip them for draft order
-  // since non-playoff teams are ordered by regular season record
-
-  // Sort by regular season: wins (desc), then points for (desc)
+  // Sort by wins (desc), then points for (desc)
   const sortedRosters = [...league.rosters].sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
     return b.pointsFor - a.pointsFor;
   });
 
-  // Calculate draft order based on final standings
-  // Non-playoff teams pick first (worst record first), then playoff teams in reverse finish order
+  // Calculate draft pick: worst record picks FIRST (pick 1), champion picks LAST
   const calculateDraftPick = (rosterId: string): number | undefined => {
     const placement = playoffPlacements.get(rosterId);
     const totalTeams = league.rosters.length;
 
     if (placement !== undefined) {
-      // Playoff teams: Champion picks last, runner-up second to last, etc.
+      // Playoff teams pick based on finish: Champion = last pick, Runner-up = second to last
+      // placement 1 (champion) → pick totalTeams
+      // placement 2 (runner-up) → pick totalTeams - 1
       return totalTeams - placement + 1;
     }
 
-    // Non-playoff teams: Sort by record (worst first)
-    const nonPlayoffTeams = sortedRosters.filter(r => !playoffPlacements.has(r.id));
-    const nonPlayoffRank = nonPlayoffTeams.findIndex(r => r.id === rosterId);
-    if (nonPlayoffRank !== -1) {
-      // Reverse order: worst record picks first
-      return nonPlayoffTeams.length - nonPlayoffRank;
+    // Non-playoff teams: sorted by record (worst first gets pick 1)
+    const nonPlayoffTeams = sortedRosters
+      .filter(r => !playoffPlacements.has(r.id))
+      .sort((a, b) => {
+        // Sort worst to best (ascending by wins, then points)
+        if (a.wins !== b.wins) return a.wins - b.wins;
+        return a.pointsFor - b.pointsFor;
+      });
+
+    const pickIndex = nonPlayoffTeams.findIndex(r => r.id === rosterId);
+    if (pickIndex !== -1) {
+      // pickIndex 0 = worst record = pick 1
+      return pickIndex + 1;
     }
     return undefined;
   };
 
-  // Check if playoffs are complete
   const hasChampion = [...playoffPlacements.values()].includes(1);
 
-  // Find top scorer for accolade
+  // Find top scorer
   const topScorerId = sortedRosters.reduce((maxId, roster) =>
     roster.pointsFor > (sortedRosters.find(r => r.id === maxId)?.pointsFor || 0) ? roster.id : maxId
   , sortedRosters[0]?.id);
 
-  // Create a map from sleeper owner ID to historical data
-  const ownerHistoryMap = new Map<string | undefined, OwnerHistory>();
+  // Map roster ID to owner history
+  const ownerHistoryMap = new Map<string, OwnerHistory>();
   ownerHistory?.owners.forEach(owner => {
     if (owner.currentRosterId) {
       ownerHistoryMap.set(owner.currentRosterId, owner);
@@ -314,33 +283,32 @@ export default function TeamsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Premium Icon Gradient Definitions */}
       <IconGradientDefs />
 
       {/* Header */}
       <div>
         <BackLink href={`/league/${leagueId}`} label="Back to League" />
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 ring-1 ring-amber-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 ring-1 ring-violet-500/20 flex items-center justify-center">
             <UsersIcon size={20} />
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">League Standings</h1>
-            <p className="text-sm text-zinc-500">{league.name} • {league.season}</p>
+            <p className="text-sm text-zinc-400">{league.name} • {league.season} Season</p>
           </div>
         </div>
       </div>
 
-      {/* Compact Team Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {/* Team Cards Grid - responsive with larger cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {sortedRosters.map((roster, index) => {
           const rank = index + 1;
           const isPlayoff = rank <= playoffSpots;
-          const rankStyle = getRankStyle(rank);
           const history = ownerHistoryMap.get(roster.id);
-          const playoffPlacement = playoffPlacements.get(roster.id);
+          const placement = playoffPlacements.get(roster.id);
           const draftPick = hasChampion ? calculateDraftPick(roster.id) : undefined;
           const isTopScorer = roster.id === topScorerId;
+          const isChampion = placement === 1;
 
           return (
             <TeamCard
@@ -348,30 +316,30 @@ export default function TeamsPage() {
               roster={roster}
               rank={rank}
               isPlayoff={isPlayoff}
-              rankStyle={rankStyle}
               leagueId={leagueId}
               history={history}
-              playoffPlacement={playoffPlacement}
+              placement={placement}
               draftPick={draftPick}
               isTopScorer={isTopScorer}
+              isChampion={isChampion}
             />
           );
         })}
       </div>
 
       {/* Playoff Bracket Section */}
-      <div className="bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-white/[0.06] overflow-hidden">
+      <div className="card-glass rounded-xl overflow-hidden">
         <button
           onClick={() => setShowBracket(!showBracket)}
           className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
               <TrophyIcon size={16} />
             </div>
             <div className="text-left">
               <h3 className="text-sm font-semibold text-white">Playoff Bracket</h3>
-              <p className="text-xs text-zinc-500">{playoffSpots} teams • Championship</p>
+              <p className="text-xs text-zinc-400">{playoffSpots} teams • Championship</p>
             </div>
           </div>
           <ChevronDown
@@ -379,7 +347,7 @@ export default function TeamsPage() {
           />
         </button>
         {showBracket && (
-          <div className="border-t border-white/[0.04]">
+          <div className="border-t border-white/[0.06]">
             <div className="p-4">
               {playoffs ? (
                 <TournamentBracket
@@ -389,7 +357,7 @@ export default function TeamsPage() {
                 />
               ) : (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-amber-400 border-t-transparent"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-violet-400 border-t-transparent"></div>
                 </div>
               )}
             </div>
@@ -403,250 +371,179 @@ export default function TeamsPage() {
             <UsersIcon size={32} className="opacity-60" />
           </div>
           <p className="text-zinc-400 font-medium">No teams found</p>
-          <p className="text-sm text-zinc-600 mt-1">Teams will appear once the league syncs</p>
+          <p className="text-sm text-zinc-500 mt-1">Teams will appear once the league syncs</p>
         </div>
       )}
     </div>
   );
 }
 
-// Helper to get playoff finish label
-function getPlayoffLabel(placement: number): { label: string; short: string } {
-  switch (placement) {
-    case 1: return { label: "Champion", short: "1st" };
-    case 2: return { label: "Runner-Up", short: "2nd" };
-    case 3: return { label: "3rd Place", short: "3rd" };
-    case 4: return { label: "4th Place", short: "4th" };
-    case 5: return { label: "5th Place", short: "5th" };
-    case 6: return { label: "6th Place", short: "6th" };
-    default: return { label: `${placement}th Place`, short: `${placement}th` };
-  }
-}
-
-// Compact Team Card Component with Historical Data and Fun Badges
+// Clean, simplified Team Card Component
 function TeamCard({
   roster,
   rank,
   isPlayoff,
-  rankStyle,
   leagueId,
   history,
-  playoffPlacement,
+  placement,
   draftPick,
   isTopScorer,
-  winPct: passedWinPct,
+  isChampion,
 }: {
   roster: Roster;
   rank: number;
   isPlayoff: boolean;
-  rankStyle: { bg: string; text: string; glow: string; icon?: React.ReactNode };
   leagueId: string;
   history?: OwnerHistory;
-  playoffPlacement?: number;
+  placement?: number;
   draftPick?: number;
   isTopScorer?: boolean;
-  winPct?: number;
+  isChampion?: boolean;
 }) {
   const totalGames = roster.wins + roster.losses + roster.ties;
-  const winPct = passedWinPct ?? (totalGames > 0 ? roster.wins / totalGames : 0);
-
-  // Calculate trend
-  const lastSeasonRecord = history?.seasons[1];
-  const currentSeasonRecord = history?.seasons[0];
-  let trend: "up" | "down" | "same" = "same";
-  if (lastSeasonRecord && currentSeasonRecord) {
-    const lastWinPct = lastSeasonRecord.wins / (lastSeasonRecord.wins + lastSeasonRecord.losses) || 0;
-    const currWinPct = currentSeasonRecord.wins / (currentSeasonRecord.wins + currentSeasonRecord.losses) || 0;
-    if (currWinPct > lastWinPct + 0.05) trend = "up";
-    else if (currWinPct < lastWinPct - 0.05) trend = "down";
-  }
-
-  const isChampion = playoffPlacement === 1;
-  const isRunnerUp = playoffPlacement === 2;
-  const isTopFinisher = playoffPlacement !== undefined && playoffPlacement <= 3;
-
-  // Fun accolades
-  const accolades: string[] = [];
-  if (isTopScorer) accolades.push("Scoring Leader");
-  if (winPct >= 0.75 && totalGames >= 5) accolades.push("Dominant");
-  if (history?.totals.championships && history.totals.championships >= 2) accolades.push("Dynasty");
-  if (history?.totals.playoffAppearances === history?.totals.seasonsPlayed &&
-      history?.totals.seasonsPlayed && history.totals.seasonsPlayed >= 2) accolades.push("Perennial Contender");
-  if (winPct <= 0.3 && totalGames >= 5) accolades.push("Rebuilding");
+  const winPct = totalGames > 0 ? roster.wins / totalGames : 0;
 
   return (
     <Link
       href={`/league/${leagueId}/team/${roster.id}`}
       className={`
-        group relative rounded-xl p-3 transition-all duration-200
-        bg-zinc-900/60 backdrop-blur-sm overflow-visible
-        ${isChampion ? "ring-2 ring-amber-500/50 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent" : ""}
-        ${isRunnerUp ? "ring-1 ring-zinc-400/40" : ""}
-        border ${isPlayoff ? "border-emerald-500/20" : "border-white/[0.04]"}
-        hover:border-amber-500/30 hover:bg-zinc-900/80
-        hover:shadow-lg hover:shadow-amber-500/5
+        group relative rounded-xl p-4 transition-all duration-200
+        card-glass overflow-hidden
+        ${isChampion ? "ring-2 ring-violet-500/50" : ""}
+        hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/10
       `}
     >
-      {/* Rank Badge - Top Left */}
-      <div className={`
-        absolute -top-2.5 -left-2.5 w-8 h-8 rounded-xl flex items-center justify-center
-        text-sm font-bold ${rankStyle.bg} ${rankStyle.text} ${rankStyle.glow}
-      `}>
-        {rankStyle.icon || rank}
-      </div>
-
-      {/* Draft Pick Badge - Top Right (Big & Prominent) */}
-      {draftPick !== undefined && (
-        <div className={`
-          absolute -top-3 -right-3 w-12 h-12 rounded-xl flex flex-col items-center justify-center shadow-lg
-          ${draftPick <= 3 ? "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/40" : ""}
-          ${draftPick >= 10 ? "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/40" : ""}
-          ${draftPick > 3 && draftPick < 10 ? "bg-gradient-to-br from-zinc-500 to-zinc-600 shadow-zinc-500/30" : ""}
-        `}>
-          <span className="text-[8px] font-semibold text-white/80 uppercase">Pick</span>
-          <span className="text-xl font-black text-white leading-none">{draftPick}</span>
-        </div>
-      )}
-
-      {/* Champion Banner - Centered Top */}
+      {/* Champion Banner */}
       {isChampion && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 shadow-lg shadow-amber-500/40">
-          <div className="flex items-center gap-1.5">
-            <CrownIcon size={16} />
-            <span className="text-xs font-black text-amber-900 uppercase tracking-wide">Champion</span>
-            <CrownIcon size={16} />
-          </div>
-        </div>
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-violet-400 to-violet-500" />
       )}
 
-      {/* Runner-Up Banner */}
-      {isRunnerUp && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-zinc-300 to-zinc-400 shadow-lg">
-          <span className="text-[10px] font-bold text-zinc-800 uppercase tracking-wide">Runner-Up</span>
-        </div>
-      )}
-
-      {/* 3rd-6th Place Badge */}
-      {playoffPlacement && playoffPlacement >= 3 && playoffPlacement <= 6 && (
-        <div className="absolute -top-2 left-10 px-2 py-0.5 rounded-full bg-zinc-700/90 shadow">
-          <span className="text-[9px] font-bold text-zinc-200">{getPlayoffLabel(playoffPlacement).label}</span>
-        </div>
-      )}
-
-      {/* Team Info */}
-      <div className={`${isChampion ? "pt-5" : isRunnerUp || isTopFinisher ? "pt-3" : "pt-3"}`}>
-        {/* Avatar + Name Row */}
-        <div className="flex items-center gap-2.5 mb-3">
-          {history?.avatar ? (
-            <img
-              src={history.avatar}
-              alt=""
-              className={`w-11 h-11 rounded-xl ring-2 ${isChampion ? "ring-amber-500/60" : "ring-white/10"}`}
-            />
-          ) : (
-            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500/40 to-amber-600/30 flex items-center justify-center text-white text-sm font-bold ring-2 ${isChampion ? "ring-amber-500/60" : "ring-white/10"}`}>
-              {getInitials(roster.teamName)}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate group-hover:text-amber-200 transition-colors">
-              {roster.teamName || "Unnamed Team"}
-            </p>
-            <p className="text-[11px] text-zinc-400 truncate">
-              {history?.displayName || roster.owners?.[0]?.displayName || "Unknown"}
-            </p>
-          </div>
-        </div>
-
-        {/* Accolades */}
-        {accolades.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {accolades.slice(0, 2).map(accolade => (
-              <span key={accolade} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/20">
-                {accolade}
-              </span>
-            ))}
+      {/* Top Row: Avatar + Name + Badges */}
+      <div className="flex items-start gap-3 mb-3">
+        {/* Avatar */}
+        {history?.avatar ? (
+          <img
+            src={history.avatar}
+            alt=""
+            className="w-12 h-12 rounded-xl ring-2 ring-white/10 flex-shrink-0"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/40 to-violet-600/30 flex items-center justify-center text-white text-sm font-bold ring-2 ring-white/10 flex-shrink-0">
+            {getInitials(roster.teamName)}
           </div>
         )}
 
-        {/* Current Season Stats - Bigger */}
-        <div className="flex items-center justify-between mb-3 px-2 py-2 rounded-lg bg-black/20">
-          <div className="flex items-center gap-2">
-            <span className={`text-2xl font-black ${winPct >= 0.5 ? "text-emerald-400" : winPct < 0.4 ? "text-red-400" : "text-white"}`}>
-              {roster.wins}-{roster.losses}
-            </span>
-            {trend !== "same" && (
-              trend === "up" ? (
-                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20">
-                  <TrendingUp className="w-3 h-3 text-emerald-400" />
-                  <span className="text-[9px] font-bold text-emerald-400">UP</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-red-500/20">
-                  <TrendingDown className="w-3 h-3 text-red-400" />
-                  <span className="text-[9px] font-bold text-red-400">DOWN</span>
-                </div>
-              )
-            )}
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-zinc-200">{roster.pointsFor.toFixed(0)}</div>
-            <div className="text-[9px] text-zinc-500 uppercase tracking-wide">Points</div>
-          </div>
+        {/* Name + Owner */}
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-bold text-white truncate group-hover:text-violet-200 transition-colors">
+            {roster.teamName || "Unnamed Team"}
+          </p>
+          <p className="text-sm text-zinc-400 truncate">
+            {history?.displayName || roster.owners?.[0]?.displayName || "Unknown"}
+          </p>
         </div>
 
-        {/* Historical Records */}
-        {history && history.seasons.length > 1 && (
-          <div className="border-t border-white/[0.06] pt-2">
-            <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-2">
-              <span className="font-semibold">All-Time</span>
-              <span className="font-bold text-white">
-                {history.totals.wins}-{history.totals.losses}
-                <span className="text-zinc-500 font-normal ml-1">
-                  ({((history.totals.wins / (history.totals.wins + history.totals.losses)) * 100).toFixed(0)}%)
-                </span>
-              </span>
-            </div>
-            <div className="flex gap-1">
-              {history.seasons.slice(0, 3).map((season, i) => (
-                <div
-                  key={season.season}
-                  className={`
-                    flex-1 text-center py-1.5 rounded-lg
-                    ${i === 0 ? "bg-amber-500/20 ring-1 ring-amber-500/30" : "bg-zinc-800/60"}
-                  `}
-                >
-                  <div className={`text-sm font-bold ${i === 0 ? "text-amber-300" : "text-zinc-400"}`}>
-                    {season.wins}-{season.losses}
-                  </div>
-                  <div className="text-[9px] text-zinc-500">&apos;{season.season.slice(-2)}</div>
-                </div>
-              ))}
-            </div>
+        {/* Rank Badge */}
+        <div className={`
+          w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0
+          ${rank === 1 ? "bg-gradient-to-br from-violet-400 to-violet-600 text-white" : ""}
+          ${rank === 2 ? "bg-gradient-to-br from-zinc-300 to-zinc-400 text-black" : ""}
+          ${rank === 3 ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white" : ""}
+          ${rank > 3 ? "bg-zinc-800 text-zinc-400" : ""}
+        `}>
+          {rank <= 3 ? (rank === 1 ? <CrownIcon size={16} /> : <Medal className="w-4 h-4" />) : rank}
+        </div>
+      </div>
 
-            {/* Past Championships */}
-            {history.totals.championships > 0 && (
-              <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <CrownIcon size={16} />
-                <span className="text-[11px] text-amber-300 font-bold">
-                  {history.totals.championships}x League Champion
-                </span>
-              </div>
-            )}
-          </div>
+      {/* Status Badges Row */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {/* Playoff Finish Badge - only show for completed playoffs */}
+        {placement && (
+          <span className={`
+            inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold
+            ${placement === 1 ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/30" : ""}
+            ${placement === 2 ? "bg-zinc-500/20 text-zinc-300 ring-1 ring-zinc-500/30" : ""}
+            ${placement >= 3 ? "bg-zinc-700/50 text-zinc-400" : ""}
+          `}>
+            {placement === 1 && <Trophy className="w-3 h-3" />}
+            {getPlayoffLabel(placement)}
+          </span>
         )}
 
-        {/* Keepers Badge */}
-        {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
-          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.06]">
-            <StarIcon size={16} />
-            <span className="text-[11px] text-amber-300 font-semibold">{roster.keeperCount} Keepers Locked</span>
-          </div>
+        {/* Draft Pick Badge */}
+        {draftPick !== undefined && (
+          <span className={`
+            inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold
+            ${draftPick <= 3 ? "bg-emerald-500/20 text-emerald-300" : ""}
+            ${draftPick > 3 && draftPick < 8 ? "bg-zinc-600/30 text-zinc-300" : ""}
+            ${draftPick >= 8 ? "bg-red-500/20 text-red-300" : ""}
+          `}>
+            Pick #{draftPick}
+          </span>
+        )}
+
+        {/* Top Scorer */}
+        {isTopScorer && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-amber-500/20 text-amber-300">
+            Top Scorer
+          </span>
+        )}
+
+        {/* Playoff Bound */}
+        {isPlayoff && !placement && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400">
+            Playoff Bound
+          </span>
         )}
       </div>
+
+      {/* Stats Row */}
+      <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-black/20">
+        <div>
+          <span className={`text-2xl font-black ${winPct >= 0.5 ? "text-emerald-400" : winPct < 0.4 ? "text-red-400" : "text-white"}`}>
+            {roster.wins}-{roster.losses}
+          </span>
+          {roster.ties > 0 && <span className="text-lg text-zinc-400">-{roster.ties}</span>}
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-zinc-200">{roster.pointsFor.toFixed(0)}</div>
+          <div className="text-xs text-zinc-500">Points</div>
+        </div>
+      </div>
+
+      {/* Historical Summary (compact) */}
+      {history && history.totals.seasonsPlayed > 1 && (
+        <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-sm">
+          <span className="text-zinc-400">All-Time</span>
+          <span className="font-semibold text-white">
+            {history.totals.wins}-{history.totals.losses}
+            <span className="text-zinc-500 ml-1">
+              ({((history.totals.wins / (history.totals.wins + history.totals.losses)) * 100).toFixed(0)}%)
+            </span>
+          </span>
+        </div>
+      )}
+
+      {/* Championships */}
+      {history && history.totals.championships > 0 && (
+        <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/20">
+          <CrownIcon size={14} />
+          <span className="text-xs text-violet-300 font-semibold">
+            {history.totals.championships}x Champion
+          </span>
+        </div>
+      )}
+
+      {/* Keepers Badge */}
+      {roster.keeperCount !== undefined && roster.keeperCount > 0 && (
+        <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-white/[0.06]">
+          <StarIcon size={14} />
+          <span className="text-xs text-violet-300 font-semibold">{roster.keeperCount} Keepers Locked</span>
+        </div>
+      )}
 
       {/* Hover Arrow */}
-      <ChevronRight className="absolute bottom-3 right-2 w-5 h-5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+      <ChevronRight className="absolute bottom-4 right-3 w-5 h-5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
     </Link>
   );
 }

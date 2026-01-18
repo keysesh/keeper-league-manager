@@ -47,9 +47,13 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#0F0B1A]">
       <Header user={session.user} />
-      <div className="flex">
+      <div className="flex min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]">
         <Sidebar isAdmin={isAdmin} />
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 w-full min-w-0 overflow-x-hidden">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-[100vw] lg:max-w-none">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );

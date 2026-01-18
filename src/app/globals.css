@@ -261,6 +261,39 @@ body::after {
   }
 }
 
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @keyframes purple-shimmer {
   0% {
     background-position: -200% center;
@@ -288,6 +321,9 @@ body::after {
 .animate-pulse-subtle { animation: pulse-subtle 2s ease-in-out infinite; }
 .animate-glow { animation: glow-pulse 3s ease-in-out infinite; }
 .animate-border-flow { animation: border-flow 4s ease-in-out infinite; }
+.animate-slide-in-left { animation: slide-in-left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.animate-slide-in-right { animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.animate-slide-in-bottom { animation: slide-in-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 
 .animate-shimmer {
   background: linear-gradient(
@@ -889,6 +925,7 @@ body::after {
 
 /* ============================================
    MOBILE-FIRST RESPONSIVE UTILITIES
+   Premium mobile experience with touch optimization
    ============================================ */
 
 .hide-scrollbar {
@@ -899,13 +936,25 @@ body::after {
   display: none;
 }
 
+/* Touch-optimized targets (Apple HIG: 44px) */
 .tap-target {
   min-height: 44px;
   min-width: 44px;
 }
 
+.tap-target-sm {
+  min-height: 36px;
+  min-width: 36px;
+}
+
+/* Smooth momentum scrolling */
 .scroll-snap-x {
   scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-snap-y {
+  scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -913,6 +962,40 @@ body::after {
   scroll-snap-align: start;
 }
 
+.scroll-snap-center {
+  scroll-snap-align: center;
+}
+
+/* Container utilities for consistent spacing */
+.container-mobile {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.container-responsive {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Safe area support for notched devices */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .safe-bottom {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
@@ -920,8 +1003,15 @@ body::after {
   .safe-top {
     padding-top: max(0.5rem, env(safe-area-inset-top));
   }
+  .safe-left {
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+  }
+  .safe-right {
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
 }
 
+/* Mobile-first responsive classes */
 @media (max-width: 640px) {
   .text-mobile-sm {
     font-size: 0.75rem;
@@ -950,6 +1040,44 @@ body::after {
   .mobile-hide {
     display: none;
   }
+
+  /* Improved mobile card styling */
+  .card-premium {
+    border-radius: 1rem;
+  }
+
+  /* Reduce visual noise on mobile */
+  .card-premium::after {
+    display: none;
+  }
+
+  /* Better touch spacing for mobile forms */
+  .mobile-form-spacing > * + * {
+    margin-top: 1rem;
+  }
+}
+
+/* Desktop-only utilities */
+@media (min-width: 1024px) {
+  .desktop-only {
+    display: block;
+  }
+
+  .desktop-flex {
+    display: flex;
+  }
+
+  .desktop-grid {
+    display: grid;
+  }
+}
+
+@media (max-width: 1023px) {
+  .desktop-only,
+  .desktop-flex,
+  .desktop-grid {
+    display: none !important;
+  }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {
@@ -959,6 +1087,7 @@ body::after {
   }
 }
 
+/* Touch device optimizations - disable hover lifts on touch */
 @media (hover: none) {
   .hover-lift:hover {
     transform: none;
@@ -975,6 +1104,49 @@ body::after {
 
   .card-premium:hover {
     transform: none;
+  }
+
+  /* Add active state for touch feedback */
+  .hover-lift:active,
+  .card-premium:active {
+    transform: scale(0.98);
+  }
+
+  .premium-player-card:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Active states for touch feedback */
+.touch-feedback {
+  transition: transform 0.1s ease-out;
+}
+
+.touch-feedback:active {
+  transform: scale(0.96);
+}
+
+/* Mobile navigation spacing */
+.mobile-nav-item {
+  padding: 0.875rem 1rem;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+/* Responsive section headers */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 640px) {
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
 

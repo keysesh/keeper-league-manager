@@ -197,16 +197,39 @@ export async function calculateKeeperEligibility(
 // ============================================
 
 /**
+ * Get the total number of times a player has been kept in the league
+ * This is used for cost calculation - cost reduces based on TOTAL keeper years
+ * regardless of which owner kept them
+ */
+async function getTotalKeeperYears(
+  playerId: string,
+  targetSeason: number
+): Promise<number> {
+  // Count all keeper records for this player BEFORE the target season
+  const keeperCount = await prisma.keeper.count({
+    where: {
+      playerId,
+      season: { lt: targetSeason },
+    },
+  });
+  return keeperCount;
+}
+
+/**
  * FIXED: Calculate the base keeper cost for a player
  *
  * Rules:
  * - Drafted players: Draft Round (Year 1 = draft round)
  * - Undrafted/Waiver/FA: Round 8 (configurable)
  * - Traded players: Inherit original cost from previous owner
- * - Cost IMPROVES by 1 round for each consecutive year kept AFTER the first year
+ * - Cost IMPROVES by 1 round for each year the player has been kept IN THE LEAGUE
+ *   (regardless of owner - cost continues even through trades)
  *   Year 1: Draft round
  *   Year 2: Draft round - 1
  *   Year 3: Draft round - 2
+ *
+ * IMPORTANT: Cost reduction is based on TOTAL league keeper history, not per-owner.
+ * Offseason trades reset YEARS KEPT (for eligibility), but NOT the cost reduction.
  */
 export async function calculateBaseCost(
   playerId: string,
@@ -242,13 +265,11 @@ export async function calculateBaseCost(
       baseCost = undraftedRound;
   }
 
-  // FIXED: Get years on roster (not keeper records) and apply cost improvement
-  // Cost IMPROVES (lower round = better) by 1 for each year on roster AFTER the first
-  // Year 1 (yearsOnRoster=0): baseCost
-  // Year 2 (yearsOnRoster=1): baseCost - 1
-  // Year 3 (yearsOnRoster=2): baseCost - 2
-  const yearsOnRoster = await getYearsOnRoster(playerId, rosterId, targetSeason);
-  const effectiveCost = Math.max(minRound, baseCost - yearsOnRoster);
+  // FIXED: Cost reduces based on TOTAL keeper years in the league
+  // Not per-owner - cost continues to reduce even through offseason trades
+  // This ensures the round never "resets" - only years kept for eligibility resets
+  const totalKeeperYears = await getTotalKeeperYears(playerId, targetSeason);
+  const effectiveCost = Math.max(minRound, baseCost - totalKeeperYears);
 
   return effectiveCost;
 }
