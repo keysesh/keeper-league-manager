@@ -63,6 +63,19 @@ interface ApiPowerRanking {
     ties: number;
     pointsFor: number;
   };
+  historicalRecord?: {
+    totalWins: number;
+    totalLosses: number;
+    totalPointsFor: number;
+    winPct: number;
+    seasonsPlayed: number;
+    seasonBreakdown: Array<{
+      season: number;
+      wins: number;
+      losses: number;
+      pointsFor: number;
+    }>;
+  };
   positionalStrength: Array<{
     position: string;
     score: number;
@@ -380,9 +393,17 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                         </div>
                       )}
 
-                      {/* Breakdown - show record only in condensed */}
+                      {/* Breakdown - show historical record */}
                       <div className={`flex items-center gap-4 ${condensed ? "mt-1" : "mt-2"} text-sm text-gray-500`}>
-                        <span className="font-medium">{team.record.wins}-{team.record.losses}</span>
+                        <span className="font-medium" title={team.historicalRecord ? `${team.historicalRecord.seasonsPlayed} seasons` : undefined}>
+                          {team.historicalRecord
+                            ? `${team.historicalRecord.totalWins}-${team.historicalRecord.totalLosses}`
+                            : `${team.record.wins}-${team.record.losses}`
+                          }
+                        </span>
+                        {team.historicalRecord && !condensed && (
+                          <span className="text-xs">{team.historicalRecord.winPct}% win</span>
+                        )}
                         {!condensed && <span>★ {team.starPower.toFixed(1)} PPG</span>}
                         {!condensed && <span>Depth: {team.depth.toFixed(1)}</span>}
                       </div>
