@@ -258,12 +258,12 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           </div>
         </div>
 
-        {/* Card Grid Layout */}
+        {/* Card Grid Layout - More horizontal cards */}
         <div className={cn(
           "p-4 grid gap-4",
           condensed
-            ? "grid-cols-2 lg:grid-cols-4"
-            : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            ? "grid-cols-1 sm:grid-cols-2"
+            : "grid-cols-1 lg:grid-cols-2"
         )}>
           {displayRankings.map((team) => {
             const isUser = team.rosterId === userRosterId;
@@ -279,131 +279,113 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                   isUser ? "border-blue-500/30 ring-1 ring-blue-500/20" : "border-white/[0.08]"
                 )}
               >
-                {/* Header: Avatar, Grade, Rank */}
-                <div className="p-4 pb-3 border-b border-white/[0.06]">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                {/* Horizontal Card Layout */}
+                <div className="flex">
+                  {/* Left: Rank + Avatar + Team Info */}
+                  <div className="flex-1 p-4">
+                    <div className="flex items-start gap-3">
+                      {/* Rank Badge */}
+                      <div className={cn(
+                        "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0",
+                        team.rank === 1 && "bg-amber-500 text-black",
+                        team.rank === 2 && "bg-slate-400 text-black",
+                        team.rank === 3 && "bg-orange-600 text-white",
+                        team.rank > 3 && "bg-white/[0.08] text-slate-400"
+                      )}>
+                        {team.rank === 1 ? <Crown className="w-4 h-4" /> : `#${team.rank}`}
+                      </div>
+
                       {/* Avatar */}
-                      <div className="relative">
+                      <div className="relative flex-shrink-0">
                         {avatarUrl ? (
                           <Image
                             src={avatarUrl}
                             alt={team.owners[0] || "Owner"}
-                            width={44}
-                            height={44}
+                            width={40}
+                            height={40}
                             className="rounded-lg object-cover"
                             unoptimized
                           />
                         ) : (
-                          <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-slate-400 font-bold text-sm">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-slate-400 font-bold text-sm">
                             {(team.owners[0] || "?")[0].toUpperCase()}
                           </div>
                         )}
-                        {team.rank <= 3 && (
-                          <div className={cn(
-                            "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
-                            team.rank === 1 && "bg-amber-500 text-black",
-                            team.rank === 2 && "bg-slate-400 text-black",
-                            team.rank === 3 && "bg-orange-600 text-white"
+                      </div>
+
+                      {/* Team Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className={cn(
+                            "text-sm font-semibold truncate",
+                            isUser ? "text-blue-400" : "text-white"
                           )}>
-                            {team.rank === 1 ? <Crown className="w-3 h-3" /> : team.rank}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
+                            {team.teamName}
+                          </h4>
+                          {isUser && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold uppercase flex-shrink-0">
+                              You
+                            </span>
+                          )}
+                          {team.trajectory === "rising" && (
+                            <TrendingUp className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                          )}
+                          {team.trajectory === "falling" && (
+                            <TrendingDown className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500 truncate">{team.owners[0] || "Unknown"}</p>
-                        {isUser && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold uppercase">
-                            You
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
+                          <span className="font-medium">
+                            {team.historicalRecord
+                              ? `${team.historicalRecord.totalWins}-${team.historicalRecord.totalLosses}`
+                              : `${team.record.wins}-${team.record.losses}`}
                           </span>
-                        )}
+                          <span>{team.historicalRecord?.winPct || Math.round((team.record.wins / Math.max(team.record.wins + team.record.losses, 1)) * 100)}% win</span>
+                          {team.topScorer && (
+                            <>
+                              <span className="text-slate-600">•</span>
+                              <span className="text-amber-400/80 truncate">
+                                <Star className="w-3 h-3 inline mr-0.5" />
+                                {team.topScorer.playerName.split(' ').pop()} {team.topScorer.ppg}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Grade Badge */}
-                    <div className="flex flex-col items-center">
-                      <div className={cn(
-                        "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-lg text-white bg-gradient-to-br shadow-lg",
-                        gradeGradient
-                      )}>
-                        {team.grade}
+                    {/* Stats Breakdown - Only show in full mode */}
+                    {!condensed && (
+                      <div className="mt-4 grid grid-cols-5 gap-2">
+                        <StatChip label="ROS" value={rosterScore} />
+                        <StatChip label="STR" value={Math.round(team.starPower * 5)} />
+                        <StatChip label="DEP" value={Math.round(team.depth * 10)} />
+                        <StatChip label="KPR" value={Math.min(100, Math.round(team.keeperValue * 5))} />
+                        <StatChip label="PCK" value={Math.min(100, team.draftCapital)} />
                       </div>
-                      <span className="text-[10px] text-slate-500 mt-1">#{team.rank}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Team Info */}
-                <div className="px-4 py-3 border-b border-white/[0.06]">
-                  <h4 className={cn(
-                    "text-sm font-semibold truncate",
-                    isUser ? "text-blue-400" : "text-white"
-                  )}>
-                    {team.teamName}
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
-                    <span className="font-medium">
-                      {team.historicalRecord
-                        ? `${team.historicalRecord.totalWins}-${team.historicalRecord.totalLosses}`
-                        : `${team.record.wins}-${team.record.losses}`}
-                    </span>
-                    <span>•</span>
-                    <span>{team.historicalRecord?.winPct || Math.round((team.record.wins / Math.max(team.record.wins + team.record.losses, 1)) * 100)}% win</span>
-                    {team.trajectory !== "stable" && (
-                      <>
-                        {team.trajectory === "rising" ? (
-                          <TrendingUp className="w-3 h-3 text-emerald-400 ml-auto" />
-                        ) : (
-                          <TrendingDown className="w-3 h-3 text-red-400 ml-auto" />
-                        )}
-                      </>
                     )}
                   </div>
-                </div>
 
-                {/* Stats Breakdown - Only show in full mode */}
-                {!condensed && (
-                  <div className="px-4 py-3 space-y-2 border-b border-white/[0.06]">
-                    <StatBar label="Roster Strength" value={rosterScore} />
-                    <StatBar label="Star Power" value={Math.round(team.starPower * 5)} />
-                    <StatBar label="Depth" value={Math.round(team.depth * 10)} />
-                    <StatBar label="Keeper Value" value={Math.min(100, Math.round(team.keeperValue * 5))} />
-                    <StatBar label="Draft Capital" value={Math.min(100, team.draftCapital)} />
-                  </div>
-                )}
-
-                {/* Luck & Top Scorer */}
-                <div className="px-4 py-3 space-y-2">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Clover className={cn(
-                      "w-3.5 h-3.5",
-                      team.luckRating === "lucky" ? "text-emerald-400" :
-                      team.luckRating === "unlucky" ? "text-red-400" : "text-slate-400"
-                    )} />
-                    <span className="text-slate-400">Luck:</span>
-                    <span className={cn(
-                      "font-medium",
-                      team.luckRating === "lucky" ? "text-emerald-400" :
-                      team.luckRating === "unlucky" ? "text-red-400" : "text-slate-400"
+                  {/* Right: Grade + Luck */}
+                  <div className="flex flex-col items-center justify-center px-4 py-3 border-l border-white/[0.06] bg-white/[0.02] min-w-[80px]">
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg text-white bg-gradient-to-br shadow-lg",
+                      gradeGradient
                     )}>
-                      {team.luckFactor > 0 ? "+" : ""}{team.luckFactor}
-                    </span>
-                    <span className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded capitalize",
+                      {team.grade}
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1">{team.overallScore} pts</span>
+                    <div className={cn(
+                      "mt-2 text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1",
                       team.luckRating === "lucky" ? "bg-emerald-500/15 text-emerald-400" :
                       team.luckRating === "unlucky" ? "bg-red-500/15 text-red-400" :
                       "bg-slate-500/15 text-slate-400"
                     )}>
-                      {team.luckRating}
-                    </span>
-                  </div>
-                  {team.topScorer && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <Star className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="text-slate-400 truncate flex-1">{team.topScorer.playerName}</span>
-                      <span className="text-amber-400 font-medium">{team.topScorer.ppg} PPG</span>
+                      <Clover className="w-3 h-3" />
+                      {team.luckFactor > 0 ? "+" : ""}{team.luckFactor}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             );
@@ -496,26 +478,17 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
   );
 }
 
-// Stat Bar Component for visual breakdown
-function StatBar({ label, value }: { label: string; value: number }) {
+// Stat Chip Component for horizontal layout
+function StatChip({ label, value }: { label: string; value: number }) {
   const clampedValue = Math.min(100, Math.max(0, value));
+  const colorClass = clampedValue >= 80 ? "text-emerald-400" :
+    clampedValue >= 60 ? "text-blue-400" :
+    clampedValue >= 40 ? "text-slate-400" : "text-orange-400";
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[11px] text-slate-500 w-24 truncate">{label}</span>
-      <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-500",
-            clampedValue >= 80 ? "bg-emerald-500" :
-            clampedValue >= 60 ? "bg-blue-500" :
-            clampedValue >= 40 ? "bg-slate-500" :
-            "bg-orange-500"
-          )}
-          style={{ width: `${clampedValue}%` }}
-        />
-      </div>
-      <span className="text-[11px] text-slate-400 font-medium w-6 text-right">{Math.round(clampedValue)}</span>
+    <div className="text-center">
+      <div className={cn("text-sm font-bold", colorClass)}>{Math.round(clampedValue)}</div>
+      <div className="text-[10px] text-slate-500">{label}</div>
     </div>
   );
 }

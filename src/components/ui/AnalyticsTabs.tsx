@@ -1,109 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { Zap, Sparkles, Trophy } from "lucide-react";
-import { cn } from "@/lib/design-tokens";
-import { PowerRankings } from "./PowerRankings";
-import { LuckFactor } from "./LuckFactor";
+import { Trophy } from "lucide-react";
 import { TopScorers } from "./TopScorers";
-
-type TabId = "power-rankings" | "luck-factor" | "top-scorers";
-
-interface Tab {
-  id: TabId;
-  label: string;
-  icon: React.ReactNode;
-}
-
-const tabs: Tab[] = [
-  { id: "power-rankings", label: "Power Rankings", icon: <Zap className="w-4 h-4" /> },
-  { id: "luck-factor", label: "Luck Factor", icon: <Sparkles className="w-4 h-4" /> },
-  { id: "top-scorers", label: "Top Scorers", icon: <Trophy className="w-4 h-4" /> },
-];
 
 interface AnalyticsTabsProps {
   leagueId: string;
   userRosterId?: string;
 }
 
+/**
+ * Analytics section - now simplified to just Top Scorers
+ * (Power Rankings shown above, Luck Factor integrated into rankings cards)
+ */
 export function AnalyticsTabs({ leagueId, userRosterId }: AnalyticsTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("power-rankings");
-
   return (
     <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-      {/* Tab Navigation */}
-      <div className="flex border-b border-white/[0.06]">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-3 px-4 text-sm font-medium transition-all",
-              activeTab === tab.id
-                ? "bg-white/[0.05] text-white border-b-2 border-blue-500"
-                : "text-slate-400 hover:text-white hover:bg-white/[0.02]"
-            )}
-          >
-            <span className={cn(
-              activeTab === tab.id ? "text-blue-400" : "text-slate-500"
-            )}>
-              {tab.icon}
-            </span>
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+      {/* Header */}
+      <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/25 to-orange-500/15 border border-amber-400/30 shadow-lg shadow-amber-500/10 flex items-center justify-center">
+            <Trophy className="w-5 h-5 text-amber-400" strokeWidth={2} />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-white">Top Scorers</h3>
+            <p className="text-sm text-slate-500">Best performers this season</p>
+          </div>
+        </div>
       </div>
 
-      {/* Tab Content */}
-      <div className="transition-all duration-200">
-        {activeTab === "power-rankings" && (
-          <div id="power-rankings" className="scroll-mt-20">
-            <PowerRankingsInline leagueId={leagueId} userRosterId={userRosterId} />
-          </div>
-        )}
-        {activeTab === "luck-factor" && (
-          <div id="luck" className="scroll-mt-20">
-            <LuckFactorInline leagueId={leagueId} userRosterId={userRosterId} />
-          </div>
-        )}
-        {activeTab === "top-scorers" && (
-          <TopScorersInline />
-        )}
+      {/* Content */}
+      <div className="[&>div]:border-0 [&>div]:rounded-none [&>div>div:first-child]:hidden">
+        <TopScorers condensed={true} />
       </div>
-    </div>
-  );
-}
-
-// Inline versions that don't render their own outer container
-function PowerRankingsInline({ leagueId, userRosterId }: { leagueId: string; userRosterId?: string }) {
-  return (
-    <div className="[&>div]:border-0 [&>div]:rounded-none [&>div>div:first-child]:hidden">
-      <PowerRankings
-        leagueId={leagueId}
-        userRosterId={userRosterId}
-        useApi={true}
-        condensed={true}
-      />
-    </div>
-  );
-}
-
-function LuckFactorInline({ leagueId, userRosterId }: { leagueId: string; userRosterId?: string }) {
-  return (
-    <div className="[&>div]:border-0 [&>div]:rounded-none [&>div>div:first-child]:hidden">
-      <LuckFactor
-        leagueId={leagueId}
-        userRosterId={userRosterId}
-        condensed={true}
-      />
-    </div>
-  );
-}
-
-function TopScorersInline() {
-  return (
-    <div className="[&>div]:border-0 [&>div]:rounded-none [&>div>div:first-child]:hidden">
-      <TopScorers condensed={true} />
     </div>
   );
 }
