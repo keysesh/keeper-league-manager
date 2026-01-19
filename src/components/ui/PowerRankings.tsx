@@ -7,7 +7,7 @@ import Image from "next/image";
 import { TrendingUp, TrendingDown, Crown, Zap, ChevronRight } from "lucide-react";
 import { LEAGUE_CONFIG, getAgeValueModifier, getDraftPickValue } from "@/lib/constants/league-config";
 import { InfoModal } from "./InfoModal";
-import { cn, getGradeGradient } from "@/lib/design-tokens";
+import { cn } from "@/lib/design-tokens";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -205,7 +205,6 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           {displayRankings.map((team) => {
             const isUser = team.rosterId === userRosterId;
             const avatarUrl = getAvatarUrl(team.ownerAvatar);
-            const gradeGradient = getGradeGradient(team.grade);
             const winPct = team.historicalRecord?.winPct ||
               Math.round((team.record.wins / Math.max(team.record.wins + team.record.losses, 1)) * 100);
 
@@ -228,8 +227,8 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                   {team.rank === 1 ? <Crown className="w-3.5 h-3.5" /> : team.rank}
                 </div>
 
-                {/* Avatar + Grade */}
-                <div className="flex items-start justify-between mb-3">
+                {/* Avatar */}
+                <div className="mb-3">
                   <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-700">
                     {avatarUrl ? (
                       <Image
@@ -245,12 +244,6 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                         {(team.owners[0] || "?")[0].toUpperCase()}
                       </div>
                     )}
-                  </div>
-                  <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm text-white bg-gradient-to-br",
-                    gradeGradient
-                  )}>
-                    {team.grade}
                   </div>
                 </div>
 
