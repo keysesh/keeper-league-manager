@@ -2,192 +2,92 @@
 
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Logo } from "@/components/ui/Logo";
-import { Mail, User, AlertCircle, ArrowRight, UserPlus, LogIn } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { EPluribusLogo } from "@/components/ui/Logo";
+import { DiscordIcon } from "@/components/ui/Icons";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_USERNAME: "Sleeper username not found. Check your spelling.",
-  USERNAME_CLAIMED: "This Sleeper account is already registered. Try logging in instead.",
-  EMAIL_IN_USE: "This email is already registered with a different account.",
-  EMAIL_REQUIRED: "Email is required for registration.",
-  NOT_REGISTERED: "This Sleeper account isn't registered yet. Sign up first.",
-  EMAIL_MISMATCH: "Email doesn't match this account. Check your credentials.",
+  OAuthAccountNotLinked: "This account is linked to a different sign-in method.",
+  OAuthCallback: "There was a problem connecting to Discord. Please try again.",
+  OAuthCreateAccount: "Could not create your account. Please try again.",
+  OAuthSignin: "Error signing in with Discord. Please try again.",
+  SessionRequired: "Please sign in to continue.",
   CredentialsSignin: "Invalid credentials. Please try again.",
+  default: "An unexpected error occurred. Please try again.",
 };
 
-function LoginForm() {
-  const router = useRouter();
+function LoginContent() {
   const searchParams = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [error, setError] = useState<string | null>(null);
 
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = searchParams.get("callbackUrl") || "/leagues";
+  const errorParam = searchParams.get("error");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const displayError = error || (errorParam ? (ERROR_MESSAGES[errorParam] || ERROR_MESSAGES.default) : null);
+
+  const handleDiscordSignIn = async () => {
     setIsLoading(true);
-    setError("");
+    setError(null);
 
     try {
-      const result = await signIn("credentials", {
-        username: username.trim(),
-        email: email.trim(),
-        isRegistration: mode === "register" ? "true" : "false",
-        redirect: false,
-        callbackUrl,
-      });
-
-      if (result?.error) {
-        const errorKey = result.error;
-        setError(ERROR_MESSAGES[errorKey] || "An error occurred. Please try again.");
-      } else if (result?.ok) {
-        router.push(callbackUrl);
-        router.refresh();
-      }
+      await signIn("discord", { callbackUrl });
     } catch {
-      setError("An error occurred. Please try again.");
-    } finally {
+      setError("Failed to connect to Discord. Please try again.");
       setIsLoading(false);
     }
   };
 
   return (
     <>
-      {/* Mode Toggle */}
-      <div className="flex rounded-md bg-[#222222] p-1 mb-6 border border-[#333333]">
-        <button
-          type="button"
-          onClick={() => { setMode("login"); setError(""); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded text-sm font-medium transition-all ${
-            mode === "login"
-              ? "bg-blue-600 text-white"
-              : "text-gray-400 hover:text-white"
-          }`}
-        >
-          <LogIn className="w-4 h-4" />
-          Sign In
-        </button>
-        <button
-          type="button"
-          onClick={() => { setMode("register"); setError(""); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded text-sm font-medium transition-all ${
-            mode === "register"
-              ? "bg-blue-600 text-white"
-              : "text-gray-400 hover:text-white"
-          }`}
-        >
-          <UserPlus className="w-4 h-4" />
-          Sign Up
-        </button>
-      </div>
-
       {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-md flex items-start gap-3">
+      {displayError && (
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-          <p className="text-red-400 text-sm">{error}</p>
+          <p className="text-red-400 text-sm">{displayError}</p>
         </div>
       )}
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-400 mb-2">
-            Sleeper Username
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Your Sleeper username"
-              className="w-full pl-10 pr-4 py-3 bg-[#222222] border border-[#333333] rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              required
-              autoComplete="username"
-            />
-          </div>
-        </div>
+      {/* Discord Sign In Button */}
+      <button
+        onClick={handleDiscordSignIn}
+        disabled={isLoading}
+        className="w-full min-h-[52px] py-4 px-6 rounded-xl font-semibold text-white bg-[#5865F2] hover:bg-[#4752C4] active:bg-[#3c45a5] active:scale-[0.98] flex items-center justify-center gap-3 transition-all duration-200 ease-out shadow-lg shadow-[#5865F2]/25 hover:shadow-xl hover:shadow-[#5865F2]/30 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#5865F2]/50 focus:ring-offset-2 focus:ring-offset-[#0d1420] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Connecting to Discord...
+          </>
+        ) : (
+          <>
+            <DiscordIcon className="w-5 h-5" />
+            Continue with Discord
+          </>
+        )}
+      </button>
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-2">
-            Email Address
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={mode === "register" ? "you@example.com" : "you@example.com (optional)"}
-              className="w-full pl-10 pr-4 py-3 bg-[#222222] border border-[#333333] rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              required={mode === "register"}
-            />
-          </div>
-          {mode === "login" && (
-            <p className="text-xs text-gray-500 mt-1.5">
-              Optional for login - helps verify your identity
-            </p>
-          )}
-        </div>
+      {/* Info Text */}
+      <p className="text-sm text-slate-500 text-center mt-6">
+        Sign in to verify identity and link your Sleeper account
+      </p>
 
-        <button
-          type="submit"
-          disabled={isLoading || !username.trim() || (mode === "register" && !email.trim())}
-          className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-md transition-colors flex items-center justify-center gap-2"
-        >
-          {isLoading ? (
-            <>
-              <svg
-                className="animate-spin h-5 w-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              {mode === "register" ? "Creating account..." : "Signing in..."}
-            </>
-          ) : (
-            <>
-              {mode === "register" ? "Create Account" : "Sign In"}
-              <ArrowRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
-      </form>
+      {/* Divider */}
+      <div className="my-6 border-t border-white/[0.06]" />
 
-      {/* Info */}
-      <div className="mt-6 p-4 bg-[#222222] rounded-md border border-[#333333]">
-        <p className="text-gray-400 text-xs leading-relaxed">
-          {mode === "register" ? (
-            <>
-              <strong className="text-gray-300">How it works:</strong> Your Sleeper username gets linked to your email.
-              Only you can access your leagues and teams.
-            </>
-          ) : (
-            <>
-              <strong className="text-gray-300">First time?</strong> Click &quot;Sign Up&quot; to create your account with your Sleeper username and email.
-            </>
-          )}
+      {/* Sleeper Info */}
+      <div className="text-center">
+        <p className="text-slate-500 text-sm">
+          Don&apos;t have Sleeper?{" "}
+          <a
+            href="https://sleeper.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+          >
+            Download it free
+          </a>
         </p>
       </div>
     </>
@@ -197,47 +97,44 @@ function LoginForm() {
 function LoginFormFallback() {
   return (
     <div className="space-y-6">
-      <div className="h-12 w-full bg-[#222222] rounded-md animate-pulse" />
-      <div className="space-y-4">
-        <div className="h-[72px] w-full bg-[#222222] rounded-md animate-pulse" />
-        <div className="h-[72px] w-full bg-[#222222] rounded-md animate-pulse" />
-        <div className="h-12 w-full bg-[#222222] rounded-md animate-pulse" />
-      </div>
+      <div className="h-[52px] w-full bg-white/[0.03] rounded-xl animate-pulse" />
+      <div className="h-4 w-48 mx-auto bg-white/[0.03] rounded animate-pulse" />
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0d0d0d] relative">
-      <div className="w-full max-w-md px-6 relative z-10">
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl p-8">
-          {/* Logo/Header */}
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-5">
-              <Logo size="xl" />
+    <div className="min-h-screen bg-[#0d0d0d] relative overflow-hidden">
+      {/* Gradient orbs for depth */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 right-1/3 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl" />
+
+      {/* Content */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          {/* Card */}
+          <div className="bg-[#0d1420] border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/50 p-8">
+            {/* Logo/Header */}
+            <div className="text-center mb-8">
+              <div className="flex justify-center mb-5">
+                <EPluribusLogo size="xl" />
+              </div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">E Pluribus</h1>
+              <p className="text-sm text-slate-400 font-medium mt-1">Keeper League Manager</p>
             </div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">E Pluribus</h1>
-            <p className="text-blue-400 font-semibold text-sm mt-1">Keeper League Manager</p>
+
+            <Suspense fallback={<LoginFormFallback />}>
+              <LoginContent />
+            </Suspense>
           </div>
 
-          <Suspense fallback={<LoginFormFallback />}>
-            <LoginForm />
-          </Suspense>
+          {/* Footer */}
+          <p className="text-slate-600 text-xs text-center mt-6">
+            Out of Many, One Champion
+          </p>
         </div>
-
-        {/* Footer */}
-        <p className="text-gray-600 text-xs text-center mt-6 px-4">
-          Don&apos;t have Sleeper?{" "}
-          <a
-            href="https://sleeper.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300"
-          >
-            Download it free
-          </a>
-        </p>
       </div>
     </div>
   );

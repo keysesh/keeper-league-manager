@@ -16,8 +16,6 @@ import {
   Activity,
   FileText,
   Trophy,
-  TrendingUp,
-  BarChart3,
   Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
@@ -76,13 +74,12 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
           items: [
             { name: "Roster", href: `/league/${leagueId}/my-team`, icon: UserCircle },
             { name: "Keepers", href: `/league/${leagueId}/my-team#keepers`, icon: Bookmark },
+            { name: "Draft Board", href: `/league/${leagueId}/draft-board`, icon: LayoutGrid },
           ],
         },
         {
           title: "League",
           items: [
-            { name: "Standings", href: `/league/${leagueId}#standings`, icon: BarChart3 },
-            { name: "Power Rankings", href: `/league/${leagueId}#power-rankings`, icon: TrendingUp },
             { name: "All Teams", href: `/league/${leagueId}/team`, icon: Users },
           ],
         },
@@ -98,7 +95,6 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
           title: "History",
           items: [
             { name: "Championships", href: `/league/${leagueId}/history`, icon: Trophy },
-            { name: "Draft Board", href: `/league/${leagueId}/draft-board`, icon: LayoutGrid },
           ],
         },
         {

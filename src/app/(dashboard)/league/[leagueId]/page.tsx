@@ -20,7 +20,6 @@ import {
   Target,
   Zap,
   Star,
-  TrendingUp,
   ArrowRight,
 } from "lucide-react";
 
@@ -47,6 +46,11 @@ const PowerRankings = dynamic(
 
 const UserStatsHero = dynamic(
   () => import("@/components/ui/UserStatsHero").then(mod => ({ default: mod.UserStatsHero })),
+  { loading: () => <WidgetSkeleton rows={2} />, ssr: false }
+);
+
+const PositionTrends = dynamic(
+  () => import("@/components/ui/PositionTrends").then(mod => ({ default: mod.PositionTrends })),
   { loading: () => <WidgetSkeleton rows={2} />, ssr: false }
 );
 
@@ -230,60 +234,7 @@ export default function LeaguePage() {
           />
         )}
 
-        {/* POWER RANKINGS - Primary ranking view with full stats */}
-        <section id="power-rankings" className="scroll-mt-20">
-          <PowerRankings
-            leagueId={leagueId}
-            userRosterId={userRoster?.id}
-            useApi={true}
-            condensed={false}
-            viewAllHref={`/league/${leagueId}/team`}
-          />
-        </section>
-
-        {/* TWO COLUMN LAYOUT: Trades + Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* RECENT TRADES */}
-          <RecentTrades
-            leagueId={leagueId}
-            userRosterId={userRoster?.id}
-            limit={3}
-          />
-
-          {/* QUICK ACTIONS - moved here for better hierarchy */}
-          <div className="grid grid-cols-2 gap-3 h-fit">
-            <QuickActionCard
-              href={`/league/${leagueId}/draft-board`}
-              icon={<Target className="w-5 h-5" />}
-              label="Draft Board"
-              description="View keeper costs"
-              gradient="primary"
-            />
-            <QuickActionCard
-              href={`/league/${leagueId}/trade-analyzer`}
-              icon={<Zap className="w-5 h-5" />}
-              label="Trade Center"
-              description="Evaluate trades"
-              gradient="warm"
-            />
-            <QuickActionCard
-              href={`/league/${leagueId}/team`}
-              icon={<Trophy className="w-5 h-5" />}
-              label="All Teams"
-              description="View all rosters"
-              gradient="success"
-            />
-            <QuickActionCard
-              href={`/league/${leagueId}/history`}
-              icon={<Crown className="w-5 h-5" />}
-              label="Championships"
-              description="League history"
-              gradient="cool"
-            />
-          </div>
-        </div>
-
-        {/* YOUR KEEPERS */}
+        {/* YOUR KEEPERS - Shown first after hero for quick access */}
         {userRoster && userRoster.currentKeepers.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -358,6 +309,62 @@ export default function LeaguePage() {
             </div>
           </section>
         )}
+
+        {/* POSITION TRENDS - League-wide keeper distribution */}
+        <PositionTrends leagueId={leagueId} />
+
+        {/* POWER RANKINGS - Primary ranking view with full stats */}
+        <section id="power-rankings" className="scroll-mt-20">
+          <PowerRankings
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            useApi={true}
+            condensed={false}
+            viewAllHref={`/league/${leagueId}/team`}
+          />
+        </section>
+
+        {/* TWO COLUMN LAYOUT: Trades + Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* RECENT TRADES */}
+          <RecentTrades
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            limit={3}
+          />
+
+          {/* QUICK ACTIONS - moved here for better hierarchy */}
+          <div className="grid grid-cols-2 gap-3 h-fit">
+            <QuickActionCard
+              href={`/league/${leagueId}/draft-board`}
+              icon={<Target className="w-5 h-5" />}
+              label="Draft Board"
+              description="View keeper costs"
+              gradient="primary"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/trade-analyzer`}
+              icon={<Zap className="w-5 h-5" />}
+              label="Trade Center"
+              description="Evaluate trades"
+              gradient="warm"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/team`}
+              icon={<Trophy className="w-5 h-5" />}
+              label="All Teams"
+              description="View all rosters"
+              gradient="success"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/history`}
+              icon={<Crown className="w-5 h-5" />}
+              label="Championships"
+              description="League history"
+              gradient="cool"
+            />
+          </div>
+        </div>
 
         {/* TOP SCORERS + TROPHY CASE - Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

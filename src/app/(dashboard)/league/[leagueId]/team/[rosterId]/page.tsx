@@ -3,19 +3,32 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
+import Link from "next/link";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { BackLink } from "@/components/ui/BackLink";
-import { RefreshCw, Trophy, Star, Users, FileText, Sparkles } from "lucide-react";
-import { cn } from "@/lib/design-tokens";
+import { RefreshCw, Trophy, Star, Users, FileText, Sparkles, Eye } from "lucide-react";
 import { DraftCapital } from "@/components/ui/DraftCapital";
+import { AwardsSection, type TeamAward } from "@/components/ui/AwardBadge";
+import { DraftPickSlots } from "@/components/ui/DraftPickSlots";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 });
+
+// Types for team info endpoint
+interface TeamInfo {
+  rosterId: string;
+  teamName: string;
+  owners: string[];
+  wins: number;
+  losses: number;
+  pointsFor: number;
+  isUserRoster: boolean;
+}
 
 interface Player {
   id: string;
@@ -122,6 +135,25 @@ export default function TeamRosterPage() {
   const [syncingKeepers, setSyncingKeepers] = useState(false);
   const [historyPlayerId, setHistoryPlayerId] = useState<string | null>(null);
 
+  // Fetch league info to check if this is user's own team
+  const { data: leagueData } = useSWR<{
+    rosters: Array<{
+      id: string;
+      teamName: string | null;
+      isUserRoster: boolean;
+      owners: Array<{ displayName: string }>;
+      wins: number;
+      losses: number;
+      pointsFor: number;
+    }>;
+  }>(`/api/leagues/${leagueId}`, fetcher);
+
+  // Find if the current roster is the user's own roster
+  const currentRosterInfo = leagueData?.rosters.find(r => r.id === rosterId);
+  const isOwnTeam = currentRosterInfo?.isUserRoster ?? true; // Default to true while loading
+  const teamName = currentRosterInfo?.teamName || "Team";
+  const teamOwners = currentRosterInfo?.owners?.map(o => o.displayName).join(", ") || "";
+
   const { data, error, mutate, isLoading } = useSWR<RosterData>(
     `/api/leagues/${leagueId}/rosters/${rosterId}/eligible-keepers`,
     fetcher,
@@ -137,6 +169,60 @@ export default function TeamRosterPage() {
     `/api/leagues/${leagueId}/draft-picks`,
     fetcher
   );
+
+  // Fetch championship data for awards
+  const { data: championshipData } = useSWR<{
+    championships: Array<{
+      season: number;
+      winner: { rosterId: string; teamName: string | null };
+      runnerUp: { rosterId: string; teamName: string | null };
+    }>;
+  }>(`/api/leagues/${leagueId}/championships`, fetcher, {
+    revalidateOnFocus: false,
+  });
+
+  // Compute awards based on championship data and roster info
+  const teamAwards: TeamAward[] = (() => {
+    const awards: TeamAward[] = [];
+
+    if (championshipData?.championships && leagueData?.rosters) {
+      // Count championships won
+      const championshipsWon = championshipData.championships.filter(
+        c => c.winner.rosterId === rosterId
+      ).length;
+
+      // Count runner-up finishes
+      const runnerUpFinishes = championshipData.championships.filter(
+        c => c.runnerUp.rosterId === rosterId
+      ).length;
+
+      // Dynasty award (2+ championships)
+      if (championshipsWon >= 2) {
+        awards.push({ type: "dynasty", count: championshipsWon });
+      } else if (championshipsWon > 0) {
+        awards.push({ type: "champion", count: championshipsWon });
+      }
+
+      if (runnerUpFinishes > 0) {
+        awards.push({ type: "runner_up", count: runnerUpFinishes });
+      }
+
+      // Check for best record (most wins in current standings)
+      const currentRoster = leagueData.rosters.find(r => r.id === rosterId);
+      const sortedByWins = [...leagueData.rosters].sort((a, b) => b.wins - a.wins);
+      if (currentRoster && sortedByWins[0]?.id === rosterId && currentRoster.wins > 0) {
+        awards.push({ type: "best_record", season: data?.season });
+      }
+
+      // Points leader
+      const sortedByPoints = [...leagueData.rosters].sort((a, b) => b.pointsFor - a.pointsFor);
+      if (currentRoster && sortedByPoints[0]?.id === rosterId && currentRoster.pointsFor > 0) {
+        awards.push({ type: "points_leader", season: data?.season });
+      }
+    }
+
+    return awards;
+  })();
 
   const addKeeper = async (
     playerId: string,
@@ -346,25 +432,47 @@ export default function TeamRosterPage() {
           <div className="flex-1 min-w-0">
             <BackLink href={`/league/${leagueId}`} label="Back to League" />
             <div className="flex items-center gap-2 sm:gap-3 mt-1">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${isOwnTeam ? "from-blue-500/20 to-purple-500/20 border-blue-500/25" : "from-slate-500/20 to-slate-600/20 border-slate-500/25"} border flex items-center justify-center flex-shrink-0`}>
+                {isOwnTeam ? (
+                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
+                ) : (
+                  <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" />
+                )}
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight truncate">Manage Keepers</h1>
-                <p className="text-slate-500 text-sm sm:text-base mt-0.5">{data.season} Season</p>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight truncate">
+                  {isOwnTeam ? "Manage Keepers" : teamName}
+                </h1>
+                <p className="text-slate-500 text-sm sm:text-base mt-0.5">
+                  {isOwnTeam ? `${data.season} Season` : teamOwners ? `${teamOwners} · ${data.season}` : `${data.season} Season`}
+                </p>
               </div>
             </div>
           </div>
-          <button
-            onClick={syncKeepers}
-            disabled={syncingKeepers}
-            className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 min-h-[44px] min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-[#131a28] text-slate-400 hover:text-white hover:bg-[#1a2435] border border-white/[0.08] hover:border-white/[0.12] text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={syncingKeepers ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">{syncingKeepers ? "Syncing..." : "Sync Keepers"}</span>
-          </button>
+          {isOwnTeam ? (
+            <button
+              onClick={syncKeepers}
+              disabled={syncingKeepers}
+              className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 min-h-[44px] min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-[#131a28] text-slate-400 hover:text-white hover:bg-[#1a2435] border border-white/[0.08] hover:border-white/[0.12] text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={syncingKeepers ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">{syncingKeepers ? "Syncing..." : "Sync Keepers"}</span>
+            </button>
+          ) : (
+            <div className="flex-shrink-0 px-3 py-2 rounded-lg bg-slate-500/10 border border-slate-500/20 text-slate-400 text-xs font-medium">
+              <span className="flex items-center gap-1.5">
+                <Eye size={14} />
+                <span className="hidden sm:inline">Viewing</span>
+              </span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Team Awards */}
+      {teamAwards.length > 0 && (
+        <AwardsSection awards={teamAwards} className="mt-0" />
+      )}
 
       {/* Keeper Summary Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -458,6 +566,24 @@ export default function TeamRosterPage() {
         );
       })()}
 
+      {/* Draft Pick Slots - Visual draft board with keeper assignments */}
+      {currentKeepers.length > 0 && (
+        <DraftPickSlots
+          keepers={currentKeepers.map(p => ({
+            id: p.existingKeeper?.id || p.player.id,
+            player: {
+              fullName: p.player.fullName,
+              position: p.player.position,
+              team: p.player.team,
+            },
+            finalCost: p.existingKeeper?.finalCost || 1,
+            type: p.existingKeeper?.type || "REGULAR",
+          }))}
+          totalRounds={data.limits.maxKeepers > 8 ? data.limits.maxKeepers : 8}
+          season={data.season}
+        />
+      )}
+
       {/* Current Keepers */}
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
@@ -480,7 +606,7 @@ export default function TeamRosterPage() {
                   player={p.player}
                   eligibility={p.eligibility}
                   existingKeeper={p.existingKeeper}
-                  onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
+                  onRemoveKeeper={isOwnTeam ? (keeperId) => removeKeeper(keeperId, p.player.fullName) : undefined}
                   onShowHistory={setHistoryPlayerId}
                   isLoading={false}
                 />
@@ -492,13 +618,47 @@ export default function TeamRosterPage() {
                 <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-slate-500" />
               </div>
               <p className="text-slate-300 font-medium text-sm sm:text-base">No keepers selected yet</p>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">Add players from the eligible list below</p>
+              {isOwnTeam && (
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">Add players from the eligible list below</p>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Eligible Players */}
+      {/* Full Roster - Show for other teams */}
+      {!isOwnTeam && (
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-500/15 border border-slate-500/25 flex items-center justify-center">
+                <Users className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <h2 className="text-base sm:text-lg font-semibold text-white">Full Roster</h2>
+              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-slate-500/15 text-slate-400 text-[10px] sm:text-xs font-medium">
+                {data.players.length}
+              </span>
+            </div>
+          </div>
+          <div className="p-3 sm:p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
+              {data.players.map((p) => (
+                <PremiumPlayerCard
+                  key={p.player.id}
+                  player={p.player}
+                  eligibility={p.eligibility}
+                  existingKeeper={p.existingKeeper}
+                  onShowHistory={setHistoryPlayerId}
+                  isLoading={false}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Eligible Players - Only show for own team */}
+      {isOwnTeam && (
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
@@ -554,9 +714,10 @@ export default function TeamRosterPage() {
           )}
         </div>
       </div>
+      )}
 
-      {/* Ineligible Players */}
-      {ineligiblePlayers.length > 0 && (
+      {/* Ineligible Players - Only show for own team */}
+      {isOwnTeam && ineligiblePlayers.length > 0 && (
         <details className="group">
           <summary className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:text-slate-300 active:text-slate-200 transition-colors text-slate-500 py-2 min-h-[44px]">
             <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
