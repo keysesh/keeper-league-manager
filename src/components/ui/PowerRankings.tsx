@@ -207,6 +207,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
             const avatarUrl = getAvatarUrl(team.ownerAvatar);
             const winPct = team.historicalRecord?.winPct ||
               Math.round((team.record.wins / Math.max(team.record.wins + team.record.losses, 1)) * 100);
+            const rosterScore = Math.round(team.positionalStrength.reduce((a, p) => a + p.score, 0) / Math.max(team.positionalStrength.length, 1));
 
             return (
               <div
@@ -284,6 +285,15 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                     </p>
                   </div>
                 )}
+
+                {/* Stats Breakdown */}
+                <div className="mt-3 pt-3 border-t border-white/5 grid grid-cols-5 gap-1">
+                  <StatChip label="ROS" value={rosterScore} />
+                  <StatChip label="STR" value={Math.round(team.starPower * 5)} />
+                  <StatChip label="DEP" value={Math.round(team.depth * 10)} />
+                  <StatChip label="KPR" value={Math.min(100, Math.round(team.keeperValue * 5))} />
+                  <StatChip label="PCK" value={Math.min(100, team.draftCapital)} />
+                </div>
               </div>
             );
           })}
@@ -358,6 +368,20 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function StatChip({ label, value }: { label: string; value: number }) {
+  const clampedValue = Math.min(100, Math.max(0, value));
+  const colorClass = clampedValue >= 80 ? "text-emerald-400" :
+    clampedValue >= 60 ? "text-blue-400" :
+    clampedValue >= 40 ? "text-slate-400" : "text-orange-400";
+
+  return (
+    <div className="text-center">
+      <div className={cn("text-xs font-bold", colorClass)}>{Math.round(clampedValue)}</div>
+      <div className="text-[9px] text-slate-500">{label}</div>
     </div>
   );
 }
