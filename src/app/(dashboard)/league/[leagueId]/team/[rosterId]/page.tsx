@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
@@ -12,7 +12,13 @@ import { BackLink } from "@/components/ui/BackLink";
 import { RefreshCw, Trophy, Star, Users, FileText, Sparkles, Eye } from "lucide-react";
 import { DraftCapital } from "@/components/ui/DraftCapital";
 import { AwardsSection, type TeamAward } from "@/components/ui/AwardBadge";
-import { DraftPickSlots } from "@/components/ui/DraftPickSlots";
+import { PositionBadge } from "@/components/ui/PositionBadge";
+import {
+  TeamTrophyCase,
+  TeamHistoricalStats,
+  TeamFunFacts,
+  TeamTradeHistory,
+} from "@/components/team";
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -127,6 +133,79 @@ interface DraftPicksData {
   }>;
 }
 
+// Types for owner history endpoint
+interface HistoricalRecord {
+  season: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  playoffFinish?: string | null;
+  standing?: number;
+}
+
+interface OwnerHistory {
+  ownerId: string;
+  displayName: string;
+  avatar: string | null;
+  currentTeamName: string | null;
+  currentRosterId: string | null;
+  seasons: HistoricalRecord[];
+  totals: {
+    wins: number;
+    losses: number;
+    ties: number;
+    pointsFor: number;
+    pointsAgainst: number;
+    championships: number;
+    playoffAppearances: number;
+    seasonsPlayed: number;
+  };
+}
+
+interface OwnerHistoryData {
+  leagueId: string;
+  currentSeason: string;
+  availableSeasons: string[];
+  owners: OwnerHistory[];
+}
+
+// Types for recent trades endpoint
+interface TradedPlayer {
+  playerId: string;
+  sleeperId: string;
+  playerName: string;
+  position: string | null;
+}
+
+interface TradeParty {
+  rosterId: string;
+  rosterName: string | null;
+  playersGiven: TradedPlayer[];
+  playersReceived: TradedPlayer[];
+  picksGiven: Array<{ season: number; round: number }>;
+  picksReceived: Array<{ season: number; round: number }>;
+}
+
+interface Trade {
+  id: string;
+  date: string;
+  season: number;
+  isNew: boolean;
+  parties: TradeParty[];
+}
+
+interface RecentTradesData {
+  trades: Trade[];
+  stats: {
+    totalTrades: number;
+    newTrades: number;
+    playersTraded: number;
+    picksTraded: number;
+  };
+}
+
 export default function TeamRosterPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -181,6 +260,20 @@ export default function TeamRosterPage() {
     revalidateOnFocus: false,
   });
 
+  // Fetch owner history for all-time stats (only for non-owner view)
+  const { data: ownerHistoryData } = useSWR<OwnerHistoryData>(
+    !isOwnTeam ? `/api/leagues/${leagueId}/owner-history` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  // Fetch recent trades for this team (only for non-owner view)
+  const { data: tradesData } = useSWR<RecentTradesData>(
+    !isOwnTeam ? `/api/leagues/${leagueId}/recent-trades?limit=20` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
   // Compute awards based on championship data and roster info
   const teamAwards: TeamAward[] = (() => {
     const awards: TeamAward[] = [];
@@ -223,6 +316,116 @@ export default function TeamRosterPage() {
 
     return awards;
   })();
+
+  // Compute data for public profile sections (non-owner view only)
+  const teamChampionships = useMemo(() => {
+    if (!championshipData?.championships) return [];
+    return championshipData.championships
+      .filter(c => c.winner.rosterId === rosterId)
+      .map(c => ({ season: c.season }));
+  }, [championshipData, rosterId]);
+
+  const teamRunnerUps = useMemo(() => {
+    if (!championshipData?.championships) return [];
+    return championshipData.championships
+      .filter(c => c.runnerUp?.rosterId === rosterId)
+      .map(c => ({ season: c.season }));
+  }, [championshipData, rosterId]);
+
+  // Find owner history for this roster
+  const thisOwnerHistory = useMemo(() => {
+    if (!ownerHistoryData?.owners) return null;
+    return ownerHistoryData.owners.find(o => o.currentRosterId === rosterId);
+  }, [ownerHistoryData, rosterId]);
+
+  // Compute historical stats
+  const historicalStats = useMemo(() => {
+    if (!thisOwnerHistory) return null;
+
+    const bestSeason = thisOwnerHistory.seasons.reduce((best, season) => {
+      if (!best || season.wins > best.wins ||
+          (season.wins === best.wins && season.pointsFor > best.points)) {
+        return {
+          season: parseInt(season.season),
+          wins: season.wins,
+          losses: season.losses,
+          points: Math.round(season.pointsFor),
+        };
+      }
+      return best;
+    }, null as { season: number; wins: number; losses: number; points: number } | null);
+
+    return {
+      allTimeRecord: {
+        wins: thisOwnerHistory.totals.wins,
+        losses: thisOwnerHistory.totals.losses,
+      },
+      totalPoints: Math.round(thisOwnerHistory.totals.pointsFor),
+      bestSeason,
+      seasonsPlayed: thisOwnerHistory.totals.seasonsPlayed,
+      playoffAppearances: thisOwnerHistory.totals.playoffAppearances,
+    };
+  }, [thisOwnerHistory]);
+
+  // Compute fun facts
+  const funFacts = useMemo(() => {
+    const facts: Array<{ emoji: string; label: string; value: string }> = [];
+
+    // Best season from history
+    if (historicalStats?.bestSeason) {
+      facts.push({
+        emoji: "🏆",
+        label: "Best Season",
+        value: `${historicalStats.bestSeason.wins}-${historicalStats.bestSeason.losses} (${historicalStats.bestSeason.season})`,
+      });
+    }
+
+    // Trade count from trades data
+    if (tradesData?.trades) {
+      const teamTradeCount = tradesData.trades.filter(t =>
+        t.parties.some(p => p.rosterId === rosterId)
+      ).length;
+      if (teamTradeCount > 0) {
+        facts.push({
+          emoji: "🔄",
+          label: "Recent Trades",
+          value: teamTradeCount.toString(),
+        });
+      }
+    }
+
+    // Keeper count if available
+    if (data?.currentKeepers.total && data.currentKeepers.total > 0) {
+      facts.push({
+        emoji: "⭐",
+        label: "Keepers Selected",
+        value: data.currentKeepers.total.toString(),
+      });
+    }
+
+    // Average keeper cost
+    const currentKeepersArr = data?.players.filter(p => p.existingKeeper) || [];
+    if (currentKeepersArr.length > 0) {
+      const avgCost = currentKeepersArr.reduce((sum, k) => sum + (k.existingKeeper?.finalCost || 0), 0) / currentKeepersArr.length;
+      facts.push({
+        emoji: "💰",
+        label: "Avg Keeper Cost",
+        value: `R${avgCost.toFixed(1)}`,
+      });
+    }
+
+    // Current record
+    const currentRosterInfo = leagueData?.rosters.find(r => r.id === rosterId);
+    if (currentRosterInfo && (currentRosterInfo.wins > 0 || currentRosterInfo.losses > 0)) {
+      facts.push({
+        emoji: "📊",
+        label: "Current Record",
+        value: `${currentRosterInfo.wins}-${currentRosterInfo.losses}`,
+      });
+    }
+
+    return facts;
+  }, [historicalStats, tradesData, data, rosterId, leagueData]);
 
   const addKeeper = async (
     playerId: string,
@@ -474,6 +677,21 @@ export default function TeamRosterPage() {
         <AwardsSection awards={teamAwards} className="mt-0" />
       )}
 
+      {/* Trophy Case - Only show for non-owner with achievements */}
+      {!isOwnTeam && (teamChampionships.length > 0 || teamRunnerUps.length > 0) && (
+        <TeamTrophyCase championships={teamChampionships} runnerUps={teamRunnerUps} />
+      )}
+
+      {/* Historical Stats - Only show for non-owner */}
+      {!isOwnTeam && historicalStats && (
+        <TeamHistoricalStats {...historicalStats} />
+      )}
+
+      {/* Fun Facts - Only show for non-owner */}
+      {!isOwnTeam && funFacts.length > 0 && (
+        <TeamFunFacts facts={funFacts} />
+      )}
+
       {/* Keeper Summary Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
@@ -511,45 +729,38 @@ export default function TeamRosterPage() {
         </div>
       </div>
 
-      {/* Draft Capital - only shows if there's notable activity (trades) */}
-      {draftPicksData && (() => {
+      {/* Draft Capital with Keeper Cards - Only show for owner */}
+      {isOwnTeam && draftPicksData && (() => {
         // Find this roster's sleeperId
         const thisRoster = draftPicksData.rosters.find(r => r.id === rosterId);
         if (!thisRoster?.sleeperId) return null;
 
-        // Check if there's any notable draft capital activity
-        const teamPicks = draftPicksData.picks.filter(
-          p => p.currentOwnerSleeperId === thisRoster.sleeperId
-        );
-        const acquiredPicks = teamPicks.filter(
-          p => p.originalOwnerSleeperId !== thisRoster.sleeperId
-        );
-        const tradedAwayPicks = draftPicksData.picks.filter(
-          p => p.originalOwnerSleeperId === thisRoster.sleeperId &&
-               p.currentOwnerSleeperId !== thisRoster.sleeperId
-        );
-
-        // Hide section if nothing notable (all own picks, no trades)
-        if (acquiredPicks.length === 0 && tradedAwayPicks.length === 0) {
-          return null;
-        }
+        // Prepare keepers data for DraftCapital
+        const keepersForCapital = currentKeepers.map(p => ({
+          id: p.existingKeeper?.id || p.player.id,
+          sleeperId: p.player.sleeperId,
+          player: {
+            fullName: p.player.fullName,
+            position: p.player.position,
+            team: p.player.team,
+            sleeperId: p.player.sleeperId,
+          },
+          finalCost: p.existingKeeper?.finalCost || 1,
+          type: p.existingKeeper?.type || "REGULAR",
+          yearsKept: p.eligibility.consecutiveYears || 1,
+        }));
 
         return (
           <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
             <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
-                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center">
+                  <FileText className="w-3.5 h-3.5 text-purple-400" />
                 </div>
-                <h2 className="text-base sm:text-lg font-semibold text-white">Draft Capital</h2>
-                {acquiredPicks.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-medium">
-                    +{acquiredPicks.length} acquired
-                  </span>
-                )}
-                {tradedAwayPicks.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-400 font-medium">
-                    -{tradedAwayPicks.length} traded
+                <h2 className="text-base sm:text-lg font-semibold text-white">Draft Capital & Keepers</h2>
+                {currentKeepers.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 font-medium">
+                    {currentKeepers.length} keeper{currentKeepers.length !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
@@ -560,71 +771,105 @@ export default function TeamRosterPage() {
                 teamSleeperId={thisRoster.sleeperId}
                 teamName={thisRoster.teamName || undefined}
                 showSeasons={1}
+                maxRounds={data.limits.maxKeepers > 8 ? data.limits.maxKeepers : 8}
+                keepers={keepersForCapital}
               />
             </div>
           </div>
         );
       })()}
 
-      {/* Draft Pick Slots - Visual draft board with keeper assignments */}
-      {currentKeepers.length > 0 && (
-        <DraftPickSlots
-          keepers={currentKeepers.map(p => ({
-            id: p.existingKeeper?.id || p.player.id,
-            player: {
-              fullName: p.player.fullName,
-              position: p.player.position,
-              team: p.player.team,
-            },
-            finalCost: p.existingKeeper?.finalCost || 1,
-            type: p.existingKeeper?.type || "REGULAR",
-          }))}
-          totalRounds={data.limits.maxKeepers > 8 ? data.limits.maxKeepers : 8}
-          season={data.season}
+      {/* Public Keepers Summary - Show for non-owners */}
+      {!isOwnTeam && currentKeepers.length > 0 && (
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                <Star className="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              <h2 className="text-base sm:text-lg font-semibold text-white">Keepers for {data.season}</h2>
+              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] sm:text-xs font-bold">
+                {currentKeepers.length}
+              </span>
+            </div>
+          </div>
+          <div className="p-3 sm:p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {currentKeepers.map((p) => (
+                <div
+                  key={p.player.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border ${
+                    p.existingKeeper?.type === "FRANCHISE"
+                      ? "bg-amber-500/10 border-amber-500/30"
+                      : "bg-[#1a1a1a] border-white/[0.06]"
+                  }`}
+                >
+                  <PositionBadge position={p.player.position} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{p.player.fullName}</p>
+                    <p className="text-xs text-slate-500">{p.player.team || "FA"}</p>
+                  </div>
+                  {p.existingKeeper?.type === "FRANCHISE" && (
+                    <Star size={14} className="text-amber-400 shrink-0" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trade History - Only show for non-owner */}
+      {!isOwnTeam && tradesData?.trades && tradesData.trades.length > 0 && (
+        <TeamTradeHistory
+          trades={tradesData.trades}
+          teamName={teamName}
+          rosterId={rosterId}
+          defaultLimit={5}
         />
       )}
 
-      {/* Current Keepers */}
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
-              <Star className="w-3.5 h-3.5 text-amber-400" />
+      {/* Current Keepers - Only show for owner */}
+      {isOwnTeam && (
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                <Star className="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              <h2 className="text-base sm:text-lg font-semibold text-white">Current Keepers</h2>
+              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] sm:text-xs font-bold">
+                {currentKeepers.length}
+              </span>
             </div>
-            <h2 className="text-base sm:text-lg font-semibold text-white">Current Keepers</h2>
-            <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] sm:text-xs font-bold">
-              {currentKeepers.length}
-            </span>
+          </div>
+          <div className="p-3 sm:p-5">
+            {currentKeepers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
+                {currentKeepers.map((p) => (
+                  <PremiumPlayerCard
+                    key={p.player.id}
+                    player={p.player}
+                    eligibility={p.eligibility}
+                    existingKeeper={p.existingKeeper}
+                    onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
+                    onShowHistory={setHistoryPlayerId}
+                    isLoading={false}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 sm:py-8">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-slate-500" />
+                </div>
+                <p className="text-slate-300 font-medium text-sm sm:text-base">No keepers selected yet</p>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1">Add players from the eligible list below</p>
+              </div>
+            )}
           </div>
         </div>
-        <div className="p-3 sm:p-5">
-          {currentKeepers.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
-              {currentKeepers.map((p) => (
-                <PremiumPlayerCard
-                  key={p.player.id}
-                  player={p.player}
-                  eligibility={p.eligibility}
-                  existingKeeper={p.existingKeeper}
-                  onRemoveKeeper={isOwnTeam ? (keeperId) => removeKeeper(keeperId, p.player.fullName) : undefined}
-                  onShowHistory={setHistoryPlayerId}
-                  isLoading={false}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 sm:py-8">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-slate-500" />
-              </div>
-              <p className="text-slate-300 font-medium text-sm sm:text-base">No keepers selected yet</p>
-              {isOwnTeam && (
-                <p className="text-xs sm:text-sm text-slate-500 mt-1">Add players from the eligible list below</p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Full Roster - Show for other teams */}
       {!isOwnTeam && (
