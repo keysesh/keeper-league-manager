@@ -36,6 +36,8 @@ model User {
   sessions         Session[]
   commissionerOf   League[]
   notifications    Notification[]
+  acceptedInvites  LeagueInvite[] @relation("AcceptedInvites")
+  auditLogs        AuditLog[]
 
   @@map("users")
 }
@@ -67,9 +69,12 @@ model LeagueInvite {
   acceptedAt   DateTime?         @map("accepted_at")
   createdAt    DateTime          @default(now()) @map("created_at")
 
+  acceptedBy User? @relation("AcceptedInvites", fields: [acceptedById], references: [id], onDelete: SetNull)
+
   @@unique([leagueId, rosterId])
   @@index([token])
   @@index([email])
+  @@index([acceptedById])
   @@map("league_invites")
 }
 
@@ -649,9 +654,9 @@ enum NotificationType {
   TRADE_COUNTERED
   TRADE_EXPIRED
   TRADE_VOTE
-  KEEPER_DEADLINE
   KEEPER_LOCKED
-  LEAGUE_SYNC
+  KEEPER_UNLOCKED
+  DEADLINE_REMINDER
   SYSTEM
 }
 
@@ -669,7 +674,10 @@ model AuditLog {
   newValue  Json?    @map("new_value")
   createdAt DateTime @default(now()) @map("created_at")
 
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   @@index([entity, entityId])
   @@index([createdAt])
+  @@index([userId])
   @@map("audit_logs")
 }

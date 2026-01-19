@@ -40,6 +40,10 @@ const ChampionshipHistory = dynamic(
   { loading: () => <WidgetSkeleton rows={3} />, ssr: false }
 );
 
+const PowerRankings = dynamic(
+  () => import("@/components/ui/PowerRankings").then(mod => ({ default: mod.PowerRankings })),
+  { loading: () => <WidgetSkeleton rows={6} />, ssr: false }
+);
 
 const UserStatsHero = dynamic(
   () => import("@/components/ui/UserStatsHero").then(mod => ({ default: mod.UserStatsHero })),
@@ -226,89 +230,57 @@ export default function LeaguePage() {
           />
         )}
 
-        {/* TWO COLUMN LAYOUT: Standings + Recent Activity */}
+        {/* POWER RANKINGS - Primary ranking view with full stats */}
+        <section id="power-rankings" className="scroll-mt-20">
+          <PowerRankings
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            useApi={true}
+            condensed={false}
+            viewAllHref={`/league/${leagueId}/team`}
+          />
+        </section>
+
+        {/* TWO COLUMN LAYOUT: Trades + Quick Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* STANDINGS */}
-          <div id="standings" className="scroll-mt-20">
-          <Card variant="default" padding="none" className="overflow-hidden">
-            <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
-                  <Trophy className="w-4 h-4 text-amber-400" />
-                </div>
-                <h2 className="font-semibold text-white">Standings</h2>
-              </div>
-              <Link
-                href={`/league/${leagueId}/team`}
-                className="text-sm text-slate-400 hover:text-white font-medium flex items-center gap-1 transition-colors"
-              >
-                View All <ChevronRight size={16} />
-              </Link>
-            </div>
-
-            <div className="divide-y divide-white/[0.06]">
-              {sortedRosters.slice(0, 6).map((roster, index) => {
-                const rank = index + 1;
-                const isUser = roster.isUserRoster;
-
-                return (
-                  <Link
-                    key={roster.id}
-                    href={`/league/${leagueId}/team/${roster.id}`}
-                    className={cn(
-                      "flex items-center gap-3 p-3 transition-colors",
-                      isUser ? "bg-blue-500/5 hover:bg-blue-500/10" : "hover:bg-white/[0.02]"
-                    )}
-                  >
-                    {/* Rank */}
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0",
-                      rank === 1 && "bg-amber-500 text-black",
-                      rank === 2 && "bg-slate-400 text-black",
-                      rank === 3 && "bg-orange-600 text-white",
-                      rank > 3 && "bg-white/[0.05] text-slate-400"
-                    )}>
-                      {rank === 1 ? <Crown className="w-4 h-4" /> : rank}
-                    </div>
-
-                    {/* Team */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "font-medium truncate",
-                          isUser ? "text-blue-400" : "text-white"
-                        )}>
-                          {roster.teamName || `Team ${roster.sleeperId}`}
-                        </span>
-                        {isUser && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 uppercase">
-                            You
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Record */}
-                    <span className={cn(
-                      "text-sm font-medium tabular-nums",
-                      roster.wins > roster.losses ? "text-emerald-400" :
-                      roster.wins < roster.losses ? "text-red-400" : "text-slate-400"
-                    )}>
-                      {roster.wins}-{roster.losses}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </Card>
-          </div>
-
           {/* RECENT TRADES */}
           <RecentTrades
             leagueId={leagueId}
             userRosterId={userRoster?.id}
-            limit={5}
+            limit={3}
           />
+
+          {/* QUICK ACTIONS - moved here for better hierarchy */}
+          <div className="grid grid-cols-2 gap-3 h-fit">
+            <QuickActionCard
+              href={`/league/${leagueId}/draft-board`}
+              icon={<Target className="w-5 h-5" />}
+              label="Draft Board"
+              description="View keeper costs"
+              gradient="primary"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/trade-analyzer`}
+              icon={<Zap className="w-5 h-5" />}
+              label="Trade Center"
+              description="Evaluate trades"
+              gradient="warm"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/team`}
+              icon={<Trophy className="w-5 h-5" />}
+              label="All Teams"
+              description="View all rosters"
+              gradient="success"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/history`}
+              icon={<Crown className="w-5 h-5" />}
+              label="Championships"
+              description="League history"
+              gradient="cool"
+            />
+          </div>
         </div>
 
         {/* YOUR KEEPERS */}
@@ -316,8 +288,8 @@ export default function LeaguePage() {
           <section>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                  <Crown className="w-4 h-4 text-blue-400" />
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/25 to-purple-500/15 border border-blue-400/30 shadow-lg shadow-blue-500/10 flex items-center justify-center">
+                  <Crown className="w-4 h-4 text-blue-400" strokeWidth={2} />
                 </div>
                 <h2 className="font-semibold text-white">Your {league.season} Keepers</h2>
               </div>
@@ -387,45 +359,11 @@ export default function LeaguePage() {
           </section>
         )}
 
-        {/* QUICK ACTIONS */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <QuickActionCard
-            href={`/league/${leagueId}/draft-board`}
-            icon={<Target className="w-5 h-5" />}
-            label="Draft Board"
-            description="View keeper costs"
-            gradient="primary"
-          />
-          <QuickActionCard
-            href={`/league/${leagueId}/trade-analyzer`}
-            icon={<Zap className="w-5 h-5" />}
-            label="Trade Center"
-            description="Evaluate trades"
-            gradient="warm"
-          />
-          <QuickActionCard
-            href={`/league/${leagueId}#power-rankings`}
-            icon={<TrendingUp className="w-5 h-5" />}
-            label="Power Rankings"
-            description="Team analysis"
-            gradient="cool"
-          />
-          <QuickActionCard
-            href={`/league/${leagueId}/history`}
-            icon={<Trophy className="w-5 h-5" />}
-            label="Championships"
-            description="League history"
-            gradient="success"
-          />
-        </section>
-
-        {/* ANALYTICS - Tabbed Power Rankings, Luck Factor & Top Scorers */}
-        <section id="power-rankings" className="scroll-mt-20">
-          <AnalyticsTabs
-            leagueId={leagueId}
-            userRosterId={userRoster?.id}
-          />
-        </section>
+        {/* ANALYTICS - Luck Factor & Top Scorers */}
+        <AnalyticsTabs
+          leagueId={leagueId}
+          userRosterId={userRoster?.id}
+        />
 
         {/* CHAMPIONSHIP HISTORY */}
         <ChampionshipHistory
@@ -459,11 +397,12 @@ function QuickActionCard({
   description: string;
   gradient?: "primary" | "warm" | "cool" | "success";
 }) {
+  // Premium icon styling with increased opacity and shadows
   const gradientStyles = {
-    primary: "from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30",
-    warm: "from-amber-500/20 to-orange-500/20 group-hover:from-amber-500/30 group-hover:to-orange-500/30",
-    cool: "from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/30 group-hover:to-blue-500/30",
-    success: "from-emerald-500/20 to-cyan-500/20 group-hover:from-emerald-500/30 group-hover:to-cyan-500/30",
+    primary: "from-blue-500/25 to-purple-500/15 group-hover:from-blue-500/35 group-hover:to-purple-500/25 border-blue-400/30 shadow-lg shadow-blue-500/10",
+    warm: "from-amber-500/25 to-orange-500/15 group-hover:from-amber-500/35 group-hover:to-orange-500/25 border-amber-400/30 shadow-lg shadow-amber-500/10",
+    cool: "from-cyan-500/25 to-blue-500/15 group-hover:from-cyan-500/35 group-hover:to-blue-500/25 border-cyan-400/30 shadow-lg shadow-cyan-500/10",
+    success: "from-emerald-500/25 to-cyan-500/15 group-hover:from-emerald-500/35 group-hover:to-cyan-500/25 border-emerald-400/30 shadow-lg shadow-emerald-500/10",
   };
 
   const iconColors = {
@@ -476,10 +415,10 @@ function QuickActionCard({
   return (
     <Link
       href={href}
-      className="group p-4 rounded-xl bg-[#0d1420] border border-white/[0.06] hover:border-white/[0.1] transition-all hover:scale-[1.02]"
+      className="group p-4 rounded-xl bg-[#0d1420] border border-white/[0.06] hover:border-white/[0.12] transition-all hover:scale-[1.02]"
     >
       <div className={cn(
-        "w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center mb-3 transition-all",
+        "w-10 h-10 rounded-xl bg-gradient-to-br border flex items-center justify-center mb-3 transition-all",
         gradientStyles[gradient]
       )}>
         <span className={iconColors[gradient]}>{icon}</span>

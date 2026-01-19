@@ -152,7 +152,9 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
   if (!rankings && rankedTeams.length === 0) {
     return (
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-8 text-center">
-        <Zap className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/25 to-blue-500/15 border border-purple-400/30 shadow-lg shadow-purple-500/10 flex items-center justify-center mx-auto mb-3">
+          <Zap className="w-6 h-6 text-purple-400" strokeWidth={2} />
+        </div>
         <p className="text-base text-slate-400 font-medium">No rankings available</p>
         <p className="text-sm text-slate-600 mt-1">Add rosters to see power rankings</p>
       </div>
@@ -205,8 +207,8 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
         <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-purple-400" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/25 to-blue-500/15 border border-purple-400/30 shadow-lg shadow-purple-500/10 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-purple-400" strokeWidth={2} />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-white">Power Rankings</h3>
@@ -435,8 +437,8 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
     <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/25 to-blue-500/15 border border-purple-400/30 shadow-lg shadow-purple-500/10 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-purple-400" strokeWidth={2} />
           </div>
           <div>
             <h3 className="text-base font-semibold text-white">Power Rankings</h3>

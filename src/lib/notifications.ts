@@ -199,7 +199,7 @@ export async function notifyKeeperDeadline(params: {
 
   await createBulkNotifications({
     userIds: params.userIds,
-    type: "KEEPER_DEADLINE",
+    type: "DEADLINE_REMINDER",
     title: "Keeper Deadline Approaching",
     message: `Only ${params.hoursRemaining} hours left to set your keepers in ${params.leagueName}`,
     link,
