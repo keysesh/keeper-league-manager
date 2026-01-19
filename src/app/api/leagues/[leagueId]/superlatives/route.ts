@@ -87,6 +87,8 @@ interface SuperlativesResponse {
     championships: number;
     isTradeMaster: boolean;
     isWaiverHawk: boolean;
+    allTimeRecord: { wins: number; losses: number } | null;
+    seasonsPlayed: number;
   }>;
   badges: {
     tradeMasters: string[];  // roster IDs of top 3 traders
@@ -123,6 +125,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const rosterMap = new Map(league.rosters.map(r => [r.id, r]));
+    // Note: This map will be rebuilt after fetching current Sleeper rosters
+    // to properly map owner_id -> current DB roster ID
     const sleeperIdToRosterId = new Map(league.rosters.map(r => [r.sleeperId, r.id]));
 
     // Count trades per team from Transaction model
@@ -187,6 +191,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       bestSeason: { season: number; wins: number; losses: number; points: number } | null;
       playoffAppearances: number;
       championships: number;
+      seasonsPlayed: number;
     }>();
 
     // Fetch current season data
@@ -194,6 +199,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       sleeper.getRosters(league.sleeperId),
       sleeper.getWinnersBracket(league.sleeperId),
     ]);
+
+    // Build owner_id -> DB roster ID map from current Sleeper rosters
+    // This properly maps Sleeper user IDs to our DB roster IDs for historical data aggregation
+    const ownerToCurrentRosterId = new Map<string, string>();
+    for (const sleeperRoster of currentSleeperRosters) {
+      if (sleeperRoster.owner_id) {
+        // Find DB roster where sleeperId matches the owner's Sleeper user ID
+        const dbRoster = league.rosters.find(r => r.sleeperId === sleeperRoster.owner_id);
+        if (dbRoster) {
+          ownerToCurrentRosterId.set(sleeperRoster.owner_id, dbRoster.id);
+        }
+      }
+    }
 
     // Helper to determine if champion
     function isChampion(bracket: Array<{ p?: number; w?: number }>, rosterSlotId: number): boolean {
@@ -209,7 +227,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     for (const roster of currentSleeperRosters) {
       if (!roster.owner_id) continue;
 
-      const dbRosterId = sleeperIdToRosterId.get(roster.owner_id);
+      const dbRosterId = ownerToCurrentRosterId.get(roster.owner_id);
       const wins = roster.settings?.wins || 0;
       const losses = roster.settings?.losses || 0;
       const points = roster.settings?.fpts || 0;
@@ -228,6 +246,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         existing.totalWins += wins;
         existing.totalLosses += losses;
         existing.totalPoints += points;
+        existing.seasonsPlayed++;
         if (inPlayoffs) existing.playoffAppearances++;
         if (champion) existing.championships++;
         if (!existing.bestSeason || wins > existing.bestSeason.wins ||
@@ -245,6 +264,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           bestSeason: currentSeason,
           playoffAppearances: inPlayoffs ? 1 : 0,
           championships: champion ? 1 : 0,
+          seasonsPlayed: 1,
         });
       }
     }
@@ -260,7 +280,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         for (const roster of histRosters) {
           if (!roster.owner_id) continue;
 
-          const dbRosterId = sleeperIdToRosterId.get(roster.owner_id);
+          const dbRosterId = ownerToCurrentRosterId.get(roster.owner_id);
           const wins = roster.settings?.wins || 0;
           const losses = roster.settings?.losses || 0;
           const points = roster.settings?.fpts || 0;
@@ -279,6 +299,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             existing.totalWins += wins;
             existing.totalLosses += losses;
             existing.totalPoints += points;
+            existing.seasonsPlayed++;
             if (inPlayoffs) existing.playoffAppearances++;
             if (champion) existing.championships++;
             if (!existing.bestSeason || wins > existing.bestSeason.wins ||
@@ -296,6 +317,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
               bestSeason: historicalSeason,
               playoffAppearances: inPlayoffs ? 1 : 0,
               championships: champion ? 1 : 0,
+              seasonsPlayed: 1,
             });
           }
         }
@@ -378,6 +400,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       championships: number;
       isTradeMaster: boolean;
       isWaiverHawk: boolean;
+      allTimeRecord: { wins: number; losses: number } | null;
+      seasonsPlayed: number;
     }> = {};
 
     for (const roster of league.rosters) {
@@ -393,6 +417,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         championships: stats?.championships || 0,
         isTradeMaster: sortedByTrades.includes(roster.id),
         isWaiverHawk: false, // Placeholder - would need waiver transaction data
+        allTimeRecord: stats ? { wins: stats.totalWins, losses: stats.totalLosses } : null,
+        seasonsPlayed: stats?.seasonsPlayed || 0,
       };
     }
 

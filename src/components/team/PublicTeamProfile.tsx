@@ -60,11 +60,15 @@ interface SuperlativesData {
     championships: number;
     isTradeMaster: boolean;
     isWaiverHawk: boolean;
+    allTimeRecord: { wins: number; losses: number } | null;
+    seasonsPlayed: number;
   }>;
   leagueSuperlatives: {
-    mostTrades: { rosterId: string; value: number } | null;
-    bestRecord: { rosterId: string; value: number } | null;
-    mostPoints: { rosterId: string; value: number } | null;
+    mostTrades: { rosterId: string; value: number; teamName?: string } | null;
+    bestRecord: { rosterId: string; value: number; detail?: string; teamName?: string } | null;
+    mostPoints: { rosterId: string; value: number; teamName?: string } | null;
+    mostPlayoffAppearances: { rosterId: string; value: number; teamName?: string } | null;
+    mostChampionships: { rosterId: string; value: number; teamName?: string } | null;
   };
 }
 
@@ -78,7 +82,7 @@ interface PublicTeamProfileProps {
   teamAwards: TeamAward[];
   championships: Championship[];
   runnerUps: Championship[];
-  historicalStats: {
+  historicalStats?: {
     allTimeRecord: { wins: number; losses: number };
     totalPoints: number;
     bestSeason: { season: number; wins: number; losses: number; points: number } | null;
@@ -112,7 +116,7 @@ export function PublicTeamProfile({
     { revalidateOnFocus: false }
   );
 
-  // Build superlatives for this team
+  // Build superlatives for this team - prioritize league-best achievements
   const teamSuperlatives = useMemo(() => {
     const superlatives: Superlative[] = [];
     const teamData = superlativesData?.teamSuperlatives?.[rosterId];
@@ -120,18 +124,43 @@ export function PublicTeamProfile({
 
     if (!teamData) return superlatives;
 
-    // Most trades
-    if (teamData.totalTrades > 0) {
+    // Championships - highest priority achievement
+    if (teamData.championships > 0) {
       superlatives.push({
-        icon: getSuperlativeIcon("most_trades"),
-        label: "Total Trades",
-        value: teamData.totalTrades.toString(),
-        isLeagueBest: leagueData?.mostTrades?.rosterId === rosterId,
+        icon: getSuperlativeIcon("champion"),
+        label: teamData.championships > 1 ? "Dynasty" : "Champion",
+        value: `${teamData.championships}x`,
+        isLeagueBest: leagueData?.mostChampionships?.rosterId === rosterId,
       });
     }
 
-    // Best season
-    if (teamData.bestSeason) {
+    // Most trades - show league achievement label if league leader
+    if (leagueData?.mostTrades?.rosterId === rosterId && teamData.totalTrades > 0) {
+      superlatives.push({
+        icon: getSuperlativeIcon("most_trades"),
+        label: "League Trade Leader",
+        value: `${teamData.totalTrades} trades`,
+        isLeagueBest: true,
+      });
+    } else if (teamData.totalTrades > 0) {
+      superlatives.push({
+        icon: getSuperlativeIcon("most_trades"),
+        label: "Trades",
+        value: teamData.totalTrades.toString(),
+        isLeagueBest: false,
+      });
+    }
+
+    // Best record - show league achievement label if league leader
+    if (leagueData?.bestRecord?.rosterId === rosterId && teamData.bestSeason) {
+      superlatives.push({
+        icon: getSuperlativeIcon("best_record"),
+        label: "Best All-Time Record",
+        value: `${teamData.bestSeason.wins}-${teamData.bestSeason.losses}`,
+        season: teamData.bestSeason.season,
+        isLeagueBest: true,
+      });
+    } else if (teamData.bestSeason) {
       superlatives.push({
         icon: getSuperlativeIcon("best_record"),
         label: "Best Season",
@@ -141,17 +170,35 @@ export function PublicTeamProfile({
       });
     }
 
-    // Playoff appearances
-    if (teamData.playoffAppearances > 0) {
+    // Playoff appearances - show league achievement label if league leader
+    if (leagueData?.mostPlayoffAppearances?.rosterId === rosterId && teamData.playoffAppearances > 0) {
+      superlatives.push({
+        icon: getSuperlativeIcon("playoff_appearances"),
+        label: "Playoff King",
+        value: `${teamData.playoffAppearances} appearances`,
+        isLeagueBest: true,
+      });
+    } else if (teamData.playoffAppearances > 0) {
       superlatives.push({
         icon: getSuperlativeIcon("playoff_appearances"),
         label: "Playoff Apps",
         value: teamData.playoffAppearances.toString(),
+        isLeagueBest: false,
       });
     }
 
-    // Trade Master badge
-    if (teamData.isTradeMaster) {
+    // Most points - show if league leader
+    if (leagueData?.mostPoints?.rosterId === rosterId && teamData.totalPoints > 0) {
+      superlatives.push({
+        icon: getSuperlativeIcon("highest_score"),
+        label: "Scoring Leader",
+        value: `${teamData.totalPoints.toLocaleString()} pts`,
+        isLeagueBest: true,
+      });
+    }
+
+    // Trade Master badge (top 3 trader)
+    if (teamData.isTradeMaster && leagueData?.mostTrades?.rosterId !== rosterId) {
       superlatives.push({
         icon: getSuperlativeIcon("trade_master"),
         label: "Trade Master",
@@ -162,6 +209,20 @@ export function PublicTeamProfile({
 
     return superlatives;
   }, [superlativesData, rosterId]);
+
+  // Derive historical stats from superlatives API (single source of truth)
+  const derivedHistoricalStats = useMemo(() => {
+    const teamData = superlativesData?.teamSuperlatives?.[rosterId];
+    if (!teamData?.allTimeRecord) return historicalStats ?? null; // Fallback to prop
+
+    return {
+      allTimeRecord: teamData.allTimeRecord,
+      totalPoints: teamData.totalPoints,
+      bestSeason: teamData.bestSeason,
+      seasonsPlayed: teamData.seasonsPlayed,
+      playoffAppearances: teamData.playoffAppearances,
+    };
+  }, [superlativesData, rosterId, historicalStats]);
 
   // Get keepers and regular players
   const keepers = players.filter(p => p.existingKeeper);
@@ -180,7 +241,7 @@ export function PublicTeamProfile({
   }, [topPlayers]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-3">
+    <div className="max-w-5xl mx-auto space-y-2">
       {/* Header Card - Team name with inline trophies */}
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -215,11 +276,11 @@ export function PublicTeamProfile({
       )}
 
       {/* Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
         {/* All-Time Stats - Large card spanning 1 column */}
-        {historicalStats && (
+        {derivedHistoricalStats && (
           <TeamHistoricalStats
-            {...historicalStats}
+            {...derivedHistoricalStats}
             variant="compact"
             className="md:row-span-1"
           />

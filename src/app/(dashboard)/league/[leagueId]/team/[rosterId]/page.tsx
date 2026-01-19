@@ -133,44 +133,6 @@ interface DraftPicksData {
   }>;
 }
 
-// Types for owner history endpoint
-interface HistoricalRecord {
-  season: string;
-  wins: number;
-  losses: number;
-  ties: number;
-  pointsFor: number;
-  pointsAgainst: number;
-  playoffFinish?: string | null;
-  standing?: number;
-}
-
-interface OwnerHistory {
-  ownerId: string;
-  displayName: string;
-  avatar: string | null;
-  currentTeamName: string | null;
-  currentRosterId: string | null;
-  seasons: HistoricalRecord[];
-  totals: {
-    wins: number;
-    losses: number;
-    ties: number;
-    pointsFor: number;
-    pointsAgainst: number;
-    championships: number;
-    playoffAppearances: number;
-    seasonsPlayed: number;
-  };
-}
-
-interface OwnerHistoryData {
-  leagueId: string;
-  currentSeason: string;
-  availableSeasons: string[];
-  owners: OwnerHistory[];
-}
-
 // Types for recent trades endpoint
 interface TradedPlayer {
   playerId: string;
@@ -260,13 +222,6 @@ export default function TeamRosterPage() {
     revalidateOnFocus: false,
   });
 
-  // Fetch owner history for all-time stats (only for non-owner view)
-  const { data: ownerHistoryData } = useSWR<OwnerHistoryData>(
-    !isOwnTeam ? `/api/leagues/${leagueId}/owner-history` : null,
-    fetcher,
-    { revalidateOnFocus: false }
-  );
-
   // Fetch recent trades for this team (only for non-owner view)
   const { data: tradesData } = useSWR<RecentTradesData>(
     !isOwnTeam ? `/api/leagues/${leagueId}/recent-trades?limit=20` : null,
@@ -331,42 +286,6 @@ export default function TeamRosterPage() {
       .filter(c => c.runnerUp?.rosterId === rosterId)
       .map(c => ({ season: c.season }));
   }, [championshipData, rosterId]);
-
-  // Find owner history for this roster
-  const thisOwnerHistory = useMemo(() => {
-    if (!ownerHistoryData?.owners) return null;
-    return ownerHistoryData.owners.find(o => o.currentRosterId === rosterId);
-  }, [ownerHistoryData, rosterId]);
-
-  // Compute historical stats
-  const historicalStats = useMemo(() => {
-    if (!thisOwnerHistory) return null;
-
-    const bestSeason = thisOwnerHistory.seasons.reduce((best, season) => {
-      if (!best || season.wins > best.wins ||
-          (season.wins === best.wins && season.pointsFor > best.points)) {
-        return {
-          season: parseInt(season.season),
-          wins: season.wins,
-          losses: season.losses,
-          points: Math.round(season.pointsFor),
-        };
-      }
-      return best;
-    }, null as { season: number; wins: number; losses: number; points: number } | null);
-
-    return {
-      allTimeRecord: {
-        wins: thisOwnerHistory.totals.wins,
-        losses: thisOwnerHistory.totals.losses,
-      },
-      totalPoints: Math.round(thisOwnerHistory.totals.pointsFor),
-      bestSeason,
-      seasonsPlayed: thisOwnerHistory.totals.seasonsPlayed,
-      playoffAppearances: thisOwnerHistory.totals.playoffAppearances,
-    };
-  }, [thisOwnerHistory]);
-
 
   const addKeeper = async (
     playerId: string,
@@ -625,7 +544,6 @@ export default function TeamRosterPage() {
           teamAwards={teamAwards}
           championships={teamChampionships}
           runnerUps={teamRunnerUps}
-          historicalStats={historicalStats}
           trades={tradesData?.trades || []}
         />
       )}
