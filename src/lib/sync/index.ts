@@ -6,6 +6,7 @@ import {
   handleLeagueSync,
   handleUserLeaguesSync,
   handleQuickSync,
+  handleFullSync,
 } from "./handlers/league";
 
 // Keeper management handlers
@@ -39,6 +40,7 @@ const actionHandlers: Record<string, SyncHandler> = {
   league: handleLeagueSync,
   "user-leagues": handleUserLeaguesSync,
   quick: handleQuickSync,
+  "full-sync": handleFullSync,
 
   // Keeper management
   "populate-keepers": handlePopulateKeepers,
