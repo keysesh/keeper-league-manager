@@ -6,7 +6,9 @@ import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import { SeasonComparison } from "@/components/history/SeasonComparison";
-import { ArrowRightLeft, List, TrendingUp } from "lucide-react";
+import { ChampionshipHistory } from "@/components/ui/ChampionshipHistory";
+import { HeadToHead } from "@/components/ui/HeadToHead";
+import { ArrowRightLeft, List, TrendingUp, Trophy, Swords } from "lucide-react";
 
 interface KeeperHistory {
   id: string;
@@ -171,6 +173,29 @@ export default function HistoryPage() {
       {/* List View */}
       {viewMode === "list" && (
         <>
+          {/* Championship History & Head-to-Head */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 ring-1 ring-yellow-500/20 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                </div>
+                <h2 className="text-lg font-bold text-white">Championship History</h2>
+              </div>
+              <ChampionshipHistory leagueId={leagueId} compact={false} />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 ring-1 ring-orange-500/20 flex items-center justify-center">
+                  <Swords className="w-5 h-5 text-orange-400" />
+                </div>
+                <h2 className="text-lg font-bold text-white">Head-to-Head Records</h2>
+              </div>
+              <HeadToHead leagueId={leagueId} />
+            </div>
+          </div>
+
           {/* Season Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((s) => (

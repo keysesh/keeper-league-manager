@@ -11,6 +11,10 @@ import { PositionBadge } from "@/components/ui/PositionBadge";
 import { TopScorers } from "@/components/ui/TopScorers";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
 import { DraftPickValueChart } from "@/components/ui/DraftPickValueChart";
+import { PowerRankings } from "@/components/ui/PowerRankings";
+import { LuckFactor } from "@/components/ui/LuckFactor";
+import { RecentTrades } from "@/components/ui/RecentTrades";
+import { ChampionshipHistory } from "@/components/ui/ChampionshipHistory";
 import { ChevronRight, Trophy, Shield, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -456,6 +460,39 @@ export default function LeaguePage() {
             icon={<BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />}
             label="History"
             description="Past seasons"
+          />
+        </section>
+
+        {/* ANALYTICS GRID - Power Rankings, Luck Factor, Recent Trades */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Power Rankings */}
+          <PowerRankings
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            useApi={true}
+          />
+
+          {/* Luck Factor */}
+          <LuckFactor
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+          />
+        </section>
+
+        {/* RECENT TRADES & TROPHY CASE */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Recent Trades */}
+          <RecentTrades
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            limit={5}
+          />
+
+          {/* Championship History (compact) */}
+          <ChampionshipHistory
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            compact={true}
           />
         </section>
 
