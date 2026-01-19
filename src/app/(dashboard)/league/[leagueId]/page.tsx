@@ -359,18 +359,18 @@ export default function LeaguePage() {
           </section>
         )}
 
-        {/* ANALYTICS - Luck Factor & Top Scorers */}
-        <AnalyticsTabs
-          leagueId={leagueId}
-          userRosterId={userRoster?.id}
-        />
-
-        {/* CHAMPIONSHIP HISTORY */}
-        <ChampionshipHistory
-          leagueId={leagueId}
-          userRosterId={userRoster?.id}
-          compact={true}
-        />
+        {/* TOP SCORERS + TROPHY CASE - Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AnalyticsTabs
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+          />
+          <ChampionshipHistory
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            compact={true}
+          />
+        </div>
 
         {/* Footer */}
         {league.lastSyncedAt && (
