@@ -97,6 +97,7 @@ export const SyncActionSchema = z.enum([
   "league",
   "user-leagues",
   "quick",
+  "full-sync",
   "populate-keepers",
   "recalculate-keeper-years",
   "sync-drafts-only",
