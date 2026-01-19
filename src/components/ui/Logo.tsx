@@ -19,7 +19,7 @@ export function Logo({ size = "md", className = "", showText = false }: LogoProp
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <div
-        className="rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 p-1.5 shadow-lg shadow-amber-500/20"
+        className="rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-1.5 shadow-lg shadow-blue-500/25"
         style={{ width: dimension + 12, height: dimension + 12 }}
       >
         <svg
@@ -134,7 +134,7 @@ export function EPluribusLogo({ size = "md" }: { size: "sm" | "md" | "lg" | "xl"
   return (
     <div className="relative">
       <div
-        className="rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 p-2 shadow-2xl shadow-amber-500/30"
+        className="rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-2 shadow-2xl shadow-blue-500/30"
         style={{ width: dimension + 16, height: dimension + 16 }}
       >
         <svg
