@@ -331,6 +331,115 @@ describe("Keeper Calculator", () => {
       // baseCost = 2, totalKeeperYears = 3, effectiveCost = max(1, 2 - 3) = 1
       expect(cost).toBe(1);
     });
+
+    it("resets cost reduction for post-deadline (offseason) trades", async () => {
+      vi.mocked(prisma.roster.findUnique).mockResolvedValue({
+        id: "roster-2",
+        sleeperId: "sleeper-roster-2",
+        leagueId: "league-1",
+      } as any);
+
+      vi.mocked(prisma.roster.findMany).mockResolvedValue([
+        { id: "roster-1", sleeperId: "sleeper-roster-1" },
+        { id: "roster-2", sleeperId: "sleeper-roster-2" },
+      ] as any);
+
+      // Player was traded to roster-2 in December 2025 (post-deadline)
+      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue({
+        playerId: "player-1",
+        toRosterId: "roster-2",
+        fromRosterId: "roster-1",
+        transaction: {
+          type: "TRADE",
+          createdAt: new Date("2025-12-15"), // December = post-deadline
+        },
+      } as any);
+
+      // Player was originally drafted in round 5
+      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+        playerId: "player-1",
+        rosterId: "roster-1", // Original owner
+        round: 5,
+        draft: { season: 2023 },
+      } as any);
+
+      vi.mocked(prisma.player.findUnique).mockResolvedValue({
+        id: "player-1",
+        sleeperId: "sleeper-player-1",
+      } as any);
+
+      // Player was kept 2 times before trade (2024, 2025) - but this shouldn't count for new owner
+      vi.mocked(prisma.keeper.count).mockResolvedValue(0); // Post-deadline resets to 0
+
+      const cost = await calculateBaseCost(
+        "player-1",
+        "roster-2", // NEW owner after post-deadline trade
+        2026,
+        {
+          undraftedRound: 8,
+          minimumRound: 1,
+          costReductionPerYear: 1,
+        } as any
+      );
+
+      // Post-deadline trade = cost resets: baseCost = 5, keeperYears = 0, cost = 5
+      // NOT baseCost = 5, keeperYears = 2, cost = 3
+      expect(cost).toBe(5);
+    });
+
+    it("continues cost reduction for pre-deadline (in-season) trades", async () => {
+      vi.mocked(prisma.roster.findUnique).mockResolvedValue({
+        id: "roster-2",
+        sleeperId: "sleeper-roster-2",
+        leagueId: "league-1",
+      } as any);
+
+      vi.mocked(prisma.roster.findMany).mockResolvedValue([
+        { id: "roster-1", sleeperId: "sleeper-roster-1" },
+        { id: "roster-2", sleeperId: "sleeper-roster-2" },
+      ] as any);
+
+      // Player was traded to roster-2 in October 2025 (pre-deadline, week 5ish)
+      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue({
+        playerId: "player-1",
+        toRosterId: "roster-2",
+        fromRosterId: "roster-1",
+        transaction: {
+          type: "TRADE",
+          createdAt: new Date("2025-10-15"), // October = pre-deadline
+        },
+      } as any);
+
+      // Player was originally drafted in round 5
+      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+        playerId: "player-1",
+        rosterId: "roster-1", // Original owner
+        round: 5,
+        draft: { season: 2023 },
+      } as any);
+
+      vi.mocked(prisma.player.findUnique).mockResolvedValue({
+        id: "player-1",
+        sleeperId: "sleeper-player-1",
+      } as any);
+
+      // Player was kept 2 times before (2024, 2025) - this DOES count for pre-deadline trade
+      vi.mocked(prisma.keeper.count).mockResolvedValue(2);
+
+      const cost = await calculateBaseCost(
+        "player-1",
+        "roster-2", // NEW owner after pre-deadline trade
+        2026,
+        {
+          undraftedRound: 8,
+          minimumRound: 1,
+          costReductionPerYear: 1,
+        } as any
+      );
+
+      // Pre-deadline trade = cost continues: baseCost = 5, keeperYears = 2, cost = 3
+      expect(cost).toBe(3);
+    });
   });
 
   describe("calculateKeeperCost", () => {

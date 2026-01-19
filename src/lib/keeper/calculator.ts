@@ -197,48 +197,60 @@ export async function calculateKeeperEligibility(
 // ============================================
 
 /**
- * Get the total number of times a player has been kept in the league
- * This is used for cost calculation - cost reduces based on TOTAL keeper years
- * regardless of which owner kept them
+ * Get the number of keeper years to apply for cost reduction
  *
- * TODO: BUG - Trade deadline not respected for cost calculation
- * ================================================================
- * CURRENT BEHAVIOR (INCORRECT):
- *   Counts ALL keeper records league-wide, regardless of trade timing.
- *   Post-deadline trades still get cost reduction from previous keeper history.
+ * RULES:
+ * - Pre-deadline trade or same owner: Count ALL keeper records league-wide
+ * - Post-deadline (offseason) trade: Count only keeper records AFTER the trade
  *
- * CORRECT BEHAVIOR (PER LEAGUE RULES):
- *   Post-deadline (offseason) trades should RESET keeper years for cost calculation.
- *   New owner's cost = baseCost - 0 (no reduction from previous history).
+ * This means post-deadline trades RESET the cost reduction for the new owner.
  *
- * EXAMPLE OF BUG:
+ * EXAMPLE:
  *   Player X: Drafted Round 5 in 2023, kept in 2024 and 2025 (2 keeper years)
  *   Player X: Traded to new owner in December 2025 (POST-deadline)
  *
- *   CURRENT (wrong): New owner's 2026 cost = 5 - 2 = Round 3
- *   SHOULD BE:       New owner's 2026 cost = 5 - 0 = Round 5 (reset)
- *
- * FIX NEEDED:
- *   1. Add rosterId parameter to this function
- *   2. Check if current owner acquired player via post-deadline trade
- *   3. If yes, only count keeper years AFTER the trade date
- *   4. Use isTradeAfterDeadline() from @/lib/constants/keeper-rules
- *
- * RELATED CODE:
- *   - getOriginSeasonForOwner() correctly handles trade deadline for ELIGIBILITY
- *   - isTradeAfterDeadline() already exists in keeper-rules.ts
- *   - getTradeInheritedCost() handles base cost inheritance (correct)
- *
- * TESTS TO UPDATE:
- *   - src/lib/keeper/calculator.test.ts - add tests for post-deadline trade cost reset
- *   - src/lib/keeper/cascade.test.ts - verify cascade handles this correctly
+ *   New owner's 2026 cost = 5 - 0 = Round 5 (reset, no prior history counts)
+ *   If same owner kept: cost = 5 - 2 = Round 3 (history counts)
  */
 async function getTotalKeeperYears(
   playerId: string,
+  rosterId: string,
   targetSeason: number
 ): Promise<number> {
-  // Count all keeper records for this player BEFORE the target season
-  // TODO: This should respect trade deadline - see docstring above
+  // Check if current owner acquired via trade
+  const tradeAcquisition = await prisma.transactionPlayer.findFirst({
+    where: {
+      playerId,
+      toRosterId: rosterId,
+      transaction: { type: "TRADE" },
+    },
+    include: { transaction: true },
+    orderBy: { transaction: { createdAt: "desc" } },
+  });
+
+  // If acquired via trade, check if it was after the deadline
+  if (tradeAcquisition) {
+    const tradeDate = tradeAcquisition.transaction.createdAt;
+    const tradeSeason = getSeasonFromDate(tradeDate);
+    const isPostDeadline = isTradeAfterDeadline(tradeDate, tradeSeason);
+
+    if (isPostDeadline) {
+      // Post-deadline trade: only count keeper years AFTER the trade season
+      // This effectively resets the cost reduction for the new owner
+      const keeperCount = await prisma.keeper.count({
+        where: {
+          playerId,
+          season: {
+            gte: tradeSeason + 1, // Count from season after trade
+            lt: targetSeason,
+          },
+        },
+      });
+      return keeperCount;
+    }
+  }
+
+  // No trade, pre-deadline trade, or same owner: count all keeper years
   const keeperCount = await prisma.keeper.count({
     where: {
       playerId,
@@ -249,20 +261,21 @@ async function getTotalKeeperYears(
 }
 
 /**
- * FIXED: Calculate the base keeper cost for a player
+ * Calculate the base keeper cost for a player
  *
  * Rules:
- * - Drafted players: Draft Round (Year 1 = draft round)
- * - Undrafted/Waiver/FA: Round 8 (configurable)
- * - Traded players: Inherit original cost from previous owner
- * - Cost IMPROVES by 1 round for each year the player has been kept IN THE LEAGUE
- *   (regardless of owner - cost continues even through trades)
- *   Year 1: Draft round
- *   Year 2: Draft round - 1
- *   Year 3: Draft round - 2
+ * - Drafted players: Start at draft round
+ * - Undrafted/Waiver/FA: Start at undrafted round (default 8)
+ * - Traded players: Inherit original acquisition cost
+ * - Cost IMPROVES by 1 round per keeper year
  *
- * IMPORTANT: Cost reduction is based on TOTAL league keeper history, not per-owner.
- * Offseason trades reset YEARS KEPT (for eligibility), but NOT the cost reduction.
+ * TRADE DEADLINE RULES:
+ * - Pre-deadline trade: Cost reduction continues from previous owner
+ * - Post-deadline (offseason) trade: Cost reduction RESETS to 0
+ *
+ * Example:
+ *   Player drafted Round 5, kept 2 years, traded post-deadline:
+ *   New owner's cost = Round 5 (not Round 3)
  */
 export async function calculateBaseCost(
   playerId: string,
@@ -298,10 +311,10 @@ export async function calculateBaseCost(
       baseCost = undraftedRound;
   }
 
-  // FIXED: Cost reduces based on TOTAL keeper years in the league
-  // Not per-owner - cost continues to reduce even through offseason trades
-  // This ensures the round never "resets" - only years kept for eligibility resets
-  const totalKeeperYears = await getTotalKeeperYears(playerId, targetSeason);
+  // FIXED: Cost reduces based on keeper years, respecting trade deadline
+  // - Pre-deadline trade or same owner: count all keeper years (cost continues)
+  // - Post-deadline (offseason) trade: reset keeper years (cost resets)
+  const totalKeeperYears = await getTotalKeeperYears(playerId, rosterId, targetSeason);
   const effectiveCost = Math.max(minRound, baseCost - totalKeeperYears);
 
   return effectiveCost;
