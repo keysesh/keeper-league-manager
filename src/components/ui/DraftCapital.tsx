@@ -117,35 +117,39 @@ export function DraftCapital({
     return map;
   }, [keepers]);
 
-  // Calculate summary stats with details
+  // Calculate summary stats with details - focused on current/first season
   const summary = useMemo(() => {
-    let totalOwned = 0;
-    let totalPossible = 0;
+    // Get the first (current) season for the summary display
+    const currentSeason = seasons[0];
+    const currentSeasonPicks = picksBySeason.get(currentSeason) || [];
+
+    // Summary stats are for current season only
+    const totalOwned = currentSeasonPicks.length;
+    const totalPossible = maxRounds;
+
     let ownPicks = 0;
     let acquiredPicks = 0;
     const acquiredFrom = new Map<string, number>(); // owner name -> count
     const tradedTo = new Map<string, number>(); // owner name -> count
 
-    for (const season of seasons) {
-      const seasonPicks = picksBySeason.get(season) || [];
-      totalOwned += seasonPicks.length;
-      totalPossible += maxRounds;
-
-      for (const pick of seasonPicks) {
-        if (pick.originalOwnerSleeperId === teamSleeperId) {
-          ownPicks++;
-        } else {
-          acquiredPicks++;
-          const fromName = pick.originalOwnerName || "Unknown";
-          acquiredFrom.set(fromName, (acquiredFrom.get(fromName) || 0) + 1);
-        }
+    for (const pick of currentSeasonPicks) {
+      if (pick.originalOwnerSleeperId === teamSleeperId) {
+        ownPicks++;
+      } else {
+        acquiredPicks++;
+        const fromName = pick.originalOwnerName || "Unknown";
+        acquiredFrom.set(fromName, (acquiredFrom.get(fromName) || 0) + 1);
       }
     }
 
-    // Count traded away picks
-    for (const [, pick] of tradedPicksInfo) {
-      const toName = pick.currentOwnerName || "Unknown";
-      tradedTo.set(toName, (tradedTo.get(toName) || 0) + 1);
+    // Count traded away picks for current season only
+    let tradedAwayCount = 0;
+    for (const [key, pick] of tradedPicksInfo) {
+      if (pick.season === currentSeason) {
+        tradedAwayCount++;
+        const toName = pick.currentOwnerName || "Unknown";
+        tradedTo.set(toName, (tradedTo.get(toName) || 0) + 1);
+      }
     }
 
     const hasNotableActivity = acquiredPicks > 0 || totalOwned < totalPossible;
@@ -155,7 +159,7 @@ export function DraftCapital({
       totalPossible,
       ownPicks,
       acquiredPicks,
-      tradedAway: tradedPicksInfo.size,
+      tradedAway: tradedAwayCount,
       percentage: Math.round((totalOwned / totalPossible) * 100),
       hasNotableActivity,
       acquiredFrom,

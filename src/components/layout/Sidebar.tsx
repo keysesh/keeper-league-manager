@@ -15,7 +15,6 @@ import {
   UserCircle,
   Activity,
   FileText,
-  Trophy,
   Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
@@ -89,12 +88,6 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
             { name: "Trade Center", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
             { name: "Trade Proposals", href: `/league/${leagueId}/trade-proposals`, icon: FileText },
             { name: "Recent Activity", href: `/league/${leagueId}/activity`, icon: Activity },
-          ],
-        },
-        {
-          title: "History",
-          items: [
-            { name: "Championships", href: `/league/${leagueId}/history`, icon: Trophy },
           ],
         },
         {

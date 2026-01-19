@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { BackLink } from "@/components/ui/BackLink";
-import { RefreshCw, Trophy, Star, Users, FileText, Sparkles, Eye } from "lucide-react";
+import { RefreshCw, Trophy, Star, Users, FileText, Sparkles, Eye, ArrowLeftRight, Coins, BarChart3, type LucideIcon } from "lucide-react";
 import { DraftCapital } from "@/components/ui/DraftCapital";
 import { AwardsSection, type TeamAward } from "@/components/ui/AwardBadge";
 import { PositionBadge } from "@/components/ui/PositionBadge";
@@ -369,12 +369,12 @@ export default function TeamRosterPage() {
 
   // Compute fun facts
   const funFacts = useMemo(() => {
-    const facts: Array<{ emoji: string; label: string; value: string }> = [];
+    const facts: Array<{ icon: LucideIcon; label: string; value: string }> = [];
 
     // Best season from history
     if (historicalStats?.bestSeason) {
       facts.push({
-        emoji: "🏆",
+        icon: Trophy,
         label: "Best Season",
         value: `${historicalStats.bestSeason.wins}-${historicalStats.bestSeason.losses} (${historicalStats.bestSeason.season})`,
       });
@@ -387,7 +387,7 @@ export default function TeamRosterPage() {
       ).length;
       if (teamTradeCount > 0) {
         facts.push({
-          emoji: "🔄",
+          icon: ArrowLeftRight,
           label: "Recent Trades",
           value: teamTradeCount.toString(),
         });
@@ -397,7 +397,7 @@ export default function TeamRosterPage() {
     // Keeper count if available
     if (data?.currentKeepers.total && data.currentKeepers.total > 0) {
       facts.push({
-        emoji: "⭐",
+        icon: Star,
         label: "Keepers Selected",
         value: data.currentKeepers.total.toString(),
       });
@@ -408,7 +408,7 @@ export default function TeamRosterPage() {
     if (currentKeepersArr.length > 0) {
       const avgCost = currentKeepersArr.reduce((sum, k) => sum + (k.existingKeeper?.finalCost || 0), 0) / currentKeepersArr.length;
       facts.push({
-        emoji: "💰",
+        icon: Coins,
         label: "Avg Keeper Cost",
         value: `R${avgCost.toFixed(1)}`,
       });
@@ -418,7 +418,7 @@ export default function TeamRosterPage() {
     const currentRosterInfo = leagueData?.rosters.find(r => r.id === rosterId);
     if (currentRosterInfo && (currentRosterInfo.wins > 0 || currentRosterInfo.losses > 0)) {
       facts.push({
-        emoji: "📊",
+        icon: BarChart3,
         label: "Current Record",
         value: `${currentRosterInfo.wins}-${currentRosterInfo.losses}`,
       });
@@ -692,42 +692,44 @@ export default function TeamRosterPage() {
         <TeamFunFacts facts={funFacts} />
       )}
 
-      {/* Keeper Summary Stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
-          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
-              <Users className="w-4 h-4 text-blue-400" />
+      {/* Keeper Summary Stats - Only show for own team */}
+      {isOwnTeam && (
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+                <Users className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-lg sm:text-2xl font-bold text-white tabular-nums">{data.currentKeepers.total}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxKeepers}</span></p>
+                <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Total</p>
+              </div>
             </div>
-            <div>
-              <p className="text-lg sm:text-2xl font-bold text-white tabular-nums">{data.currentKeepers.total}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxKeepers}</span></p>
-              <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Total</p>
+          </div>
+          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0">
+                <Star className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-lg sm:text-2xl font-bold text-amber-400 tabular-nums">{data.currentKeepers.franchise}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxFranchiseTags}</span></p>
+                <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Franchise</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+                <Trophy className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-lg sm:text-2xl font-bold text-blue-400 tabular-nums">{data.currentKeepers.regular}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxRegularKeepers}</span></p>
+                <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Regular</p>
+              </div>
             </div>
           </div>
         </div>
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
-          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0">
-              <Star className="w-4 h-4 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-lg sm:text-2xl font-bold text-amber-400 tabular-nums">{data.currentKeepers.franchise}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxFranchiseTags}</span></p>
-              <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Franchise</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
-          <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-4 h-4 text-blue-400" />
-            </div>
-            <div>
-              <p className="text-lg sm:text-2xl font-bold text-blue-400 tabular-nums">{data.currentKeepers.regular}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxRegularKeepers}</span></p>
-              <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Regular</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Draft Capital with Keeper Cards - Only show for owner */}
       {isOwnTeam && draftPicksData && (() => {
@@ -778,46 +780,6 @@ export default function TeamRosterPage() {
           </div>
         );
       })()}
-
-      {/* Public Keepers Summary - Show for non-owners */}
-      {!isOwnTeam && currentKeepers.length > 0 && (
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
-                <Star className="w-3.5 h-3.5 text-amber-400" />
-              </div>
-              <h2 className="text-base sm:text-lg font-semibold text-white">Keepers for {data.season}</h2>
-              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] sm:text-xs font-bold">
-                {currentKeepers.length}
-              </span>
-            </div>
-          </div>
-          <div className="p-3 sm:p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {currentKeepers.map((p) => (
-                <div
-                  key={p.player.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border ${
-                    p.existingKeeper?.type === "FRANCHISE"
-                      ? "bg-amber-500/10 border-amber-500/30"
-                      : "bg-[#1a1a1a] border-white/[0.06]"
-                  }`}
-                >
-                  <PositionBadge position={p.player.position} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{p.player.fullName}</p>
-                    <p className="text-xs text-slate-500">{p.player.team || "FA"}</p>
-                  </div>
-                  {p.existingKeeper?.type === "FRANCHISE" && (
-                    <Star size={14} className="text-amber-400 shrink-0" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Trade History - Only show for non-owner */}
       {!isOwnTeam && tradesData?.trades && tradesData.trades.length > 0 && (
@@ -871,7 +833,7 @@ export default function TeamRosterPage() {
         </div>
       )}
 
-      {/* Full Roster - Show for other teams */}
+      {/* Full Roster - Show for other teams (simplified view without cost details) */}
       {!isOwnTeam && (
         <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
@@ -883,6 +845,11 @@ export default function TeamRosterPage() {
               <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-slate-500/15 text-slate-400 text-[10px] sm:text-xs font-medium">
                 {data.players.length}
               </span>
+              {currentKeepers.length > 0 && (
+                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-medium">
+                  {currentKeepers.length} keeper{currentKeepers.length !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
           </div>
           <div className="p-3 sm:p-5">
@@ -891,8 +858,7 @@ export default function TeamRosterPage() {
                 <PremiumPlayerCard
                   key={p.player.id}
                   player={p.player}
-                  eligibility={p.eligibility}
-                  existingKeeper={p.existingKeeper}
+                  existingKeeper={p.existingKeeper ? { ...p.existingKeeper, finalCost: 0 } : null}
                   onShowHistory={setHistoryPlayerId}
                   isLoading={false}
                 />

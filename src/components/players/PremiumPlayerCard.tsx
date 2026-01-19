@@ -249,8 +249,8 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
         </div>
       </div>
 
-      {/* Keeper Year + Status Row */}
-      <div className="grid grid-cols-3 gap-1 sm:gap-2 mt-1.5 sm:mt-2 text-center">
+      {/* Status Row - show keeper year info only if eligibility is provided */}
+      <div className={`grid gap-1 sm:gap-2 mt-1.5 sm:mt-2 text-center ${eligibility ? "grid-cols-3" : "grid-cols-2"}`}>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
           <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">
             {player.isProjected ? "Est GP" : player.lastSeason ? `'${String(player.lastSeason).slice(-2)}GP` : "GP"}
@@ -273,23 +273,25 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
             )}
           </div>
         </div>
-        <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
-          <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">
-            {isKeeper ? "Year" : "If Kept"}
+        {eligibility && (
+          <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
+            <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">
+              {isKeeper ? "Year" : "If Kept"}
+            </div>
+            <div className={`text-[11px] sm:text-xs font-semibold ${
+              isKeeper ? "text-blue-400" :
+              (eligibility?.yearsKept ?? 0) >= 2 ? "text-amber-400" :
+              "text-emerald-400"
+            }`}>
+              {isKeeper
+                ? existingKeeper?.type === "FRANCHISE" ? "FT" : `Yr ${eligibility?.yearsKept ?? 1}`
+                : eligibility?.yearsKept
+                  ? eligibility.yearsKept >= 2 ? "FT Only" : `→ Yr ${eligibility.yearsKept + 1}`
+                  : "→ Yr 1"
+              }
+            </div>
           </div>
-          <div className={`text-[11px] sm:text-xs font-semibold ${
-            isKeeper ? "text-blue-400" :
-            (eligibility?.yearsKept ?? 0) >= 2 ? "text-amber-400" :
-            "text-emerald-400"
-          }`}>
-            {isKeeper
-              ? existingKeeper?.type === "FRANCHISE" ? "FT" : `Yr ${eligibility?.yearsKept ?? 1}`
-              : eligibility?.yearsKept
-                ? eligibility.yearsKept >= 2 ? "FT Only" : `→ Yr ${eligibility.yearsKept + 1}`
-                : "→ Yr 1"
-            }
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Keeper Status Section */}
