@@ -139,17 +139,17 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
 
         <div className="divide-y divide-white/[0.06]">
           {championships.slice(0, 3).map((c) => (
-            <div key={c.season} className="p-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border border-amber-500/20 flex items-center justify-center">
-                <Crown className="w-6 h-6 text-amber-400" />
+            <div key={c.season} className="p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border border-amber-500/20 flex items-center justify-center">
+                <Crown className="w-4 h-4 text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-white">{c.season}</span>
-                  <span className="text-sm text-slate-400">Champion</span>
+                  <span className="text-sm font-semibold text-white">{c.season}</span>
+                  <span className="text-xs text-slate-400">Champion</span>
                 </div>
-                <p className="text-base text-white truncate">{c.champion.teamName}</p>
-                <p className="text-sm text-slate-500">{c.champion.wins}-{c.champion.losses} · {Math.round(c.champion.pointsFor).toLocaleString()} pts</p>
+                <p className="text-sm font-medium text-white truncate">{c.champion.teamName}</p>
+                <p className="text-xs text-slate-500">{c.champion.wins}-{c.champion.losses} · {Math.round(c.champion.pointsFor).toLocaleString()} pts</p>
               </div>
             </div>
           ))}
@@ -300,37 +300,37 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
                   isUserChampion && "bg-amber-500/5"
                 )}
               >
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3">
                   {/* Year Badge */}
                   <div className="flex flex-col items-center">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500/25 to-yellow-600/15 border border-amber-500/25 flex items-center justify-center shadow-lg">
-                      <Trophy className="w-7 h-7 text-amber-400" />
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500/25 to-yellow-600/15 border border-amber-500/25 flex items-center justify-center shadow-lg">
+                      <Trophy className="w-5 h-5 text-amber-400" />
                     </div>
-                    <span className="text-lg font-bold text-white mt-2">{c.season}</span>
+                    <span className="text-sm font-semibold text-white mt-2">{c.season}</span>
                   </div>
 
                   {/* Champion Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h4 className="text-lg font-bold text-white">{c.champion.teamName}</h4>
+                      <h4 className="text-sm font-semibold text-white">{c.champion.teamName}</h4>
                       {isUserChampion && (
-                        <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded font-bold">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded font-bold">
                           YOU
                         </span>
                       )}
                     </div>
-                    <p className="text-base text-slate-400 mb-2">
+                    <p className="text-xs text-slate-400 mb-2">
                       {c.champion.owners.join(", ")}
                     </p>
-                    <div className="flex items-center gap-4 text-base flex-wrap">
+                    <div className="flex items-center gap-3 text-xs flex-wrap">
                       <span className="text-emerald-400 font-semibold">{c.champion.wins}-{c.champion.losses}</span>
                       <span className="text-slate-500">{Math.round(c.champion.pointsFor).toLocaleString()} pts</span>
                     </div>
 
                     {/* Runner-up */}
                     {c.runnerUp && (
-                      <div className="mt-3 flex items-center gap-2 text-sm">
-                        <Medal className="w-4 h-4 text-slate-400" />
+                      <div className="mt-2 flex items-center gap-2 text-xs">
+                        <Medal className="w-3.5 h-3.5 text-slate-400" />
                         <span className="text-slate-500">Runner-up:</span>
                         <span className="text-slate-300">{c.runnerUp.teamName}</span>
                       </div>
@@ -460,8 +460,8 @@ function SuperlativeCard({
           {icon}
         </div>
         <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">{label}</p>
-        <p className={cn("text-2xl font-bold mt-1", colorClass)}>{value}</p>
-        <p className="text-sm text-white font-medium mt-2 truncate" title={name}>{name}</p>
+        <p className={cn("text-lg font-bold mt-1", colorClass)}>{value}</p>
+        <p className="text-xs text-white font-medium mt-2 truncate" title={name}>{name}</p>
         {subtitle && (
           <p className="text-xs text-slate-500">{subtitle}</p>
         )}

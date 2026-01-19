@@ -143,8 +143,8 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
         <div className="p-5 border-b border-white/10">
           <div className="h-6 w-40 bg-white/5 rounded animate-pulse" />
         </div>
-        <div className="p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map(i => (
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className="aspect-[4/5] bg-white/5 rounded-xl animate-pulse" />
           ))}
         </div>
@@ -199,8 +199,8 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
         <div className={cn(
           "p-4 grid gap-3",
           condensed
-            ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
-            : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+            ? "grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+            : "grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
         )}>
           {displayRankings.map((team) => {
             const isUser = team.rosterId === userRosterId;
@@ -281,8 +281,8 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                   {team.trajectory === "falling" && <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
                 </div>
 
-                {/* Top Scorer - only in full view */}
-                {!condensed && team.topScorer && (
+                {/* Top Scorer */}
+                {team.topScorer && (
                   <div className="mt-3 pt-3 border-t border-white/5">
                     <p className="text-xs text-slate-500 truncate">
                       <span className="text-amber-400">{team.topScorer.ppg}</span>
@@ -322,7 +322,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
         </div>
       </div>
 
-      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {rankedTeams.map((team, index) => {
           const rank = index + 1;
           const isUser = team.id === userRosterId;

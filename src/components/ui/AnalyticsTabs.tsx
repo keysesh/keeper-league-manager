@@ -14,7 +14,7 @@ interface AnalyticsTabsProps {
  */
 export function AnalyticsTabs({ leagueId, userRosterId }: AnalyticsTabsProps) {
   return (
-    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden max-w-md">
       {/* Header */}
       <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
