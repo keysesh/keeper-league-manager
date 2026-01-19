@@ -22,13 +22,46 @@ interface RouteParams {
   params: Promise<{ leagueId: string }>;
 }
 
-// Historical league IDs - same as owner-history
-const HISTORICAL_LEAGUES: Record<string, { season: string; sleeperLeagueId: string }[]> = {
-  "1124469358312456192": [
-    { season: "2024", sleeperLeagueId: "1109261023418314752" },
-    { season: "2023", sleeperLeagueId: "991458482647871488" },
-  ],
-};
+const sleeper = new SleeperClient();
+
+/**
+ * Discover historical leagues by following the previous_league_id chain
+ */
+async function discoverHistoricalLeagues(
+  currentSleeperLeagueId: string,
+  maxDepth = 10
+): Promise<{ season: number; sleeperLeagueId: string }[]> {
+  const historicalLeagues: { season: number; sleeperLeagueId: string }[] = [];
+  let currentId: string | null = currentSleeperLeagueId;
+  let depth = 0;
+
+  // First, get the current league to find its previous_league_id
+  try {
+    const currentLeague = await sleeper.getLeague(currentId);
+    currentId = currentLeague.previous_league_id || null;
+  } catch (error) {
+    logger.warn("Failed to get current league for history chain", { error });
+    return historicalLeagues;
+  }
+
+  // Follow the chain backwards
+  while (currentId && depth < maxDepth) {
+    try {
+      const leagueData = await sleeper.getLeague(currentId);
+      historicalLeagues.push({
+        season: parseInt(leagueData.season, 10),
+        sleeperLeagueId: currentId,
+      });
+      currentId = leagueData.previous_league_id || null;
+      depth++;
+    } catch (error) {
+      logger.warn(`Failed to fetch historical league ${currentId}`, { error });
+      break;
+    }
+  }
+
+  return historicalLeagues;
+}
 
 interface TeamSuperlative {
   rosterId: string;
@@ -60,8 +93,6 @@ interface SuperlativesResponse {
     waiverHawks: string[];   // roster IDs of top 3 waiver users (placeholder)
   };
 }
-
-const sleeper = new SleeperClient();
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -142,8 +173,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Get historical data for all owners
-    const historicalLeagues = HISTORICAL_LEAGUES[league.sleeperId] || [];
+    // Dynamically discover historical leagues by following the previous_league_id chain
+    const historicalLeagues = await discoverHistoricalLeagues(league.sleeperId);
 
     // Aggregate owner stats
     const ownerStats = new Map<string, {
@@ -237,7 +268,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           const champion = isChampion(histWinnersBracket, roster.roster_id);
 
           const historicalSeason = {
-            season: parseInt(historicalLeague.season),
+            season: historicalLeague.season,
             wins,
             losses,
             points,

@@ -180,9 +180,9 @@ export function PublicTeamProfile({
   }, [topPlayers]);
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-5xl mx-auto space-y-3">
       {/* Header Card - Team name with inline trophies */}
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4 sm:p-5">
+      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-slate-500/20 to-slate-600/20 border border-slate-500/25 flex items-center justify-center flex-shrink-0">
@@ -215,7 +215,7 @@ export function PublicTeamProfile({
       )}
 
       {/* Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* All-Time Stats - Large card spanning 1 column */}
         {historicalStats && (
           <TeamHistoricalStats
@@ -253,7 +253,7 @@ export function PublicTeamProfile({
         )}
 
         {/* Roster Preview - Spans 2 columns on larger screens */}
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4 md:col-span-2 lg:col-span-2">
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-slate-500/15 border border-slate-500/25 flex items-center justify-center">
