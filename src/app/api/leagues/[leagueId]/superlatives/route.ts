@@ -115,6 +115,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             id: true,
             teamName: true,
             sleeperId: true,
+            ownerId: true,  // The Sleeper user ID (owner_id)
           },
         },
       },
@@ -205,8 +206,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const ownerToCurrentRosterId = new Map<string, string>();
     for (const sleeperRoster of currentSleeperRosters) {
       if (sleeperRoster.owner_id) {
-        // Find DB roster where sleeperId matches the owner's Sleeper user ID
-        const dbRoster = league.rosters.find(r => r.sleeperId === sleeperRoster.owner_id);
+        // Find DB roster by ownerId (the Sleeper user ID stored in our DB)
+        let dbRoster = league.rosters.find(r => r.ownerId === sleeperRoster.owner_id);
+
+        // Fallback: try matching by sleeperId as roster_id
+        if (!dbRoster) {
+          dbRoster = league.rosters.find(r => r.sleeperId === String(sleeperRoster.roster_id));
+        }
+
         if (dbRoster) {
           ownerToCurrentRosterId.set(sleeperRoster.owner_id, dbRoster.id);
         }
@@ -405,8 +412,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }> = {};
 
     for (const roster of league.rosters) {
-      const ownerSleeperId = roster.sleeperId;
-      const stats = ownerSleeperId ? ownerStats.get(ownerSleeperId) : null;
+      // Find stats by matching the rosterId we stored during aggregation
+      // This is more reliable than matching by sleeperId key
+      const stats = [...ownerStats.values()].find(s => s.rosterId === roster.id) || null;
       const tradeCount = tradeCountMap.get(roster.id) || 0;
 
       teamSuperlatives[roster.id] = {
