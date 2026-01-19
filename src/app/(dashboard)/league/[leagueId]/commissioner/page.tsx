@@ -16,10 +16,8 @@ import {
   Edit,
   Users,
   History,
-  Mail,
   Link as LinkIcon,
   Copy,
-  Send,
 } from "lucide-react";
 import { BackLink } from "@/components/ui/BackLink";
 
@@ -227,6 +225,7 @@ export default function CommissionerPage() {
     if (activeTab === "invites" && invites.length === 0) {
       fetchInvites();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only fetch when tab changes to invites and empty
   }, [activeTab]);
 
   if (loading) {

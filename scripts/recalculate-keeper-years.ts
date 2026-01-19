@@ -61,7 +61,7 @@ async function recalculateKeeperYears() {
   const fixes: KeeperFix[] = [];
   const dryRun = process.argv.includes("--dry-run");
 
-  for (const [playerId, playerKeeperList] of playerKeepers) {
+  for (const [, playerKeeperList] of playerKeepers) {
     // Sort by season
     playerKeeperList.sort((a, b) => a.season - b.season);
 

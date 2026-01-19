@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { PositionBadge } from "./PositionBadge";
 
@@ -35,7 +35,7 @@ export function TrendingPlayers({
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchTrending = async () => {
+  const fetchTrending = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -65,14 +65,14 @@ export function TrendingPlayers({
     } finally {
       setLoading(false);
     }
-  };
+  }, [type, limit, hours]);
 
   useEffect(() => {
     fetchTrending();
     // Refresh every 5 minutes
     const interval = setInterval(fetchTrending, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [type, limit, hours]);
+  }, [fetchTrending]);
 
   const displayedPlayers = activeTab === "add" ? adds : drops;
 

@@ -95,23 +95,6 @@ function isOffseasonTradeForKeeper(tradeDate: Date, keeperSeason: number): boole
   return false;
 }
 
-/**
- * Get the season that a date falls into (for in-season determination)
- * Sept-Feb = that year's season (Sept-Dec) or previous year's season (Jan-Feb)
- */
-function getSeasonForDate(date: Date): number {
-  const month = date.getMonth();
-  const year = date.getFullYear();
-
-  // Sept (8) through Dec (11) = current year's season
-  if (month >= 8) {
-    return year;
-  }
-
-  // Jan (0) through Aug (7) = previous year's season (offseason)
-  // But for classification, consider it the upcoming year's offseason
-  return year;
-}
 
 async function getPlayerTransactions(
   playerId: string,
@@ -334,10 +317,6 @@ async function fixKeeperYears(leagueId: string, playerSleeperId?: string) {
     // Sort keepers by season
     playerKeepers.sort((a, b) => a.season - b.season);
 
-    // Track ownership and years
-    let currentOwnerSleeperId = originalDraft.rosterSleeperId;
-    let yearsWithCurrentOwner = 0;
-
     // Process keepers in chronological order
     for (const keeper of playerKeepers) {
       const keeperOwnerSleeperId = keeper.roster.sleeperId;
@@ -401,7 +380,6 @@ async function fixKeeperYears(leagueId: string, playerSleeperId?: string) {
           shouldReset = true;
           resetReason = "Owner changed (no trade record found)";
         }
-        currentOwnerSleeperId = keeperOwnerSleeperId;
       } else if (!shouldReset && !previousKeeperByAnyOwner && keeper !== playerKeepers[0]) {
         // No previous keeper but not the first keeper - gap in keeper history
         // Check if this owner acquired via trade

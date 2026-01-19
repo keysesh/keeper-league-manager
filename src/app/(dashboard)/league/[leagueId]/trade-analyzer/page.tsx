@@ -244,7 +244,7 @@ export default function TradeAnalyzerPage() {
     } finally {
       setLoading(false);
     }
-  }, [leagueId]);
+  }, [leagueId, planningSeason]);
 
   useEffect(() => {
     fetchLeagueData();

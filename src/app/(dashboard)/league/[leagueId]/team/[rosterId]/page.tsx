@@ -118,7 +118,6 @@ export default function TeamRosterPage() {
   const leagueId = params.leagueId as string;
   const rosterId = params.rosterId as string;
   const { success, error: showError } = useToast();
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [syncingKeepers, setSyncingKeepers] = useState(false);
   const [historyPlayerId, setHistoryPlayerId] = useState<string | null>(null);
 

@@ -283,8 +283,8 @@ describe("Trade Scenarios", () => {
     const team2GetsPick = calculateDraftPickValue(3);
     const team2Total = team2GetsPlayer.totalValue + team2GetsPick;
 
-    // Calculate fairness for reference (not asserted, using raw value comparison instead)
-    const _fairness = calculateFairnessScore(team1Gets.totalValue, team2Total);
+    // Fairness is calculated but we compare raw values instead
+    calculateFairnessScore(team1Gets.totalValue, team2Total);
 
     // Values should be relatively close
     expect(Math.abs(team1Gets.totalValue - team2Total)).toBeLessThan(30);

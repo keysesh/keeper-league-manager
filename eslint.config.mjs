@@ -13,6 +13,25 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Allow `any` in test files - mocks often need flexible typing
+  {
+    files: ["**/*.test.ts", "**/*.test.tsx"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  // Allow <img> for external CDN images with error handling (avatars, logos)
+  {
+    files: [
+      "**/PlayerAvatar.tsx",
+      "**/StandingsTable.tsx",
+      "**/admin/users/page.tsx",
+      "**/team/page.tsx",
+    ],
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

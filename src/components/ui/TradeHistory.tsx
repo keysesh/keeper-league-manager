@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeftRight, Calendar, User, TrendingUp, Award } from "lucide-react";
+import { ArrowLeftRight, Calendar, User, Award } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 
