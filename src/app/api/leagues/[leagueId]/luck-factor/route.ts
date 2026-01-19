@@ -124,7 +124,7 @@ export async function GET(
     const avgScheduleStrength =
       luckRatings.reduce((sum, r) => sum + r.scheduleStrength, 0) / totalTeams;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       luckRatings,
       leagueStats: {
         totalTeams,
@@ -136,6 +136,8 @@ export async function GET(
       },
       generatedAt: new Date().toISOString(),
     });
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     logger.error("Luck factor fetch error", error);
     return NextResponse.json(

@@ -262,13 +262,15 @@ export async function GET(
       ),
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       championships,
       ownerStats: ownerStats.slice(0, 10),
       allTimeRecords,
       totalSeasons: championships.length,
       generatedAt: new Date().toISOString(),
     });
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     logger.error("Championship history fetch error", error);
     return NextResponse.json(

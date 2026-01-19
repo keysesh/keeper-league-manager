@@ -205,13 +205,15 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       headToHead: headToHeadData,
       matrix,
       rivalries: rivalries.slice(0, 5),
       note: "Records are estimated based on points scored. Sync matchup data for accurate H2H records.",
       generatedAt: new Date().toISOString(),
     });
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     logger.error("Head-to-head fetch error", error);
     return NextResponse.json(

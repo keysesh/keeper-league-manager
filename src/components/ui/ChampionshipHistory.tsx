@@ -69,12 +69,12 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
   if (isLoading) {
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden animate-pulse">
-        <div className="px-4 py-3 border-b border-[#2a2a2a]">
+        <div className="px-4 py-4 border-b border-[#2a2a2a]">
           <div className="h-8 w-40 bg-[#2a2a2a] rounded" />
         </div>
         <div className="p-4 space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-20 bg-[#2a2a2a] rounded" />
+            <div key={i} className="h-24 bg-[#2a2a2a] rounded" />
           ))}
         </div>
       </div>
@@ -85,8 +85,8 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-8 text-center">
         <Trophy className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-        <p className="text-gray-400 font-medium">No championship data</p>
-        <p className="text-xs text-gray-600 mt-1">Complete a season to see champions</p>
+        <p className="text-base text-gray-400 font-medium">No championship data</p>
+        <p className="text-sm text-gray-600 mt-1">Complete a season to see champions</p>
       </div>
     );
   }
@@ -97,8 +97,8 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-8 text-center">
         <Trophy className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-        <p className="text-gray-400 font-medium">No champions yet</p>
-        <p className="text-xs text-gray-600 mt-1">Crown your first champion!</p>
+        <p className="text-base text-gray-400 font-medium">No champions yet</p>
+        <p className="text-sm text-gray-600 mt-1">Crown your first champion!</p>
       </div>
     );
   }
@@ -107,40 +107,40 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
   if (compact) {
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#2a2a2a]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
-              <Trophy className="w-4 h-4 text-yellow-400" />
+        <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-md bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+              <Trophy className="w-5 h-5 text-yellow-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-white">Trophy Case</h3>
-              <p className="text-[10px] text-gray-500">{totalSeasons} season{totalSeasons !== 1 ? "s" : ""} of history</p>
+              <h3 className="text-base font-semibold text-white">Trophy Case</h3>
+              <p className="text-sm text-gray-500">{totalSeasons} season{totalSeasons !== 1 ? "s" : ""} of history</p>
             </div>
           </div>
         </div>
 
         <div className="divide-y divide-[#2a2a2a]">
           {championships.slice(0, 3).map((c) => (
-            <div key={c.season} className="p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/20 flex items-center justify-center">
-                <Crown className="w-5 h-5 text-yellow-400" />
+            <div key={c.season} className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/20 flex items-center justify-center">
+                <Crown className="w-6 h-6 text-yellow-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">{c.season}</span>
-                  <span className="text-xs text-gray-400">Champion</span>
+                  <span className="text-lg font-bold text-white">{c.season}</span>
+                  <span className="text-sm text-gray-400">Champion</span>
                 </div>
-                <p className="text-sm text-white truncate">{c.champion.teamName}</p>
-                <p className="text-[10px] text-gray-500">{c.champion.wins}-{c.champion.losses} · {Math.round(c.champion.pointsFor).toLocaleString()} pts</p>
+                <p className="text-base text-white truncate">{c.champion.teamName}</p>
+                <p className="text-sm text-gray-500">{c.champion.wins}-{c.champion.losses} · {Math.round(c.champion.pointsFor).toLocaleString()} pts</p>
               </div>
             </div>
           ))}
         </div>
 
         {ownerStats.length > 0 && ownerStats[0].championships > 0 && (
-          <div className="p-3 border-t border-[#2a2a2a] bg-[#222]/50">
-            <div className="flex items-center gap-2 text-[10px]">
-              <Star className="w-3 h-3 text-yellow-400" />
+          <div className="p-4 border-t border-[#2a2a2a] bg-[#222]/50">
+            <div className="flex items-center gap-2 text-sm">
+              <Star className="w-4 h-4 text-yellow-400" />
               <span className="text-gray-500">Dynasty:</span>
               <span className="text-yellow-400 font-medium">{ownerStats[0].displayName}</span>
               <span className="text-gray-500">({ownerStats[0].championships} titles)</span>
@@ -155,51 +155,51 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
   return (
     <div className="space-y-6">
       {/* All-Time Records */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {allTimeRecords.mostChampionships && (
-          <div className="bg-[#1a1a1a] border border-yellow-500/20 rounded-lg p-4 text-center">
-            <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-yellow-400">{allTimeRecords.mostChampionships.count}</p>
-            <p className="text-xs text-gray-500 mt-1">Championships</p>
-            <p className="text-sm text-white font-medium truncate mt-2">{allTimeRecords.mostChampionships.name}</p>
+          <div className="bg-[#1a1a1a] border border-yellow-500/20 rounded-lg p-5 text-center">
+            <Trophy className="w-7 h-7 text-yellow-400 mx-auto mb-2" />
+            <p className="text-3xl font-bold text-yellow-400">{allTimeRecords.mostChampionships.count}</p>
+            <p className="text-sm text-gray-500 mt-1">Championships</p>
+            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostChampionships.name}</p>
           </div>
         )}
         {allTimeRecords.bestRecord && (
-          <div className="bg-[#1a1a1a] border border-emerald-500/20 rounded-lg p-4 text-center">
-            <Award className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-emerald-400">{allTimeRecords.bestRecord.record}</p>
-            <p className="text-xs text-gray-500 mt-1">Best Record ({allTimeRecords.bestRecord.season})</p>
-            <p className="text-sm text-white font-medium truncate mt-2">{allTimeRecords.bestRecord.name}</p>
+          <div className="bg-[#1a1a1a] border border-emerald-500/20 rounded-lg p-5 text-center">
+            <Award className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
+            <p className="text-3xl font-bold text-emerald-400">{allTimeRecords.bestRecord.record}</p>
+            <p className="text-sm text-gray-500 mt-1">Best Record ({allTimeRecords.bestRecord.season})</p>
+            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.bestRecord.name}</p>
           </div>
         )}
         {allTimeRecords.highestSingleSeasonPoints && (
-          <div className="bg-[#1a1a1a] border border-blue-500/20 rounded-lg p-4 text-center">
-            <TrendingUp className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-blue-400">{Math.round(allTimeRecords.highestSingleSeasonPoints.points).toLocaleString()}</p>
-            <p className="text-xs text-gray-500 mt-1">Most Points ({allTimeRecords.highestSingleSeasonPoints.season})</p>
-            <p className="text-sm text-white font-medium truncate mt-2">{allTimeRecords.highestSingleSeasonPoints.name}</p>
+          <div className="bg-[#1a1a1a] border border-blue-500/20 rounded-lg p-5 text-center">
+            <TrendingUp className="w-7 h-7 text-blue-400 mx-auto mb-2" />
+            <p className="text-3xl font-bold text-blue-400">{Math.round(allTimeRecords.highestSingleSeasonPoints.points).toLocaleString()}</p>
+            <p className="text-sm text-gray-500 mt-1">Most Points ({allTimeRecords.highestSingleSeasonPoints.season})</p>
+            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.highestSingleSeasonPoints.name}</p>
           </div>
         )}
         {allTimeRecords.mostSeasons && (
-          <div className="bg-[#1a1a1a] border border-purple-500/20 rounded-lg p-4 text-center">
-            <Star className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-purple-400">{allTimeRecords.mostSeasons.count}</p>
-            <p className="text-xs text-gray-500 mt-1">Seasons Played</p>
-            <p className="text-sm text-white font-medium truncate mt-2">{allTimeRecords.mostSeasons.name}</p>
+          <div className="bg-[#1a1a1a] border border-purple-500/20 rounded-lg p-5 text-center">
+            <Star className="w-7 h-7 text-purple-400 mx-auto mb-2" />
+            <p className="text-3xl font-bold text-purple-400">{allTimeRecords.mostSeasons.count}</p>
+            <p className="text-sm text-gray-500 mt-1">Seasons Played</p>
+            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostSeasons.name}</p>
           </div>
         )}
       </div>
 
       {/* Championship History */}
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#2a2a2a]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
-              <Trophy className="w-4 h-4 text-yellow-400" />
+        <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-md bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+              <Trophy className="w-5 h-5 text-yellow-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-white">Championship History</h3>
-              <p className="text-[10px] text-gray-500">{totalSeasons} season{totalSeasons !== 1 ? "s" : ""}</p>
+              <h3 className="text-base font-semibold text-white">Championship History</h3>
+              <p className="text-sm text-gray-500">{totalSeasons} season{totalSeasons !== 1 ? "s" : ""}</p>
             </div>
           </div>
         </div>
@@ -211,15 +211,15 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
             return (
               <div
                 key={c.season}
-                className={`p-4 ${isUserChampion ? "bg-yellow-500/5" : ""}`}
+                className={`p-5 ${isUserChampion ? "bg-yellow-500/5" : ""}`}
               >
                 <div className="flex items-start gap-4">
                   {/* Year/Trophy */}
                   <div className="flex flex-col items-center">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/20 flex items-center justify-center">
-                      <Crown className="w-7 h-7 text-yellow-400" />
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/20 flex items-center justify-center">
+                      <Crown className="w-8 h-8 text-yellow-400" />
                     </div>
-                    <span className="text-lg font-bold text-white mt-2">{c.season}</span>
+                    <span className="text-xl font-bold text-white mt-2">{c.season}</span>
                   </div>
 
                   {/* Champion Details */}
@@ -227,23 +227,23 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="text-lg font-bold text-white">{c.champion.teamName}</h4>
                       {isUserChampion && (
-                        <span className="text-[9px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-bold">
+                        <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-bold">
                           YOU
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-400 mb-2">
+                    <p className="text-base text-gray-400 mb-2">
                       {c.champion.owners.join(", ")}
                     </p>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-base">
                       <span className="text-emerald-400 font-semibold">{c.champion.wins}-{c.champion.losses}</span>
                       <span className="text-gray-500">{Math.round(c.champion.pointsFor).toLocaleString()} pts</span>
                     </div>
 
                     {/* Runner-up */}
                     {c.runnerUp && (
-                      <div className="mt-3 flex items-center gap-2 text-sm">
-                        <Medal className="w-4 h-4 text-gray-400" />
+                      <div className="mt-3 flex items-center gap-2 text-base">
+                        <Medal className="w-5 h-5 text-gray-400" />
                         <span className="text-gray-500">Runner-up:</span>
                         <span className="text-gray-300">{c.runnerUp.teamName}</span>
                       </div>
@@ -259,22 +259,22 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
       {/* Hall of Fame */}
       {ownerStats.length > 0 && (
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#2a2a2a]">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                <Star className="w-4 h-4 text-purple-400" />
+          <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                <Star className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">Hall of Fame</h3>
-                <p className="text-[10px] text-gray-500">All-time owner rankings</p>
+                <h3 className="text-base font-semibold text-white">Hall of Fame</h3>
+                <p className="text-sm text-gray-500">All-time owner rankings</p>
               </div>
             </div>
           </div>
 
           <div className="divide-y divide-[#2a2a2a]">
             {ownerStats.map((owner, index) => (
-              <div key={owner.userId} className="p-3 flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-sm ${
+              <div key={owner.userId} className="p-4 flex items-center gap-4">
+                <div className={`w-10 h-10 rounded-md flex items-center justify-center font-bold text-base ${
                   index === 0 ? "bg-yellow-500 text-black" :
                   index === 1 ? "bg-gray-400 text-black" :
                   index === 2 ? "bg-orange-600 text-white" :
@@ -283,19 +283,19 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
                   {index + 1}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-white">{owner.displayName}</p>
-                  <p className="text-[10px] text-gray-500">{owner.seasonsPlayed} seasons · {owner.totalWins}-{owner.totalLosses}</p>
+                  <p className="text-base font-medium text-white">{owner.displayName}</p>
+                  <p className="text-sm text-gray-500">{owner.seasonsPlayed} seasons · {owner.totalWins}-{owner.totalLosses}</p>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-4 text-base">
                   {owner.championships > 0 && (
                     <span className="flex items-center gap-1 text-yellow-400">
-                      <Trophy className="w-3 h-3" />
+                      <Trophy className="w-4 h-4" />
                       {owner.championships}
                     </span>
                   )}
                   {owner.secondPlace > 0 && (
                     <span className="flex items-center gap-1 text-gray-400">
-                      <Medal className="w-3 h-3" />
+                      <Medal className="w-4 h-4" />
                       {owner.secondPlace}
                     </span>
                   )}

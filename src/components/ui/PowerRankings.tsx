@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import useSWR from "swr";
-import { TrendingUp, TrendingDown, Minus, Crown, Shield, Zap, ChevronUp, ChevronDown, Info } from "lucide-react";
+import Link from "next/link";
+import { TrendingUp, TrendingDown, Minus, Crown, Shield, Zap, ChevronUp, ChevronDown, Info, ChevronRight } from "lucide-react";
 import { LEAGUE_CONFIG, getAgeValueModifier, getDraftPickValue } from "@/lib/constants/league-config";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -33,6 +34,8 @@ interface PowerRankingsProps {
   userRosterId?: string;
   leagueId?: string;
   useApi?: boolean;
+  condensed?: boolean;
+  viewAllHref?: string;
 }
 
 interface RankedTeam extends RosterData {
@@ -75,7 +78,7 @@ interface ApiPowerRanking {
  * Power Rankings component
  * Can use API data or calculate client-side based on props
  */
-export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false }: PowerRankingsProps) {
+export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false, condensed = false, viewAllHref }: PowerRankingsProps) {
   // Fetch from API if leagueId provided and useApi is true
   const { data: apiData, isLoading } = useSWR<{ rankings: ApiPowerRanking[] }>(
     useApi && leagueId ? `/api/leagues/${leagueId}/power-rankings` : null,
@@ -145,12 +148,12 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false 
   if (isLoading) {
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden animate-pulse">
-        <div className="px-4 py-3 border-b border-[#2a2a2a]">
+        <div className="px-4 py-4 border-b border-[#2a2a2a]">
           <div className="h-8 w-32 bg-[#2a2a2a] rounded" />
         </div>
-        <div className="p-3 space-y-3">
+        <div className="p-4 space-y-3">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="h-16 bg-[#2a2a2a] rounded" />
+            <div key={i} className="h-20 bg-[#2a2a2a] rounded" />
           ))}
         </div>
       </div>
@@ -161,8 +164,8 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false 
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-8 text-center">
         <Zap className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-        <p className="text-gray-400 font-medium">No rankings available</p>
-        <p className="text-xs text-gray-600 mt-1">Add rosters to see power rankings</p>
+        <p className="text-base text-gray-400 font-medium">No rankings available</p>
+        <p className="text-sm text-gray-600 mt-1">Add rosters to see power rankings</p>
       </div>
     );
   }
@@ -176,120 +179,191 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false 
     return "text-red-400";
   };
 
+  // Get condensed items (top 3 + user + bottom 2)
+  const getCondensedItems = <T extends { rosterId?: string; id?: string }>(
+    items: T[],
+    userId: string | undefined
+  ): { items: Array<T & { showSeparator?: boolean }>; hasMore: boolean } => {
+    if (items.length <= 6) {
+      return { items: items.map(item => ({ ...item })), hasMore: false };
+    }
+
+    const top3 = items.slice(0, 3);
+    const bottom2 = items.slice(-2);
+    const userIndex = userId ? items.findIndex(item => (item.rosterId || item.id) === userId) : -1;
+    const userInTop = userIndex >= 0 && userIndex < 3;
+    const userInBottom = userIndex >= items.length - 2;
+
+    if (userInTop || userInBottom || userIndex === -1) {
+      return {
+        items: [
+          ...top3.map(item => ({ ...item })),
+          { ...items[3], showSeparator: true } as T & { showSeparator?: boolean },
+          ...bottom2.map(item => ({ ...item })),
+        ],
+        hasMore: true,
+      };
+    }
+
+    // User is in middle
+    return {
+      items: [
+        ...top3.map(item => ({ ...item })),
+        { ...items[userIndex], showSeparator: true } as T & { showSeparator?: boolean },
+        ...bottom2.map(item => ({ ...item })),
+      ],
+      hasMore: true,
+    };
+  };
+
   // Render API-based rankings
   if (rankings && rankings.length > 0) {
+    const { items: displayRankings, hasMore } = condensed
+      ? getCondensedItems(rankings, userRosterId)
+      : { items: rankings.map(r => ({ ...r })), hasMore: false };
+
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#2a2a2a]">
+        <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                <Zap className="w-4 h-4 text-purple-400" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">Power Rankings</h3>
-                <p className="text-[10px] text-gray-500">50% roster · 20% stars · 10% depth · 10% keepers · 10% picks</p>
+                <h3 className="text-base font-semibold text-white">Power Rankings</h3>
+                {!condensed && (
+                  <p className="text-sm text-gray-500">50% roster · 20% stars · 10% depth · 10% keepers · 10% picks</p>
+                )}
               </div>
             </div>
-            <div className="group relative">
-              <Info className="w-4 h-4 text-gray-500 hover:text-gray-300 cursor-help" />
-              <div className="absolute right-0 top-6 w-48 p-2 bg-[#222] border border-[#333] rounded-lg text-[10px] text-gray-400 hidden group-hover:block z-10">
-                Rankings based on positional strength, star power, roster depth, keeper value, and draft capital.
+            {!condensed && (
+              <div className="group relative">
+                <Info className="w-5 h-5 text-gray-500 hover:text-gray-300 cursor-help" />
+                <div className="absolute right-0 top-7 w-56 p-3 bg-[#222] border border-[#333] rounded-lg text-sm text-gray-400 hidden group-hover:block z-10">
+                  Rankings based on positional strength, star power, roster depth, keeper value, and draft capital.
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         <div className="divide-y divide-[#2a2a2a]">
-          {rankings.map((team) => {
+          {displayRankings.map((team) => {
+            const teamWithSeparator = team as typeof team & { showSeparator?: boolean };
             const isUser = team.rosterId === userRosterId;
             const barWidth = (team.overallScore / maxScore) * 100;
             const changeIcon = team.change > 0 ? (
-              <span className="flex items-center text-emerald-400 text-[10px]">
-                <ChevronUp className="w-3 h-3" />{team.change}
+              <span className="flex items-center text-emerald-400 text-sm">
+                <ChevronUp className="w-4 h-4" />{team.change}
               </span>
             ) : team.change < 0 ? (
-              <span className="flex items-center text-red-400 text-[10px]">
-                <ChevronDown className="w-3 h-3" />{Math.abs(team.change)}
+              <span className="flex items-center text-red-400 text-sm">
+                <ChevronDown className="w-4 h-4" />{Math.abs(team.change)}
               </span>
             ) : null;
 
             return (
-              <div
-                key={team.rosterId}
-                className={`p-3 transition-colors ${
-                  isUser ? "bg-blue-500/5" : "hover:bg-[#222]"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {/* Rank with change */}
-                  <div className="flex flex-col items-center flex-shrink-0">
-                    <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-sm ${
-                      team.rank === 1 ? "bg-yellow-500 text-black" :
-                      team.rank === 2 ? "bg-gray-400 text-black" :
-                      team.rank === 3 ? "bg-orange-600 text-white" :
-                      "bg-[#2a2a2a] text-gray-400"
-                    }`}>
-                      {team.rank === 1 ? <Crown className="w-4 h-4" /> : team.rank}
-                    </div>
-                    {changeIcon}
+              <div key={team.rosterId}>
+                {/* Separator for condensed mode */}
+                {teamWithSeparator.showSeparator && (
+                  <div className="flex items-center gap-2 py-1.5 px-4">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
+                    <span className="text-xs text-gray-600 font-medium">...</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
                   </div>
-
-                  {/* Team info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-medium truncate ${isUser ? "text-blue-400" : "text-white"}`}>
-                        {team.teamName}
-                      </span>
-                      {isUser && (
-                        <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
-                          YOU
-                        </span>
-                      )}
-                      {/* Trajectory badge */}
-                      {team.trajectory === "rising" && (
-                        <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
-                          <TrendingUp className="w-2.5 h-2.5" /> Rising
-                        </span>
-                      )}
-                      {team.trajectory === "falling" && (
-                        <span className="flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
-                          <TrendingDown className="w-2.5 h-2.5" /> Falling
-                        </span>
-                      )}
+                )}
+                <div
+                  className={`${condensed ? "p-3" : "p-4"} transition-colors ${condensed ? "min-h-[56px]" : "min-h-[72px]"} ${
+                    isUser ? "bg-blue-500/5" : "hover:bg-[#222]"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Rank with change */}
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className={`${condensed ? "w-8 h-8" : "w-10 h-10"} rounded-md flex items-center justify-center font-bold ${condensed ? "text-sm" : "text-base"} ${
+                        team.rank === 1 ? "bg-yellow-500 text-black" :
+                        team.rank === 2 ? "bg-gray-400 text-black" :
+                        team.rank === 3 ? "bg-orange-600 text-white" :
+                        "bg-[#2a2a2a] text-gray-400"
+                      }`}>
+                        {team.rank === 1 ? <Crown className={condensed ? "w-4 h-4" : "w-5 h-5"} /> : team.rank}
+                      </div>
+                      {!condensed && changeIcon}
                     </div>
 
-                    {/* Power bar */}
-                    <div className="mt-1.5 h-1.5 bg-[#2a2a2a] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          team.rank === 1 ? "bg-yellow-500" :
-                          team.rank <= 3 ? "bg-emerald-500" :
-                          team.rank <= 6 ? "bg-blue-500" :
-                          "bg-gray-500"
-                        }`}
-                        style={{ width: `${barWidth}%` }}
-                      />
+                    {/* Team info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`${condensed ? "text-sm" : "text-base"} font-medium truncate ${isUser ? "text-blue-400" : "text-white"}`}>
+                          {team.teamName}
+                        </span>
+                        {isUser && (
+                          <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
+                            YOU
+                          </span>
+                        )}
+                        {/* Trajectory badge - hide in condensed */}
+                        {!condensed && team.trajectory === "rising" && (
+                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
+                            <TrendingUp className="w-3.5 h-3.5" /> Rising
+                          </span>
+                        )}
+                        {!condensed && team.trajectory === "falling" && (
+                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-red-500/20 text-red-400 rounded">
+                            <TrendingDown className="w-3.5 h-3.5" /> Falling
+                          </span>
+                        )}
+                        {/* Show trajectory icon in condensed mode */}
+                        {condensed && team.trajectory === "rising" && <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />}
+                        {condensed && team.trajectory === "falling" && <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
+                      </div>
+
+                      {/* Power bar - hide in condensed */}
+                      {!condensed && (
+                        <div className="mt-2 h-2 bg-[#2a2a2a] rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              team.rank === 1 ? "bg-yellow-500" :
+                              team.rank <= 3 ? "bg-emerald-500" :
+                              team.rank <= 6 ? "bg-blue-500" :
+                              "bg-gray-500"
+                            }`}
+                            style={{ width: `${barWidth}%` }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Breakdown - show record only in condensed */}
+                      <div className={`flex items-center gap-4 ${condensed ? "mt-1" : "mt-2"} text-sm text-gray-500`}>
+                        <span className="font-medium">{team.record.wins}-{team.record.losses}</span>
+                        {!condensed && <span>★ {team.starPower.toFixed(1)} PPG</span>}
+                        {!condensed && <span>Depth: {team.depth.toFixed(1)}</span>}
+                      </div>
                     </div>
 
-                    {/* Breakdown */}
-                    <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
-                      <span>{team.record.wins}-{team.record.losses}</span>
-                      <span>★ {team.starPower.toFixed(1)} PPG</span>
-                      <span>Depth: {team.depth.toFixed(1)}</span>
+                    {/* Score and Grade */}
+                    <div className="text-right flex-shrink-0">
+                      <div className={`${condensed ? "text-lg" : "text-xl"} font-bold ${gradeColor(team.grade)}`}>{team.grade}</div>
+                      {!condensed && <div className="text-sm text-gray-500">{team.overallScore} pts</div>}
                     </div>
-                  </div>
-
-                  {/* Score and Grade */}
-                  <div className="text-right flex-shrink-0">
-                    <div className={`text-lg font-bold ${gradeColor(team.grade)}`}>{team.grade}</div>
-                    <div className="text-[9px] text-gray-500">{team.overallScore} pts</div>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
+
+        {/* View All link for condensed mode */}
+        {condensed && hasMore && viewAllHref && (
+          <Link
+            href={viewAllHref}
+            className="group flex items-center justify-center gap-1 py-3 text-sm text-blue-500 hover:text-blue-400 font-medium transition-colors hover:bg-[#222] border-t border-[#2a2a2a]"
+          >
+            View All ({rankings.length})
+            <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        )}
       </div>
     );
   }
@@ -297,14 +371,14 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false 
   // Render client-side calculated rankings (fallback)
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#2a2a2a]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-            <Zap className="w-4 h-4 text-purple-400" />
+      <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-white">Power Rankings</h3>
-            <p className="text-[10px] text-gray-500">Based on keepers, record & draft capital</p>
+            <h3 className="text-base font-semibold text-white">Power Rankings</h3>
+            <p className="text-sm text-gray-500">Based on keepers, record & draft capital</p>
           </div>
         </div>
       </div>
@@ -318,40 +392,40 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false 
           return (
             <div
               key={team.id}
-              className={`p-3 transition-colors ${
+              className={`p-4 transition-colors min-h-[72px] ${
                 isUser ? "bg-blue-500/5" : "hover:bg-[#222]"
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 {/* Rank */}
-                <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                <div className={`w-10 h-10 rounded-md flex items-center justify-center font-bold text-base flex-shrink-0 ${
                   rank === 1 ? "bg-yellow-500 text-black" :
                   rank === 2 ? "bg-gray-400 text-black" :
                   rank === 3 ? "bg-orange-600 text-white" :
                   "bg-[#2a2a2a] text-gray-400"
                 }`}>
-                  {rank === 1 ? <Crown className="w-4 h-4" /> : rank}
+                  {rank === 1 ? <Crown className="w-5 h-5" /> : rank}
                 </div>
 
                 {/* Team info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`font-medium truncate ${isUser ? "text-blue-400" : "text-white"}`}>
+                    <span className={`text-base font-medium truncate ${isUser ? "text-blue-400" : "text-white"}`}>
                       {team.teamName || `Team ${team.id.slice(0, 6)}`}
                     </span>
                     {isUser && (
-                      <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
+                      <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
                         YOU
                       </span>
                     )}
                     {/* Trend indicator */}
-                    {team.trend === "up" && <TrendingUp className="w-3 h-3 text-emerald-400" />}
-                    {team.trend === "down" && <TrendingDown className="w-3 h-3 text-red-400" />}
-                    {team.trend === "stable" && <Minus className="w-3 h-3 text-gray-500" />}
+                    {team.trend === "up" && <TrendingUp className="w-4 h-4 text-emerald-400" />}
+                    {team.trend === "down" && <TrendingDown className="w-4 h-4 text-red-400" />}
+                    {team.trend === "stable" && <Minus className="w-4 h-4 text-gray-500" />}
                   </div>
 
                   {/* Power bar */}
-                  <div className="mt-1.5 h-1.5 bg-[#2a2a2a] rounded-full overflow-hidden">
+                  <div className="mt-2 h-2 bg-[#2a2a2a] rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
                         rank === 1 ? "bg-yellow-500" :
@@ -364,20 +438,20 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false 
                   </div>
 
                   {/* Breakdown */}
-                  <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                     <span className="flex items-center gap-1">
-                      <Shield className="w-2.5 h-2.5" />
+                      <Shield className="w-3.5 h-3.5" />
                       {team.keepers.length} keepers
                     </span>
-                    <span>{team.wins}-{team.losses}</span>
+                    <span className="font-medium">{team.wins}-{team.losses}</span>
                     <span>{team.draftPicksOwned}/{team.draftPicksTotal} picks</span>
                   </div>
                 </div>
 
                 {/* Score */}
                 <div className="text-right flex-shrink-0">
-                  <div className="text-lg font-bold text-white">{Math.round(team.powerScore)}</div>
-                  <div className="text-[9px] text-gray-500">PWR</div>
+                  <div className="text-xl font-bold text-white">{Math.round(team.powerScore)}</div>
+                  <div className="text-sm text-gray-500">PWR</div>
                 </div>
               </div>
             </div>

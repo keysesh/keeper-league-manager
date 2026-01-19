@@ -4,18 +4,52 @@ import { useParams } from "next/navigation";
 import useSWR from "swr";
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
+import { AlertsBanner } from "@/components/ui/AlertsBanner";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { PositionBadge } from "@/components/ui/PositionBadge";
-import { TopScorers } from "@/components/ui/TopScorers";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
-import { DraftPickValueChart } from "@/components/ui/DraftPickValueChart";
-import { PowerRankings } from "@/components/ui/PowerRankings";
-import { LuckFactor } from "@/components/ui/LuckFactor";
-import { RecentTrades } from "@/components/ui/RecentTrades";
-import { ChampionshipHistory } from "@/components/ui/ChampionshipHistory";
+import { WidgetSkeleton } from "@/components/ui/WidgetSkeleton";
 import { ChevronRight, Trophy, Shield, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
+
+// Dynamic imports for better performance
+const PowerRankings = dynamic(
+  () => import("@/components/ui/PowerRankings").then(mod => ({ default: mod.PowerRankings })),
+  { loading: () => <WidgetSkeleton rows={5} />, ssr: false }
+);
+
+const LuckFactor = dynamic(
+  () => import("@/components/ui/LuckFactor").then(mod => ({ default: mod.LuckFactor })),
+  { loading: () => <WidgetSkeleton rows={5} />, ssr: false }
+);
+
+const RecentTrades = dynamic(
+  () => import("@/components/ui/RecentTrades").then(mod => ({ default: mod.RecentTrades })),
+  { loading: () => <WidgetSkeleton rows={3} />, ssr: false }
+);
+
+const ChampionshipHistory = dynamic(
+  () => import("@/components/ui/ChampionshipHistory").then(mod => ({ default: mod.ChampionshipHistory })),
+  { loading: () => <WidgetSkeleton rows={3} />, ssr: false }
+);
+
+const TopScorers = dynamic(
+  () => import("@/components/ui/TopScorers").then(mod => ({ default: mod.TopScorers })),
+  { loading: () => <WidgetSkeleton rows={8} />, ssr: false }
+);
+
+const DraftPickValueChart = dynamic(
+  () => import("@/components/ui/DraftPickValueChart").then(mod => ({ default: mod.DraftPickValueChart })),
+  { loading: () => <WidgetSkeleton rows={4} />, ssr: false }
+);
+
+const UserStatsHero = dynamic(
+  () => import("@/components/ui/UserStatsHero").then(mod => ({ default: mod.UserStatsHero })),
+  { loading: () => <WidgetSkeleton rows={2} />, ssr: false }
+);
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error("Failed to fetch");
@@ -147,7 +181,20 @@ export default function LeaguePage() {
   return (
     <>
       <DeadlineBanner leagueId={leagueId} />
-      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+        {/* ALERTS BANNER */}
+        <AlertsBanner leagueId={leagueId} />
+
+        {/* USER STATS HERO */}
+        {userRoster && (
+          <UserStatsHero
+            leagueId={leagueId}
+            roster={userRoster}
+            rank={userRank}
+            totalRosters={league.totalRosters}
+            maxKeepers={maxKeepers}
+          />
+        )}
 
         {/* HERO SECTION */}
         <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md">
@@ -197,7 +244,7 @@ export default function LeaguePage() {
                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
                       <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
                     </div>
-                    <span className="text-[9px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Standing</span>
+                    <span className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Standing</span>
                   </div>
                   <div className="space-y-2 sm:space-y-3">
                     <div>
@@ -223,7 +270,7 @@ export default function LeaguePage() {
                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
                       <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                     </div>
-                    <span className="text-[9px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Keepers</span>
+                    <span className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Keepers</span>
                   </div>
                   <div className="space-y-2 sm:space-y-3">
                     <div>
@@ -313,7 +360,7 @@ export default function LeaguePage() {
                     )}
                   </div>
                   <p className="text-xs sm:text-sm font-semibold text-white truncate">{keeper.player.fullName}</p>
-                  <p className="text-[10px] sm:text-xs text-gray-500 mb-1.5 sm:mb-2">{keeper.player.team}</p>
+                  <p className="text-sm sm:text-xs text-gray-500 mb-1.5 sm:mb-2">{keeper.player.team}</p>
 
                   <div className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm font-bold ${
                     keeper.type === "FRANCHISE"
@@ -335,7 +382,7 @@ export default function LeaguePage() {
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md border-2 border-dashed border-current flex items-center justify-center mb-1.5 sm:mb-2">
                     <span className="text-lg sm:text-xl">+</span>
                   </div>
-                  <span className="text-[10px] sm:text-xs font-medium">Add Keeper</span>
+                  <span className="text-sm sm:text-xs font-medium">Add Keeper</span>
                 </Link>
               ))}
             </div>
@@ -395,13 +442,13 @@ export default function LeaguePage() {
                         {roster.teamName || `Team ${roster.sleeperId}`}
                       </span>
                       {isUser && (
-                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded bg-blue-500/20 text-blue-500 uppercase tracking-wide flex-shrink-0">
+                        <span className="text-xs sm:text-sm font-bold px-1.5 sm:px-2 py-0.5 rounded bg-blue-500/20 text-blue-500 uppercase tracking-wide flex-shrink-0">
                           You
                         </span>
                       )}
                     </div>
                     {roster.owners?.[0] && (
-                      <span className="text-[10px] sm:text-xs text-gray-500 hidden xs:block">{roster.owners[0].displayName}</span>
+                      <span className="text-sm sm:text-xs text-gray-500 hidden xs:block">{roster.owners[0].displayName}</span>
                     )}
                   </div>
 
@@ -419,7 +466,7 @@ export default function LeaguePage() {
                       <span className="text-gray-400 font-medium tabular-nums">{Math.round(roster.pointsFor).toLocaleString()}</span>
                     </div>
                     <div className="w-10 sm:w-14 text-center">
-                      <span className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded ${
+                      <span className={`text-sm sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded ${
                         roster.keeperCount >= maxKeepers ? "bg-green-500/20 text-green-500" :
                         roster.keeperCount > 0 ? "bg-blue-500/20 text-blue-500" :
                         "bg-[#222222] text-gray-600"
@@ -463,19 +510,23 @@ export default function LeaguePage() {
           />
         </section>
 
-        {/* ANALYTICS GRID - Power Rankings, Luck Factor, Recent Trades */}
+        {/* ANALYTICS GRID - Power Rankings & Luck Factor (Condensed) */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Power Rankings */}
+          {/* Power Rankings (Condensed) */}
           <PowerRankings
             leagueId={leagueId}
             userRosterId={userRoster?.id}
             useApi={true}
+            condensed={true}
+            viewAllHref={`/league/${leagueId}/team`}
           />
 
-          {/* Luck Factor */}
+          {/* Luck Factor (Condensed) */}
           <LuckFactor
             leagueId={leagueId}
             userRosterId={userRoster?.id}
+            condensed={true}
+            viewAllHref={`/league/${leagueId}/team`}
           />
         </section>
 
@@ -496,9 +547,9 @@ export default function LeaguePage() {
           />
         </section>
 
-        {/* TOP SCORERS */}
+        {/* TOP SCORERS (Condensed) */}
         <section>
-          <TopScorers />
+          <TopScorers condensed={true} />
         </section>
 
         {/* DRAFT PICK VALUES */}
@@ -514,7 +565,7 @@ export default function LeaguePage() {
 
         {/* Footer */}
         {league.lastSyncedAt && (
-          <p className="text-center text-[10px] sm:text-xs text-gray-600 pb-2 sm:pb-4">
+          <p className="text-center text-sm sm:text-xs text-gray-600 pb-2 sm:pb-4">
             Last synced {new Date(league.lastSyncedAt).toLocaleDateString()} at{" "}
             {new Date(league.lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
@@ -546,7 +597,7 @@ function QuickActionCard({
         </div>
       </div>
       <p className="font-semibold text-white text-xs sm:text-sm mb-0.5">{label}</p>
-      <p className="text-[10px] sm:text-xs text-gray-500 hidden xs:block">{description}</p>
+      <p className="text-sm sm:text-xs text-gray-500 hidden xs:block">{description}</p>
     </Link>
   );
 }

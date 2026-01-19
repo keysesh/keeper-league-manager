@@ -59,12 +59,12 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
   if (isLoading) {
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden animate-pulse">
-        <div className="px-4 py-3 border-b border-[#2a2a2a]">
+        <div className="px-4 py-4 border-b border-[#2a2a2a]">
           <div className="h-8 w-32 bg-[#2a2a2a] rounded" />
         </div>
-        <div className="p-3 space-y-3">
+        <div className="p-4 space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 bg-[#2a2a2a] rounded" />
+            <div key={i} className="h-28 bg-[#2a2a2a] rounded" />
           ))}
         </div>
       </div>
@@ -75,8 +75,8 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-8 text-center">
         <ArrowLeftRight className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-        <p className="text-gray-400 font-medium">No trades yet</p>
-        <p className="text-xs text-gray-600 mt-1">Trades will appear here when they happen</p>
+        <p className="text-base text-gray-400 font-medium">No trades yet</p>
+        <p className="text-sm text-gray-600 mt-1">Trades will appear here when they happen</p>
       </div>
     );
   }
@@ -87,30 +87,30 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
     return (
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-8 text-center">
         <ArrowLeftRight className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-        <p className="text-gray-400 font-medium">No trades yet</p>
-        <p className="text-xs text-gray-600 mt-1">Trades will appear here when they happen</p>
+        <p className="text-base text-gray-400 font-medium">No trades yet</p>
+        <p className="text-sm text-gray-600 mt-1">Trades will appear here when they happen</p>
       </div>
     );
   }
 
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#2a2a2a]">
+      <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-              <ArrowLeftRight className="w-4 h-4 text-blue-400" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <ArrowLeftRight className="w-5 h-5 text-blue-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-white">Recent Trades</h3>
-              <p className="text-[10px] text-gray-500">
+              <h3 className="text-base font-semibold text-white">Recent Trades</h3>
+              <p className="text-sm text-gray-500">
                 {stats.totalTrades} trade{stats.totalTrades !== 1 ? "s" : ""} · {stats.playersTraded} players · {stats.picksTraded} picks
               </p>
             </div>
           </div>
           {stats.newTrades > 0 && (
-            <span className="flex items-center gap-1 text-[10px] px-2 py-1 bg-amber-500/20 text-amber-400 rounded font-medium">
-              <Sparkles className="w-3 h-3" />
+            <span className="flex items-center gap-1 text-sm px-2.5 py-1 bg-amber-500/20 text-amber-400 rounded font-medium">
+              <Sparkles className="w-4 h-4" />
               {stats.newTrades} new
             </span>
           )}
@@ -124,13 +124,13 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
           return (
             <div
               key={trade.id}
-              className={`p-3 ${isInvolved ? "bg-blue-500/5" : ""}`}
+              className={`p-4 ${isInvolved ? "bg-blue-500/5" : ""}`}
             >
               {/* Trade header */}
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-3 h-3 text-gray-500" />
-                  <span className="text-[10px] text-gray-500">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-500">
                     {new Date(trade.date).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
@@ -138,7 +138,7 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
                     })}
                   </span>
                   {trade.isNew && (
-                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded font-bold">
+                    <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded font-bold">
                       NEW
                     </span>
                   )}
@@ -146,23 +146,23 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
               </div>
 
               {/* Trade parties */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {trade.parties.map((party) => (
                   <div
                     key={party.rosterId}
-                    className={`rounded-md p-2 ${
+                    className={`rounded-md p-3 ${
                       party.rosterId === userRosterId
                         ? "bg-blue-500/10 border border-blue-500/20"
                         : "bg-[#222]"
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <User className="w-2.5 h-2.5 text-gray-500" />
-                      <span className="text-xs font-medium text-white truncate">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="w-4 h-4 text-gray-500" />
+                      <span className="text-base font-medium text-white truncate">
                         {party.rosterName || "Unknown Team"}
                       </span>
                       {party.rosterId === userRosterId && (
-                        <span className="text-[8px] px-1 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
                           YOU
                         </span>
                       )}
@@ -170,17 +170,17 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
 
                     {/* Sent */}
                     {(party.playersGiven.length > 0 || party.picksGiven.length > 0) && (
-                      <div className="mb-1">
-                        <span className="text-[8px] text-red-400 uppercase tracking-wider">Sent</span>
-                        <div className="mt-0.5 space-y-0.5">
+                      <div className="mb-2">
+                        <span className="text-xs text-red-400 uppercase tracking-wider font-medium">Sent</span>
+                        <div className="mt-1 space-y-1">
                           {party.playersGiven.map((player) => (
-                            <div key={player.playerId} className="flex items-center gap-1">
+                            <div key={player.playerId} className="flex items-center gap-1.5">
                               <PositionBadge position={player.position} size="xs" />
-                              <span className="text-[10px] text-gray-300 truncate">{player.playerName}</span>
+                              <span className="text-sm text-gray-300 truncate">{player.playerName}</span>
                             </div>
                           ))}
                           {party.picksGiven.map((pick, i) => (
-                            <div key={i} className="text-[10px] text-gray-400">
+                            <div key={i} className="text-sm text-gray-400">
                               {pick.season} Rd {pick.round}
                             </div>
                           ))}
@@ -191,16 +191,16 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
                     {/* Received */}
                     {(party.playersReceived.length > 0 || party.picksReceived.length > 0) && (
                       <div>
-                        <span className="text-[8px] text-emerald-400 uppercase tracking-wider">Got</span>
-                        <div className="mt-0.5 space-y-0.5">
+                        <span className="text-xs text-emerald-400 uppercase tracking-wider font-medium">Got</span>
+                        <div className="mt-1 space-y-1">
                           {party.playersReceived.map((player) => (
-                            <div key={player.playerId} className="flex items-center gap-1">
+                            <div key={player.playerId} className="flex items-center gap-1.5">
                               <PositionBadge position={player.position} size="xs" />
-                              <span className="text-[10px] text-gray-300 truncate">{player.playerName}</span>
+                              <span className="text-sm text-gray-300 truncate">{player.playerName}</span>
                             </div>
                           ))}
                           {party.picksReceived.map((pick, i) => (
-                            <div key={i} className="text-[10px] text-gray-400">
+                            <div key={i} className="text-sm text-gray-400">
                               {pick.season} Rd {pick.round}
                             </div>
                           ))}

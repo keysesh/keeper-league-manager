@@ -267,7 +267,7 @@ export async function GET(
       0
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       trades,
       stats: {
         totalTrades: trades.length,
@@ -277,6 +277,8 @@ export async function GET(
       },
       generatedAt: new Date().toISOString(),
     });
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     logger.error("Recent trades fetch error", error);
     return NextResponse.json(

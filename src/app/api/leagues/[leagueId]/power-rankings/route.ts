@@ -232,7 +232,7 @@ export async function GET(
       r.rank = idx + 1;
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       rankings,
       generatedAt: new Date().toISOString(),
       methodology: {
@@ -243,6 +243,8 @@ export async function GET(
         draftCapital: "10%",
       },
     });
+    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=300');
+    return response;
   } catch (error) {
     logger.error("Power rankings fetch error", error);
     return NextResponse.json(
