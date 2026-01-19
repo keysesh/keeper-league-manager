@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Info, X } from "lucide-react";
+import { Info, X, Star } from "lucide-react";
+import { PositionBadge } from "@/components/ui/PositionBadge";
+import { PlayerAvatar, TeamLogo } from "@/components/players/PlayerAvatar";
 
 interface DraftPick {
   season: number;
@@ -10,6 +12,21 @@ interface DraftPick {
   currentOwnerSleeperId: string;
   originalOwnerName?: string;
   currentOwnerName?: string;
+}
+
+interface Keeper {
+  id: string;
+  playerId?: string;
+  sleeperId?: string;
+  player: {
+    fullName: string;
+    position: string | null;
+    team: string | null;
+    sleeperId?: string;
+  };
+  finalCost: number;
+  type: string;
+  yearsKept?: number;
 }
 
 interface DraftCapitalProps {
@@ -23,6 +40,8 @@ interface DraftCapitalProps {
   hideIfDefault?: boolean;
   /** All picks in the league (to show who has traded picks) */
   allPicks?: DraftPick[];
+  /** Keeper assignments to display in rounds */
+  keepers?: Keeper[];
 }
 
 /**
@@ -37,6 +56,7 @@ export function DraftCapital({
   compact = false,
   hideIfDefault = false,
   allPicks,
+  keepers = [],
 }: DraftCapitalProps) {
   const currentYear = new Date().getFullYear();
   const seasons = useMemo(
@@ -83,6 +103,19 @@ export function DraftCapital({
 
     return tradedInfo;
   }, [picks, allPicks, teamSleeperId, seasons]);
+
+  // Map keepers by their final cost (round)
+  const keepersByRound = useMemo(() => {
+    const map = new Map<number, Keeper[]>();
+    for (const keeper of keepers) {
+      const round = keeper.finalCost;
+      if (!map.has(round)) {
+        map.set(round, []);
+      }
+      map.get(round)!.push(keeper);
+    }
+    return map;
+  }, [keepers]);
 
   // Calculate summary stats with details
   const summary = useMemo(() => {
@@ -261,14 +294,20 @@ export function DraftCapital({
               </div>
             </div>
 
-            {/* Picks grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-16 gap-1.5">
+            {/* Picks grid - use larger cells when keepers are present */}
+            <div className={`grid gap-2 ${
+              keepers.length > 0
+                ? "grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8"
+                : "grid-cols-4 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-16"
+            }`}>
               {Array.from({ length: maxRounds }, (_, i) => i + 1).map((round) => {
                 const ownPick = ownPicks.find((p) => p.round === round);
                 const acquiredPick = acquiredPicks.find((p) => p.round === round);
                 const hasPick = ownPick || acquiredPick;
                 const tradedPick = tradedPicksInfo.get(`${season}-${round}`);
                 const tooltipKey = `${season}-${round}`;
+                const keepersInRound = keepersByRound.get(round) || [];
+                const hasKeeper = keepersInRound.length > 0;
 
                 // Build tooltip content
                 let tooltipContent = "";
@@ -280,6 +319,112 @@ export function DraftCapital({
                   tooltipContent = `R${round} traded to ${tradedPick.currentOwnerName || "another team"}`;
                 }
 
+                // Render keeper card if there's a keeper in this round
+                if (hasKeeper) {
+                  const keeper = keepersInRound[0];
+                  const isFranchise = keeper.type === "FRANCHISE";
+                  const yearsKept = keeper.yearsKept || 1;
+                  const isAcquiredPick = !!acquiredPick;
+
+                  // Get display name (J. LastName format)
+                  const nameParts = keeper.player.fullName.split(" ");
+                  const firstName = nameParts[0] || "";
+                  const lastName = nameParts.slice(1).join(" ") || "";
+                  const displayName = lastName ? `${firstName.charAt(0)}. ${lastName}` : firstName;
+
+                  // Get sleeper ID for avatar
+                  const sleeperId = keeper.sleeperId || keeper.playerId || keeper.player.sleeperId || keeper.id;
+
+                  return (
+                    <div
+                      key={round}
+                      className={`
+                        relative rounded-lg overflow-hidden
+                        ${isFranchise
+                          ? "bg-gradient-to-br from-amber-500/20 to-orange-500/10 border-2 border-amber-500/40"
+                          : isAcquiredPick
+                            ? "bg-[#1a1a1a] border border-emerald-500/40"
+                            : "bg-[#1a1a1a] border border-[#333]"
+                        }
+                      `}
+                    >
+                      {/* Round header with badges */}
+                      <div className={`flex items-center justify-between px-2 py-1.5 ${
+                        isFranchise ? "bg-amber-500/10" : "bg-[#222]"
+                      }`}>
+                        <span className={`text-[10px] font-bold ${
+                          isFranchise ? "text-amber-400" : isAcquiredPick ? "text-emerald-400" : "text-gray-400"
+                        }`}>
+                          R{round}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {isAcquiredPick && !isFranchise && (
+                            <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
+                              +ACQ
+                            </span>
+                          )}
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            isFranchise
+                              ? "bg-amber-400/30 text-amber-200"
+                              : yearsKept >= 3
+                                ? "bg-red-500/30 text-red-200"
+                                : yearsKept === 2
+                                  ? "bg-yellow-500/30 text-yellow-200"
+                                  : "bg-[#333] text-gray-300"
+                          }`}>
+                            {isFranchise ? "FT" : `Y${yearsKept}`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Player card content */}
+                      <div className="p-2 flex items-center gap-2">
+                        {/* Avatar with team overlay */}
+                        <div className="relative shrink-0">
+                          <div className={`rounded-md overflow-hidden ${
+                            isFranchise ? "ring-2 ring-amber-400/50" : "ring-1 ring-[#444]"
+                          }`}>
+                            <PlayerAvatar
+                              sleeperId={sleeperId}
+                              name={keeper.player.fullName}
+                              size="md"
+                            />
+                          </div>
+                          {keeper.player.team && (
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1a1a1a] ring-1 ring-[#333] flex items-center justify-center">
+                              <TeamLogo team={keeper.player.team} size="xs" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Player info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <PositionBadge position={keeper.player.position} size="xs" />
+                            {isFranchise && <Star size={10} className="text-amber-400" />}
+                          </div>
+                          <p className="text-[11px] font-bold text-white truncate leading-tight" title={keeper.player.fullName}>
+                            {displayName}
+                          </p>
+                          {keeper.player.team && (
+                            <p className="text-[9px] text-gray-500">{keeper.player.team}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Multi-keeper indicator */}
+                      {keepersInRound.length > 1 && (
+                        <div className="absolute -right-1 -bottom-1">
+                          <span className="text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm">
+                            +{keepersInRound.length - 1}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Render standard pick cell (no keeper)
                 return (
                   <div
                     key={round}
@@ -288,7 +433,8 @@ export function DraftCapital({
                   >
                     <div
                       className={`
-                        flex items-center justify-center h-9 rounded-md text-xs font-semibold transition-all cursor-pointer
+                        flex items-center justify-center rounded-md text-xs font-semibold transition-all cursor-pointer
+                        ${keepers.length > 0 ? "h-[88px]" : "h-9"}
                         ${acquiredPick
                           ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ring-1 ring-emerald-500/20 hover:ring-emerald-500/40"
                           : ownPick
@@ -297,7 +443,14 @@ export function DraftCapital({
                         }
                       `}
                     >
-                      <span className="font-bold">R{round}</span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-bold">R{round}</span>
+                        {keepers.length > 0 && (
+                          <span className="text-[9px] text-gray-500">
+                            {tradedPick ? "Traded" : acquiredPick ? "Acquired" : ownPick ? "Available" : "—"}
+                          </span>
+                        )}
+                      </div>
                       {acquiredPick && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-[9px] text-white font-bold shadow-sm">
                           +
@@ -354,7 +507,7 @@ export function DraftCapital({
       })}
 
       {/* Legend */}
-      <div className="flex items-center gap-4 pt-2 text-[10px] text-gray-500 border-t border-[#2a2a2a]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 text-[10px] text-gray-500 border-t border-[#2a2a2a]">
         <div className="flex items-center gap-1.5">
           <span className="w-5 h-5 rounded bg-[#2a2a2a] border border-[#3a3a3a] flex items-center justify-center text-[9px] text-gray-400 font-semibold">R1</span>
           <span>Own pick</span>
@@ -370,6 +523,25 @@ export function DraftCapital({
           </span>
           <span>Traded</span>
         </div>
+        {keepers.length > 0 && (
+          <>
+            <div className="w-px h-4 bg-[#333] hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center">
+                <Star size={10} className="text-amber-400" />
+              </span>
+              <span>Franchise Tag</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-0.5">
+                <span className="px-1 py-0.5 rounded bg-[#333] text-gray-300 text-[8px] font-bold">Y1</span>
+                <span className="px-1 py-0.5 rounded bg-yellow-500/30 text-yellow-200 text-[8px] font-bold">Y2</span>
+                <span className="px-1 py-0.5 rounded bg-red-500/30 text-red-200 text-[8px] font-bold">Y3</span>
+              </div>
+              <span>Keeper Years</span>
+            </div>
+          </>
+        )}
         <div className="flex items-center gap-1.5 ml-auto">
           <Info size={12} className="text-gray-600" />
           <span>Tap picks for details</span>
