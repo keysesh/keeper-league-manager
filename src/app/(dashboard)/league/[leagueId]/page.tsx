@@ -7,10 +7,24 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { AlertsBanner } from "@/components/ui/AlertsBanner";
-import { PositionBadge } from "@/components/ui/PositionBadge";
+import { PositionBadge, FranchiseBadge } from "@/components/ui/PositionBadge";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
 import { WidgetSkeleton } from "@/components/ui/WidgetSkeleton";
-import { ChevronRight, Trophy, Crown, Target, Zap, BarChart3, Users, Star } from "lucide-react";
+import { Card, HeroCard, FeatureCard } from "@/components/ui/Card";
+import { BigStat, StatGrid } from "@/components/ui/BigStat";
+import { cn } from "@/lib/design-tokens";
+import {
+  ChevronRight,
+  Trophy,
+  Crown,
+  Target,
+  Zap,
+  BarChart3,
+  Users,
+  Star,
+  TrendingUp,
+  ArrowRight,
+} from "lucide-react";
 
 // Dynamic imports for better performance
 const PowerRankings = dynamic(
@@ -127,19 +141,19 @@ export default function LeaguePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        <Skeleton className="h-40 w-full rounded-md" />
-        <Skeleton className="h-64 w-full rounded-md" />
+      <div className="max-w-6xl mx-auto space-y-6">
+        <Skeleton className="h-48 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
 
   if (error || !league) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-md p-6">
-          <p className="text-red-500 font-medium">{error || "League not found"}</p>
-        </div>
+      <div className="max-w-6xl mx-auto">
+        <Card variant="default" className="border-red-500/30 bg-red-500/5">
+          <p className="text-red-400 font-medium">{error || "League not found"}</p>
+        </Card>
       </div>
     );
   }
@@ -151,88 +165,202 @@ export default function LeaguePage() {
   });
   const userRank = userRoster ? sortedRosters.findIndex(r => r.id === userRoster.id) + 1 : 0;
   const maxKeepers = league.keeperSettings?.maxKeepers || 7;
+  const winPct = userRoster ? ((userRoster.wins / (userRoster.wins + userRoster.losses)) * 100).toFixed(0) : 0;
 
   return (
     <>
       <DeadlineBanner leagueId={leagueId} />
-      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* ALERTS BANNER */}
         <AlertsBanner leagueId={leagueId} />
 
-        {/* USER STATS HERO */}
+        {/* HERO SECTION - Your Team Status */}
         {userRoster && (
+          <HeroCard>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              {/* Team Info */}
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
+                  #{userRank}
+                </div>
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-bold text-white">
+                    {userRoster.teamName || "Your Team"}
+                  </h1>
+                  <p className="text-slate-400 text-sm">{league.name} &middot; {league.season}</p>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <StatGrid columns={4} className="lg:max-w-md">
+                <BigStat value={`#${userRank}`} label="Rank" size="sm" />
+                <BigStat
+                  value={`${userRoster.wins}-${userRoster.losses}`}
+                  label="Record"
+                  size="sm"
+                  color={userRoster.wins > userRoster.losses ? "positive" : userRoster.wins < userRoster.losses ? "negative" : "default"}
+                />
+                <BigStat value={`${winPct}%`} label="Win %" size="sm" />
+                <BigStat
+                  value={`${userRoster.keeperCount}/${maxKeepers}`}
+                  label="Keepers"
+                  size="sm"
+                  color={userRoster.keeperCount >= maxKeepers ? "positive" : "primary"}
+                />
+              </StatGrid>
+            </div>
+
+            {/* Keeper Progress Bar */}
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-slate-400">Keeper Selection</span>
+                <Link
+                  href={`/league/${leagueId}/team/${userRoster.id}`}
+                  className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
+                >
+                  Manage <ArrowRight size={14} />
+                </Link>
+              </div>
+              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                  style={{ width: `${(userRoster.keeperCount / maxKeepers) * 100}%` }}
+                />
+              </div>
+            </div>
+          </HeroCard>
+        )}
+
+        {/* LEGACY USER STATS HERO (if no user roster, show for logged-out view) */}
+        {!userRoster && (
           <UserStatsHero
             leagueId={leagueId}
-            roster={userRoster}
-            rank={userRank}
+            roster={league.rosters[0]}
+            rank={1}
             totalRosters={league.totalRosters}
             maxKeepers={maxKeepers}
           />
         )}
 
-        {/* LEAGUE HEADER */}
-        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-4 sm:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 flex-shrink-0 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500" />
+        {/* TWO COLUMN LAYOUT: Standings + Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* STANDINGS */}
+          <Card variant="default" padding="none" className="overflow-hidden">
+            <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                  <Trophy className="w-4 h-4 text-amber-400" />
+                </div>
+                <h2 className="font-semibold text-white">Standings</h2>
               </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight truncate">
-                  {league.name}
-                </h1>
-                <p className="text-gray-500 text-xs sm:text-sm">
-                  {league.totalRosters} teams &middot; {league.season} Season
-                </p>
-              </div>
+              <Link
+                href={`/league/${leagueId}/team`}
+                className="text-sm text-slate-400 hover:text-white font-medium flex items-center gap-1 transition-colors"
+              >
+                View All <ChevronRight size={16} />
+              </Link>
             </div>
 
-            <Link
-              href={`/league/${leagueId}/draft-board`}
-              className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-sm font-semibold text-white transition-colors"
-            >
-              <Target className="w-4 h-4" />
-              <span className="hidden xs:inline">Draft Board</span>
-              <span className="xs:hidden">Draft</span>
-            </Link>
-          </div>
-        </section>
+            <div className="divide-y divide-white/[0.06]">
+              {sortedRosters.slice(0, 6).map((roster, index) => {
+                const rank = index + 1;
+                const isUser = roster.isUserRoster;
+
+                return (
+                  <Link
+                    key={roster.id}
+                    href={`/league/${leagueId}/team/${roster.id}`}
+                    className={cn(
+                      "flex items-center gap-3 p-3 transition-colors",
+                      isUser ? "bg-blue-500/5 hover:bg-blue-500/10" : "hover:bg-white/[0.02]"
+                    )}
+                  >
+                    {/* Rank */}
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0",
+                      rank === 1 && "bg-amber-500 text-black",
+                      rank === 2 && "bg-slate-400 text-black",
+                      rank === 3 && "bg-orange-600 text-white",
+                      rank > 3 && "bg-white/[0.05] text-slate-400"
+                    )}>
+                      {rank === 1 ? <Crown className="w-4 h-4" /> : rank}
+                    </div>
+
+                    {/* Team */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "font-medium truncate",
+                          isUser ? "text-blue-400" : "text-white"
+                        )}>
+                          {roster.teamName || `Team ${roster.sleeperId}`}
+                        </span>
+                        {isUser && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 uppercase">
+                            You
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Record */}
+                    <span className={cn(
+                      "text-sm font-medium tabular-nums",
+                      roster.wins > roster.losses ? "text-emerald-400" :
+                      roster.wins < roster.losses ? "text-red-400" : "text-slate-400"
+                    )}>
+                      {roster.wins}-{roster.losses}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* RECENT TRADES */}
+          <RecentTrades
+            leagueId={leagueId}
+            userRosterId={userRoster?.id}
+            limit={5}
+          />
+        </div>
 
         {/* YOUR KEEPERS */}
         {userRoster && userRoster.currentKeepers.length > 0 && (
           <section>
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
-                  <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                  <Crown className="w-4 h-4 text-blue-400" />
                 </div>
-                <h2 className="text-base sm:text-lg font-semibold text-white">Your {league.season} Keepers</h2>
+                <h2 className="font-semibold text-white">Your {league.season} Keepers</h2>
               </div>
               <Link
                 href={`/league/${leagueId}/team/${userRoster.id}`}
-                className="text-xs sm:text-sm text-blue-500 hover:text-blue-400 font-medium flex items-center gap-0.5 sm:gap-1 transition-colors py-1 px-2 -mr-2 rounded-md hover:bg-blue-500/10"
+                className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
               >
-                Manage <ChevronRight size={14} className="sm:hidden" /><ChevronRight size={16} className="hidden sm:block" />
+                Manage <ChevronRight size={16} />
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3">
               {userRoster.currentKeepers.map((keeper) => (
-                <div
+                <Card
                   key={keeper.id}
-                  className={`relative rounded-md p-2.5 sm:p-3 md:p-4 transition-colors ${
-                    keeper.type === "FRANCHISE"
-                      ? "bg-[#1a1a1a] border-t-2 border-t-yellow-500 border border-[#2a2a2a] hover:border-[#333333]"
-                      : "bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#333333]"
-                  }`}
+                  variant={keeper.type === "FRANCHISE" ? "gradient" : "default"}
+                  padding="sm"
+                  className={cn(
+                    "relative transition-all hover:scale-[1.02]",
+                    keeper.type === "FRANCHISE" && "border-t-2 border-t-amber-500"
+                  )}
                 >
                   {keeper.type === "FRANCHISE" && (
-                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
-                      <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-500 fill-yellow-500" />
+                    <div className="absolute top-2 right-2">
+                      <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                     </div>
                   )}
 
-                  <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+                  <div className="flex items-center gap-1.5 mb-2">
                     <PositionBadge position={keeper.player.position} size="xs" />
                     {keeper.player.age && (
                       <AgeIndicator
@@ -242,213 +370,112 @@ export default function LeaguePage() {
                       />
                     )}
                   </div>
-                  <p className="text-xs sm:text-sm font-semibold text-white truncate">{keeper.player.fullName}</p>
-                  <p className="text-sm sm:text-xs text-gray-500 mb-1.5 sm:mb-2">{keeper.player.team}</p>
+                  <p className="text-sm font-semibold text-white truncate">{keeper.player.fullName}</p>
+                  <p className="text-xs text-slate-500 mb-2">{keeper.player.team}</p>
 
-                  <div className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm font-bold ${
+                  <div className={cn(
+                    "inline-flex items-center px-2 py-0.5 rounded text-xs font-bold",
                     keeper.type === "FRANCHISE"
-                      ? "bg-yellow-500/20 text-yellow-500"
-                      : "bg-[#222222] text-gray-300"
-                  }`}>
+                      ? "bg-amber-500/20 text-amber-400"
+                      : "bg-white/[0.05] text-slate-300"
+                  )}>
                     R{keeper.finalCost}
                   </div>
-                </div>
+                </Card>
               ))}
 
               {/* Empty slots */}
-              {Array.from({ length: Math.min(maxKeepers - userRoster.currentKeepers.length, 3) }).map((_, i) => (
+              {Array.from({ length: Math.min(maxKeepers - userRoster.currentKeepers.length, 2) }).map((_, i) => (
                 <Link
                   key={`empty-${i}`}
                   href={`/league/${leagueId}/team/${userRoster.id}`}
-                  className="rounded-md p-2.5 sm:p-3 md:p-4 border-2 border-dashed border-[#2a2a2a] hover:border-blue-500/50 flex flex-col items-center justify-center text-gray-600 hover:text-blue-500 transition-colors min-h-[100px] sm:min-h-[120px] md:min-h-[140px] hover:bg-blue-500/5"
+                  className="rounded-xl p-3 border-2 border-dashed border-white/[0.1] hover:border-blue-500/50 flex flex-col items-center justify-center text-slate-600 hover:text-blue-400 transition-all min-h-[120px] hover:bg-blue-500/5"
                 >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md border-2 border-dashed border-current flex items-center justify-center mb-1.5 sm:mb-2">
-                    <span className="text-lg sm:text-xl">+</span>
+                  <div className="w-10 h-10 rounded-lg border-2 border-dashed border-current flex items-center justify-center mb-2">
+                    <span className="text-xl">+</span>
                   </div>
-                  <span className="text-sm sm:text-xs font-medium">Add Keeper</span>
+                  <span className="text-xs font-medium">Add Keeper</span>
                 </Link>
               ))}
             </div>
           </section>
         )}
 
-        {/* STANDINGS */}
-        <section>
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
-                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
-              </div>
-              <h2 className="text-base sm:text-lg font-semibold text-white">League Standings</h2>
-            </div>
-            <Link
-              href={`/league/${leagueId}/team`}
-              className="text-xs sm:text-sm text-gray-400 hover:text-white font-medium flex items-center gap-0.5 sm:gap-1 transition-colors py-1 px-2 -mr-2 rounded-md hover:bg-[#1a1a1a]"
-            >
-              View All <ChevronRight size={14} className="sm:hidden" /><ChevronRight size={16} className="hidden sm:block" />
-            </Link>
-          </div>
-
-          <div className="space-y-1.5 sm:space-y-2">
-            {sortedRosters.slice(0, 8).map((roster, index) => {
-              const rank = index + 1;
-              const isUser = roster.isUserRoster;
-              const isPlayoff = rank <= 6;
-
-              return (
-                <Link
-                  key={roster.id}
-                  href={`/league/${leagueId}/team/${roster.id}`}
-                  className={`group flex items-center gap-2 sm:gap-3 md:gap-4 p-2.5 sm:p-3 md:p-4 rounded-md transition-colors ${
-                    isUser
-                      ? "bg-blue-600/10 border-l-2 border-l-blue-500 border border-[#2a2a2a] hover:border-[#333333]"
-                      : "bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#333333]"
-                  }`}
-                >
-                  {/* Rank */}
-                  <div className="flex-shrink-0">
-                    <div className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md flex items-center justify-center font-bold text-sm sm:text-base ${
-                      rank === 1 ? "bg-yellow-500 text-black" :
-                      rank === 2 ? "bg-gray-400 text-black" :
-                      rank === 3 ? "bg-orange-600 text-white" :
-                      isPlayoff ? "bg-green-500/20 text-green-500 border border-green-500/30" :
-                      "bg-[#222222] text-gray-500"
-                    }`}>
-                      {rank === 1 ? <Crown className="w-4 h-4 sm:w-5 sm:h-5" /> : rank}
-                    </div>
-                  </div>
-
-                  {/* Team Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <span className="text-sm sm:text-base font-semibold truncate text-white">
-                        {roster.teamName || `Team ${roster.sleeperId}`}
-                      </span>
-                      {isUser && (
-                        <span className="text-xs sm:text-sm font-bold px-1.5 sm:px-2 py-0.5 rounded bg-blue-500/20 text-blue-500 uppercase tracking-wide flex-shrink-0">
-                          You
-                        </span>
-                      )}
-                    </div>
-                    {roster.owners?.[0] && (
-                      <span className="text-sm sm:text-xs text-gray-500 hidden xs:block">{roster.owners[0].displayName}</span>
-                    )}
-                  </div>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-2 sm:gap-4 md:gap-6 text-xs sm:text-sm">
-                    <div className="text-right w-10 sm:w-12">
-                      <span className={`font-semibold tabular-nums ${
-                        roster.wins > roster.losses ? "text-green-500" :
-                        roster.wins < roster.losses ? "text-red-500" : "text-gray-300"
-                      }`}>
-                        {roster.wins}-{roster.losses}
-                      </span>
-                    </div>
-                    <div className="text-right w-12 sm:w-16 hidden md:block">
-                      <span className="text-gray-400 font-medium tabular-nums">{Math.round(roster.pointsFor).toLocaleString()}</span>
-                    </div>
-                    <div className="w-10 sm:w-14 text-center">
-                      <span className={`text-sm sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded ${
-                        roster.keeperCount >= maxKeepers ? "bg-green-500/20 text-green-500" :
-                        roster.keeperCount > 0 ? "bg-blue-500/20 text-blue-500" :
-                        "bg-[#222222] text-gray-600"
-                      }`}>
-                        {roster.keeperCount}/{maxKeepers}
-                      </span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 transition-colors flex-shrink-0" />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
         {/* QUICK ACTIONS */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <QuickActionCard
             href={`/league/${leagueId}/draft-board`}
-            icon={<Target className="w-4 h-4 sm:w-5 sm:h-5" />}
+            icon={<Target className="w-5 h-5" />}
             label="Draft Board"
             description="View keeper costs"
+            gradient="primary"
           />
           <QuickActionCard
             href={`/league/${leagueId}/trade-analyzer`}
-            icon={<Zap className="w-4 h-4 sm:w-5 sm:h-5" />}
-            label="Trade Analyzer"
+            icon={<Zap className="w-5 h-5" />}
+            label="Trade Center"
             description="Evaluate trades"
+            gradient="warm"
           />
           <QuickActionCard
-            href={`/league/${leagueId}/team`}
-            icon={<Users className="w-4 h-4 sm:w-5 sm:h-5" />}
-            label="All Teams"
-            description="League rosters"
+            href={`/league/${leagueId}/power-rankings`}
+            icon={<TrendingUp className="w-5 h-5" />}
+            label="Power Rankings"
+            description="Team analysis"
+            gradient="cool"
           />
           <QuickActionCard
             href={`/league/${leagueId}/history`}
-            icon={<BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />}
-            label="History"
-            description="Past seasons"
+            icon={<Trophy className="w-5 h-5" />}
+            label="Championships"
+            description="League history"
+            gradient="success"
           />
         </section>
 
-        {/* ANALYTICS GRID - Power Rankings & Luck Factor (Condensed) */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Power Rankings (Condensed) */}
+        {/* ANALYTICS GRID - Power Rankings & Luck Factor */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <PowerRankings
             leagueId={leagueId}
             userRosterId={userRoster?.id}
             useApi={true}
             condensed={true}
-            viewAllHref={`/league/${leagueId}/team`}
+            viewAllHref={`/league/${leagueId}/power-rankings`}
           />
-
-          {/* Luck Factor (Condensed) */}
           <LuckFactor
             leagueId={leagueId}
             userRosterId={userRoster?.id}
             condensed={true}
-            viewAllHref={`/league/${leagueId}/team`}
+            viewAllHref={`/league/${leagueId}/luck`}
           />
         </section>
 
-        {/* RECENT TRADES & TROPHY CASE */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Recent Trades */}
-          <RecentTrades
-            leagueId={leagueId}
-            userRosterId={userRoster?.id}
-            limit={5}
-          />
+        {/* CHAMPIONSHIP HISTORY */}
+        <ChampionshipHistory
+          leagueId={leagueId}
+          userRosterId={userRoster?.id}
+          compact={true}
+        />
 
-          {/* Championship History (compact) */}
-          <ChampionshipHistory
-            leagueId={leagueId}
-            userRosterId={userRoster?.id}
-            compact={true}
-          />
-        </section>
-
-        {/* TOP SCORERS (Condensed) */}
+        {/* TOP SCORERS */}
         <section>
           <TopScorers condensed={true} />
         </section>
 
         {/* DRAFT PICK VALUES */}
         <section>
-          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
-              <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center">
+              <Target className="w-4 h-4 text-emerald-400" />
             </div>
-            <h2 className="text-base sm:text-lg font-semibold text-white">Draft Pick Values</h2>
+            <h2 className="font-semibold text-white">Draft Pick Values</h2>
           </div>
           <DraftPickValueChart />
         </section>
 
         {/* Footer */}
         {league.lastSyncedAt && (
-          <p className="text-center text-sm sm:text-xs text-gray-600 pb-2 sm:pb-4">
+          <p className="text-center text-xs text-slate-600 pb-4">
             Last synced {new Date(league.lastSyncedAt).toLocaleDateString()} at{" "}
             {new Date(league.lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
@@ -463,24 +490,41 @@ function QuickActionCard({
   icon,
   label,
   description,
+  gradient = "primary",
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   description: string;
+  gradient?: "primary" | "warm" | "cool" | "success";
 }) {
+  const gradientStyles = {
+    primary: "from-blue-500/20 to-purple-500/20 group-hover:from-blue-500/30 group-hover:to-purple-500/30",
+    warm: "from-amber-500/20 to-orange-500/20 group-hover:from-amber-500/30 group-hover:to-orange-500/30",
+    cool: "from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/30 group-hover:to-blue-500/30",
+    success: "from-emerald-500/20 to-cyan-500/20 group-hover:from-emerald-500/30 group-hover:to-cyan-500/30",
+  };
+
+  const iconColors = {
+    primary: "text-blue-400",
+    warm: "text-amber-400",
+    cool: "text-cyan-400",
+    success: "text-emerald-400",
+  };
+
   return (
     <Link
       href={href}
-      className="group p-3 sm:p-4 md:p-5 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#333333] transition-colors"
+      className="group p-4 rounded-xl bg-[#0d1420] border border-white/[0.06] hover:border-white/[0.1] transition-all hover:scale-[1.02]"
     >
-      <div className="mb-2 sm:mb-3 md:mb-4">
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center text-gray-400 group-hover:text-blue-500 transition-colors">
-          {icon}
-        </div>
+      <div className={cn(
+        "w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center mb-3 transition-all",
+        gradientStyles[gradient]
+      )}>
+        <span className={iconColors[gradient]}>{icon}</span>
       </div>
-      <p className="font-semibold text-white text-xs sm:text-sm mb-0.5">{label}</p>
-      <p className="text-sm sm:text-xs text-gray-500 hidden xs:block">{description}</p>
+      <p className="font-semibold text-white text-sm mb-0.5">{label}</p>
+      <p className="text-xs text-slate-500">{description}</p>
     </Link>
   );
 }

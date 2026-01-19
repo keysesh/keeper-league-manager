@@ -6,6 +6,7 @@ import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus, Crown, Shield, Zap, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
 import { LEAGUE_CONFIG, getAgeValueModifier, getDraftPickValue } from "@/lib/constants/league-config";
 import { InfoModal } from "./InfoModal";
+import { cn, getGradeGradient } from "@/lib/design-tokens";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -47,7 +48,6 @@ interface RankedTeam extends RosterData {
   trend: "up" | "down" | "stable";
 }
 
-// API response types
 interface ApiPowerRanking {
   rank: number;
   previousRank: number | null;
@@ -88,24 +88,17 @@ interface ApiPowerRanking {
   trajectory: "rising" | "falling" | "stable";
 }
 
-/**
- * Power Rankings component
- * Can use API data or calculate client-side based on props
- */
 export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false, condensed = false, viewAllHref }: PowerRankingsProps) {
-  // Fetch from API if leagueId provided and useApi is true
   const { data: apiData, isLoading } = useSWR<{ rankings: ApiPowerRanking[] }>(
     useApi && leagueId ? `/api/leagues/${leagueId}/power-rankings` : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 }
   );
 
-  // Client-side calculation (fallback)
   const clientRankedTeams = useMemo(() => {
     if (!rosters || rosters.length === 0) return [];
 
     const teams: RankedTeam[] = rosters.map((roster) => {
-      // Calculate keeper value score
       let keeperScore = 0;
       for (const keeper of roster.keepers) {
         const pickValue = getDraftPickValue(keeper.finalCost);
@@ -117,40 +110,22 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
         keeperScore += (pickValue * ageModifier * positionMultiplier) + ppgBonus + franchiseBonus;
       }
 
-      // Calculate record score (win percentage * 100)
       const totalGames = roster.wins + roster.losses;
       const recordScore = totalGames > 0 ? (roster.wins / totalGames) * 100 : 50;
-
-      // Calculate draft capital score
       const draftCapitalScore = (roster.draftPicksOwned / Math.max(roster.draftPicksTotal, 1)) * 50;
+      const powerScore = keeperScore * 0.5 + recordScore * 0.35 + draftCapitalScore * 0.15;
 
-      // Combined power score (weighted)
-      const powerScore =
-        keeperScore * 0.5 +      // 50% keepers
-        recordScore * 0.35 +     // 35% record
-        draftCapitalScore * 0.15; // 15% draft capital
-
-      // Trend based on points differential (simplified)
       const avgPointsPerWin = roster.pointsFor / Math.max(roster.wins, 1);
       const trend: "up" | "down" | "stable" =
         avgPointsPerWin > 120 ? "up" :
         avgPointsPerWin < 100 ? "down" : "stable";
 
-      return {
-        ...roster,
-        powerScore,
-        keeperScore,
-        recordScore,
-        draftCapitalScore,
-        trend,
-      };
+      return { ...roster, powerScore, keeperScore, recordScore, draftCapitalScore, trend };
     });
 
-    // Sort by power score descending
     return teams.sort((a, b) => b.powerScore - a.powerScore);
   }, [rosters]);
 
-  // Use API data if available, otherwise client calculation
   const useApiData = useApi && apiData?.rankings && apiData.rankings.length > 0;
   const rankings = useApiData ? apiData.rankings : null;
   const rankedTeams = rankings ? [] : clientRankedTeams;
@@ -161,13 +136,13 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 
   if (isLoading) {
     return (
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden animate-pulse">
-        <div className="px-4 py-4 border-b border-[#2a2a2a]">
-          <div className="h-8 w-32 bg-[#2a2a2a] rounded" />
+      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden animate-pulse">
+        <div className="px-4 py-4 border-b border-white/[0.06]">
+          <div className="h-8 w-32 bg-white/[0.05] rounded-lg" />
         </div>
         <div className="p-4 space-y-3">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="h-20 bg-[#2a2a2a] rounded" />
+            <div key={i} className="h-16 bg-white/[0.05] rounded-lg" />
           ))}
         </div>
       </div>
@@ -176,24 +151,14 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 
   if (!rankings && rankedTeams.length === 0) {
     return (
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-8 text-center">
-        <Zap className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-        <p className="text-base text-gray-400 font-medium">No rankings available</p>
-        <p className="text-sm text-gray-600 mt-1">Add rosters to see power rankings</p>
+      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-8 text-center">
+        <Zap className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+        <p className="text-base text-slate-400 font-medium">No rankings available</p>
+        <p className="text-sm text-slate-600 mt-1">Add rosters to see power rankings</p>
       </div>
     );
   }
 
-  // Grade color mapping
-  const gradeColor = (grade: string) => {
-    if (grade.startsWith("A")) return "text-emerald-400";
-    if (grade.startsWith("B")) return "text-blue-400";
-    if (grade.startsWith("C")) return "text-yellow-400";
-    if (grade.startsWith("D")) return "text-orange-400";
-    return "text-red-400";
-  };
-
-  // Get condensed items (top 3 + user + bottom 2)
   const getCondensedItems = <T extends { rosterId?: string; id?: string }>(
     items: T[],
     userId: string | undefined
@@ -219,7 +184,6 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
       };
     }
 
-    // User is in middle
     return {
       items: [
         ...top3.map(item => ({ ...item })),
@@ -237,17 +201,17 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
       : { items: rankings.map(r => ({ ...r })), hasMore: false };
 
     return (
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-        <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
+      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+        <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-purple-400" />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-white">Power Rankings</h3>
                 {!condensed && (
-                  <p className="text-sm text-gray-500">50% roster · 20% stars · 10% depth · 10% keepers · 10% picks</p>
+                  <p className="text-sm text-slate-500">50% roster · 20% stars · 10% depth · 10% keepers · 10% picks</p>
                 )}
               </div>
             </div>
@@ -256,8 +220,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
               description={
                 <>
                   Power Rankings combine multiple factors to give you a comprehensive view of each team&apos;s
-                  overall strength and competitive position. These rankings help identify contenders, rebuilders,
-                  and teams on the rise or decline.
+                  overall strength and competitive position.
                 </>
               }
               formula={{
@@ -272,12 +235,12 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                 ],
               }}
               interpretation={[
-                { value: "A+", meaning: "Elite - Championship favorite", color: "text-emerald-400" },
+                { value: "A+", meaning: "Elite - Championship favorite", color: "text-amber-400" },
                 { value: "A / A-", meaning: "Contender - Strong roster", color: "text-emerald-400" },
                 { value: "B+", meaning: "Playoff team - Competitive", color: "text-blue-400" },
                 { value: "B / B-", meaning: "Bubble team - On the fringe", color: "text-blue-400" },
-                { value: "C+", meaning: "Rebuilding - Some pieces", color: "text-yellow-400" },
-                { value: "C / C-", meaning: "Rebuilding - Needs work", color: "text-yellow-400" },
+                { value: "C+", meaning: "Rebuilding - Some pieces", color: "text-slate-400" },
+                { value: "C / C-", meaning: "Rebuilding - Needs work", color: "text-slate-400" },
                 { value: "D+", meaning: "Struggling - Major gaps", color: "text-orange-400" },
                 { value: "D / F", meaning: "Full rebuild mode", color: "text-red-400" },
               ]}
@@ -288,15 +251,15 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-emerald-400" />
-                        <span><strong className="text-emerald-400">Rising</strong> - Team is improving, trending upward</span>
+                        <span><strong className="text-emerald-400">Rising</strong> - Team is improving</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <TrendingDown className="w-4 h-4 text-red-400" />
-                        <span><strong className="text-red-400">Falling</strong> - Team is declining, trending downward</span>
+                        <span><strong className="text-red-400">Falling</strong> - Team is declining</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Minus className="w-4 h-4 text-gray-400" />
-                        <span><strong className="text-gray-400">Stable</strong> - Consistent performance</span>
+                        <Minus className="w-4 h-4 text-slate-400" />
+                        <span><strong className="text-slate-400">Stable</strong> - Consistent performance</span>
                       </div>
                     </div>
                   ),
@@ -307,46 +270,49 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           </div>
         </div>
 
-        <div className="divide-y divide-[#2a2a2a]">
+        <div className="divide-y divide-white/[0.06]">
           {displayRankings.map((team) => {
             const teamWithSeparator = team as typeof team & { showSeparator?: boolean };
             const isUser = team.rosterId === userRosterId;
             const barWidth = (team.overallScore / maxScore) * 100;
+            const gradeGradient = getGradeGradient(team.grade);
+
             const changeIcon = team.change > 0 ? (
-              <span className="flex items-center text-emerald-400 text-sm">
-                <ChevronUp className="w-4 h-4" />{team.change}
+              <span className="flex items-center text-emerald-400 text-xs font-medium">
+                <ChevronUp className="w-3 h-3" />{team.change}
               </span>
             ) : team.change < 0 ? (
-              <span className="flex items-center text-red-400 text-sm">
-                <ChevronDown className="w-4 h-4" />{Math.abs(team.change)}
+              <span className="flex items-center text-red-400 text-xs font-medium">
+                <ChevronDown className="w-3 h-3" />{Math.abs(team.change)}
               </span>
             ) : null;
 
             return (
               <div key={team.rosterId}>
-                {/* Separator for condensed mode */}
                 {teamWithSeparator.showSeparator && (
                   <div className="flex items-center gap-2 py-1.5 px-4">
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
-                    <span className="text-xs text-gray-600 font-medium">...</span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
+                    <span className="text-xs text-slate-600">...</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
                   </div>
                 )}
                 <div
-                  className={`${condensed ? "p-3" : "p-4"} transition-colors ${condensed ? "min-h-[56px]" : "min-h-[72px]"} ${
-                    isUser ? "bg-blue-500/5" : "hover:bg-[#222]"
-                  }`}
+                  className={cn(
+                    "p-3 sm:p-4 transition-colors",
+                    isUser ? "bg-blue-500/5" : "hover:bg-white/[0.02]"
+                  )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 sm:gap-4">
                     {/* Rank with change */}
-                    <div className="flex flex-col items-center flex-shrink-0">
-                      <div className={`${condensed ? "w-8 h-8" : "w-10 h-10"} rounded-md flex items-center justify-center font-bold ${condensed ? "text-sm" : "text-base"} ${
-                        team.rank === 1 ? "bg-yellow-500 text-black" :
-                        team.rank === 2 ? "bg-gray-400 text-black" :
-                        team.rank === 3 ? "bg-orange-600 text-white" :
-                        "bg-[#2a2a2a] text-gray-400"
-                      }`}>
-                        {team.rank === 1 ? <Crown className={condensed ? "w-4 h-4" : "w-5 h-5"} /> : team.rank}
+                    <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                      <div className={cn(
+                        "w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-sm",
+                        team.rank === 1 && "bg-amber-500 text-black",
+                        team.rank === 2 && "bg-slate-400 text-black",
+                        team.rank === 3 && "bg-orange-600 text-white",
+                        team.rank > 3 && "bg-white/[0.05] text-slate-400"
+                      )}>
+                        {team.rank === 1 ? <Crown className="w-4 h-4 sm:w-5 sm:h-5" /> : team.rank}
                       </div>
                       {!condensed && changeIcon}
                     </div>
@@ -354,65 +320,67 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                     {/* Team info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`${condensed ? "text-sm" : "text-base"} font-medium truncate ${isUser ? "text-blue-400" : "text-white"}`}>
+                        <span className={cn(
+                          "text-sm sm:text-base font-medium truncate",
+                          isUser ? "text-blue-400" : "text-white"
+                        )}>
                           {team.teamName}
                         </span>
                         {isUser && (
-                          <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
-                            YOU
+                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold uppercase">
+                            You
                           </span>
                         )}
-                        {/* Trajectory badge - hide in condensed */}
-                        {!condensed && team.trajectory === "rising" && (
-                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
-                            <TrendingUp className="w-3.5 h-3.5" /> Rising
-                          </span>
+                        {team.trajectory === "rising" && (
+                          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                         )}
-                        {!condensed && team.trajectory === "falling" && (
-                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-red-500/20 text-red-400 rounded">
-                            <TrendingDown className="w-3.5 h-3.5" /> Falling
-                          </span>
+                        {team.trajectory === "falling" && (
+                          <TrendingDown className="w-3.5 h-3.5 text-red-400" />
                         )}
-                        {/* Show trajectory icon in condensed mode */}
-                        {condensed && team.trajectory === "rising" && <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />}
-                        {condensed && team.trajectory === "falling" && <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
                       </div>
 
-                      {/* Power bar - hide in condensed */}
+                      {/* Power bar - only show in full mode */}
                       {!condensed && (
-                        <div className="mt-2 h-2 bg-[#2a2a2a] rounded-full overflow-hidden">
+                        <div className="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${
-                              team.rank === 1 ? "bg-yellow-500" :
-                              team.rank <= 3 ? "bg-emerald-500" :
-                              team.rank <= 6 ? "bg-blue-500" :
-                              "bg-gray-500"
-                            }`}
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500 bg-gradient-to-r",
+                              gradeGradient
+                            )}
                             style={{ width: `${barWidth}%` }}
                           />
                         </div>
                       )}
 
-                      {/* Breakdown - show historical record */}
-                      <div className={`flex items-center gap-4 ${condensed ? "mt-1" : "mt-2"} text-sm text-gray-500`}>
-                        <span className="font-medium" title={team.historicalRecord ? `${team.historicalRecord.seasonsPlayed} seasons` : undefined}>
+                      {/* Stats row */}
+                      <div className={cn(
+                        "flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-slate-500",
+                        condensed ? "mt-1" : "mt-2"
+                      )}>
+                        <span className="font-medium">
                           {team.historicalRecord
                             ? `${team.historicalRecord.totalWins}-${team.historicalRecord.totalLosses}`
                             : `${team.record.wins}-${team.record.losses}`
                           }
                         </span>
-                        {team.historicalRecord && !condensed && (
-                          <span className="text-xs">{team.historicalRecord.winPct}% win</span>
+                        {!condensed && team.historicalRecord && (
+                          <span>{team.historicalRecord.winPct}% win</span>
                         )}
-                        {!condensed && <span>★ {team.starPower.toFixed(1)} PPG</span>}
-                        {!condensed && <span>Depth: {team.depth.toFixed(1)}</span>}
+                        {!condensed && <span className="hidden sm:inline">★ {team.starPower.toFixed(1)} PPG</span>}
                       </div>
                     </div>
 
-                    {/* Score and Grade */}
-                    <div className="text-right flex-shrink-0">
-                      <div className={`${condensed ? "text-lg" : "text-xl"} font-bold ${gradeColor(team.grade)}`}>{team.grade}</div>
-                      {!condensed && <div className="text-sm text-gray-500">{team.overallScore} pts</div>}
+                    {/* Grade badge */}
+                    <div className="flex-shrink-0">
+                      <div className={cn(
+                        "w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base sm:text-lg text-white bg-gradient-to-br shadow-lg",
+                        gradeGradient
+                      )}>
+                        {team.grade}
+                      </div>
+                      {!condensed && (
+                        <div className="text-xs text-slate-500 text-center mt-1">{team.overallScore} pts</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -421,11 +389,11 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           })}
         </div>
 
-        {/* View All link for condensed mode */}
+        {/* View All link */}
         {condensed && hasMore && viewAllHref && (
           <Link
             href={viewAllHref}
-            className="group flex items-center justify-center gap-1 py-3 text-sm text-blue-500 hover:text-blue-400 font-medium transition-colors hover:bg-[#222] border-t border-[#2a2a2a]"
+            className="group flex items-center justify-center gap-1 py-3 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors hover:bg-white/[0.02] border-t border-white/[0.06]"
           >
             View All ({rankings.length})
             <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
@@ -435,22 +403,22 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
     );
   }
 
-  // Render client-side calculated rankings (fallback)
+  // Fallback client-side rendering
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-      <div className="px-4 sm:px-5 py-4 border-b border-[#2a2a2a]">
+    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+      <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
             <Zap className="w-5 h-5 text-purple-400" />
           </div>
           <div>
             <h3 className="text-base font-semibold text-white">Power Rankings</h3>
-            <p className="text-sm text-gray-500">Based on keepers, record & draft capital</p>
+            <p className="text-sm text-slate-500">Based on keepers, record & draft capital</p>
           </div>
         </div>
       </div>
 
-      <div className="divide-y divide-[#2a2a2a]">
+      <div className="divide-y divide-white/[0.06]">
         {rankedTeams.map((team, index) => {
           const rank = index + 1;
           const isUser = team.id === userRosterId;
@@ -459,53 +427,57 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           return (
             <div
               key={team.id}
-              className={`p-4 transition-colors min-h-[72px] ${
-                isUser ? "bg-blue-500/5" : "hover:bg-[#222]"
-              }`}
+              className={cn(
+                "p-4 transition-colors",
+                isUser ? "bg-blue-500/5" : "hover:bg-white/[0.02]"
+              )}
             >
               <div className="flex items-center gap-4">
                 {/* Rank */}
-                <div className={`w-10 h-10 rounded-md flex items-center justify-center font-bold text-base flex-shrink-0 ${
-                  rank === 1 ? "bg-yellow-500 text-black" :
-                  rank === 2 ? "bg-gray-400 text-black" :
-                  rank === 3 ? "bg-orange-600 text-white" :
-                  "bg-[#2a2a2a] text-gray-400"
-                }`}>
+                <div className={cn(
+                  "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base flex-shrink-0",
+                  rank === 1 && "bg-amber-500 text-black",
+                  rank === 2 && "bg-slate-400 text-black",
+                  rank === 3 && "bg-orange-600 text-white",
+                  rank > 3 && "bg-white/[0.05] text-slate-400"
+                )}>
                   {rank === 1 ? <Crown className="w-5 h-5" /> : rank}
                 </div>
 
                 {/* Team info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`text-base font-medium truncate ${isUser ? "text-blue-400" : "text-white"}`}>
+                    <span className={cn(
+                      "text-base font-medium truncate",
+                      isUser ? "text-blue-400" : "text-white"
+                    )}>
                       {team.teamName || `Team ${team.id.slice(0, 6)}`}
                     </span>
                     {isUser && (
-                      <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold">
-                        YOU
+                      <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold uppercase">
+                        You
                       </span>
                     )}
-                    {/* Trend indicator */}
                     {team.trend === "up" && <TrendingUp className="w-4 h-4 text-emerald-400" />}
                     {team.trend === "down" && <TrendingDown className="w-4 h-4 text-red-400" />}
-                    {team.trend === "stable" && <Minus className="w-4 h-4 text-gray-500" />}
                   </div>
 
                   {/* Power bar */}
-                  <div className="mt-2 h-2 bg-[#2a2a2a] rounded-full overflow-hidden">
+                  <div className="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all ${
-                        rank === 1 ? "bg-yellow-500" :
-                        rank <= 3 ? "bg-emerald-500" :
-                        rank <= 6 ? "bg-blue-500" :
-                        "bg-gray-500"
-                      }`}
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        rank === 1 && "bg-amber-500",
+                        rank <= 3 && rank > 1 && "bg-emerald-500",
+                        rank <= 6 && rank > 3 && "bg-blue-500",
+                        rank > 6 && "bg-slate-500"
+                      )}
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
 
-                  {/* Breakdown */}
-                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                  {/* Stats */}
+                  <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
                       <Shield className="w-3.5 h-3.5" />
                       {team.keepers.length} keepers
@@ -518,7 +490,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                 {/* Score */}
                 <div className="text-right flex-shrink-0">
                   <div className="text-xl font-bold text-white">{Math.round(team.powerScore)}</div>
-                  <div className="text-sm text-gray-500">PWR</div>
+                  <div className="text-xs text-slate-500">PWR</div>
                 </div>
               </div>
             </div>

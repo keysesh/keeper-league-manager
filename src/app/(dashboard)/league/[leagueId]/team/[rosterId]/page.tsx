@@ -8,7 +8,8 @@ import { useToast } from "@/components/ui/Toast";
 import { PremiumPlayerCard } from "@/components/players/PremiumPlayerCard";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { BackLink } from "@/components/ui/BackLink";
-import { RefreshCw, Trophy, Star, Users, FileText } from "lucide-react";
+import { RefreshCw, Trophy, Star, Users, FileText, Sparkles } from "lucide-react";
+import { cn } from "@/lib/design-tokens";
 import { DraftCapital } from "@/components/ui/DraftCapital";
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -293,15 +294,15 @@ export default function TeamRosterPage() {
     return (
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         <div>
-          <Skeleton className="h-4 w-24 mb-3" />
-          <Skeleton className="h-10 w-64 mb-2" />
-          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-24 mb-3 bg-white/[0.05]" />
+          <Skeleton className="h-10 w-64 mb-2 bg-white/[0.05]" />
+          <Skeleton className="h-5 w-48 bg-white/[0.05]" />
         </div>
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-6">
-          <Skeleton className="h-6 w-32 mb-4" />
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-6">
+          <Skeleton className="h-6 w-32 mb-4 bg-white/[0.05]" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-56 rounded-md" />
+              <Skeleton key={i} className="h-56 rounded-xl bg-white/[0.03]" />
             ))}
           </div>
         </div>
@@ -312,11 +313,15 @@ export default function TeamRosterPage() {
   if (error || !data) {
     return (
       <div className="max-w-7xl mx-auto p-4 md:p-6">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-md p-6">
-          <p className="text-red-500 font-medium">Failed to load roster data</p>
+        <div className="bg-[#0d1420] border border-rose-500/20 rounded-xl p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-4">
+            <Trophy className="w-8 h-8 text-rose-400" />
+          </div>
+          <p className="text-rose-400 font-medium text-lg">Failed to load roster data</p>
+          <p className="text-slate-500 text-sm mt-1">There was an error loading your team information</p>
           <button
             onClick={() => mutate()}
-            className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-500 rounded-md text-sm font-medium transition-colors"
+            className="mt-6 px-5 py-2.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 rounded-lg text-sm font-medium transition-colors border border-rose-500/25"
           >
             Try Again
           </button>
@@ -341,19 +346,19 @@ export default function TeamRosterPage() {
           <div className="flex-1 min-w-0">
             <BackLink href={`/league/${leagueId}`} label="Back to League" />
             <div className="flex items-center gap-2 sm:gap-3 mt-1">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight truncate">Manage Keepers</h1>
-                <p className="text-gray-500 text-sm sm:text-base mt-0.5">{data.season} Season</p>
+                <p className="text-slate-500 text-sm sm:text-base mt-0.5">{data.season} Season</p>
               </div>
             </div>
           </div>
           <button
             onClick={syncKeepers}
             disabled={syncingKeepers}
-            className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 min-h-[44px] min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md bg-[#1a1a1a] text-gray-400 hover:text-white active:bg-[#222222] border border-[#2a2a2a] hover:border-[#333333] text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
+            className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 min-h-[44px] min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-[#131a28] text-slate-400 hover:text-white hover:bg-[#1a2435] border border-white/[0.08] hover:border-white/[0.12] text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
           >
             <RefreshCw size={16} className={syncingKeepers ? "animate-spin" : ""} />
             <span className="hidden sm:inline">{syncingKeepers ? "Syncing..." : "Sync Keepers"}</span>
@@ -363,36 +368,36 @@ export default function TeamRosterPage() {
 
       {/* Keeper Summary Stats */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-2.5 sm:p-4">
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-              <Users className="w-4 h-4 text-blue-500" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+              <Users className="w-4 h-4 text-blue-400" />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold text-white">{data.currentKeepers.total}<span className="text-[10px] sm:text-sm text-gray-500">/{data.limits.maxKeepers}</span></p>
-              <p className="text-[9px] sm:text-xs text-gray-500 uppercase tracking-wide">Total</p>
+              <p className="text-lg sm:text-2xl font-bold text-white tabular-nums">{data.currentKeepers.total}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxKeepers}</span></p>
+              <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Total</p>
             </div>
           </div>
         </div>
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-2.5 sm:p-4">
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-              <Star className="w-4 h-4 text-yellow-500" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0">
+              <Star className="w-4 h-4 text-amber-400" />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold text-yellow-500">{data.currentKeepers.franchise}<span className="text-[10px] sm:text-sm text-gray-500">/{data.limits.maxFranchiseTags}</span></p>
-              <p className="text-[9px] sm:text-xs text-gray-500 uppercase tracking-wide">Franchise</p>
+              <p className="text-lg sm:text-2xl font-bold text-amber-400 tabular-nums">{data.currentKeepers.franchise}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxFranchiseTags}</span></p>
+              <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Franchise</p>
             </div>
           </div>
         </div>
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-2.5 sm:p-4">
+        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
           <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-4 h-4 text-blue-500" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
+              <Trophy className="w-4 h-4 text-blue-400" />
             </div>
             <div>
-              <p className="text-lg sm:text-2xl font-bold text-blue-400">{data.currentKeepers.regular}<span className="text-[10px] sm:text-sm text-gray-500">/{data.limits.maxRegularKeepers}</span></p>
-              <p className="text-[9px] sm:text-xs text-gray-500 uppercase tracking-wide">Regular</p>
+              <p className="text-lg sm:text-2xl font-bold text-blue-400 tabular-nums">{data.currentKeepers.regular}<span className="text-[10px] sm:text-sm text-slate-500">/{data.limits.maxRegularKeepers}</span></p>
+              <p className="text-[9px] sm:text-xs text-slate-500 uppercase tracking-wider">Regular</p>
             </div>
           </div>
         </div>
@@ -422,20 +427,20 @@ export default function TeamRosterPage() {
         }
 
         return (
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md overflow-hidden">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a]">
+          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
-                  <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
                 <h2 className="text-base sm:text-lg font-semibold text-white">Draft Capital</h2>
                 {acquiredPicks.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-medium">
                     +{acquiredPicks.length} acquired
                   </span>
                 )}
                 {tradedAwayPicks.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-400 font-medium">
                     -{tradedAwayPicks.length} traded
                   </span>
                 )}
@@ -454,14 +459,14 @@ export default function TeamRosterPage() {
       })()}
 
       {/* Current Keepers */}
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md overflow-hidden">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a]">
+      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
-              <Star className="w-3.5 h-3.5 text-yellow-500" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+              <Star className="w-3.5 h-3.5 text-amber-400" />
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-white">Current Keepers</h2>
-            <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-yellow-500/20 text-yellow-500 text-[10px] sm:text-xs font-bold">
+            <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-amber-500/15 text-amber-400 text-[10px] sm:text-xs font-bold">
               {currentKeepers.length}
             </span>
           </div>
@@ -483,36 +488,36 @@ export default function TeamRosterPage() {
             </div>
           ) : (
             <div className="text-center py-6 sm:py-8">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-gray-600" />
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-slate-500" />
               </div>
-              <p className="text-gray-400 font-medium text-sm sm:text-base">No keepers selected yet</p>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">Add players from the eligible list below</p>
+              <p className="text-slate-300 font-medium text-sm sm:text-base">No keepers selected yet</p>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">Add players from the eligible list below</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Eligible Players */}
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md overflow-hidden">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#2a2a2a]">
+      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
-                <Users className="w-3.5 h-3.5 text-blue-500" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
+                <Users className="w-3.5 h-3.5 text-blue-400" />
               </div>
               <h2 className="text-base sm:text-lg font-semibold text-white">Eligible Players</h2>
-              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-blue-500/10 text-blue-400 text-[10px] sm:text-xs font-medium">
+              <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-blue-500/15 text-blue-400 text-[10px] sm:text-xs font-medium">
                 {eligiblePlayers.length}
               </span>
             </div>
-            <div className="flex gap-3 sm:gap-4 text-[10px] sm:text-xs text-gray-500 ml-9 sm:ml-0">
+            <div className="flex gap-3 sm:gap-4 text-[10px] sm:text-xs text-slate-500 ml-9 sm:ml-0">
               <span className="flex items-center gap-1 sm:gap-1.5">
-                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-600"></span>
+                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500"></span>
                 Keep
               </span>
               <span className="flex items-center gap-1 sm:gap-1.5">
-                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-blue-500"></span>
+                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amber-500"></span>
                 Franchise Tag
               </span>
             </div>
@@ -544,7 +549,7 @@ export default function TeamRosterPage() {
             </div>
           ) : (
             <div className="text-center py-6 sm:py-8">
-              <p className="text-gray-500 text-sm sm:text-base">No eligible players available</p>
+              <p className="text-slate-500 text-sm sm:text-base">No eligible players available</p>
             </div>
           )}
         </div>
@@ -553,11 +558,11 @@ export default function TeamRosterPage() {
       {/* Ineligible Players */}
       {ineligiblePlayers.length > 0 && (
         <details className="group">
-          <summary className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:text-gray-300 active:text-gray-200 transition-colors text-gray-500 py-2 min-h-[44px]">
-            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide">
+          <summary className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:text-slate-300 active:text-slate-200 transition-colors text-slate-500 py-2 min-h-[44px]">
+            <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
               Ineligible Players ({ineligiblePlayers.length})
             </span>
-            <span className="text-[10px] sm:text-xs text-gray-600 group-open:hidden">Tap to expand</span>
+            <span className="text-[10px] sm:text-xs text-slate-600 group-open:hidden">Tap to expand</span>
           </summary>
           <div className="mt-3 sm:mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {ineligiblePlayers.map((p) => (
