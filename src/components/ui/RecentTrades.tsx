@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { ArrowLeftRight, Sparkles, Calendar, ArrowRight } from "lucide-react";
+import { ArrowLeftRight, Sparkles, Calendar, ArrowDown } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -128,9 +128,9 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
               className={`p-4 sm:p-5 ${isInvolved ? "bg-blue-500/5" : ""}`}
             >
               {/* Trade header */}
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs text-gray-500">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm text-gray-400">
                   {new Date(trade.date).toLocaleDateString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -144,30 +144,35 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
                 )}
               </div>
 
-              {/* Horizontal trade flow */}
+              {/* Vertical trade flow */}
               {teamA && teamB ? (
-                <div className="flex flex-col sm:flex-row items-stretch gap-3">
-                  {/* Team A side */}
-                  <div className={`flex-1 rounded-lg p-3 sm:p-4 ${
+                <div className="flex flex-col gap-2">
+                  {/* Team A panel */}
+                  <div className={`rounded-lg p-3 ${
                     teamA.rosterId === userRosterId
                       ? "bg-blue-500/10 border border-blue-500/30"
                       : "bg-[#222] border border-[#2a2a2a]"
                   }`}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm font-semibold text-white truncate">
+                    {/* Team header row */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-base font-semibold text-white">
                         {teamA.rosterName || "Team"}
                       </span>
                       {teamA.rosterId === userRosterId && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded font-bold flex-shrink-0">
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded font-bold">
                           YOU
                         </span>
                       )}
                     </div>
-                    <div className="space-y-1.5">
+                    {/* Assets list */}
+                    <div className="space-y-1">
                       {teamA.playersGiven.map((player) => (
-                        <div key={player.playerId} className="flex items-center gap-1.5">
-                          <PositionBadge position={player.position} size="xs" />
-                          <span className="text-sm text-gray-200 truncate">{player.playerName}</span>
+                        <div key={player.playerId} className="flex items-center gap-2">
+                          <PositionBadge position={player.position} size="sm" />
+                          <span className="text-base text-gray-200">{player.playerName}</span>
+                          {player.team && (
+                            <span className="text-xs text-gray-500">{player.team}</span>
+                          )}
                         </div>
                       ))}
                       {teamA.picksGiven.map((pick, i) => (
@@ -176,38 +181,46 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
                         </div>
                       ))}
                       {teamA.playersGiven.length === 0 && teamA.picksGiven.length === 0 && (
-                        <span className="text-sm text-gray-500 italic">Nothing sent</span>
+                        <span className="text-base text-gray-500 italic">Nothing sent</span>
                       )}
                     </div>
                   </div>
 
-                  {/* Exchange arrows */}
-                  <div className="flex sm:flex-col items-center justify-center gap-1 py-1 sm:py-0 sm:px-1">
-                    <ArrowRight className="w-4 h-4 text-gray-500 rotate-90 sm:rotate-0" />
-                    <ArrowRight className="w-4 h-4 text-gray-500 -rotate-90 sm:rotate-180" />
+                  {/* Single down arrow */}
+                  <div className="flex justify-center py-1">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <div className="h-px w-8 bg-gray-600" />
+                      <ArrowDown className="w-4 h-4" />
+                      <div className="h-px w-8 bg-gray-600" />
+                    </div>
                   </div>
 
-                  {/* Team B side */}
-                  <div className={`flex-1 rounded-lg p-3 sm:p-4 ${
+                  {/* Team B panel */}
+                  <div className={`rounded-lg p-3 ${
                     teamB.rosterId === userRosterId
                       ? "bg-blue-500/10 border border-blue-500/30"
                       : "bg-[#222] border border-[#2a2a2a]"
                   }`}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm font-semibold text-white truncate">
+                    {/* Team header row */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-base font-semibold text-white">
                         {teamB.rosterName || "Team"}
                       </span>
                       {teamB.rosterId === userRosterId && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded font-bold flex-shrink-0">
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded font-bold">
                           YOU
                         </span>
                       )}
                     </div>
-                    <div className="space-y-1.5">
+                    {/* Assets list */}
+                    <div className="space-y-1">
                       {teamB.playersGiven.map((player) => (
-                        <div key={player.playerId} className="flex items-center gap-1.5">
-                          <PositionBadge position={player.position} size="xs" />
-                          <span className="text-sm text-gray-200 truncate">{player.playerName}</span>
+                        <div key={player.playerId} className="flex items-center gap-2">
+                          <PositionBadge position={player.position} size="sm" />
+                          <span className="text-base text-gray-200">{player.playerName}</span>
+                          {player.team && (
+                            <span className="text-xs text-gray-500">{player.team}</span>
+                          )}
                         </div>
                       ))}
                       {teamB.picksGiven.map((pick, i) => (
@@ -216,14 +229,14 @@ export function RecentTrades({ leagueId, userRosterId, limit = 5 }: RecentTrades
                         </div>
                       ))}
                       {teamB.playersGiven.length === 0 && teamB.picksGiven.length === 0 && (
-                        <span className="text-sm text-gray-500 italic">Nothing sent</span>
+                        <span className="text-base text-gray-500 italic">Nothing sent</span>
                       )}
                     </div>
                   </div>
                 </div>
               ) : (
                 /* Fallback for single-party trades (rare) */
-                <div className="text-sm text-gray-500">Trade data incomplete</div>
+                <div className="text-base text-gray-500">Trade data incomplete</div>
               )}
             </div>
           );
