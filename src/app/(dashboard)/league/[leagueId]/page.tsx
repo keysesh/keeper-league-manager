@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { PositionBadge } from "@/components/ui/PositionBadge";
-import { TrendingPlayers } from "@/components/ui/TrendingPlayers";
+import { TopScorers } from "@/components/ui/TopScorers";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
 import { DraftPickValueChart } from "@/components/ui/DraftPickValueChart";
 import { ChevronRight, Trophy, Shield, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
@@ -459,9 +459,9 @@ export default function LeaguePage() {
           />
         </section>
 
-        {/* TRENDING PLAYERS */}
+        {/* TOP SCORERS */}
         <section>
-          <TrendingPlayers type="both" limit={10} hours={24} />
+          <TopScorers />
         </section>
 
         {/* DRAFT PICK VALUES */}

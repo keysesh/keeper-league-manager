@@ -477,7 +477,7 @@ export default function TeamRosterPage() {
                   existingKeeper={p.existingKeeper}
                   onRemoveKeeper={(keeperId) => removeKeeper(keeperId, p.player.fullName)}
                   onShowHistory={setHistoryPlayerId}
-                  isLoading={actionLoading === p.existingKeeper?.id}
+                  isLoading={false}
                 />
               ))}
             </div>
@@ -536,7 +536,7 @@ export default function TeamRosterPage() {
                     } : undefined);
                   }}
                   onShowHistory={setHistoryPlayerId}
-                  isLoading={actionLoading === p.player.id}
+                  isLoading={false}
                   canAddFranchise={data.canAddMore.any && data.canAddMore.franchise}
                   canAddRegular={data.canAddMore.any && data.canAddMore.regular}
                 />

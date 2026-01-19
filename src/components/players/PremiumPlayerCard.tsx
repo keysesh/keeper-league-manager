@@ -274,18 +274,19 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           </div>
         </div>
         <div className="p-1.5 sm:p-0 rounded bg-[#222222] sm:bg-transparent">
-          <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">Year</div>
+          <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">
+            {isKeeper ? "Year" : "If Kept"}
+          </div>
           <div className={`text-[11px] sm:text-xs font-semibold ${
             isKeeper ? "text-blue-400" :
-            (eligibility?.yearsKept ?? 1) >= 3 ? "text-amber-400" :
-            (eligibility?.yearsKept ?? 1) === 2 ? "text-amber-400" :
-            "text-gray-300"
+            (eligibility?.yearsKept ?? 0) >= 2 ? "text-amber-400" :
+            "text-emerald-400"
           }`}>
             {isKeeper
               ? existingKeeper?.type === "FRANCHISE" ? "FT" : `Yr ${eligibility?.yearsKept ?? 1}`
               : eligibility?.yearsKept
-                ? eligibility.yearsKept >= 3 ? "FT Req" : `Yr ${eligibility.yearsKept}`
-                : "Yr 1"
+                ? eligibility.yearsKept >= 2 ? "FT Only" : `→ Yr ${eligibility.yearsKept + 1}`
+                : "→ Yr 1"
             }
           </div>
         </div>
@@ -323,25 +324,25 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           )}
 
           {/* Cost Trajectory - show future keeper costs */}
-          {costs?.regular && eligibility.yearsKept < 3 && (
+          {costs?.regular && eligibility.yearsKept < 2 && (
             <div className="mt-2 sm:mt-3">
               <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase mb-1 text-center">
                 Future Costs
               </div>
               <CostTrajectory
-                trajectory={calculateCostTrajectory(costs.regular.finalCost, eligibility.yearsKept, 3)}
+                trajectory={calculateCostTrajectory(costs.regular.finalCost, eligibility.yearsKept, 2)}
                 currentCost={costs.regular.finalCost}
                 yearsKept={eligibility.yearsKept}
-                maxYears={3}
+                maxYears={2}
                 compact={true}
               />
             </div>
           )}
 
-          {/* Year 3+ Warning */}
-          {!isKeeper && (eligibility.yearsKept ?? 1) >= 3 && (
+          {/* Maxed out - Franchise Tag only */}
+          {!isKeeper && (eligibility.yearsKept ?? 0) >= 2 && (
             <div className="mt-1.5 sm:mt-2 text-[8px] sm:text-[9px] text-amber-400 text-center">
-              Franchise Tag required (Year {eligibility.yearsKept})
+              Maxed out ({eligibility.yearsKept} years) — Franchise Tag required
             </div>
           )}
         </div>

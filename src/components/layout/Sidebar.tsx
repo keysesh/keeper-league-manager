@@ -12,6 +12,7 @@ import {
   Home,
   ChevronLeft,
   Shield,
+  UserCircle,
 } from "lucide-react";
 
 interface NavItem {
@@ -34,15 +35,17 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
   const dashboardNav: NavItem[] = [
     { name: "My Leagues", href: "/leagues", icon: LayoutDashboard },
+    { name: "My Profile", href: "/profile", icon: UserCircle },
     ...(isAdmin ? [{ name: "Admin Panel", href: "/admin", icon: Shield }] : []),
   ];
 
   const leagueNav: NavItem[] = leagueId
     ? [
         { name: "Overview", href: `/league/${leagueId}`, icon: Home },
+        { name: "My Team", href: `/league/${leagueId}/my-team`, icon: UserCircle },
         { name: "Draft Board", href: `/league/${leagueId}/draft-board`, icon: LayoutGrid },
         { name: "Trades", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
-        { name: "Teams", href: `/league/${leagueId}/team`, icon: Users },
+        { name: "All Teams", href: `/league/${leagueId}/team`, icon: Users },
         { name: "Settings", href: `/league/${leagueId}/settings`, icon: Settings },
         ...(isAdmin ? [{ name: "Admin Panel", href: "/admin", icon: Shield }] : []),
       ]

@@ -27,6 +27,7 @@ const eslintConfig = defineConfig([
       "**/StandingsTable.tsx",
       "**/admin/users/page.tsx",
       "**/team/page.tsx",
+      "**/profile/page.tsx",
     ],
     rules: {
       "@next/next/no-img-element": "off",
