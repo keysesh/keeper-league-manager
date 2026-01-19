@@ -1,7 +1,7 @@
 "use client";
 
-import { Trophy, Medal, Crown } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
+import { TrophyPremium, CrownElite, MedalSilver } from "@/components/ui/CustomIcons";
 
 interface Championship {
   season: number;
@@ -41,7 +41,7 @@ export function TeamTrophyCase({
             className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/15 border border-amber-500/30"
             title={`${champ.season} Champion`}
           >
-            <Trophy className="w-3 h-3 text-amber-400" />
+            <TrophyPremium className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-[10px] font-bold text-amber-400">{champ.season}</span>
           </div>
         ))}
@@ -51,7 +51,7 @@ export function TeamTrophyCase({
             className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-400/15 border border-slate-400/30"
             title={`${ru.season} Runner-Up`}
           >
-            <Medal className="w-3 h-3 text-slate-300" />
+            <MedalSilver className="w-3.5 h-3.5 text-slate-300" />
             <span className="text-[10px] font-medium text-slate-400">{ru.season}</span>
           </div>
         ))}
@@ -71,9 +71,9 @@ export function TeamTrophyCase({
               : "bg-amber-500/15 border border-amber-500/25"
           )}>
             {isDynasty ? (
-              <Crown className="w-3 h-3 text-amber-400" />
+              <CrownElite className="w-3.5 h-3.5 text-amber-400" />
             ) : (
-              <Trophy className="w-3 h-3 text-amber-400" />
+              <TrophyPremium className="w-3.5 h-3.5 text-amber-400" />
             )}
           </div>
           <h3 className="text-sm font-semibold text-white">Trophy Case</h3>
@@ -91,7 +91,7 @@ export function TeamTrophyCase({
               key={`champ-${champ.season}`}
               className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-gradient-to-br from-amber-500/15 to-amber-600/10 border border-amber-500/25 transition-transform hover:scale-[1.02]"
             >
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <TrophyPremium className="w-4 h-4 text-amber-400" />
               <span className="text-[11px] font-bold text-amber-300">{champ.season}</span>
             </div>
           ))}
@@ -100,7 +100,7 @@ export function TeamTrophyCase({
               key={`ru-${ru.season}`}
               className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-gradient-to-br from-slate-400/15 to-slate-500/10 border border-slate-400/25 transition-transform hover:scale-[1.02]"
             >
-              <Medal className="w-3.5 h-3.5 text-slate-300" />
+              <MedalSilver className="w-4 h-4 text-slate-300" />
               <span className="text-[11px] font-medium text-slate-300">{ru.season}</span>
             </div>
           ))}
@@ -121,9 +121,9 @@ export function TeamTrophyCase({
               : "bg-amber-500/15 border border-amber-500/25"
           )}>
             {isDynasty ? (
-              <Crown className="w-3.5 h-3.5 text-amber-400" />
+              <CrownElite className="w-4 h-4 text-amber-400" />
             ) : (
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <TrophyPremium className="w-4 h-4 text-amber-400" />
             )}
           </div>
           <h2 className="text-sm sm:text-base font-semibold text-white">
@@ -151,7 +151,7 @@ export function TeamTrophyCase({
               )}
             >
               <div className="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center">
-                <Trophy className="w-3 h-3 text-amber-400" strokeWidth={2} />
+                <TrophyPremium className="w-3.5 h-3.5 text-amber-400" />
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-amber-300">Champion</p>
@@ -173,7 +173,7 @@ export function TeamTrophyCase({
               )}
             >
               <div className="w-6 h-6 rounded-md bg-slate-400/20 flex items-center justify-center">
-                <Medal className="w-3 h-3 text-slate-300" strokeWidth={2} />
+                <MedalSilver className="w-3.5 h-3.5 text-slate-300" />
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-slate-200">Runner-Up</p>

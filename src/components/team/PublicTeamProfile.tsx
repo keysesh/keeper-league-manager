@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import useSWR from "swr";
-import { Eye, Users } from "lucide-react";
+import { Eye } from "lucide-react";
+import { UsersTeam } from "@/components/ui/CustomIcons";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { AwardsSection, type TeamAward } from "@/components/ui/AwardBadge";
 import { TeamTrophyCase } from "./TeamTrophyCase";
@@ -256,7 +257,7 @@ export function PublicTeamProfile({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-slate-500/15 border border-slate-500/25 flex items-center justify-center">
-                <Users className="w-3 h-3 text-slate-400" />
+                <UsersTeam className="w-3.5 h-3.5 text-slate-400" />
               </div>
               <h3 className="text-sm font-semibold text-white">Roster Preview</h3>
               <span className="px-1.5 py-0.5 rounded bg-slate-500/15 text-slate-400 text-[10px] font-medium">

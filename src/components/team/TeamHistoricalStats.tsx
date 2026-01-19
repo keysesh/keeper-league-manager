@@ -1,7 +1,7 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
+import { ChartRising } from "@/components/ui/CustomIcons";
 
 interface BestSeason {
   season: number;
@@ -47,7 +47,7 @@ export function TeamHistoricalStats({
       <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl p-4", className)}>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-6 h-6 rounded-md bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
-            <TrendingUp className="w-3 h-3 text-blue-400" />
+            <ChartRising className="w-3.5 h-3.5 text-blue-400" />
           </div>
           <h3 className="text-sm font-semibold text-white">All-Time Stats</h3>
         </div>
@@ -88,7 +88,7 @@ export function TeamHistoricalStats({
       <div className="px-4 sm:px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
-            <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+            <ChartRising className="w-4 h-4 text-blue-400" />
           </div>
           <h2 className="text-sm sm:text-base font-semibold text-white">All-Time Stats</h2>
         </div>

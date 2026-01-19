@@ -1,8 +1,17 @@
 "use client";
 
 import { ReactNode } from "react";
-import { Award, ArrowLeftRight, TrendingUp, Target, Zap, Trophy, Flame } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
+import {
+  TradeArrows,
+  TargetPrecision,
+  LightningTrade,
+  FireStreak,
+  PlayoffBracket,
+  TrophyPremium,
+  WinStreak,
+  ShieldKeeper,
+} from "@/components/ui/CustomIcons";
 
 export interface Superlative {
   icon: ReactNode;
@@ -30,7 +39,7 @@ export function SuperlativesCard({ superlatives, className }: SuperlativesCardPr
       <div className="px-4 sm:px-5 py-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center">
-            <Award className="w-3.5 h-3.5 text-purple-400" />
+            <TrophyPremium className="w-4 h-4 text-purple-400" />
           </div>
           <h2 className="text-sm sm:text-base font-semibold text-white">Superlatives</h2>
         </div>
@@ -96,24 +105,26 @@ function SuperlativeItem({ icon, label, value, season, isLeagueBest }: Superlati
 
 // Helper to get appropriate icon for a superlative type
 export function getSuperlativeIcon(type: string): ReactNode {
-  const iconClass = "w-3.5 h-3.5";
+  const iconClass = "w-4 h-4";
 
   switch (type) {
     case "most_trades":
-      return <ArrowLeftRight className={iconClass} />;
+      return <TradeArrows className={iconClass} />;
     case "highest_score":
-      return <TrendingUp className={iconClass} />;
+      return <FireStreak className={iconClass} />;
     case "best_record":
-      return <Target className={iconClass} />;
+      return <TargetPrecision className={iconClass} />;
     case "trade_master":
-      return <Zap className={iconClass} />;
+      return <LightningTrade className={iconClass} />;
     case "waiver_hawk":
-      return <Flame className={iconClass} />;
+      return <FireStreak className={iconClass} />;
     case "playoff_appearances":
-      return <Trophy className={iconClass} />;
+      return <PlayoffBracket className={iconClass} />;
     case "win_streak":
-      return <Flame className={iconClass} />;
+      return <WinStreak className={iconClass} />;
+    case "keeper":
+      return <ShieldKeeper className={iconClass} />;
     default:
-      return <Award className={iconClass} />;
+      return <TrophyPremium className={iconClass} />;
   }
 }
