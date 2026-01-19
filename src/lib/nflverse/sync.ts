@@ -195,11 +195,17 @@ export async function syncNFLVerseStats(
     }
 
     // Build name-based lookup for fallback matching (when gsis_id missing)
-    // Key: normalized "firstname lastname|position" -> player
+    // Key: normalized name (without suffixes) -> player
     const nameToDbPlayer = new Map<string, typeof dbPlayers[0]>();
+    const normalizeName = (name: string) => {
+      return name
+        .toLowerCase()
+        .replace(/\s+(jr\.?|sr\.?|ii|iii|iv|v)$/i, '') // Remove suffixes
+        .replace(/[^a-z\s]/g, '') // Remove non-letters
+        .trim();
+    };
     for (const player of dbPlayers) {
-      const normalizedName = player.fullName.toLowerCase().replace(/[^a-z\s]/g, '').trim();
-      // We'll match by name only (position can vary between sources)
+      const normalizedName = normalizeName(player.fullName);
       nameToDbPlayer.set(normalizedName, player);
     }
 
@@ -232,10 +238,10 @@ export async function syncNFLVerseStats(
 
         // Fallback: match by name if gsis_id lookup failed
         if (!player && stats.player_name) {
-          const normalizedName = stats.player_name.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+          const normalizedName = normalizeName(stats.player_name);
           player = nameToDbPlayer.get(normalizedName);
           if (player) {
-            logger.debug("Name-based match", { name: stats.player_name, playerId: player.id });
+            logger.debug("Name-based match", { name: stats.player_name, normalizedTo: normalizedName, playerId: player.id });
           }
         }
 
