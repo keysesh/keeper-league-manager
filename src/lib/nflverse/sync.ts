@@ -195,19 +195,40 @@ export async function syncNFLVerseStats(
     }
 
     // Build name-based lookup for fallback matching (when gsis_id missing)
-    // Key: normalized name (without suffixes) -> player
-    const nameToDbPlayer = new Map<string, typeof dbPlayers[0]>();
-    const normalizeName = (name: string) => {
+    // Handles: suffixes (Jr/Sr/II/III), apostrophes, hyphens, accents
+    const normalizeName = (name: string): string => {
       return name
         .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
         .replace(/\s+(jr\.?|sr\.?|ii|iii|iv|v)$/i, '') // Remove suffixes
-        .replace(/[^a-z\s]/g, '') // Remove non-letters
+        .replace(/[''`]/g, '') // Remove apostrophes (D'Andre -> Dandre)
+        .replace(/-/g, ' ') // Hyphens to spaces (Ja'Marr -> Jamarr)
+        .replace(/[^a-z\s]/g, '') // Remove remaining non-letters
+        .replace(/\s+/g, ' ') // Normalize spaces
         .trim();
     };
+
+    // Create multiple lookup keys for each player to increase match chances
+    const nameToDbPlayer = new Map<string, typeof dbPlayers[0]>();
     for (const player of dbPlayers) {
       const normalizedName = normalizeName(player.fullName);
       nameToDbPlayer.set(normalizedName, player);
+
+      // Also index by last name + first initial for common mismatches
+      const parts = normalizedName.split(' ');
+      if (parts.length >= 2) {
+        const firstInitial = parts[0][0];
+        const lastName = parts[parts.length - 1];
+        // Don't overwrite if key exists (could have duplicates like "J Smith")
+        const shortKey = `${firstInitial} ${lastName}`;
+        if (!nameToDbPlayer.has(shortKey)) {
+          nameToDbPlayer.set(shortKey, player);
+        }
+      }
     }
+
+    // Track unmatched for debugging
+    const unmatchedStats: string[] = [];
 
     // Debug info
     const sampleStats = seasonStats.slice(0, 3).map(s => ({ gsis: s.player_id, name: s.player_name }));
@@ -240,12 +261,28 @@ export async function syncNFLVerseStats(
         if (!player && stats.player_name) {
           const normalizedName = normalizeName(stats.player_name);
           player = nameToDbPlayer.get(normalizedName);
+
+          // Try first initial + last name as fallback
+          if (!player) {
+            const parts = normalizedName.split(' ');
+            if (parts.length >= 2) {
+              const shortKey = `${parts[0][0]} ${parts[parts.length - 1]}`;
+              player = nameToDbPlayer.get(shortKey);
+            }
+          }
+
           if (player) {
             logger.debug("Name-based match", { name: stats.player_name, normalizedTo: normalizedName, playerId: player.id });
           }
         }
 
-        if (!player) continue;
+        // Track unmatched players with significant fantasy production
+        if (!player) {
+          if (stats.fantasy_points_ppr > 50) {
+            unmatchedStats.push(`${stats.player_name} (${stats.team} ${stats.position}) - ${stats.fantasy_points_ppr.toFixed(1)} PPR pts`);
+          }
+          continue;
+        }
 
         // Calculate points per game
         const pointsPerGame = stats.games_played > 0
@@ -350,6 +387,14 @@ export async function syncNFLVerseStats(
       duration,
     });
 
+    // Log unmatched players with significant fantasy production
+    if (unmatchedStats.length > 0) {
+      logger.warn("Unmatched players with >50 PPR points", {
+        count: unmatchedStats.length,
+        players: unmatchedStats.slice(0, 20),
+      });
+    }
+
     return {
       success: true,
       playersUpdated,
@@ -362,6 +407,8 @@ export async function syncNFLVerseStats(
         statsCount: seasonStats.length,
         sampleDbPlayers,
         sampleStats,
+        unmatchedWithStats: unmatchedStats.length,
+        unmatchedPlayers: unmatchedStats.slice(0, 30), // Show top 30 unmatched players
       },
     };
   } catch (error) {
