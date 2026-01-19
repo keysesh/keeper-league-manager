@@ -250,6 +250,13 @@ export async function GET(
       mostChampionships: ownerStats[0]
         ? { name: ownerStats[0].displayName, count: ownerStats[0].championships }
         : null,
+      mostRunnerUps: ownerStats.reduce(
+        (best, owner) =>
+          owner.secondPlace > (best?.count || 0)
+            ? { name: owner.displayName, count: owner.secondPlace }
+            : best,
+        null as { name: string; count: number } | null
+      ),
       mostSeasons: ownerStats.reduce(
         (best, owner) =>
           owner.seasonsPlayed > (best?.count || 0)
@@ -288,6 +295,17 @@ export async function GET(
           record: string;
           winPct: number;
         } | null
+      ),
+      mostKeepers: championships.reduce(
+        (best, c) =>
+          c.mostKeepers && c.mostKeepers.keeperCount > (best?.count || 0)
+            ? {
+                name: c.mostKeepers.teamName,
+                season: c.season,
+                count: c.mostKeepers.keeperCount,
+              }
+            : best,
+        null as { name: string; season: number; count: number } | null
       ),
     };
 

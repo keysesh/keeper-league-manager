@@ -3,8 +3,9 @@
 import { useMemo } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { TrendingUp, TrendingDown, Minus, Crown, Shield, Zap, ChevronUp, ChevronDown, Info, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Crown, Shield, Zap, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
 import { LEAGUE_CONFIG, getAgeValueModifier, getDraftPickValue } from "@/lib/constants/league-config";
+import { InfoModal } from "./InfoModal";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -237,14 +238,59 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                 )}
               </div>
             </div>
-            {!condensed && (
-              <div className="group relative">
-                <Info className="w-5 h-5 text-gray-500 hover:text-gray-300 cursor-help" />
-                <div className="absolute right-0 top-7 w-56 p-3 bg-[#222] border border-[#333] rounded-lg text-sm text-gray-400 hidden group-hover:block z-10">
-                  Rankings based on positional strength, star power, roster depth, keeper value, and draft capital.
-                </div>
-              </div>
-            )}
+            <InfoModal
+              title="Power Rankings"
+              description={
+                <>
+                  Power Rankings combine multiple factors to give you a comprehensive view of each team&apos;s
+                  overall strength and competitive position. These rankings help identify contenders, rebuilders,
+                  and teams on the rise or decline.
+                </>
+              }
+              formula={{
+                label: "Score Breakdown",
+                expression: "Score = Roster (50%) + Stars (20%) + Depth (10%) + Keepers (10%) + Picks (10%)",
+                variables: [
+                  { name: "Roster", description: "Positional strength across QB, RB, WR, TE" },
+                  { name: "Stars", description: "Impact of top performers (high PPG players)" },
+                  { name: "Depth", description: "Quality of bench and backup players" },
+                  { name: "Keepers", description: "Value of locked keeper assets" },
+                  { name: "Picks", description: "Future draft capital owned" },
+                ],
+              }}
+              interpretation={[
+                { value: "A+", meaning: "Elite - Championship favorite", color: "text-emerald-400" },
+                { value: "A / A-", meaning: "Contender - Strong roster", color: "text-emerald-400" },
+                { value: "B+", meaning: "Playoff team - Competitive", color: "text-blue-400" },
+                { value: "B / B-", meaning: "Bubble team - On the fringe", color: "text-blue-400" },
+                { value: "C+", meaning: "Rebuilding - Some pieces", color: "text-yellow-400" },
+                { value: "C / C-", meaning: "Rebuilding - Needs work", color: "text-yellow-400" },
+                { value: "D+", meaning: "Struggling - Major gaps", color: "text-orange-400" },
+                { value: "D / F", meaning: "Full rebuild mode", color: "text-red-400" },
+              ]}
+              sections={[
+                {
+                  title: "Trajectory Indicators",
+                  content: (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-emerald-400" />
+                        <span><strong className="text-emerald-400">Rising</strong> - Team is improving, trending upward</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="w-4 h-4 text-red-400" />
+                        <span><strong className="text-red-400">Falling</strong> - Team is declining, trending downward</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Minus className="w-4 h-4 text-gray-400" />
+                        <span><strong className="text-gray-400">Stable</strong> - Consistent performance</span>
+                      </div>
+                    </div>
+                  ),
+                },
+              ]}
+              iconSize={18}
+            />
           </div>
         </div>
 

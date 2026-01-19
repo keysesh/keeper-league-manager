@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { Trophy, Crown, Medal, Star, TrendingUp, Award } from "lucide-react";
+import { Trophy, Crown, Medal, Star, TrendingUp, Award, Lock, Target } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -25,6 +25,11 @@ interface SeasonChampion {
     teamName: string;
     pointsFor: number;
   };
+  mostKeepers: {
+    rosterId: string;
+    teamName: string;
+    keeperCount: number;
+  } | null;
 }
 
 interface OwnerStats {
@@ -42,6 +47,8 @@ interface AllTimeRecords {
   mostSeasons: { name: string; count: number } | null;
   highestSingleSeasonPoints: { name: string; season: number; points: number } | null;
   bestRecord: { name: string; season: number; record: string } | null;
+  mostKeepers: { name: string; season: number; count: number } | null;
+  mostRunnerUps: { name: string; count: number } | null;
 }
 
 interface ChampionshipHistoryProps {
@@ -155,13 +162,21 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
   return (
     <div className="space-y-6">
       {/* All-Time Records */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {allTimeRecords.mostChampionships && (
           <div className="bg-[#1a1a1a] border border-yellow-500/20 rounded-lg p-5 text-center">
             <Trophy className="w-7 h-7 text-yellow-400 mx-auto mb-2" />
             <p className="text-3xl font-bold text-yellow-400">{allTimeRecords.mostChampionships.count}</p>
             <p className="text-sm text-gray-500 mt-1">Championships</p>
             <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostChampionships.name}</p>
+          </div>
+        )}
+        {allTimeRecords.mostRunnerUps && allTimeRecords.mostRunnerUps.count > 0 && (
+          <div className="bg-[#1a1a1a] border border-gray-500/20 rounded-lg p-5 text-center">
+            <Target className="w-7 h-7 text-gray-400 mx-auto mb-2" />
+            <p className="text-3xl font-bold text-gray-400">{allTimeRecords.mostRunnerUps.count}</p>
+            <p className="text-sm text-gray-500 mt-1">Runner-Ups</p>
+            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostRunnerUps.name}</p>
           </div>
         )}
         {allTimeRecords.bestRecord && (
@@ -178,6 +193,14 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
             <p className="text-3xl font-bold text-blue-400">{Math.round(allTimeRecords.highestSingleSeasonPoints.points).toLocaleString()}</p>
             <p className="text-sm text-gray-500 mt-1">Most Points ({allTimeRecords.highestSingleSeasonPoints.season})</p>
             <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.highestSingleSeasonPoints.name}</p>
+          </div>
+        )}
+        {allTimeRecords.mostKeepers && (
+          <div className="bg-[#1a1a1a] border border-orange-500/20 rounded-lg p-5 text-center">
+            <Lock className="w-7 h-7 text-orange-400 mx-auto mb-2" />
+            <p className="text-3xl font-bold text-orange-400">{allTimeRecords.mostKeepers.count}</p>
+            <p className="text-sm text-gray-500 mt-1">Most Keepers ({allTimeRecords.mostKeepers.season})</p>
+            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostKeepers.name}</p>
           </div>
         )}
         {allTimeRecords.mostSeasons && (

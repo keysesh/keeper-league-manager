@@ -27,6 +27,11 @@ model User {
   updatedAt           DateTime  @updatedAt @map("updated_at")
   lastLoginAt         DateTime? @map("last_login_at")
 
+  // Discord OAuth fields
+  discordId           String?   @unique @map("discord_id")
+  discordUsername     String?   @map("discord_username")
+  discordAvatar       String?   @map("discord_avatar")
+
   teamMemberships  TeamMember[]
   sessions         Session[]
   commissionerOf   League[]

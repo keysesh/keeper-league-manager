@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import DiscordProvider from "next-auth/providers/discord";
 import { prisma } from "@/lib/prisma";
 import { SleeperClient } from "@/lib/sleeper/client";
 
@@ -11,6 +12,8 @@ declare module "next-auth" {
     username: string;
     name?: string | null;
     image?: string | null;
+    discordId?: string | null;
+    discordUsername?: string | null;
   }
 
   interface Session {
@@ -20,14 +23,19 @@ declare module "next-auth" {
       username: string;
       name?: string | null;
       image?: string | null;
+      discordId?: string | null;
+      discordUsername?: string | null;
     };
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    sleeperId: string;
-    username: string;
+    sleeperId?: string;
+    username?: string;
+    discordId?: string | null;
+    discordUsername?: string | null;
+    needsSleeperLink?: boolean;
   }
 }
 
@@ -157,20 +165,82 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
+    // Discord OAuth provider
+    DiscordProvider({
+      clientId: process.env.DISCORD_CLIENT_ID || "",
+      clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+      authorization: {
+        params: {
+          scope: "identify email",
+        },
+      },
+    }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async signIn({ user, account, profile }) {
+      // Handle Discord sign-in
+      if (account?.provider === "discord") {
+        const discordProfile = profile as { id: string; username: string; avatar?: string };
+
+        // Check if this Discord account is already linked to a user
+        const existingUser = await prisma.user.findUnique({
+          where: { discordId: discordProfile.id },
+        });
+
+        if (existingUser) {
+          // Update Discord info and allow sign in
+          await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              discordUsername: discordProfile.username,
+              discordAvatar: discordProfile.avatar,
+              lastLoginAt: new Date(),
+            },
+          });
+          return true;
+        }
+
+        // Discord not linked yet - redirect to linking page
+        // Store Discord info in token for linking later
+        return `/link-sleeper?discordId=${discordProfile.id}&discordUsername=${encodeURIComponent(discordProfile.username)}`;
+      }
+
+      return true;
+    },
+    async jwt({ token, user, account, profile }) {
+      // Initial sign in with credentials
+      if (user && account?.provider === "credentials") {
         token.sleeperId = user.sleeperId;
         token.username = user.username;
+        token.discordId = user.discordId;
+        token.discordUsername = user.discordUsername;
       }
+
+      // Initial sign in with Discord (already linked user)
+      if (account?.provider === "discord") {
+        const discordProfile = profile as { id: string; username: string };
+        const linkedUser = await prisma.user.findUnique({
+          where: { discordId: discordProfile.id },
+        });
+
+        if (linkedUser) {
+          token.sub = linkedUser.id;
+          token.sleeperId = linkedUser.sleeperId;
+          token.username = linkedUser.sleeperUsername;
+          token.discordId = linkedUser.discordId;
+          token.discordUsername = linkedUser.discordUsername;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub!;
-        session.user.sleeperId = token.sleeperId;
-        session.user.username = token.username;
+        session.user.sleeperId = token.sleeperId || "";
+        session.user.username = token.username || "";
+        session.user.discordId = token.discordId;
+        session.user.discordUsername = token.discordUsername;
       }
       return session;
     },

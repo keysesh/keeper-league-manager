@@ -1,6 +1,7 @@
 "use client";
 
 import { LEAGUE_CONFIG, getDraftPickValue } from "@/lib/constants/league-config";
+import { InfoModal } from "./InfoModal";
 
 interface DraftPickValueChartProps {
   highlightRound?: number;
@@ -48,7 +49,63 @@ export function DraftPickValueChart({ highlightRound, compact = false }: DraftPi
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-white text-sm">Draft Pick Value Chart</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-white text-sm">Draft Pick Value Chart</h3>
+          <InfoModal
+            title="Draft Pick Values"
+            description={
+              <>
+                Draft pick values represent the relative worth of each pick for keeper cost analysis.
+                These values help you understand the trade-off between keeping a player at a certain round
+                cost versus drafting fresh talent.
+              </>
+            }
+            formula={{
+              label: "Value Formula",
+              expression: "Value = 100 × (1 - (round - 1) / 15)^1.5",
+              variables: [
+                { name: "round", description: "The draft round (1-15)" },
+                { name: "100", description: "Maximum value (Round 1)" },
+              ],
+            }}
+            examples={[
+              {
+                label: "Round 1 Keeper",
+                description: "A player kept at Round 1 costs your highest value pick",
+                result: "Value: 100",
+              },
+              {
+                label: "Round 5 Keeper",
+                description: "Mid-round keeper provides good value while costing less",
+                result: "Value: 59",
+              },
+              {
+                label: "Undrafted Player",
+                description: `Undrafted players are kept at Round ${LEAGUE_CONFIG.keeperRules.undraftedRound}`,
+                result: `Value: ${getDraftPickValue(LEAGUE_CONFIG.keeperRules.undraftedRound)}`,
+              },
+            ]}
+            interpretation={[
+              { value: "100", meaning: "Elite (R1) - Premium pick", color: "text-yellow-400" },
+              { value: "75-99", meaning: "Premium (R2-3)", color: "text-emerald-400" },
+              { value: "50-74", meaning: "Starter (R4-6)", color: "text-blue-400" },
+              { value: "25-49", meaning: "Depth (R7-10)", color: "text-amber-400" },
+              { value: "< 25", meaning: "Lottery (R11+)", color: "text-gray-400" },
+            ]}
+            sections={[
+              {
+                title: "Keeper Strategy Tip",
+                content: (
+                  <p>
+                    Lower keeper cost = higher value. A player you drafted in Round 10 who becomes a star
+                    is more valuable to keep than a Round 1 pick, because you&apos;re saving premium draft capital.
+                  </p>
+                ),
+              },
+            ]}
+            iconSize={14}
+          />
+        </div>
         <span className="text-[10px] text-gray-500">E Pluribus Dynasty</span>
       </div>
 

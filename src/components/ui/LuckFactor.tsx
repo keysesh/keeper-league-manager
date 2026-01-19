@@ -2,7 +2,8 @@
 
 import useSWR from "swr";
 import Link from "next/link";
-import { Clover, TrendingUp, TrendingDown, Minus, Info, Frown, Smile, ChevronRight } from "lucide-react";
+import { Clover, TrendingUp, TrendingDown, Minus, Frown, Smile, ChevronRight } from "lucide-react";
+import { InfoModal } from "./InfoModal";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -167,14 +168,61 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
               )}
             </div>
           </div>
-          {!condensed && (
-            <div className="group relative">
-              <Info className="w-5 h-5 text-gray-500 hover:text-gray-300 cursor-help" />
-              <div className="absolute right-0 top-7 w-56 p-3 bg-[#222] border border-[#333] rounded-lg text-sm text-gray-400 hidden group-hover:block z-10">
-                Luck = Actual Wins - Expected Wins. Expected wins based on your points scored relative to the league.
-              </div>
-            </div>
-          )}
+          <InfoModal
+            title="Luck Factor"
+            description={
+              <>
+                The Luck Factor measures how much your record over/under-performs based on your scoring.
+                A team that scores a lot but loses close games will have negative luck, while a team
+                that wins despite lower scoring has positive luck.
+              </>
+            }
+            formula={{
+              label: "Luck Formula",
+              expression: "Luck = Actual Wins - Expected Wins",
+              variables: [
+                { name: "Actual Wins", description: "Your actual win count this season" },
+                { name: "Expected Wins", description: "Calculated based on points scored rank" },
+              ],
+            }}
+            examples={[
+              {
+                label: "High Scorer, Bad Record",
+                description: "Team ranks #2 in points but has 4-8 record",
+                result: "Luck: -4.2",
+              },
+              {
+                label: "Low Scorer, Good Record",
+                description: "Team ranks #9 in points but has 7-5 record",
+                result: "Luck: +2.8",
+              },
+              {
+                label: "Fair Record",
+                description: "Points rank matches win rank closely",
+                result: "Luck: ±0.5",
+              },
+            ]}
+            interpretation={[
+              { value: "+3 or more", meaning: "Very Lucky", color: "text-emerald-400" },
+              { value: "+1 to +2.9", meaning: "Lucky", color: "text-green-400" },
+              { value: "-0.9 to +0.9", meaning: "Neutral", color: "text-gray-400" },
+              { value: "-1 to -2.9", meaning: "Unlucky", color: "text-orange-400" },
+              { value: "-3 or less", meaning: "Very Unlucky", color: "text-red-400" },
+            ]}
+            sections={[
+              {
+                title: "How Expected Wins are Calculated",
+                content: (
+                  <p>
+                    Expected Wins = (Teams - PointsRank) / (Teams - 1) × Games Played.
+                    The #1 scorer is expected to win most games, while the last place scorer
+                    is expected to win the fewest.
+                  </p>
+                ),
+              },
+            ]}
+            iconSize={18}
+          />
         </div>
       </div>
 
