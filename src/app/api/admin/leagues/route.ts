@@ -31,6 +31,7 @@ export async function GET() {
         status: true,
         totalRosters: true,
         updatedAt: true,
+        lastSyncedAt: true,
         _count: {
           select: { rosters: true },
         },

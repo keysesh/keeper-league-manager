@@ -2,17 +2,15 @@
 
 import { useParams } from "next/navigation";
 import useSWR from "swr";
-import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useToast } from "@/components/ui/Toast";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { AlertsBanner } from "@/components/ui/AlertsBanner";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
 import { WidgetSkeleton } from "@/components/ui/WidgetSkeleton";
-import { ChevronRight, Trophy, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star, History } from "lucide-react";
+import { ChevronRight, Trophy, Crown, Target, Zap, BarChart3, Users, Star } from "lucide-react";
 
 // Dynamic imports for better performance
 const PowerRankings = dynamic(
@@ -120,56 +118,12 @@ interface League {
 export default function LeaguePage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
-  const { success, error: showError } = useToast();
-  const [syncing, setSyncing] = useState(false);
-  const [fullSyncing, setFullSyncing] = useState(false);
 
-  const { data: league, error, mutate, isLoading } = useSWR<League>(
+  const { data: league, error, isLoading } = useSWR<League>(
     `/api/leagues/${leagueId}`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 5000 }
   );
-
-  const handleSync = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/sleeper/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "quick", leagueId }),
-      });
-
-      if (!res.ok) throw new Error("Sync failed");
-
-      mutate();
-      success("Synced");
-    } catch {
-      showError("Sync failed");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleFullSync = async () => {
-    setFullSyncing(true);
-    try {
-      const res = await fetch("/api/sleeper/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "full-sync", leagueId }),
-      });
-
-      if (!res.ok) throw new Error("Full sync failed");
-
-      const data = await res.json();
-      mutate();
-      success(`Synced ${data.data?.seasons?.length || 0} seasons`);
-    } catch {
-      showError("Full sync failed");
-    } finally {
-      setFullSyncing(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -233,34 +187,14 @@ export default function LeaguePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                onClick={handleSync}
-                disabled={syncing || fullSyncing}
-                className="flex items-center justify-center gap-2 h-9 sm:h-10 px-3 sm:px-4 rounded-md bg-[#222222] hover:bg-[#2a2a2a] active:bg-[#333333] border border-[#2a2a2a] hover:border-[#333333] text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-                title="Quick sync (rosters only)"
-              >
-                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync"}</span>
-              </button>
-              <button
-                onClick={handleFullSync}
-                disabled={syncing || fullSyncing}
-                className="flex items-center justify-center gap-2 h-9 sm:h-10 px-3 sm:px-4 rounded-md bg-emerald-600/20 hover:bg-emerald-600/30 active:bg-emerald-600/40 border border-emerald-500/30 hover:border-emerald-500/50 text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors disabled:opacity-50"
-                title="Full sync: all seasons, trades, and history"
-              >
-                <History className={`w-4 h-4 ${fullSyncing ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">{fullSyncing ? "Syncing..." : "Full Sync"}</span>
-              </button>
-              <Link
-                href={`/league/${leagueId}/draft-board`}
-                className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-sm font-semibold text-white transition-colors"
-              >
-                <Target className="w-4 h-4" />
-                <span className="hidden xs:inline">Draft Board</span>
-                <span className="xs:hidden">Draft</span>
-              </Link>
-            </div>
+            <Link
+              href={`/league/${leagueId}/draft-board`}
+              className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-sm font-semibold text-white transition-colors"
+            >
+              <Target className="w-4 h-4" />
+              <span className="hidden xs:inline">Draft Board</span>
+              <span className="xs:hidden">Draft</span>
+            </Link>
           </div>
         </section>
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Trash2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Trash2, RefreshCw, AlertTriangle, History, CheckCircle, XCircle } from "lucide-react";
 
 interface League {
   id: string;
@@ -12,8 +12,15 @@ interface League {
   status: string;
   totalRosters: number;
   updatedAt: string;
+  lastSyncedAt: string | null;
   _count: { rosters: number };
   keeperCount: number;
+}
+
+interface SyncResult {
+  leagueId: string;
+  status: "idle" | "syncing" | "success" | "error";
+  message?: string;
 }
 
 export default function AdminLeaguesPage() {
@@ -21,6 +28,7 @@ export default function AdminLeaguesPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<Record<string, SyncResult>>({});
 
   const fetchLeagues = async () => {
     setLoading(true);
@@ -68,6 +76,52 @@ export default function AdminLeaguesPage() {
     }
   };
 
+  const handleQuickSync = async (leagueId: string) => {
+    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing" } }));
+    try {
+      const res = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "quick", leagueId }),
+      });
+
+      if (!res.ok) throw new Error("Quick sync failed");
+
+      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "success", message: "Quick sync complete" } }));
+      fetchLeagues(); // Refresh the list
+    } catch (error) {
+      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "error", message: String(error) } }));
+    }
+  };
+
+  const handleFullSync = async (leagueId: string) => {
+    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing", message: "Syncing all seasons..." } }));
+    try {
+      const res = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "full-sync", leagueId }),
+      });
+
+      if (!res.ok) throw new Error("Full sync failed");
+
+      const data = await res.json();
+      const seasons = data.data?.seasons?.length || 0;
+      const transactions = data.data?.totalTransactions || 0;
+      setSyncStatus(prev => ({
+        ...prev,
+        [leagueId]: {
+          leagueId,
+          status: "success",
+          message: `Synced ${seasons} seasons, ${transactions} transactions`
+        }
+      }));
+      fetchLeagues(); // Refresh the list
+    } catch (error) {
+      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "error", message: String(error) } }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -100,7 +154,8 @@ export default function AdminLeaguesPage() {
               <th className="px-4 py-3 text-gray-400 font-medium text-sm">Teams</th>
               <th className="px-4 py-3 text-gray-400 font-medium text-sm">Keepers</th>
               <th className="px-4 py-3 text-gray-400 font-medium text-sm">Status</th>
-              <th className="px-4 py-3 text-gray-400 font-medium text-sm">Last Updated</th>
+              <th className="px-4 py-3 text-gray-400 font-medium text-sm">Last Synced</th>
+              <th className="px-4 py-3 text-gray-400 font-medium text-sm">Sync</th>
               <th className="px-4 py-3 text-gray-400 font-medium text-sm">Actions</th>
             </tr>
           </thead>
@@ -132,7 +187,46 @@ export default function AdminLeaguesPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-sm">
-                  {new Date(league.updatedAt).toLocaleDateString()}
+                  {league.lastSyncedAt
+                    ? new Date(league.lastSyncedAt).toLocaleString()
+                    : "Never"}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    {syncStatus[league.id]?.status === "syncing" ? (
+                      <div className="flex items-center gap-2 text-blue-400 text-sm">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span className="text-xs">{syncStatus[league.id]?.message || "Syncing..."}</span>
+                      </div>
+                    ) : syncStatus[league.id]?.status === "success" ? (
+                      <div className="flex items-center gap-1 text-green-400 text-xs">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>{syncStatus[league.id]?.message}</span>
+                      </div>
+                    ) : syncStatus[league.id]?.status === "error" ? (
+                      <div className="flex items-center gap-1 text-red-400 text-xs">
+                        <XCircle className="w-4 h-4" />
+                        <span>Failed</span>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleQuickSync(league.id)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-[#2a2a2a] text-gray-300 hover:bg-[#333] hover:text-white transition-colors"
+                          title="Quick sync (rosters only)"
+                        >
+                          Quick
+                        </button>
+                        <button
+                          onClick={() => handleFullSync(league.id)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                          title="Full sync (all seasons, trades, history)"
+                        >
+                          Full
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -173,7 +267,7 @@ export default function AdminLeaguesPage() {
             ))}
             {leagues.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                   No leagues found
                 </td>
               </tr>
