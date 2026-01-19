@@ -259,7 +259,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 
                 {/* Owner */}
                 <p className="text-xs text-slate-500 truncate mb-3">
-                  {team.owners[0] || "Unknown"}
+                  {team.owners.find(o => o) || team.teamName}
                 </p>
 
                 {/* Stats Row */}
@@ -290,10 +290,10 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                 {/* Stats Breakdown */}
                 <div className="mt-3 pt-3 border-t border-white/5 grid grid-cols-5 gap-1">
                   <StatChip label="ROS" value={rosterScore} />
-                  <StatChip label="STR" value={Math.round(team.starPower * 5)} />
-                  <StatChip label="DEP" value={Math.round(team.depth * 10)} />
-                  <StatChip label="KPR" value={Math.min(100, Math.round(team.keeperValue * 5))} />
-                  <StatChip label="PCK" value={Math.min(100, team.draftCapital)} />
+                  <StatChip label="STR" value={team.starPower} />
+                  <StatChip label="DEP" value={team.depth} />
+                  <StatChip label="KPR" value={team.keeperValue} />
+                  <StatChip label="PCK" value={team.draftCapital} />
                 </div>
               </div>
             );

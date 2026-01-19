@@ -410,6 +410,33 @@ export async function GET(
       r.rank = idx + 1;
     });
 
+    // Normalize stats to percentiles (0-100 relative to league)
+    const normalizeToPercentile = (values: number[]): number[] => {
+      const sorted = [...values].sort((a, b) => a - b);
+      return values.map(v => {
+        const rank = sorted.filter(s => s < v).length;
+        return Math.round((rank / Math.max(sorted.length - 1, 1)) * 100);
+      });
+    };
+
+    const starPowers = rankings.map(r => r.starPower);
+    const depths = rankings.map(r => r.depth);
+    const keeperValues = rankings.map(r => r.keeperValue);
+    const draftCapitals = rankings.map(r => r.draftCapital);
+
+    const normalizedStarPower = normalizeToPercentile(starPowers);
+    const normalizedDepth = normalizeToPercentile(depths);
+    const normalizedKeeperValue = normalizeToPercentile(keeperValues);
+    const normalizedDraftCapital = normalizeToPercentile(draftCapitals);
+
+    // Update rankings with normalized values
+    rankings.forEach((r, idx) => {
+      r.starPower = normalizedStarPower[idx];
+      r.depth = normalizedDepth[idx];
+      r.keeperValue = normalizedKeeperValue[idx];
+      r.draftCapital = normalizedDraftCapital[idx];
+    });
+
     const response = NextResponse.json({
       rankings,
       totalSeasons: leagueIds.length,
