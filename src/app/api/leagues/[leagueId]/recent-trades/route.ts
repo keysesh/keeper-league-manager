@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { SleeperClient } from "@/lib/sleeper/client";
 
 interface TradedPlayer {
   playerId: string;
@@ -48,6 +49,16 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 50);
 
+    // Get league with sleeperId for Sleeper API calls
+    const league = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { sleeperId: true },
+    });
+
+    if (!league) {
+      return NextResponse.json({ error: "League not found" }, { status: 404 });
+    }
+
     // Get rosters for name lookup
     const rosters = await prisma.roster.findMany({
       where: { leagueId },
@@ -59,6 +70,24 @@ export async function GET(
     });
 
     const rosterMap = new Map(rosters.map((r) => [r.id, r]));
+
+    // Fetch Sleeper rosters to build slot number → owner_id mapping
+    // Sleeper transactions use roster_id (1-10 slot numbers), but our DB uses owner_id
+    const sleeper = new SleeperClient();
+    let sleeperSlotToOwnerId = new Map<number, string>();
+    try {
+      const sleeperRosters = await sleeper.getRosters(league.sleeperId);
+      for (const sr of sleeperRosters) {
+        if (sr.owner_id) {
+          sleeperSlotToOwnerId.set(sr.roster_id, sr.owner_id);
+        }
+      }
+    } catch (err) {
+      logger.warn("Failed to fetch Sleeper rosters for pick mapping", { error: err });
+    }
+
+    // Build owner_id → DB roster ID mapping
+    const ownerIdToDbRosterId = new Map(rosters.map((r) => [r.sleeperId, r.id]));
 
     // Get recent trades from Transaction model
     const transactions = await prisma.transaction.findMany({
@@ -145,15 +174,28 @@ export async function GET(
 
       // Build a mapping from Sleeper slot numbers to our database roster IDs
       // roster_ids in metadata contains Sleeper slot numbers for trade participants
+      // We use the pre-fetched sleeperSlotToOwnerId map to convert: slot → owner_id → DB roster ID
       const sleeperSlotToDbRosterId = new Map<number, string>();
+
+      // Collect all slot numbers we need to map (from roster_ids AND draft_picks)
+      const allSlotNums = new Set<number>();
       if (metadata?.roster_ids) {
-        for (const slotNum of metadata.roster_ids) {
-          // Find the roster with this Sleeper slot ID
-          for (const roster of rosters) {
-            if (roster.sleeperId === String(slotNum)) {
-              sleeperSlotToDbRosterId.set(slotNum, roster.id);
-              break;
-            }
+        metadata.roster_ids.forEach(n => allSlotNums.add(n));
+      }
+      if (metadata?.draft_picks) {
+        for (const pick of metadata.draft_picks) {
+          if (pick.roster_id) allSlotNums.add(pick.roster_id);
+          if (pick.previous_owner_id) allSlotNums.add(pick.previous_owner_id);
+        }
+      }
+
+      // Map all slot numbers to DB roster IDs
+      for (const slotNum of allSlotNums) {
+        const ownerId = sleeperSlotToOwnerId.get(slotNum);
+        if (ownerId) {
+          const dbRosterId = ownerIdToDbRosterId.get(ownerId);
+          if (dbRosterId) {
+            sleeperSlotToDbRosterId.set(slotNum, dbRosterId);
           }
         }
       }
