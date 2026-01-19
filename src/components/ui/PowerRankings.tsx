@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import Image from "next/image";
@@ -261,10 +261,16 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                   {team.teamName}
                 </h4>
 
-                {/* Owner */}
-                <p className="text-xs text-slate-500 truncate mb-3">
-                  {team.owners.find(o => o) || team.teamName}
-                </p>
+                {/* Owner - only show if different from team name */}
+                {(() => {
+                  const ownerName = team.owners.find(o => o);
+                  const isDifferent = ownerName && ownerName.toLowerCase() !== team.teamName?.toLowerCase();
+                  return isDifferent ? (
+                    <p className="text-xs text-slate-500 truncate mb-3">{ownerName}</p>
+                  ) : (
+                    <div className="mb-3" />
+                  );
+                })()}
 
                 {/* Stats Row */}
                 <div className="flex items-center justify-between text-xs">
@@ -283,10 +289,11 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                 {/* Top Scorer */}
                 {team.topScorer && (
                   <div className="mt-3 pt-3 border-t border-white/5">
-                    <p className="text-xs text-slate-500 truncate">
-                      <span className="text-amber-400">{team.topScorer.ppg}</span>
-                      <span className="mx-1">·</span>
-                      {team.topScorer.playerName}
+                    <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-0.5">Top Scorer</p>
+                    <p className="text-xs truncate">
+                      <span className="font-semibold text-white">{team.topScorer.playerName}</span>
+                      <span className="text-slate-500 ml-1">·</span>
+                      <span className="text-amber-400 ml-1">{team.topScorer.ppg} PPG</span>
                     </p>
                   </div>
                 )}
@@ -398,15 +405,30 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 }
 
 function StatChip({ label, value, tooltip }: { label: string; value: number; tooltip?: string }) {
+  const [showTooltip, setShowTooltip] = useState(false);
   const clampedValue = Math.min(100, Math.max(0, value));
   const colorClass = clampedValue >= 80 ? "text-emerald-400" :
     clampedValue >= 60 ? "text-blue-400" :
     clampedValue >= 40 ? "text-slate-400" : "text-orange-400";
 
   return (
-    <div className="text-center cursor-help" title={tooltip}>
-      <div className={cn("text-xs font-bold", colorClass)}>{Math.round(clampedValue)}</div>
-      <div className="text-[9px] text-slate-500">{label}</div>
+    <div className="relative">
+      <div
+        className="text-center cursor-pointer"
+        onClick={() => setShowTooltip(!showTooltip)}
+      >
+        <div className={cn("text-xs font-bold", colorClass)}>{Math.round(clampedValue)}</div>
+        <div className="text-[9px] text-slate-500">{label}</div>
+      </div>
+      {showTooltip && tooltip && (
+        <div
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg shadow-xl text-[10px] text-slate-300 whitespace-nowrap"
+          onClick={() => setShowTooltip(false)}
+        >
+          {tooltip}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-700" />
+        </div>
+      )}
     </div>
   );
 }
