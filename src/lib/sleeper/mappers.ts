@@ -147,6 +147,8 @@ export function mapSleeperTransaction(transaction: SleeperTransaction) {
     roster_ids: transaction.roster_ids,
     waiver_budget: transaction.waiver_budget,
     settings: transaction.settings,
+    // Store draft picks for trades
+    draft_picks: transaction.draft_picks?.length ? transaction.draft_picks : null,
   };
   return {
     type: mapSleeperTransactionType(transaction.type),

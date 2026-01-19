@@ -78,29 +78,37 @@ export async function GET(
     }
 
     // Build full league chain by traversing previousLeagueId recursively
-    const leagueChain: string[] = [leagueId];
-    let currentId = currentLeague.previousLeagueId;
+    // Note: previousLeagueId stores SLEEPER IDs, not database IDs
+    const leagueDbIds: string[] = [leagueId];
+    const sleeperIdsInChain: string[] = [currentLeague.sleeperId];
+    let currentSleeperId = currentLeague.previousLeagueId;
 
     // Traverse backwards through all previous seasons
-    while (currentId) {
-      leagueChain.push(currentId);
+    while (currentSleeperId) {
+      sleeperIdsInChain.push(currentSleeperId);
       const prev = await prisma.league.findUnique({
-        where: { id: currentId },
-        select: { previousLeagueId: true },
+        where: { sleeperId: currentSleeperId },
+        select: { id: true, previousLeagueId: true },
       });
-      currentId = prev?.previousLeagueId || null;
+      if (prev) {
+        leagueDbIds.push(prev.id);
+        currentSleeperId = prev.previousLeagueId;
+      } else {
+        // Historical league not synced yet
+        currentSleeperId = null;
+      }
     }
 
     // Also find any leagues that point to leagues in our chain (future seasons)
     const futureLeagues = await prisma.league.findMany({
       where: {
-        previousLeagueId: { in: leagueChain },
-        id: { notIn: leagueChain },
+        previousLeagueId: { in: sleeperIdsInChain },
+        id: { notIn: leagueDbIds },
       },
       select: { id: true },
     });
 
-    const allLeagueIds = [...leagueChain, ...futureLeagues.map(l => l.id)];
+    const allLeagueIds = [...leagueDbIds, ...futureLeagues.map(l => l.id)];
 
     // Fetch all leagues in the chain with full data
     const relatedLeagues = await prisma.league.findMany({

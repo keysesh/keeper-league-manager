@@ -123,6 +123,9 @@ export async function GET(
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
+    // Get roster sleeperId to dbId mapping for draft pick lookup
+    const sleeperIdToRosterId = new Map(rosters.map((r) => [r.sleeperId, r.id]));
+
     // Build trades from Transaction model
     const tradesFromTransactions: RecentTrade[] = transactions.map((tx) => {
       // Group players by direction
@@ -174,6 +177,68 @@ export async function GET(
             position: tp.player.position,
             team: tp.player.team,
           });
+        }
+      }
+
+      // Process draft picks from metadata (Sleeper transactions)
+      const metadata = tx.metadata as {
+        draft_picks?: Array<{
+          season: string;
+          round: number;
+          roster_id: number;       // Who received this pick (slot number)
+          previous_owner_id: number; // Who gave up this pick (slot number)
+          owner_id: number;        // Original pick owner (slot number)
+        }>;
+        roster_ids?: number[];
+      } | null;
+
+      if (metadata?.draft_picks && metadata.draft_picks.length > 0) {
+        // Get the parties (rosters) involved in this trade
+        const parties = Array.from(partiesMap.values());
+
+        for (const pick of metadata.draft_picks) {
+          // The pick flows from previous_owner_id to roster_id
+          // We need to match these slot numbers to our trade parties
+
+          // Since we already know the parties from player movements,
+          // associate the pick with the correct party based on roster_ids order
+          const giverSlot = pick.previous_owner_id;
+          const receiverSlot = pick.roster_id;
+
+          // Match slots to parties by checking which party had players going which direction
+          for (const party of parties) {
+            // If this party gave players, they likely received picks (and vice versa)
+            // Check metadata.roster_ids to see order
+            const rosterSlots = metadata.roster_ids || [];
+            const partyIndex = rosterSlots.indexOf(giverSlot);
+
+            if (partyIndex === 0 && parties[0]) {
+              // First party in roster_ids gave this pick
+              partiesMap.get(parties[0].rosterId)?.picksGiven.push({
+                season: parseInt(pick.season),
+                round: pick.round,
+              });
+              if (parties[1]) {
+                partiesMap.get(parties[1].rosterId)?.picksReceived.push({
+                  season: parseInt(pick.season),
+                  round: pick.round,
+                });
+              }
+            } else if (partyIndex === 1 && parties[1]) {
+              // Second party gave this pick
+              partiesMap.get(parties[1].rosterId)?.picksGiven.push({
+                season: parseInt(pick.season),
+                round: pick.round,
+              });
+              if (parties[0]) {
+                partiesMap.get(parties[0].rosterId)?.picksReceived.push({
+                  season: parseInt(pick.season),
+                  round: pick.round,
+                });
+              }
+            }
+            break; // Only process once per pick
+          }
         }
       }
 
