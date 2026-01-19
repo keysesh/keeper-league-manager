@@ -1507,24 +1507,50 @@ export async function recalculateKeeperYears(
       const pastKeeperCount = keeperSeasons.size;
       const correctYearsKept = pastKeeperCount + 1;
 
-      // Update if different
-      const correctFinalCost = Math.max(1, keeper.baseCost - pastKeeperCount);
-      if (keeper.yearsKept !== correctYearsKept || keeper.finalCost !== correctFinalCost) {
+      // 4. FIX: Also correct baseCost - should be the original draft round, NOT escalated cost
+      // Find the original non-keeper draft pick for this player
+      const originalDraftPick = await prisma.draftPick.findFirst({
+        where: {
+          playerId: keeper.playerId,
+          isKeeper: false, // Original draft, not keeper slot
+        },
+        include: { draft: { select: { season: true } } },
+        orderBy: { draft: { season: "asc" } }, // Oldest first
+      });
+
+      // Default to undrafted round (8) if no original draft found
+      const UNDRAFTED_ROUND = 8;
+      const correctBaseCost = originalDraftPick?.round ?? UNDRAFTED_ROUND;
+
+      // Update finalCost based on correct baseCost
+      const correctFinalCost = Math.max(1, correctBaseCost - pastKeeperCount);
+
+      // Check if any field needs updating
+      const needsUpdate =
+        keeper.yearsKept !== correctYearsKept ||
+        keeper.baseCost !== correctBaseCost ||
+        keeper.finalCost !== correctFinalCost;
+
+      if (needsUpdate) {
         await prisma.keeper.update({
           where: { id: keeper.id },
           data: {
             yearsKept: correctYearsKept,
+            baseCost: correctBaseCost,
             finalCost: correctFinalCost,
           },
         });
-        logger.info("Fixed keeper yearsKept", {
+        logger.info("Fixed keeper data", {
           player: keeper.player.fullName,
           season: keeper.season,
           oldYearsKept: keeper.yearsKept,
           newYearsKept: correctYearsKept,
+          oldBaseCost: keeper.baseCost,
+          newBaseCost: correctBaseCost,
           oldFinalCost: keeper.finalCost,
           newFinalCost: correctFinalCost,
           pastKeeperSeasons: Array.from(keeperSeasons),
+          originalDraftRound: originalDraftPick?.round ?? "undrafted",
         });
         updated++;
       }
