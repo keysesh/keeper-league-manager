@@ -200,12 +200,45 @@ export async function calculateKeeperEligibility(
  * Get the total number of times a player has been kept in the league
  * This is used for cost calculation - cost reduces based on TOTAL keeper years
  * regardless of which owner kept them
+ *
+ * TODO: BUG - Trade deadline not respected for cost calculation
+ * ================================================================
+ * CURRENT BEHAVIOR (INCORRECT):
+ *   Counts ALL keeper records league-wide, regardless of trade timing.
+ *   Post-deadline trades still get cost reduction from previous keeper history.
+ *
+ * CORRECT BEHAVIOR (PER LEAGUE RULES):
+ *   Post-deadline (offseason) trades should RESET keeper years for cost calculation.
+ *   New owner's cost = baseCost - 0 (no reduction from previous history).
+ *
+ * EXAMPLE OF BUG:
+ *   Player X: Drafted Round 5 in 2023, kept in 2024 and 2025 (2 keeper years)
+ *   Player X: Traded to new owner in December 2025 (POST-deadline)
+ *
+ *   CURRENT (wrong): New owner's 2026 cost = 5 - 2 = Round 3
+ *   SHOULD BE:       New owner's 2026 cost = 5 - 0 = Round 5 (reset)
+ *
+ * FIX NEEDED:
+ *   1. Add rosterId parameter to this function
+ *   2. Check if current owner acquired player via post-deadline trade
+ *   3. If yes, only count keeper years AFTER the trade date
+ *   4. Use isTradeAfterDeadline() from @/lib/constants/keeper-rules
+ *
+ * RELATED CODE:
+ *   - getOriginSeasonForOwner() correctly handles trade deadline for ELIGIBILITY
+ *   - isTradeAfterDeadline() already exists in keeper-rules.ts
+ *   - getTradeInheritedCost() handles base cost inheritance (correct)
+ *
+ * TESTS TO UPDATE:
+ *   - src/lib/keeper/calculator.test.ts - add tests for post-deadline trade cost reset
+ *   - src/lib/keeper/cascade.test.ts - verify cascade handles this correctly
  */
 async function getTotalKeeperYears(
   playerId: string,
   targetSeason: number
 ): Promise<number> {
   // Count all keeper records for this player BEFORE the target season
+  // TODO: This should respect trade deadline - see docstring above
   const keeperCount = await prisma.keeper.count({
     where: {
       playerId,
