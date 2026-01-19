@@ -12,7 +12,8 @@
  *   API_BASE_URL - Optional, defaults to production
  */
 
-import "dotenv/config";
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 
 const API_BASE_URL =
   process.env.API_BASE_URL || "https://keeper-league-manager.vercel.app";
@@ -29,6 +30,13 @@ interface SyncResult {
       playersFailed: number;
       errors: string[];
       duration: number;
+      debug?: {
+        dbPlayerCount: number;
+        gsisToSleeperCount: number;
+        statsCount: number;
+        unmatchedWithStats: number;
+        unmatchedPlayers: string[];
+      };
     };
   };
 }
@@ -73,6 +81,22 @@ async function syncStats(season: number) {
   if (stats.errors.length > 0) {
     console.log(`\nWarnings:`);
     stats.errors.forEach((err) => console.log(`  - ${err}`));
+  }
+
+  // Show debug info if available
+  if (stats.debug) {
+    console.log(`\n=== Debug Info ===`);
+    console.log(`DB Players: ${stats.debug.dbPlayerCount}`);
+    console.log(`GSIS→Sleeper mappings: ${stats.debug.gsisToSleeperCount}`);
+    console.log(`NFLverse stats rows: ${stats.debug.statsCount}`);
+    console.log(`Unmatched with >50 PPR: ${stats.debug.unmatchedWithStats}`);
+
+    if (stats.debug.unmatchedPlayers && stats.debug.unmatchedPlayers.length > 0) {
+      console.log(`\nUnmatched Players (fantasy-relevant):`);
+      stats.debug.unmatchedPlayers.forEach((p) => console.log(`  - ${p}`));
+    } else {
+      console.log(`\nNo unmatched players with significant fantasy production!`);
+    }
   }
 }
 
