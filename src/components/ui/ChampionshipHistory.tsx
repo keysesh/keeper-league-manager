@@ -162,53 +162,53 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
   return (
     <div className="space-y-6">
       {/* All-Time Records */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {allTimeRecords.mostChampionships && (
-          <div className="bg-[#1a1a1a] border border-yellow-500/20 rounded-lg p-5 text-center">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {allTimeRecords.mostChampionships && allTimeRecords.mostChampionships.count > 0 && (
+          <div className="bg-[#1a1a1a] border border-yellow-500/20 rounded-lg p-5 text-center min-w-0">
             <Trophy className="w-7 h-7 text-yellow-400 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-yellow-400">{allTimeRecords.mostChampionships.count}</p>
+            <p className="text-2xl font-bold text-yellow-400">{allTimeRecords.mostChampionships.count}</p>
             <p className="text-sm text-gray-500 mt-1">Championships</p>
-            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostChampionships.name}</p>
+            <p className="text-base text-white font-medium mt-2 line-clamp-2" title={allTimeRecords.mostChampionships.name}>{allTimeRecords.mostChampionships.name}</p>
           </div>
         )}
         {allTimeRecords.mostRunnerUps && allTimeRecords.mostRunnerUps.count > 0 && (
-          <div className="bg-[#1a1a1a] border border-gray-500/20 rounded-lg p-5 text-center">
+          <div className="bg-[#1a1a1a] border border-gray-500/20 rounded-lg p-5 text-center min-w-0">
             <Target className="w-7 h-7 text-gray-400 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-gray-400">{allTimeRecords.mostRunnerUps.count}</p>
+            <p className="text-2xl font-bold text-gray-400">{allTimeRecords.mostRunnerUps.count}</p>
             <p className="text-sm text-gray-500 mt-1">Runner-Ups</p>
-            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostRunnerUps.name}</p>
+            <p className="text-base text-white font-medium mt-2 line-clamp-2" title={allTimeRecords.mostRunnerUps.name}>{allTimeRecords.mostRunnerUps.name}</p>
           </div>
         )}
         {allTimeRecords.bestRecord && (
-          <div className="bg-[#1a1a1a] border border-emerald-500/20 rounded-lg p-5 text-center">
+          <div className="bg-[#1a1a1a] border border-emerald-500/20 rounded-lg p-5 text-center min-w-0">
             <Award className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-emerald-400">{allTimeRecords.bestRecord.record}</p>
+            <p className="text-2xl font-bold text-emerald-400">{allTimeRecords.bestRecord.record}</p>
             <p className="text-sm text-gray-500 mt-1">Best Record ({allTimeRecords.bestRecord.season})</p>
-            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.bestRecord.name}</p>
+            <p className="text-base text-white font-medium mt-2 line-clamp-2" title={allTimeRecords.bestRecord.name}>{allTimeRecords.bestRecord.name}</p>
           </div>
         )}
-        {allTimeRecords.highestSingleSeasonPoints && (
-          <div className="bg-[#1a1a1a] border border-blue-500/20 rounded-lg p-5 text-center">
+        {allTimeRecords.highestSingleSeasonPoints && allTimeRecords.highestSingleSeasonPoints.points > 0 && (
+          <div className="bg-[#1a1a1a] border border-blue-500/20 rounded-lg p-5 text-center min-w-0">
             <TrendingUp className="w-7 h-7 text-blue-400 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-blue-400">{Math.round(allTimeRecords.highestSingleSeasonPoints.points).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-400">{Math.round(allTimeRecords.highestSingleSeasonPoints.points).toLocaleString()}</p>
             <p className="text-sm text-gray-500 mt-1">Most Points ({allTimeRecords.highestSingleSeasonPoints.season})</p>
-            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.highestSingleSeasonPoints.name}</p>
+            <p className="text-base text-white font-medium mt-2 line-clamp-2" title={allTimeRecords.highestSingleSeasonPoints.name}>{allTimeRecords.highestSingleSeasonPoints.name}</p>
           </div>
         )}
-        {allTimeRecords.mostKeepers && (
-          <div className="bg-[#1a1a1a] border border-orange-500/20 rounded-lg p-5 text-center">
+        {allTimeRecords.mostKeepers && allTimeRecords.mostKeepers.count > 0 && (
+          <div className="bg-[#1a1a1a] border border-orange-500/20 rounded-lg p-5 text-center min-w-0">
             <Lock className="w-7 h-7 text-orange-400 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-orange-400">{allTimeRecords.mostKeepers.count}</p>
+            <p className="text-2xl font-bold text-orange-400">{allTimeRecords.mostKeepers.count}</p>
             <p className="text-sm text-gray-500 mt-1">Most Keepers ({allTimeRecords.mostKeepers.season})</p>
-            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostKeepers.name}</p>
+            <p className="text-base text-white font-medium mt-2 line-clamp-2" title={allTimeRecords.mostKeepers.name}>{allTimeRecords.mostKeepers.name}</p>
           </div>
         )}
-        {allTimeRecords.mostSeasons && (
-          <div className="bg-[#1a1a1a] border border-purple-500/20 rounded-lg p-5 text-center">
+        {allTimeRecords.mostSeasons && allTimeRecords.mostSeasons.count > 0 && (
+          <div className="bg-[#1a1a1a] border border-purple-500/20 rounded-lg p-5 text-center min-w-0">
             <Star className="w-7 h-7 text-purple-400 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-purple-400">{allTimeRecords.mostSeasons.count}</p>
+            <p className="text-2xl font-bold text-purple-400">{allTimeRecords.mostSeasons.count}</p>
             <p className="text-sm text-gray-500 mt-1">Seasons Played</p>
-            <p className="text-base text-white font-medium truncate mt-2">{allTimeRecords.mostSeasons.name}</p>
+            <p className="text-base text-white font-medium mt-2 line-clamp-2" title={allTimeRecords.mostSeasons.name}>{allTimeRecords.mostSeasons.name}</p>
           </div>
         )}
       </div>

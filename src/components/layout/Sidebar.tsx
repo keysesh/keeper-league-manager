@@ -15,9 +15,7 @@ import {
   UserCircle,
   History,
   Activity,
-  Trophy,
   FileText,
-  TrendingUp,
 } from "lucide-react";
 
 interface NavItem {
@@ -52,8 +50,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         { name: "Trades", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
         { name: "Trade Proposals", href: `/league/${leagueId}/trade-proposals`, icon: FileText },
         { name: "All Teams", href: `/league/${leagueId}/team`, icon: Users },
-        { name: "Standings", href: `/league/${leagueId}/history`, icon: TrendingUp },
-        { name: "Trophy Case", href: `/league/${leagueId}/history?tab=championships`, icon: Trophy },
+        { name: "League History", href: `/league/${leagueId}/history`, icon: History },
         { name: "Activity", href: `/league/${leagueId}/activity`, icon: Activity },
         { name: "Settings", href: `/league/${leagueId}/settings`, icon: Settings },
         ...(isAdmin ? [{ name: "Admin Panel", href: "/admin", icon: Shield }] : []),
@@ -82,9 +79,27 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
       <nav className="flex-1 px-4 py-5 space-y-1" role="navigation">
         {navigation.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href) && !navigation.some(n => n.href !== item.href && n.href.length > item.href.length && pathname.startsWith(n.href)));
+          // Improved active state logic for nested routes
+          let isActive = pathname === item.href;
+
+          if (!isActive && item.href !== "/") {
+            // Check if pathname starts with item.href
+            if (pathname.startsWith(item.href)) {
+              // Special case: /team route should only match exact or when followed by nothing after /team
+              // Don't match /team/[rosterId] for the "All Teams" link
+              if (item.href.endsWith("/team")) {
+                // Only match if we're exactly on /team or /team/ (no specific team ID)
+                isActive = pathname === item.href || pathname === item.href + "/";
+              } else {
+                // For other routes, use prefix matching but check no other longer nav item matches
+                isActive = !navigation.some(n =>
+                  n.href !== item.href &&
+                  n.href.length > item.href.length &&
+                  pathname.startsWith(n.href)
+                );
+              }
+            }
+          }
 
           const Icon = item.icon;
 

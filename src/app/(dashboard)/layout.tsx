@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { logger } from "@/lib/logger";
 
 export default async function DashboardLayout({
@@ -51,6 +52,7 @@ export default async function DashboardLayout({
         <Sidebar isAdmin={isAdmin} />
         <main className="flex-1 w-full min-w-0 overflow-x-hidden">
           <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-[100vw] lg:max-w-none">
+            <Breadcrumbs />
             {children}
           </div>
         </main>

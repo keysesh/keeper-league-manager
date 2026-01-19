@@ -121,107 +121,99 @@ export function DraftCapital({
   }
 
   return (
-    <div className="rounded-md bg-[#1a1a1a] border border-[#2a2a2a] p-3">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Draft Capital
-          </span>
-          {teamName && (
-            <p className="text-sm font-medium text-white mt-0.5">{teamName}</p>
-          )}
-        </div>
-        <div className="text-right">
-          <span
-            className={`text-lg font-bold ${
-              summary.percentage >= 100
-                ? "text-emerald-400"
-                : summary.percentage >= 75
-                ? "text-blue-400"
-                : "text-amber-400"
-            }`}
-          >
-            {summary.totalOwned}
-          </span>
-          <span className="text-sm text-gray-500">/{summary.totalPossible}</span>
-          <p className="text-[10px] text-gray-500">
-            {summary.ownPicks} own • {summary.acquiredPicks} acquired
-          </p>
-        </div>
-      </div>
+    <div className="space-y-3">
+      {/* Season breakdown - cleaner grid layout */}
+      {seasons.map((season) => {
+        const seasonPicks = picksBySeason.get(season) || [];
+        const ownPicks = seasonPicks.filter(
+          (p) => p.originalOwnerSleeperId === teamSleeperId
+        );
+        const acquiredPicks = seasonPicks.filter(
+          (p) => p.originalOwnerSleeperId !== teamSleeperId
+        );
+        const tradedAway = maxRounds - seasonPicks.length;
 
-      {/* Season breakdown */}
-      <div className="space-y-2">
-        {seasons.map((season) => {
-          const seasonPicks = picksBySeason.get(season) || [];
-          const ownPicks = seasonPicks.filter(
-            (p) => p.originalOwnerSleeperId === teamSleeperId
-          );
-          const acquiredPicks = seasonPicks.filter(
-            (p) => p.originalOwnerSleeperId !== teamSleeperId
-          );
-
-          return (
-            <div key={season} className="bg-[#222222] rounded p-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium text-gray-300">{season}</span>
-                <span className="text-[10px] text-gray-500">
-                  {seasonPicks.length}/{maxRounds} picks
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-1">
-                {/* Own picks */}
-                {ownPicks
-                  .sort((a, b) => a.round - b.round)
-                  .map((pick) => (
-                    <span
-                      key={`${pick.season}-${pick.round}-${pick.originalOwnerSleeperId}`}
-                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-700 text-gray-300"
-                      title={`Round ${pick.round} (own pick)`}
-                    >
-                      R{pick.round}
-                    </span>
-                  ))}
-
-                {/* Acquired picks */}
-                {acquiredPicks
-                  .sort((a, b) => a.round - b.round)
-                  .map((pick) => (
-                    <span
-                      key={`${pick.season}-${pick.round}-${pick.originalOwnerSleeperId}`}
-                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                      title={`Round ${pick.round} (from ${pick.originalOwnerName || "other team"})`}
-                    >
-                      R{pick.round}
-                      <span className="text-[8px] ml-0.5 opacity-75">+</span>
-                    </span>
-                  ))}
-
-                {/* Missing picks indicator */}
-                {seasonPicks.length < maxRounds && (
-                  <span
-                    className="text-[10px] text-gray-600"
-                    title={`${maxRounds - seasonPicks.length} picks traded away`}
-                  >
-                    ({maxRounds - seasonPicks.length} traded)
+        return (
+          <div key={season}>
+            {/* Season header */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-white">{season}</span>
+              <div className="flex items-center gap-2">
+                {acquiredPicks.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">
+                    +{acquiredPicks.length}
                   </span>
                 )}
+                {tradedAway > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-medium">
+                    -{tradedAway}
+                  </span>
+                )}
+                <span className="text-xs text-gray-500">
+                  {seasonPicks.length}/{maxRounds}
+                </span>
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-3 mt-3 pt-2 border-t border-[#2a2a2a] text-[9px] text-gray-500">
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-gray-700"></span>
+            {/* Picks grid */}
+            <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 gap-1.5">
+              {Array.from({ length: maxRounds }, (_, i) => i + 1).map((round) => {
+                const ownPick = ownPicks.find((p) => p.round === round);
+                const acquiredPick = acquiredPicks.find((p) => p.round === round);
+                const hasPick = ownPick || acquiredPick;
+
+                return (
+                  <div
+                    key={round}
+                    className={`
+                      relative flex items-center justify-center h-8 rounded-md text-xs font-semibold transition-all
+                      ${acquiredPick
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ring-1 ring-emerald-500/20"
+                        : ownPick
+                        ? "bg-[#2a2a2a] text-gray-300 border border-[#3a3a3a]"
+                        : "bg-[#1a1a1a] text-gray-600 border border-dashed border-[#333]"
+                      }
+                    `}
+                    title={
+                      acquiredPick
+                        ? `Round ${round} (from ${acquiredPick.originalOwnerName || "trade"})`
+                        : ownPick
+                        ? `Round ${round} (own pick)`
+                        : `Round ${round} (traded away)`
+                    }
+                  >
+                    {round}
+                    {acquiredPick && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 flex items-center justify-center text-[8px] text-white font-bold">
+                        +
+                      </span>
+                    )}
+                    {!hasPick && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="w-4 h-px bg-red-500/40 rotate-45 absolute" />
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Legend - simplified */}
+      <div className="flex items-center gap-4 pt-2 text-[10px] text-gray-500">
+        <div className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded bg-[#2a2a2a] border border-[#3a3a3a]"></span>
           <span>Own</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-emerald-500/20 border border-emerald-500/30"></span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded bg-emerald-500/20 border border-emerald-500/30"></span>
           <span>Acquired</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded bg-[#1a1a1a] border border-dashed border-[#333]"></span>
+          <span>Traded</span>
         </div>
       </div>
     </div>
