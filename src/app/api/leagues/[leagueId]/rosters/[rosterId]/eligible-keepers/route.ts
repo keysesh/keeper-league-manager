@@ -482,39 +482,33 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       // 2. DraftPick.isKeeper = true (Sleeper's historical keeper data)
       const keeperPickSeasons = keeperPicksByPlayer.get(playerId) || [];
 
-      // Determine how many times this player has been kept
-      // Use the most comprehensive data available
+      // FIX: Merge BOTH sources to get accurate keeper year count
+      // Collect unique seasons from both sources
+      const allKeeperSeasons = new Set<number>();
+
+      // Add seasons from Keeper table
+      for (const keeper of playerKeepers) {
+        allKeeperSeasons.add(keeper.season);
+      }
+
+      // Add seasons from isKeeper draft picks
+      for (const pickSeason of keeperPickSeasons) {
+        allKeeperSeasons.add(pickSeason);
+      }
+
+      // Count past keeper seasons (before the planning season)
+      const pastKeeperSeasons = Array.from(allKeeperSeasons).filter(s => s < season);
+      const pastKeeperCount = pastKeeperSeasons.length;
+      const isAlreadyKeptThisSeason = allKeeperSeasons.has(season);
+
+      // Determine display year (how many times kept including this potential keep)
       let displayYear: number;
-
-      if (playerKeepers.length > 0) {
-        // We have Keeper table records - use the most recent one
-        const mostRecentKeeper = playerKeepers.reduce((latest, k) =>
-          k.season > latest.season ? k : latest
-        );
-
-        if (mostRecentKeeper.season === season) {
-          // Already a keeper for current planning season - use their recorded yearsKept
-          displayYear = mostRecentKeeper.yearsKept;
-        } else {
-          // Last kept in a previous season - would be one more year if kept this season
-          displayYear = mostRecentKeeper.yearsKept + 1;
-        }
-      } else if (keeperPickSeasons.length > 0) {
-        // No Keeper table records, but have Sleeper isKeeper draft picks
-        // Count the number of seasons they were kept + 1 for the upcoming season
-        const pastKeeperCount = keeperPickSeasons.filter(s => s < season).length;
-        const isAlreadyKeptThisSeason = keeperPickSeasons.includes(season);
-
-        if (isAlreadyKeptThisSeason) {
-          // Already marked as keeper for this season in Sleeper
-          displayYear = pastKeeperCount + 1;
-        } else {
-          // Would be their next keeper year
-          displayYear = pastKeeperCount + 1;
-        }
+      if (isAlreadyKeptThisSeason) {
+        // Already designated as keeper for current planning season
+        displayYear = pastKeeperCount + 1;
       } else {
-        // No keeper history = this would be Year 1 (first time keeping)
-        displayYear = 1;
+        // Would be their next keeper year if kept
+        displayYear = pastKeeperCount + 1;
       }
 
       // A player can always be kept via Franchise Tag (no year limit)

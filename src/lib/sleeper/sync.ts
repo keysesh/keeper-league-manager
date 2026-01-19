@@ -1474,60 +1474,57 @@ export async function recalculateKeeperYears(
 
     try {
       const rosterSleeperId = keeper.roster.sleeperId;
+      const teamRosterIds = rosterChainMap.get(rosterSleeperId) || [keeper.rosterId];
 
-      // Check if player was owned by this roster at end of previous season
-      // This uses transaction history to account for trades
-      const ownedAtPrevSeasonEnd = await wasOwnedAtSeasonEnd(
-        keeper.playerId,
-        leagueId,
-        rosterSleeperId,
-        keeper.season - 1
-      );
+      // FIX: Merge keeper years from BOTH Keeper table AND isKeeper draft picks
+      // This ensures we count all historical keeper seasons, not just those in the Keeper table
 
-      let consecutiveYears = 0;
+      // 1. Get seasons from Keeper table for this team
+      const previousKeepers = await prisma.keeper.findMany({
+        where: {
+          playerId: keeper.playerId,
+          rosterId: { in: teamRosterIds },
+          season: { lt: keeper.season },
+        },
+      });
+      const keeperSeasons = new Set(previousKeepers.map(k => k.season));
 
-      if (ownedAtPrevSeasonEnd) {
-        // Player was on this roster last season - check for consecutive keeper years
-        const teamRosterIds = rosterChainMap.get(rosterSleeperId) || [keeper.rosterId];
-
-        const previousKeepers = await prisma.keeper.findMany({
-          where: {
-            playerId: keeper.playerId,
-            rosterId: { in: teamRosterIds },
-            season: { lt: keeper.season },
-          },
-          orderBy: { season: "desc" },
-        });
-
-        let checkSeason = keeper.season - 1;
-        for (const prev of previousKeepers) {
-          if (prev.season === checkSeason) {
-            consecutiveYears++;
-            checkSeason--;
-          } else {
-            break;
-          }
-        }
+      // 2. Get seasons from draft picks marked as keepers for this team
+      const keeperPicks = await prisma.draftPick.findMany({
+        where: {
+          playerId: keeper.playerId,
+          isKeeper: true,
+          rosterId: { in: teamRosterIds },
+          draft: { season: { lt: keeper.season } },
+        },
+        include: { draft: { select: { season: true } } },
+      });
+      for (const pick of keeperPicks) {
+        keeperSeasons.add(pick.draft.season);
       }
-      // If not owned at previous season end (traded), consecutiveYears stays 0
 
-      const correctYearsKept = consecutiveYears + 1;
+      // 3. Count unique past keeper seasons
+      const pastKeeperCount = keeperSeasons.size;
+      const correctYearsKept = pastKeeperCount + 1;
 
       // Update if different
-      if (keeper.yearsKept !== correctYearsKept) {
+      const correctFinalCost = Math.max(1, keeper.baseCost - pastKeeperCount);
+      if (keeper.yearsKept !== correctYearsKept || keeper.finalCost !== correctFinalCost) {
         await prisma.keeper.update({
           where: { id: keeper.id },
           data: {
             yearsKept: correctYearsKept,
-            finalCost: Math.max(1, keeper.baseCost - consecutiveYears),
+            finalCost: correctFinalCost,
           },
         });
-        logger.debug("Fixed keeper yearsKept", {
+        logger.info("Fixed keeper yearsKept", {
           player: keeper.player.fullName,
           season: keeper.season,
           oldYearsKept: keeper.yearsKept,
           newYearsKept: correctYearsKept,
-          ownedAtPrevSeasonEnd,
+          oldFinalCost: keeper.finalCost,
+          newFinalCost: correctFinalCost,
+          pastKeeperSeasons: Array.from(keeperSeasons),
         });
         updated++;
       }
