@@ -35,6 +35,7 @@ interface PowerRanking {
   sleeperId: string;
   teamName: string;
   owners: string[];
+  ownerAvatar: string | null;
   overallScore: number;
   grade: string;
   record: {
@@ -62,6 +63,13 @@ interface PowerRanking {
   starPower: number;
   depth: number;
   trajectory: "rising" | "falling" | "stable";
+  luckFactor: number;
+  luckRating: "lucky" | "unlucky" | "neutral";
+  topScorer: {
+    playerName: string;
+    position: string | null;
+    ppg: number;
+  } | null;
 }
 
 /**
@@ -194,7 +202,16 @@ export async function GET(
           include: { player: true },
         },
         teamMembers: {
-          include: { user: true },
+          include: {
+            user: {
+              select: {
+                displayName: true,
+                sleeperUsername: true,
+                avatar: true,
+                sleeperId: true,
+              },
+            },
+          },
         },
         keepers: {
           include: { player: true },
@@ -202,6 +219,22 @@ export async function GET(
         draftPicks: true,
       },
     });
+
+    // Calculate expected wins for luck factor using all rosters
+    // Based on All-Play record: how many teams would you beat each week
+    const allPointsFor = rosters.map(r => Number(r.pointsFor)).sort((a, b) => a - b);
+    const calculateExpectedWins = (pointsFor: number, totalGames: number): number => {
+      if (totalGames === 0) return 0;
+      // Use median-based estimation: if your points are above median, expect >50% wins
+      const medianPoints = allPointsFor[Math.floor(allPointsFor.length / 2)] || 0;
+      const maxPoints = Math.max(...allPointsFor, 1);
+      const minPoints = Math.min(...allPointsFor);
+
+      // Linear interpolation based on points position
+      const range = maxPoints - minPoints || 1;
+      const expectedWinPct = Math.min(0.9, Math.max(0.1, (pointsFor - minPoints) / range));
+      return expectedWinPct * totalGames;
+    };
 
     if (rosters.length === 0) {
       return NextResponse.json({ rankings: [], error: "No rosters found" });
@@ -310,6 +343,25 @@ export async function GET(
 
       const totalGames = history.totalWins + history.totalLosses;
 
+      // Calculate luck factor
+      const currentTotalGames = roster.wins + roster.losses;
+      const expectedWins = calculateExpectedWins(Number(roster.pointsFor), currentTotalGames);
+      const luckFactor = Math.round((roster.wins - expectedWins) * 10) / 10;
+      const luckRating: "lucky" | "unlucky" | "neutral" =
+        luckFactor > 1 ? "lucky" : luckFactor < -1 ? "unlucky" : "neutral";
+
+      // Get owner avatar (use first team member's avatar)
+      const primaryOwner = roster.teamMembers[0]?.user;
+      const ownerAvatar = primaryOwner?.avatar || primaryOwner?.sleeperId || null;
+
+      // Get top scorer
+      const topPlayer = allPlayersSorted[0];
+      const topScorer = topPlayer && topPlayer.ppg > 0 ? {
+        playerName: topPlayer.fullName,
+        position: topPlayer.position,
+        ppg: Math.round(topPlayer.ppg * 10) / 10,
+      } : null;
+
       return {
         rank: 0, // Will be set after sorting
         previousRank: null,
@@ -318,6 +370,7 @@ export async function GET(
         sleeperId: roster.sleeperId,
         teamName: roster.teamName || "Unnamed Team",
         owners: roster.teamMembers.map((tm) => tm.user.displayName || tm.user.sleeperUsername),
+        ownerAvatar,
         overallScore,
         grade: getGrade(overallScore),
         record: {
@@ -345,6 +398,9 @@ export async function GET(
         starPower: Math.round(starPower * 10) / 10,
         depth: Math.round(depth * 10) / 10,
         trajectory,
+        luckFactor,
+        luckRating,
+        topScorer,
       };
     });
 

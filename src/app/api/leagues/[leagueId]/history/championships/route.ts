@@ -42,12 +42,21 @@ interface SeasonChampion {
 interface OwnerStats {
   userId: string;
   displayName: string;
+  avatar: string | null;
   championships: number;
   secondPlace: number;
   seasonsPlayed: number;
   bestSeason: number;
   totalWins: number;
   totalLosses: number;
+}
+
+interface TransactionCounts {
+  rosterId: string;
+  teamName: string;
+  ownerName: string;
+  trades: number;
+  waivers: number;
 }
 
 export async function GET(
@@ -125,6 +134,8 @@ export async function GET(
                     id: true,
                     displayName: true,
                     sleeperUsername: true,
+                    avatar: true,
+                    sleeperId: true,
                   },
                 },
               },
@@ -135,6 +146,87 @@ export async function GET(
       },
       orderBy: { season: "desc" },
     });
+
+    // Count trades and waivers by roster across all seasons
+    const transactionCounts: Map<string, TransactionCounts> = new Map();
+
+    // Get all transactions for the league chain
+    const allTransactions = await prisma.transaction.findMany({
+      where: { leagueId: { in: allLeagueIds } },
+      include: {
+        players: {
+          select: {
+            fromRosterId: true,
+            toRosterId: true,
+          },
+        },
+      },
+    });
+
+    // Build roster ID to team info mapping
+    const rosterInfoMap = new Map<string, { teamName: string; ownerName: string }>();
+    for (const league of relatedLeagues) {
+      for (const roster of league.rosters) {
+        const ownerName = roster.teamMembers[0]?.user?.displayName ||
+          roster.teamMembers[0]?.user?.sleeperUsername || "Unknown";
+        rosterInfoMap.set(roster.id, {
+          teamName: roster.teamName || "Unknown Team",
+          ownerName,
+        });
+      }
+    }
+
+    // Count transactions by roster
+    for (const tx of allTransactions) {
+      const involvedRosterIds = new Set<string>();
+
+      // For trades, count all involved rosters
+      if (tx.type === "TRADE") {
+        for (const player of tx.players) {
+          if (player.fromRosterId) involvedRosterIds.add(player.fromRosterId);
+          if (player.toRosterId) involvedRosterIds.add(player.toRosterId);
+        }
+        for (const rosterId of involvedRosterIds) {
+          const existing = transactionCounts.get(rosterId) || {
+            rosterId,
+            teamName: rosterInfoMap.get(rosterId)?.teamName || "Unknown",
+            ownerName: rosterInfoMap.get(rosterId)?.ownerName || "Unknown",
+            trades: 0,
+            waivers: 0,
+          };
+          existing.trades++;
+          transactionCounts.set(rosterId, existing);
+        }
+      }
+
+      // For waivers/free agents, count the acquiring roster
+      if (tx.type === "WAIVER" || tx.type === "FREE_AGENT") {
+        for (const player of tx.players) {
+          if (player.toRosterId) {
+            const existing = transactionCounts.get(player.toRosterId) || {
+              rosterId: player.toRosterId,
+              teamName: rosterInfoMap.get(player.toRosterId)?.teamName || "Unknown",
+              ownerName: rosterInfoMap.get(player.toRosterId)?.ownerName || "Unknown",
+              trades: 0,
+              waivers: 0,
+            };
+            existing.waivers++;
+            transactionCounts.set(player.toRosterId, existing);
+          }
+        }
+      }
+    }
+
+    // Find superlative leaders
+    const transactionCountsArray = [...transactionCounts.values()];
+    const mostTrades = transactionCountsArray.reduce(
+      (best, curr) => (curr.trades > (best?.trades || 0) ? curr : best),
+      null as TransactionCounts | null
+    );
+    const mostWaivers = transactionCountsArray.reduce(
+      (best, curr) => (curr.waivers > (best?.waivers || 0) ? curr : best),
+      null as TransactionCounts | null
+    );
 
     // Build championship history by season
     const championships: SeasonChampion[] = [];
@@ -212,6 +304,7 @@ export async function GET(
               userId,
               displayName:
                 member.user.displayName || member.user.sleeperUsername,
+              avatar: member.user.avatar || member.user.sleeperId || null,
               championships: 0,
               secondPlace: 0,
               seasonsPlayed: 0,
@@ -307,6 +400,12 @@ export async function GET(
             : best,
         null as { name: string; season: number; count: number } | null
       ),
+      mostTrades: mostTrades && mostTrades.trades > 0
+        ? { ownerName: mostTrades.ownerName, count: mostTrades.trades }
+        : null,
+      mostWaivers: mostWaivers && mostWaivers.waivers > 0
+        ? { ownerName: mostWaivers.ownerName, count: mostWaivers.waivers }
+        : null,
     };
 
     const response = NextResponse.json({

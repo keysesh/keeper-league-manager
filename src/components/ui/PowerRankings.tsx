@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { TrendingUp, TrendingDown, Minus, Crown, Shield, Zap, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
+import Image from "next/image";
+import { TrendingUp, TrendingDown, Minus, Crown, Zap, ChevronRight, Clover, Star } from "lucide-react";
 import { LEAGUE_CONFIG, getAgeValueModifier, getDraftPickValue } from "@/lib/constants/league-config";
 import { InfoModal } from "./InfoModal";
 import { cn, getGradeGradient } from "@/lib/design-tokens";
@@ -55,6 +56,7 @@ interface ApiPowerRanking {
   rosterId: string;
   teamName: string;
   owners: string[];
+  ownerAvatar: string | null;
   overallScore: number;
   grade: string;
   record: {
@@ -86,6 +88,30 @@ interface ApiPowerRanking {
   starPower: number;
   depth: number;
   trajectory: "rising" | "falling" | "stable";
+  luckFactor: number;
+  luckRating: "lucky" | "unlucky" | "neutral";
+  topScorer: {
+    playerName: string;
+    position: string | null;
+    ppg: number;
+  } | null;
+}
+
+// Stat name mapping from abbreviations to full names
+const STAT_LABELS: Record<string, string> = {
+  ROS: "Roster Strength",
+  STR: "Star Power",
+  DEP: "Depth",
+  KPR: "Keeper Value",
+  PCK: "Draft Capital",
+};
+
+function getAvatarUrl(avatarId: string | null): string | null {
+  if (!avatarId) return null;
+  // Check if it's already a URL
+  if (avatarId.startsWith("http")) return avatarId;
+  // Sleeper CDN URL
+  return `https://sleepercdn.com/avatars/thumbs/${avatarId}`;
 }
 
 export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false, condensed = false, viewAllHref }: PowerRankingsProps) {
@@ -130,19 +156,15 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
   const rankings = useApiData ? apiData.rankings : null;
   const rankedTeams = rankings ? [] : clientRankedTeams;
 
-  const maxScore = useApiData
-    ? Math.max(...(rankings?.map(r => r.overallScore) || [1]), 1)
-    : Math.max(...rankedTeams.map(t => t.powerScore), 1);
-
   if (isLoading) {
     return (
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden animate-pulse">
         <div className="px-4 py-4 border-b border-white/[0.06]">
           <div className="h-8 w-32 bg-white/[0.05] rounded-lg" />
         </div>
-        <div className="p-4 space-y-3">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="h-16 bg-white/[0.05] rounded-lg" />
+        <div className="p-4 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-80 bg-white/[0.05] rounded-xl" />
           ))}
         </div>
       </div>
@@ -161,46 +183,10 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
     );
   }
 
-  const getCondensedItems = <T extends { rosterId?: string; id?: string }>(
-    items: T[],
-    userId: string | undefined
-  ): { items: Array<T & { showSeparator?: boolean }>; hasMore: boolean } => {
-    if (items.length <= 6) {
-      return { items: items.map(item => ({ ...item })), hasMore: false };
-    }
-
-    const top3 = items.slice(0, 3);
-    const bottom2 = items.slice(-2);
-    const userIndex = userId ? items.findIndex(item => (item.rosterId || item.id) === userId) : -1;
-    const userInTop = userIndex >= 0 && userIndex < 3;
-    const userInBottom = userIndex >= items.length - 2;
-
-    if (userInTop || userInBottom || userIndex === -1) {
-      return {
-        items: [
-          ...top3.map(item => ({ ...item })),
-          { ...items[3], showSeparator: true } as T & { showSeparator?: boolean },
-          ...bottom2.map(item => ({ ...item })),
-        ],
-        hasMore: true,
-      };
-    }
-
-    return {
-      items: [
-        ...top3.map(item => ({ ...item })),
-        { ...items[userIndex], showSeparator: true } as T & { showSeparator?: boolean },
-        ...bottom2.map(item => ({ ...item })),
-      ],
-      hasMore: true,
-    };
-  };
-
-  // Render API-based rankings
+  // Render API-based rankings with card grid
   if (rankings && rankings.length > 0) {
-    const { items: displayRankings, hasMore } = condensed
-      ? getCondensedItems(rankings, userRosterId)
-      : { items: rankings.map(r => ({ ...r })), hasMore: false };
+    // For condensed mode, show only top 4 cards
+    const displayRankings = condensed ? rankings.slice(0, 4) : rankings;
 
     return (
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
@@ -213,10 +199,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
               <div>
                 <h3 className="text-base font-semibold text-white">Power Rankings</h3>
                 {!condensed && (
-                  <p className="text-sm text-slate-500">
-                    <span className="hidden sm:inline">ROS 50% · STR 20% · DEP 10% · KPR 10% · PCK 10%</span>
-                    <span className="sm:hidden">Roster + Stars + Depth + Keepers + Picks</span>
-                  </p>
+                  <p className="text-sm text-slate-500">Team cards with full analysis</p>
                 )}
               </div>
             </div>
@@ -232,11 +215,11 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                 label: "Score Breakdown",
                 expression: "Score = Roster (50%) + Stars (20%) + Depth (10%) + Keepers (10%) + Picks (10%)",
                 variables: [
-                  { name: "Roster", description: "Positional strength across QB, RB, WR, TE" },
-                  { name: "Stars", description: "Impact of top performers (high PPG players)" },
+                  { name: "Roster Strength", description: "Positional strength across QB, RB, WR, TE" },
+                  { name: "Star Power", description: "Impact of top performers (high PPG players)" },
                   { name: "Depth", description: "Quality of bench and backup players" },
-                  { name: "Keepers", description: "Value of locked keeper assets" },
-                  { name: "Picks", description: "Future draft capital owned" },
+                  { name: "Keeper Value", description: "Value of locked keeper assets" },
+                  { name: "Draft Capital", description: "Future draft capital owned" },
                 ],
               }}
               interpretation={[
@@ -275,138 +258,160 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           </div>
         </div>
 
-        <div className="divide-y divide-white/[0.06]">
+        {/* Card Grid Layout */}
+        <div className={cn(
+          "p-4 grid gap-4",
+          condensed
+            ? "grid-cols-2 lg:grid-cols-4"
+            : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        )}>
           {displayRankings.map((team) => {
-            const teamWithSeparator = team as typeof team & { showSeparator?: boolean };
             const isUser = team.rosterId === userRosterId;
-            const barWidth = (team.overallScore / maxScore) * 100;
             const gradeGradient = getGradeGradient(team.grade);
-
-            const changeIcon = team.change > 0 ? (
-              <span className="flex items-center text-emerald-400 text-xs font-medium">
-                <ChevronUp className="w-3 h-3" />{team.change}
-              </span>
-            ) : team.change < 0 ? (
-              <span className="flex items-center text-red-400 text-xs font-medium">
-                <ChevronDown className="w-3 h-3" />{Math.abs(team.change)}
-              </span>
-            ) : null;
+            const avatarUrl = getAvatarUrl(team.ownerAvatar);
+            const rosterScore = Math.round(team.positionalStrength.reduce((a, p) => a + p.score, 0) / Math.max(team.positionalStrength.length, 1));
 
             return (
-              <div key={team.rosterId}>
-                {teamWithSeparator.showSeparator && (
-                  <div className="flex items-center gap-2 py-1.5 px-4">
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
-                    <span className="text-xs text-slate-600">...</span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
-                  </div>
+              <div
+                key={team.rosterId}
+                className={cn(
+                  "relative bg-[#131a28] border rounded-xl overflow-hidden transition-all duration-200 hover:border-white/[0.15] hover:shadow-lg hover:shadow-purple-500/5",
+                  isUser ? "border-blue-500/30 ring-1 ring-blue-500/20" : "border-white/[0.08]"
                 )}
-                <div
-                  className={cn(
-                    "p-3 sm:p-4 transition-colors",
-                    isUser ? "bg-blue-500/5" : "hover:bg-white/[0.02]"
-                  )}
-                >
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    {/* Rank with change */}
-                    <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
-                      <div className={cn(
-                        "w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-sm",
-                        team.rank === 1 && "bg-amber-500 text-black",
-                        team.rank === 2 && "bg-slate-400 text-black",
-                        team.rank === 3 && "bg-orange-600 text-white",
-                        team.rank > 3 && "bg-white/[0.05] text-slate-400"
-                      )}>
-                        {team.rank === 1 ? <Crown className="w-4 h-4 sm:w-5 sm:h-5" /> : team.rank}
+              >
+                {/* Header: Avatar, Grade, Rank */}
+                <div className="p-4 pb-3 border-b border-white/[0.06]">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className="relative">
+                        {avatarUrl ? (
+                          <Image
+                            src={avatarUrl}
+                            alt={team.owners[0] || "Owner"}
+                            width={44}
+                            height={44}
+                            className="rounded-lg object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-slate-400 font-bold text-sm">
+                            {(team.owners[0] || "?")[0].toUpperCase()}
+                          </div>
+                        )}
+                        {team.rank <= 3 && (
+                          <div className={cn(
+                            "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                            team.rank === 1 && "bg-amber-500 text-black",
+                            team.rank === 2 && "bg-slate-400 text-black",
+                            team.rank === 3 && "bg-orange-600 text-white"
+                          )}>
+                            {team.rank === 1 ? <Crown className="w-3 h-3" /> : team.rank}
+                          </div>
+                        )}
                       </div>
-                      {!condensed && changeIcon}
-                    </div>
-
-                    {/* Team info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={cn(
-                          "text-sm sm:text-base font-medium truncate",
-                          isUser ? "text-blue-400" : "text-white"
-                        )}>
-                          {team.teamName}
-                        </span>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500 truncate">{team.owners[0] || "Unknown"}</p>
                         {isUser && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold uppercase">
                             You
                           </span>
                         )}
-                        {team.trajectory === "rising" && (
-                          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                        )}
-                        {team.trajectory === "falling" && (
-                          <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-                        )}
                       </div>
-
-                      {/* Power bar - only show in full mode */}
-                      {!condensed && (
-                        <div className="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full transition-all duration-500 bg-gradient-to-r",
-                              gradeGradient
-                            )}
-                            style={{ width: `${barWidth}%` }}
-                          />
-                        </div>
-                      )}
-
-                      {/* Stats row */}
-                      <div className={cn(
-                        "flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-slate-500",
-                        condensed ? "mt-1" : "mt-2"
-                      )}>
-                        <span className="font-medium">
-                          {team.historicalRecord
-                            ? `${team.historicalRecord.totalWins}-${team.historicalRecord.totalLosses}`
-                            : `${team.record.wins}-${team.record.losses}`
-                          }
-                        </span>
-                        {!condensed && team.historicalRecord && (
-                          <span>{team.historicalRecord.winPct}% win</span>
-                        )}
-                        {!condensed && <span className="hidden sm:inline">★ {team.starPower.toFixed(1)} PPG</span>}
-                      </div>
-
-                      {/* Component Score Breakdown */}
-                      {!condensed && (
-                        <div className="mt-3 flex items-center gap-1 flex-wrap">
-                          <ScoreChip label="ROS" value={Math.round(team.positionalStrength.reduce((a, p) => a + p.score, 0) / Math.max(team.positionalStrength.length, 1))} tooltip="Roster (50%)" />
-                          <ScoreChip label="STR" value={Math.round(team.starPower)} tooltip="Stars (20%)" />
-                          <ScoreChip label="DEP" value={Math.round(team.depth)} tooltip="Depth (10%)" />
-                          <ScoreChip label="KPR" value={Math.round(team.keeperValue)} tooltip="Keepers (10%)" />
-                          <ScoreChip label="PCK" value={Math.round(team.draftCapital)} tooltip="Picks (10%)" />
-                        </div>
-                      )}
                     </div>
 
-                    {/* Grade badge */}
-                    <div className="flex-shrink-0">
+                    {/* Grade Badge */}
+                    <div className="flex flex-col items-center">
                       <div className={cn(
-                        "w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base sm:text-lg text-white bg-gradient-to-br shadow-lg",
+                        "w-11 h-11 rounded-xl flex items-center justify-center font-bold text-lg text-white bg-gradient-to-br shadow-lg",
                         gradeGradient
                       )}>
                         {team.grade}
                       </div>
-                      {!condensed && (
-                        <div className="text-xs text-slate-500 text-center mt-1">{team.overallScore} pts</div>
-                      )}
+                      <span className="text-[10px] text-slate-500 mt-1">#{team.rank}</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Team Info */}
+                <div className="px-4 py-3 border-b border-white/[0.06]">
+                  <h4 className={cn(
+                    "text-sm font-semibold truncate",
+                    isUser ? "text-blue-400" : "text-white"
+                  )}>
+                    {team.teamName}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                    <span className="font-medium">
+                      {team.historicalRecord
+                        ? `${team.historicalRecord.totalWins}-${team.historicalRecord.totalLosses}`
+                        : `${team.record.wins}-${team.record.losses}`}
+                    </span>
+                    <span>•</span>
+                    <span>{team.historicalRecord?.winPct || Math.round((team.record.wins / Math.max(team.record.wins + team.record.losses, 1)) * 100)}% win</span>
+                    {team.trajectory !== "stable" && (
+                      <>
+                        {team.trajectory === "rising" ? (
+                          <TrendingUp className="w-3 h-3 text-emerald-400 ml-auto" />
+                        ) : (
+                          <TrendingDown className="w-3 h-3 text-red-400 ml-auto" />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stats Breakdown - Only show in full mode */}
+                {!condensed && (
+                  <div className="px-4 py-3 space-y-2 border-b border-white/[0.06]">
+                    <StatBar label="Roster Strength" value={rosterScore} />
+                    <StatBar label="Star Power" value={Math.round(team.starPower * 5)} />
+                    <StatBar label="Depth" value={Math.round(team.depth * 10)} />
+                    <StatBar label="Keeper Value" value={Math.min(100, Math.round(team.keeperValue * 5))} />
+                    <StatBar label="Draft Capital" value={Math.min(100, team.draftCapital)} />
+                  </div>
+                )}
+
+                {/* Luck & Top Scorer */}
+                <div className="px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Clover className={cn(
+                      "w-3.5 h-3.5",
+                      team.luckRating === "lucky" ? "text-emerald-400" :
+                      team.luckRating === "unlucky" ? "text-red-400" : "text-slate-400"
+                    )} />
+                    <span className="text-slate-400">Luck:</span>
+                    <span className={cn(
+                      "font-medium",
+                      team.luckRating === "lucky" ? "text-emerald-400" :
+                      team.luckRating === "unlucky" ? "text-red-400" : "text-slate-400"
+                    )}>
+                      {team.luckFactor > 0 ? "+" : ""}{team.luckFactor}
+                    </span>
+                    <span className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded capitalize",
+                      team.luckRating === "lucky" ? "bg-emerald-500/15 text-emerald-400" :
+                      team.luckRating === "unlucky" ? "bg-red-500/15 text-red-400" :
+                      "bg-slate-500/15 text-slate-400"
+                    )}>
+                      {team.luckRating}
+                    </span>
+                  </div>
+                  {team.topScorer && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <Star className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-slate-400 truncate flex-1">{team.topScorer.playerName}</span>
+                      <span className="text-amber-400 font-medium">{team.topScorer.ppg} PPG</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* View All link */}
-        {condensed && hasMore && viewAllHref && (
+        {/* View All link for condensed mode */}
+        {condensed && viewAllHref && rankings.length > 4 && (
           <Link
             href={viewAllHref}
             className="group flex items-center justify-center gap-1 py-3 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors hover:bg-white/[0.02] border-t border-white/[0.06]"
@@ -419,20 +424,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
     );
   }
 
-  // ScoreChip component for breakdown display
-  function ScoreChip({ label, value, tooltip }: { label: string; value: number; tooltip: string }) {
-    return (
-      <div
-        className="px-2 py-1 rounded bg-white/[0.04] border border-white/[0.06] text-[11px] flex items-center gap-1.5 group relative cursor-help"
-        title={tooltip}
-      >
-        <span className="text-slate-500 font-medium">{label}</span>
-        <span className="text-white font-bold">{value}</span>
-      </div>
-    );
-  }
-
-  // Fallback client-side rendering
+  // Fallback client-side rendering (simple card layout)
   return (
     <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
       <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
@@ -447,24 +439,22 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
         </div>
       </div>
 
-      <div className="divide-y divide-white/[0.06]">
+      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {rankedTeams.map((team, index) => {
           const rank = index + 1;
           const isUser = team.id === userRosterId;
-          const barWidth = (team.powerScore / maxScore) * 100;
 
           return (
             <div
               key={team.id}
               className={cn(
-                "p-4 transition-colors",
-                isUser ? "bg-blue-500/5" : "hover:bg-white/[0.02]"
+                "bg-[#131a28] border rounded-xl p-4 transition-all duration-200 hover:border-white/[0.15]",
+                isUser ? "border-blue-500/30" : "border-white/[0.08]"
               )}
             >
-              <div className="flex items-center gap-4">
-                {/* Rank */}
+              <div className="flex items-center justify-between mb-3">
                 <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base flex-shrink-0",
+                  "w-10 h-10 rounded-lg flex items-center justify-center font-bold text-base",
                   rank === 1 && "bg-amber-500 text-black",
                   rank === 2 && "bg-slate-400 text-black",
                   rank === 3 && "bg-orange-600 text-white",
@@ -472,60 +462,60 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                 )}>
                   {rank === 1 ? <Crown className="w-5 h-5" /> : rank}
                 </div>
-
-                {/* Team info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-base font-medium truncate",
-                      isUser ? "text-blue-400" : "text-white"
-                    )}>
-                      {team.teamName || `Team ${team.id.slice(0, 6)}`}
-                    </span>
-                    {isUser && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold uppercase">
-                        You
-                      </span>
-                    )}
-                    {team.trend === "up" && <TrendingUp className="w-4 h-4 text-emerald-400" />}
-                    {team.trend === "down" && <TrendingDown className="w-4 h-4 text-red-400" />}
-                  </div>
-
-                  {/* Power bar */}
-                  <div className="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-500",
-                        rank === 1 && "bg-amber-500",
-                        rank <= 3 && rank > 1 && "bg-emerald-500",
-                        rank <= 6 && rank > 3 && "bg-blue-500",
-                        rank > 6 && "bg-slate-500"
-                      )}
-                      style={{ width: `${barWidth}%` }}
-                    />
-                  </div>
-
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <Shield className="w-3.5 h-3.5" />
-                      {team.keepers.length} keepers
-                    </span>
-                    <span className="font-medium">{team.wins}-{team.losses}</span>
-                    <span>{team.draftPicksOwned}/{team.draftPicksTotal} picks</span>
-                  </div>
-                </div>
-
-                {/* Score */}
-                <div className="text-right flex-shrink-0">
+                <div className="text-right">
                   <div className="text-xl font-bold text-white">{Math.round(team.powerScore)}</div>
                   <div className="text-xs text-slate-500">PWR</div>
                 </div>
+              </div>
+
+              <div className="flex items-center gap-2 mb-2">
+                <span className={cn(
+                  "text-sm font-medium truncate",
+                  isUser ? "text-blue-400" : "text-white"
+                )}>
+                  {team.teamName || `Team ${team.id.slice(0, 6)}`}
+                </span>
+                {isUser && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded font-bold uppercase">
+                    You
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-slate-500">
+                <span className="font-medium">{team.wins}-{team.losses}</span>
+                <span>{team.keepers.length} keepers</span>
+                {team.trend === "up" && <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />}
+                {team.trend === "down" && <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
               </div>
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Stat Bar Component for visual breakdown
+function StatBar({ label, value }: { label: string; value: number }) {
+  const clampedValue = Math.min(100, Math.max(0, value));
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] text-slate-500 w-24 truncate">{label}</span>
+      <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-500",
+            clampedValue >= 80 ? "bg-emerald-500" :
+            clampedValue >= 60 ? "bg-blue-500" :
+            clampedValue >= 40 ? "bg-slate-500" :
+            "bg-orange-500"
+          )}
+          style={{ width: `${clampedValue}%` }}
+        />
+      </div>
+      <span className="text-[11px] text-slate-400 font-medium w-6 text-right">{Math.round(clampedValue)}</span>
     </div>
   );
 }
