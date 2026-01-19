@@ -77,10 +77,14 @@ interface ApiPowerRanking {
     score: number;
     grade: string;
   }>;
-  keeperValue: number;
+  winRate: number;
   draftCapital: number;
   starPower: number;
   depth: number;
+  // Raw values for tooltips
+  rawStarPower: number;
+  rawDepth: number;
+  rawDraftCapital: number;
   trajectory: "rising" | "falling" | "stable";
   luckFactor: number;
   luckRating: "lucky" | "unlucky" | "neutral";
@@ -179,18 +183,18 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
           </div>
           <InfoModal
             title="Power Rankings"
-            description="Combined score based on roster strength, record, and draft capital."
+            description="Combined score based on roster strength, win rate, and draft capital. Each stat shows your percentile rank (0-100) compared to the league."
             formula={{
               label: "Formula",
-              expression: "Roster (50%) + Stars (20%) + Depth (10%) + Keepers (10%) + Picks (10%)",
+              expression: "ROS (50%) + STR (20%) + DEP (10%) + WIN (10%) + PCK (10%)",
               variables: [],
             }}
             interpretation={[
-              { value: "ROS", meaning: "Roster strength", color: "text-emerald-400" },
-              { value: "STR", meaning: "Star power (elite players)", color: "text-blue-400" },
-              { value: "DEP", meaning: "Roster depth", color: "text-blue-400" },
-              { value: "KPR", meaning: "Keeper value", color: "text-orange-400" },
-              { value: "PCK", meaning: "Draft capital", color: "text-purple-400" },
+              { value: "ROS", meaning: "Roster Strength (50%) — Avg of position scores, weighted: QB(15%) + RB(30%) + WR(30%) + TE(15%) + K(5%) + DEF(5%)", color: "text-emerald-400" },
+              { value: "STR", meaning: "Star Power (20%) — Avg PPG of your top 3 players. Higher = more elite talent", color: "text-blue-400" },
+              { value: "DEP", meaning: "Depth (10%) — Avg PPG of bench players (4-10). Higher = stronger depth", color: "text-blue-400" },
+              { value: "WIN", meaning: "Win Rate (10%) — Your historical win percentage. 100 = best in league", color: "text-amber-400" },
+              { value: "PCK", meaning: "Draft Capital (10%) — Value of draft picks owned. Round 1 = 16 pts, Round 16 = 1 pt", color: "text-purple-400" },
             ]}
             iconSize={16}
           />
@@ -289,11 +293,31 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 
                 {/* Stats Breakdown */}
                 <div className="mt-3 pt-3 border-t border-white/5 grid grid-cols-5 gap-1">
-                  <StatChip label="ROS" value={rosterScore} />
-                  <StatChip label="STR" value={team.starPower} />
-                  <StatChip label="DEP" value={team.depth} />
-                  <StatChip label="KPR" value={team.keeperValue} />
-                  <StatChip label="PCK" value={team.draftCapital} />
+                  <StatChip
+                    label="ROS"
+                    value={rosterScore}
+                    tooltip={`Roster Strength: ${rosterScore}/100 avg position score`}
+                  />
+                  <StatChip
+                    label="STR"
+                    value={team.starPower}
+                    tooltip={`Star Power: Top 3 avg ${team.rawStarPower} PPG (${team.starPower}th %ile)`}
+                  />
+                  <StatChip
+                    label="DEP"
+                    value={team.depth}
+                    tooltip={`Depth: Bench avg ${team.rawDepth} PPG (${team.depth}th %ile)`}
+                  />
+                  <StatChip
+                    label="WIN"
+                    value={team.winRate}
+                    tooltip={`Win Rate: ${team.historicalRecord ? `${team.historicalRecord.totalWins}-${team.historicalRecord.totalLosses}` : `${team.record.wins}-${team.record.losses}`} (${team.historicalRecord?.winPct || winPct}% wins)`}
+                  />
+                  <StatChip
+                    label="PCK"
+                    value={team.draftCapital}
+                    tooltip={`Draft Capital: ${team.rawDraftCapital} pts (${team.draftCapital}th %ile)`}
+                  />
                 </div>
               </div>
             );
@@ -373,14 +397,14 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
   );
 }
 
-function StatChip({ label, value }: { label: string; value: number }) {
+function StatChip({ label, value, tooltip }: { label: string; value: number; tooltip?: string }) {
   const clampedValue = Math.min(100, Math.max(0, value));
   const colorClass = clampedValue >= 80 ? "text-emerald-400" :
     clampedValue >= 60 ? "text-blue-400" :
     clampedValue >= 40 ? "text-slate-400" : "text-orange-400";
 
   return (
-    <div className="text-center">
+    <div className="text-center cursor-help" title={tooltip}>
       <div className={cn("text-xs font-bold", colorClass)}>{Math.round(clampedValue)}</div>
       <div className="text-[9px] text-slate-500">{label}</div>
     </div>

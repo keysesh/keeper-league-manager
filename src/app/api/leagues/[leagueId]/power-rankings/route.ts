@@ -58,10 +58,14 @@ interface PowerRanking {
     }>;
   };
   positionalStrength: PositionalStrength[];
-  keeperValue: number;
+  winRate: number;
   draftCapital: number;
   starPower: number;
   depth: number;
+  // Raw values for tooltips
+  rawStarPower: number;
+  rawDepth: number;
+  rawDraftCapital: number;
   trajectory: "rising" | "falling" | "stable";
   luckFactor: number;
   luckRating: "lucky" | "unlucky" | "neutral";
@@ -310,24 +314,25 @@ export async function GET(
         ? benchPlayers.reduce((sum, p) => sum + p.ppg, 0) / benchPlayers.length
         : 0;
 
-      // Keeper value - sum of keeper cost savings (lower cost = higher value)
-      const keeperValue = roster.keepers.reduce((sum, k) => {
-        const costSaving = Math.max(0, 8 - k.finalCost); // Assuming round 8 is baseline
-        return sum + costSaving;
-      }, 0);
-
       // Draft capital - weighted by round
       const draftCapital = roster.draftPicks.reduce((sum, pick) => {
         const roundValue = Math.max(0, 17 - pick.round); // Round 1 = 16 points, Round 16 = 1 point
         return sum + roundValue;
       }, 0);
 
+      // Win rate from historical record (will be normalized to percentile later)
+      const totalGamesPlayed = history.totalWins + history.totalLosses;
+      const rawWinPct = totalGamesPlayed > 0
+        ? (history.totalWins / totalGamesPlayed) * 100
+        : 50; // Default to 50% if no games
+
       // Calculate overall score (weighted combination)
+      // Note: winRate will be normalized to percentile later, using rawWinPct here
       const overallScore = Math.round(
         totalPositionalScore * 0.5 + // 50% positional strength
         (starPower / 20) * 100 * 0.2 + // 20% star power
         (depth / 10) * 100 * 0.1 + // 10% depth
-        Math.min(100, keeperValue * 5) * 0.1 + // 10% keeper value
+        rawWinPct * 0.1 + // 10% win rate
         Math.min(100, draftCapital) * 0.1 // 10% draft capital
       );
 
@@ -393,10 +398,14 @@ export async function GET(
           })),
         },
         positionalStrength,
-        keeperValue: Math.round(keeperValue * 10) / 10,
+        winRate: Math.round(rawWinPct * 10) / 10, // Will be normalized to percentile later
         draftCapital,
         starPower: Math.round(starPower * 10) / 10,
         depth: Math.round(depth * 10) / 10,
+        // Raw values for tooltips
+        rawStarPower: Math.round(starPower * 10) / 10,
+        rawDepth: Math.round(depth * 10) / 10,
+        rawDraftCapital: draftCapital,
         trajectory,
         luckFactor,
         luckRating,
@@ -421,19 +430,19 @@ export async function GET(
 
     const starPowers = rankings.map(r => r.starPower);
     const depths = rankings.map(r => r.depth);
-    const keeperValues = rankings.map(r => r.keeperValue);
+    const winRates = rankings.map(r => r.winRate);
     const draftCapitals = rankings.map(r => r.draftCapital);
 
     const normalizedStarPower = normalizeToPercentile(starPowers);
     const normalizedDepth = normalizeToPercentile(depths);
-    const normalizedKeeperValue = normalizeToPercentile(keeperValues);
+    const normalizedWinRate = normalizeToPercentile(winRates);
     const normalizedDraftCapital = normalizeToPercentile(draftCapitals);
 
-    // Update rankings with normalized values
+    // Update rankings with normalized values (raw values preserved for tooltips)
     rankings.forEach((r, idx) => {
       r.starPower = normalizedStarPower[idx];
       r.depth = normalizedDepth[idx];
-      r.keeperValue = normalizedKeeperValue[idx];
+      r.winRate = normalizedWinRate[idx];
       r.draftCapital = normalizedDraftCapital[idx];
     });
 
@@ -445,7 +454,7 @@ export async function GET(
         positionalStrength: "50%",
         starPower: "20%",
         depth: "10%",
-        keeperValue: "10%",
+        winRate: "10%",
         draftCapital: "10%",
       },
     });
