@@ -1,6 +1,8 @@
 /**
  * Power Rankings API Route
  * GET /api/leagues/[leagueId]/power-rankings - Calculate team power rankings
+ *
+ * Now includes HISTORICAL record data across all linked seasons
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -30,6 +32,7 @@ interface PowerRanking {
   previousRank: number | null;
   change: number;
   rosterId: string;
+  sleeperId: string;
   teamName: string;
   owners: string[];
   overallScore: number;
@@ -40,12 +43,56 @@ interface PowerRanking {
     ties: number;
     pointsFor: number;
   };
+  historicalRecord: {
+    totalWins: number;
+    totalLosses: number;
+    totalPointsFor: number;
+    winPct: number;
+    seasonsPlayed: number;
+    seasonBreakdown: Array<{
+      season: number;
+      wins: number;
+      losses: number;
+      pointsFor: number;
+    }>;
+  };
   positionalStrength: PositionalStrength[];
   keeperValue: number;
   draftCapital: number;
-  starPower: number; // Top 3 players average
-  depth: number; // Bench strength
+  starPower: number;
+  depth: number;
   trajectory: "rising" | "falling" | "stable";
+}
+
+/**
+ * Get all league IDs in the chain (current + all previous seasons)
+ */
+async function getLeagueChain(leagueId: string): Promise<string[]> {
+  const leagueIds: string[] = [];
+  let currentId: string | null = leagueId;
+
+  while (currentId) {
+    const league: { id: string; previousLeagueId: string | null; sleeperId: string } | null =
+      await prisma.league.findUnique({
+        where: { id: currentId },
+        select: { id: true, previousLeagueId: true, sleeperId: true },
+      });
+
+    if (!league) break;
+    leagueIds.push(league.id);
+
+    if (league.previousLeagueId && league.previousLeagueId !== "0") {
+      const prevLeague: { id: string } | null = await prisma.league.findFirst({
+        where: { sleeperId: league.previousLeagueId },
+        select: { id: true },
+      });
+      currentId = prevLeague?.id || null;
+    } else {
+      currentId = null;
+    }
+  }
+
+  return leagueIds;
 }
 
 // Position weights for scoring
@@ -86,7 +133,60 @@ export async function GET(
 
     const { leagueId } = await params;
 
-    // Fetch all rosters with players, keepers, and draft picks
+    // Get all leagues in the chain for historical data
+    const leagueIds = await getLeagueChain(leagueId);
+
+    // Fetch historical rosters for record aggregation
+    const historicalRosters = await prisma.roster.findMany({
+      where: { leagueId: { in: leagueIds } },
+      include: {
+        league: { select: { season: true } },
+      },
+    });
+
+    // Aggregate historical stats by sleeperId
+    const historicalStats: Record<
+      string,
+      {
+        totalWins: number;
+        totalLosses: number;
+        totalPointsFor: number;
+        seasons: Array<{
+          season: number;
+          wins: number;
+          losses: number;
+          pointsFor: number;
+        }>;
+      }
+    > = {};
+
+    for (const roster of historicalRosters) {
+      const key = roster.sleeperId;
+      if (!historicalStats[key]) {
+        historicalStats[key] = {
+          totalWins: 0,
+          totalLosses: 0,
+          totalPointsFor: 0,
+          seasons: [],
+        };
+      }
+      historicalStats[key].totalWins += roster.wins;
+      historicalStats[key].totalLosses += roster.losses;
+      historicalStats[key].totalPointsFor += Number(roster.pointsFor);
+      historicalStats[key].seasons.push({
+        season: roster.league.season,
+        wins: roster.wins,
+        losses: roster.losses,
+        pointsFor: Number(roster.pointsFor),
+      });
+    }
+
+    // Sort seasons chronologically
+    Object.values(historicalStats).forEach((stats) => {
+      stats.seasons.sort((a, b) => a.season - b.season);
+    });
+
+    // Fetch current rosters with players, keepers, and draft picks
     const rosters = await prisma.roster.findMany({
       where: { leagueId },
       include: {
@@ -109,6 +209,12 @@ export async function GET(
 
     // Calculate power score for each roster
     const rankings: PowerRanking[] = rosters.map((roster) => {
+      const history = historicalStats[roster.sleeperId] || {
+        totalWins: roster.wins,
+        totalLosses: roster.losses,
+        totalPointsFor: Number(roster.pointsFor),
+        seasons: [],
+      };
       const players = roster.rosterPlayers.map((rp) => ({
         id: rp.player.id,
         fullName: rp.player.fullName,
@@ -202,11 +308,14 @@ export async function GET(
       if (avgAge < 25.5 || youngStars >= 3) trajectory = "rising";
       else if (avgAge > 28) trajectory = "falling";
 
+      const totalGames = history.totalWins + history.totalLosses;
+
       return {
         rank: 0, // Will be set after sorting
         previousRank: null,
         change: 0,
         rosterId: roster.id,
+        sleeperId: roster.sleeperId,
         teamName: roster.teamName || "Unnamed Team",
         owners: roster.teamMembers.map((tm) => tm.user.displayName || tm.user.sleeperUsername),
         overallScore,
@@ -216,6 +325,19 @@ export async function GET(
           losses: roster.losses,
           ties: roster.ties,
           pointsFor: Number(roster.pointsFor),
+        },
+        historicalRecord: {
+          totalWins: history.totalWins,
+          totalLosses: history.totalLosses,
+          totalPointsFor: Math.round(history.totalPointsFor),
+          winPct: totalGames > 0 ? Math.round((history.totalWins / totalGames) * 1000) / 10 : 0,
+          seasonsPlayed: history.seasons.length,
+          seasonBreakdown: history.seasons.map((s) => ({
+            season: s.season,
+            wins: s.wins,
+            losses: s.losses,
+            pointsFor: Math.round(s.pointsFor),
+          })),
         },
         positionalStrength,
         keeperValue: Math.round(keeperValue * 10) / 10,
@@ -234,6 +356,7 @@ export async function GET(
 
     const response = NextResponse.json({
       rankings,
+      totalSeasons: leagueIds.length,
       generatedAt: new Date().toISOString(),
       methodology: {
         positionalStrength: "50%",
