@@ -12,6 +12,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     keeper: {
       findMany: vi.fn(),
+      count: vi.fn(),
       update: vi.fn(),
     },
     draftPick: {
@@ -37,6 +38,8 @@ import {
 describe("Cascade Calculator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for keeper count - returns 0 (new keeper)
+    vi.mocked(prisma.keeper.count).mockResolvedValue(0);
   });
 
   afterEach(() => {

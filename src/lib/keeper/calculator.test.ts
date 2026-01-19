@@ -17,6 +17,7 @@ vi.mock("@/lib/prisma", () => ({
     keeper: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
     },
     draftPick: {
       findFirst: vi.fn(),
@@ -38,6 +39,8 @@ import {
 describe("Keeper Calculator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for keeper count - returns 0 (new keeper)
+    vi.mocked(prisma.keeper.count).mockResolvedValue(0);
   });
 
   afterEach(() => {
@@ -224,6 +227,9 @@ describe("Keeper Calculator", () => {
         sleeperId: "sleeper-player-1",
       } as any);
 
+      // Player was kept 1 time before (in 2025)
+      vi.mocked(prisma.keeper.count).mockResolvedValue(1);
+
       const cost = await calculateBaseCost(
         "player-1",
         "roster-1",
@@ -235,7 +241,7 @@ describe("Keeper Calculator", () => {
         } as any
       );
 
-      // Year 2: baseCost = 5, yearsOnRoster = 1, effectiveCost = 5 - 1 = 4
+      // Year 2: baseCost = 5, totalKeeperYears = 1, effectiveCost = 5 - 1 = 4
       expect(cost).toBe(4);
     });
 
@@ -308,6 +314,9 @@ describe("Keeper Calculator", () => {
         sleeperId: "sleeper-player-1",
       } as any);
 
+      // Player was kept 3 times before (in 2023, 2024, 2025)
+      vi.mocked(prisma.keeper.count).mockResolvedValue(3);
+
       const cost = await calculateBaseCost(
         "player-1",
         "roster-1",
@@ -319,7 +328,7 @@ describe("Keeper Calculator", () => {
         } as any
       );
 
-      // baseCost = 2, yearsOnRoster = 3, effectiveCost = max(1, 2 - 3) = 1
+      // baseCost = 2, totalKeeperYears = 3, effectiveCost = max(1, 2 - 3) = 1
       expect(cost).toBe(1);
     });
   });
