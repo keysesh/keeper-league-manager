@@ -186,10 +186,11 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
               variables: [],
             }}
             interpretation={[
-              { value: "A+", meaning: "Elite", color: "text-amber-400" },
-              { value: "A", meaning: "Contender", color: "text-emerald-400" },
-              { value: "B", meaning: "Playoff team", color: "text-blue-400" },
-              { value: "C", meaning: "Rebuilding", color: "text-slate-400" },
+              { value: "ROS", meaning: "Roster strength", color: "text-emerald-400" },
+              { value: "STR", meaning: "Star power (elite players)", color: "text-blue-400" },
+              { value: "DEP", meaning: "Roster depth", color: "text-blue-400" },
+              { value: "KPR", meaning: "Keeper value", color: "text-orange-400" },
+              { value: "PCK", meaning: "Draft capital", color: "text-purple-400" },
             ]}
             iconSize={16}
           />
