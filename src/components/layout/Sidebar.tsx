@@ -13,12 +13,10 @@ import {
   ChevronLeft,
   Shield,
   UserCircle,
-  History,
   Activity,
   FileText,
   Trophy,
   TrendingUp,
-  Dices,
   BarChart3,
   Bookmark,
 } from "lucide-react";
@@ -85,7 +83,6 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
           items: [
             { name: "Standings", href: `/league/${leagueId}#standings`, icon: BarChart3 },
             { name: "Power Rankings", href: `/league/${leagueId}#power-rankings`, icon: TrendingUp },
-            { name: "Luck Factor", href: `/league/${leagueId}#luck`, icon: Dices },
             { name: "All Teams", href: `/league/${leagueId}/team`, icon: Users },
           ],
         },

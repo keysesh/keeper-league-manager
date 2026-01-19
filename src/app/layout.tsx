@@ -26,7 +26,10 @@ export const metadata: Metadata = {
   title: "Keeper League Manager",
   description: "Manage your fantasy football keeper league with ease",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/favicon.svg",
   },
 };
 

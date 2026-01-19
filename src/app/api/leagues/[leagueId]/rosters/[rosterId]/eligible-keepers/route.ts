@@ -189,9 +189,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Also track keeper picks from Sleeper (isKeeper flag on draft picks)
     // These represent historical keeper designations that may not be in our Keeper table
+    // FIX: Track ALL keeper picks for a player regardless of who owned them at the time
+    // This ensures offseason trade acquisitions correctly count years kept by previous owners
     const keeperPicksByPlayer = new Map<string, number[]>(); // playerId -> array of seasons kept
     for (const pick of draftPicks) {
-      if (pick.isKeeper && pick.playerId && pick.roster?.sleeperId === currentSleeperId) {
+      // Include ALL keeper picks for this player across ALL rosters (not just current owner)
+      // This ensures George Pickens shows yearsKept=3 even if traded after being kept
+      if (pick.isKeeper && pick.playerId) {
         const seasons = keeperPicksByPlayer.get(pick.playerId) || [];
         if (!seasons.includes(pick.draft.season)) {
           seasons.push(pick.draft.season);

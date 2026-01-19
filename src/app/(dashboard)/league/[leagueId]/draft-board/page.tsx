@@ -580,8 +580,8 @@ export default function DraftBoardPage() {
                   </span>
                 </div>
                 {/* Horizontal scrolling picks */}
-                <div className="overflow-x-auto">
-                  <div className="flex gap-2 p-3" style={{ minWidth: "max-content" }}>
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                  <div className="flex gap-2 p-3 min-w-max">
                     {row.slots.map((slot, slotIndex) => {
                       const columnColor = getTeamColor(slotIndex);
                       const keeper = slot.keeper;
@@ -589,7 +589,7 @@ export default function DraftBoardPage() {
                       const teamName = slot.rosterName || `Team ${slotIndex + 1}`;
 
                       return (
-                        <div key={slot.rosterId} className="flex flex-col gap-1.5" style={{ width: "140px", flexShrink: 0 }}>
+                        <div key={slot.rosterId} className="flex flex-col gap-1.5 w-28 sm:w-32 md:w-36 flex-shrink-0">
                           {/* Team name chip */}
                           <div className={`text-center text-[10px] font-semibold ${columnColor.accent} truncate px-1`}>
                             {teamName}
@@ -612,8 +612,8 @@ export default function DraftBoardPage() {
         ) : (
           /* Desktop Grid View - Traditional table */
           <div className="rounded-md overflow-hidden border border-[#2a2a2a] bg-[#0d0d0d]">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse" style={{ minWidth: `${rosters.length * 145 + 70}px` }}>
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+              <table className="w-full border-collapse min-w-max">
                 {/* Sticky Header */}
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-[#1a1a1a] border-b-2 border-[#333333]">
@@ -625,7 +625,7 @@ export default function DraftBoardPage() {
                       const teamData = data.cascade.find(t => t.rosterId === roster.rosterId);
                       const keeperCount = teamData?.results.length || 0;
                       return (
-                        <th key={roster.rosterId} className="px-2 py-3 min-w-[140px] border-r border-[#222222] last:border-r-0">
+                        <th key={roster.rosterId} className="px-2 py-3 min-w-[120px] md:min-w-[140px] border-r border-[#222222] last:border-r-0">
                           <div className="flex flex-col items-center gap-1">
                             <div className={`w-2 h-2 rounded-full ${color.bg}`} />
                             <span className={`text-xs font-bold ${color.accent} truncate max-w-[110px]`} title={roster.rosterName || undefined}>
