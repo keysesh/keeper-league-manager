@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Trophy, ArrowLeftRight, Star, Coins, BarChart3, type LucideIcon } from "lucide-react";
+import { Sparkles, type LucideIcon } from "lucide-react";
 
 interface FunFact {
   icon: LucideIcon;
