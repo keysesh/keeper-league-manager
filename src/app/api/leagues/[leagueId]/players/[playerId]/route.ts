@@ -193,12 +193,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         : null,
     }));
 
-    // Calculate fantasy stats summary
-    const recentStats = player.seasonStats[0];
-    const ppgLastSeason = recentStats && recentStats.gamesPlayed > 0
-      ? Math.round((recentStats.fantasyPointsPpr / recentStats.gamesPlayed) * 10) / 10
-      : null;
-
     // Build timeline for this league
     type TimelineEvent = {
       season: number;

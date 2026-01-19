@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import useSWR from "swr";
-import { ArrowLeftRight, Sparkles, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { ArrowLeftRight, Sparkles, ChevronDown, ChevronUp, ArrowRight, User, Users } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { cn } from "@/lib/design-tokens";
 
@@ -42,9 +42,11 @@ interface RecentTradesProps {
 /**
  * Recent Trades component - Condensed horizontal card layout
  * Shows the latest trades in the league with click-to-expand
+ * Defaults to showing user's trades when userRosterId is provided
  */
 export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTradesProps) {
   const [expandedTrade, setExpandedTrade] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"my" | "all">(userRosterId ? "my" : "all");
 
   const { data, isLoading, error } = useSWR<{
     trades: RecentTrade[];
@@ -59,6 +61,26 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30000 }
   );
+
+  // All hooks must be called before any early returns
+  const trades = data?.trades ?? [];
+  const stats = data?.stats;
+
+  // Filter trades based on user selection
+  const filteredTrades = useMemo(() => {
+    if (filter === "all" || !userRosterId) return trades;
+    return trades.filter(trade =>
+      trade.parties.some(p => p.rosterId === userRosterId)
+    );
+  }, [trades, filter, userRosterId]);
+
+  // Count user's trades for display
+  const myTradesCount = useMemo(() => {
+    if (!userRosterId) return 0;
+    return trades.filter(trade =>
+      trade.parties.some(p => p.rosterId === userRosterId)
+    ).length;
+  }, [trades, userRosterId]);
 
   if (isLoading) {
     return (
@@ -87,8 +109,6 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
     );
   }
 
-  const { trades, stats } = data;
-
   if (trades.length === 0) {
     return (
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-6 text-center">
@@ -113,22 +133,67 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
             <div>
               <h3 className="text-sm font-semibold text-white">Recent Trades</h3>
               <p className="text-xs text-slate-500">
-                {stats.totalTrades} trade{stats.totalTrades !== 1 ? "s" : ""} · {stats.playersTraded} players
+                {filter === "my" && userRosterId
+                  ? `${myTradesCount} of your trade${myTradesCount !== 1 ? "s" : ""}`
+                  : `${stats!.totalTrades} trade${stats!.totalTrades !== 1 ? "s" : ""} · ${stats!.playersTraded} players`
+                }
               </p>
             </div>
           </div>
-          {stats.newTrades > 0 && (
-            <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-medium">
-              <Sparkles className="w-3 h-3" />
-              {stats.newTrades}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {stats!.newTrades > 0 && (
+              <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-full font-medium">
+                <Sparkles className="w-3 h-3" />
+                {stats!.newTrades}
+              </span>
+            )}
+            {/* Filter Toggle */}
+            {userRosterId && (
+              <div className="flex rounded-lg bg-white/[0.05] p-0.5">
+                <button
+                  onClick={() => setFilter("my")}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all",
+                    filter === "my"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : "text-slate-500 hover:text-slate-300"
+                  )}
+                >
+                  <User className="w-3 h-3" />
+                  My
+                </button>
+                <button
+                  onClick={() => setFilter("all")}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all",
+                    filter === "all"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : "text-slate-500 hover:text-slate-300"
+                  )}
+                >
+                  <Users className="w-3 h-3" />
+                  All
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Condensed trade cards */}
       <div className="p-2 space-y-1.5">
-        {trades.map((trade) => {
+        {filteredTrades.length === 0 && filter === "my" && (
+          <div className="py-6 text-center">
+            <p className="text-sm text-slate-400">No trades involving your team yet</p>
+            <button
+              onClick={() => setFilter("all")}
+              className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+            >
+              View all league trades
+            </button>
+          </div>
+        )}
+        {filteredTrades.map((trade) => {
           const isInvolved = trade.parties.some(p => p.rosterId === userRosterId);
           const [teamA, teamB] = trade.parties;
           const isExpanded = expandedTrade === trade.id;

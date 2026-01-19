@@ -12,7 +12,7 @@ interface AnalyticsTabsProps {
  * Analytics section - now simplified to just Top Scorers
  * (Power Rankings shown above, Luck Factor integrated into rankings cards)
  */
-export function AnalyticsTabs({ leagueId, userRosterId }: AnalyticsTabsProps) {
+export function AnalyticsTabs({ leagueId: _leagueId, userRosterId: _userRosterId }: AnalyticsTabsProps) {
   return (
     <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
       {/* Header */}

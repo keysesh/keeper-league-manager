@@ -74,7 +74,7 @@ export async function GET(
     // Fetch Sleeper rosters to build slot number → owner_id mapping
     // Sleeper transactions use roster_id (1-10 slot numbers), but our DB uses owner_id
     const sleeper = new SleeperClient();
-    let sleeperSlotToOwnerId = new Map<number, string>();
+    const sleeperSlotToOwnerId = new Map<number, string>();
     try {
       const sleeperRosters = await sleeper.getRosters(league.sleeperId);
       for (const sr of sleeperRosters) {
@@ -151,9 +151,6 @@ export async function GET(
 
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    // Get roster sleeperId to dbId mapping for draft pick lookup
-    const sleeperIdToRosterId = new Map(rosters.map((r) => [r.sleeperId, r.id]));
 
     // Build trades from Transaction model
     const tradesFromTransactions: RecentTrade[] = transactions.map((tx) => {

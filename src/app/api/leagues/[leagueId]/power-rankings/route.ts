@@ -229,8 +229,6 @@ export async function GET(
     const allPointsFor = rosters.map(r => Number(r.pointsFor)).sort((a, b) => a - b);
     const calculateExpectedWins = (pointsFor: number, totalGames: number): number => {
       if (totalGames === 0) return 0;
-      // Use median-based estimation: if your points are above median, expect >50% wins
-      const medianPoints = allPointsFor[Math.floor(allPointsFor.length / 2)] || 0;
       const maxPoints = Math.max(...allPointsFor, 1);
       const minPoints = Math.min(...allPointsFor);
 

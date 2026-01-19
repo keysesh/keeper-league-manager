@@ -103,7 +103,6 @@ export async function GET(
 
     // Get current season rosters for team names and owners
     const currentRosters = allRosters.filter((r) => r.leagueId === leagueId);
-    const totalTeams = currentRosters.length;
 
     // Aggregate stats by sleeperId (consistent across seasons)
     const aggregatedStats: Record<

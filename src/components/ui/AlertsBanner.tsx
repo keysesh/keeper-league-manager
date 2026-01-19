@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import { AlertTriangle, ArrowRight, X, FileText, Calendar, Activity } from "lucide-react";
+import { AlertTriangle, ArrowRight, X, FileText } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Trash2, RefreshCw, AlertTriangle, History, CheckCircle, XCircle } from "lucide-react";
+import { Trash2, RefreshCw, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
 interface League {
   id: string;

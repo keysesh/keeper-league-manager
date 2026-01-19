@@ -138,30 +138,71 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
         </div>
 
         <div className="divide-y divide-white/[0.06]">
-          {championships.slice(0, 3).map((c) => (
-            <div key={c.season} className="p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-600/10 border border-amber-500/20 flex items-center justify-center">
-                <Crown className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-white">{c.season}</span>
-                  <span className="text-xs text-slate-400">Champion</span>
+          {championships.slice(0, 3).map((c, index) => {
+            const isUserChampion = c.champion.rosterId === userRosterId;
+            return (
+              <div
+                key={c.season}
+                className={cn(
+                  "p-4 flex items-center gap-3 transition-colors",
+                  isUserChampion && "bg-gradient-to-r from-amber-500/10 to-transparent"
+                )}
+              >
+                {/* Year Badge with rank styling */}
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
+                  index === 0 && "bg-gradient-to-br from-amber-500/30 to-yellow-600/20 border border-amber-400/40",
+                  index === 1 && "bg-gradient-to-br from-slate-400/20 to-slate-500/10 border border-slate-400/30",
+                  index === 2 && "bg-gradient-to-br from-orange-600/20 to-orange-700/10 border border-orange-500/30",
+                  index > 2 && "bg-white/[0.05] border border-white/[0.08]"
+                )}>
+                  <Crown className={cn(
+                    "w-4 h-4 mb-0.5",
+                    index === 0 && "text-amber-400",
+                    index === 1 && "text-slate-400",
+                    index === 2 && "text-orange-500",
+                    index > 2 && "text-slate-500"
+                  )} />
+                  <span className={cn(
+                    "text-[10px] font-bold",
+                    index === 0 && "text-amber-400",
+                    index === 1 && "text-slate-400",
+                    index === 2 && "text-orange-500",
+                    index > 2 && "text-slate-500"
+                  )}>
+                    {c.season}
+                  </span>
                 </div>
-                <p className="text-sm font-medium text-white truncate">{c.champion.teamName}</p>
-                <p className="text-xs text-slate-500">{c.champion.wins}-{c.champion.losses} · {Math.round(c.champion.pointsFor).toLocaleString()} pts</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-bold text-white truncate">{c.champion.teamName}</p>
+                    {isUserChampion && (
+                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded font-bold">
+                        YOU
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {c.champion.owners.slice(0, 2).join(", ")}
+                    {c.champion.owners.length > 2 && ` +${c.champion.owners.length - 2}`}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs font-semibold text-emerald-400">{c.champion.wins}-{c.champion.losses}</span>
+                    <span className="text-[10px] text-slate-500">{Math.round(c.champion.pointsFor).toLocaleString()} pts</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {ownerStats.length > 0 && ownerStats[0].championships > 0 && (
           <div className="p-4 border-t border-white/[0.06] bg-gradient-to-r from-amber-500/5 to-transparent">
             <div className="flex items-center gap-2 text-sm">
-              <Star className="w-4 h-4 text-amber-400" />
+              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
               <span className="text-slate-500">Dynasty:</span>
-              <span className="text-amber-400 font-medium">{ownerStats[0].displayName}</span>
-              <span className="text-slate-500">({ownerStats[0].championships} titles)</span>
+              <span className="text-amber-400 font-semibold">{ownerStats[0].displayName}</span>
+              <span className="text-amber-400/60">({ownerStats[0].championships} title{ownerStats[0].championships > 1 ? "s" : ""})</span>
             </div>
           </div>
         )}

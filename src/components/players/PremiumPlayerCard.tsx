@@ -360,7 +360,18 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
               {isLoading ? "..." : `Keep R${costs.regular.finalCost}`}
             </button>
           )}
-          {costs.franchise && (
+          {/* FT-only button (gold, full-width) - for players who MUST be franchise tagged */}
+          {costs.franchise && !costs.regular && (
+            <button
+              onClick={() => onAddKeeper(player.id, "FRANCHISE")}
+              disabled={!canAddFranchise || isLoading}
+              className="flex-1 min-h-[44px] sm:min-h-0 py-2.5 sm:py-1.5 rounded-md sm:rounded text-xs sm:text-[10px] font-bold bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black disabled:opacity-40 transition-colors"
+            >
+              {isLoading ? "..." : `Franchise Tag (R${costs.franchise.finalCost})`}
+            </button>
+          )}
+          {/* Compact FT button (blue) - when both regular keep and FT are available */}
+          {costs.franchise && costs.regular && (
             <button
               onClick={() => onAddKeeper(player.id, "FRANCHISE")}
               disabled={!canAddFranchise || isLoading}
