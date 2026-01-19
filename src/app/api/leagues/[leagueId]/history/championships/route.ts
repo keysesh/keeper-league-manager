@@ -77,14 +77,35 @@ export async function GET(
       return NextResponse.json({ error: "League not found" }, { status: 404 });
     }
 
-    // Find all related leagues (same sleeper ID base or linked)
+    // Build full league chain by traversing previousLeagueId recursively
+    const leagueChain: string[] = [leagueId];
+    let currentId = currentLeague.previousLeagueId;
+
+    // Traverse backwards through all previous seasons
+    while (currentId) {
+      leagueChain.push(currentId);
+      const prev = await prisma.league.findUnique({
+        where: { id: currentId },
+        select: { previousLeagueId: true },
+      });
+      currentId = prev?.previousLeagueId || null;
+    }
+
+    // Also find any leagues that point to leagues in our chain (future seasons)
+    const futureLeagues = await prisma.league.findMany({
+      where: {
+        previousLeagueId: { in: leagueChain },
+        id: { notIn: leagueChain },
+      },
+      select: { id: true },
+    });
+
+    const allLeagueIds = [...leagueChain, ...futureLeagues.map(l => l.id)];
+
+    // Fetch all leagues in the chain with full data
     const relatedLeagues = await prisma.league.findMany({
       where: {
-        OR: [
-          { id: leagueId },
-          { previousLeagueId: leagueId },
-          { id: currentLeague.previousLeagueId || "" },
-        ],
+        id: { in: allLeagueIds },
       },
       include: {
         rosters: {

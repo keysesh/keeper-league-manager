@@ -9,11 +9,10 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { AlertsBanner } from "@/components/ui/AlertsBanner";
-import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
 import { WidgetSkeleton } from "@/components/ui/WidgetSkeleton";
-import { ChevronRight, Trophy, Shield, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
+import { ChevronRight, Trophy, Crown, Target, Zap, BarChart3, Users, RefreshCw, Star } from "lucide-react";
 
 // Dynamic imports for better performance
 const PowerRankings = dynamic(
@@ -176,7 +175,6 @@ export default function LeaguePage() {
   });
   const userRank = userRoster ? sortedRosters.findIndex(r => r.id === userRoster.id) + 1 : 0;
   const maxKeepers = league.keeperSettings?.maxKeepers || 7;
-  const franchiseCount = userRoster?.currentKeepers.filter(k => k.type === "FRANCHISE").length || 0;
 
   return (
     <>
@@ -196,122 +194,41 @@ export default function LeaguePage() {
           />
         )}
 
-        {/* HERO SECTION */}
-        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md">
-          <div className="p-4 sm:p-6 md:p-8">
-            {/* Header Row */}
-            <div className="flex flex-col gap-4 sm:gap-5 md:flex-row md:items-start md:justify-between mb-6 sm:mb-8">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-11 h-11 sm:w-14 sm:h-14 flex-shrink-0 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
-                  <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight truncate">
-                    {league.name}
-                  </h1>
-                  <p className="text-gray-500 text-xs sm:text-sm mt-0.5 sm:mt-1">
-                    {league.totalRosters} teams &middot; {league.season} Season
-                  </p>
-                </div>
+        {/* LEAGUE HEADER */}
+        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 flex-shrink-0 rounded-md bg-[#222222] border border-[#2a2a2a] flex items-center justify-center">
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500" />
               </div>
-
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  onClick={handleSync}
-                  disabled={syncing}
-                  className="flex items-center justify-center gap-2 min-w-[40px] h-10 sm:min-w-0 sm:h-auto px-3 sm:px-4 py-2 sm:py-2.5 rounded-md bg-[#222222] hover:bg-[#2a2a2a] active:bg-[#333333] border border-[#2a2a2a] hover:border-[#333333] text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-                  <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync"}</span>
-                </button>
-                <Link
-                  href={`/league/${leagueId}/draft-board`}
-                  className="flex items-center justify-center gap-2 h-10 sm:h-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-sm font-semibold text-white transition-colors"
-                >
-                  <Target className="w-4 h-4" />
-                  <span className="hidden xs:inline">Draft Board</span>
-                  <span className="xs:hidden">Draft</span>
-                </Link>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white tracking-tight truncate">
+                  {league.name}
+                </h1>
+                <p className="text-gray-500 text-xs sm:text-sm">
+                  {league.totalRosters} teams &middot; {league.season} Season
+                </p>
               </div>
             </div>
 
-            {/* Stats Cards */}
-            {userRoster && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-                {/* Standing Card */}
-                <div className="rounded-md bg-[#222222] border border-[#2a2a2a] p-3 sm:p-4 md:p-5 hover:border-[#333333] transition-colors">
-                  <div className="flex items-start justify-between mb-2 sm:mb-3 md:mb-4">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
-                      <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Standing</span>
-                  </div>
-                  <div className="space-y-2 sm:space-y-3">
-                    <div>
-                      <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tabular-nums">#{userRank}</span>
-                      <span className="text-sm sm:text-base md:text-lg text-gray-500 ml-1">/ {league.totalRosters}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs sm:text-sm border-t border-[#2a2a2a] pt-2 sm:pt-3">
-                      <span className="text-gray-500">Record</span>
-                      <span className={`font-semibold tabular-nums ${userRoster.wins > userRoster.losses ? "text-green-500" : userRoster.wins < userRoster.losses ? "text-red-500" : "text-gray-300"}`}>
-                        {userRoster.wins}-{userRoster.losses}
-                      </span>
-                    </div>
-                    <div className="hidden sm:flex items-center justify-between text-sm">
-                      <span className="text-gray-500">Points</span>
-                      <span className="font-semibold text-gray-300 tabular-nums">{Math.round(userRoster.pointsFor).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Keepers Card */}
-                <div className="rounded-md bg-[#222222] border border-[#2a2a2a] p-3 sm:p-4 md:p-5 hover:border-[#333333] transition-colors">
-                  <div className="flex items-start justify-between mb-2 sm:mb-3 md:mb-4">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
-                      <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Keepers</span>
-                  </div>
-                  <div className="space-y-2 sm:space-y-3">
-                    <div>
-                      <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tabular-nums">{userRoster.keeperCount}</span>
-                      <span className="text-sm sm:text-base md:text-lg text-gray-500 ml-1">/ {maxKeepers}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs sm:text-sm border-t border-[#2a2a2a] pt-2 sm:pt-3">
-                      <span className="text-gray-500">Franchise</span>
-                      <span className="font-semibold text-yellow-500 tabular-nums">{franchiseCount}</span>
-                    </div>
-                    <div className="hidden sm:flex items-center justify-between text-sm">
-                      <span className="text-gray-500">Regular</span>
-                      <span className="font-semibold text-gray-300 tabular-nums">{userRoster.keeperCount - franchiseCount}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA Card */}
-                <Link
-                  href={`/league/${leagueId}/team/${userRoster.id}`}
-                  className="col-span-2 md:col-span-1 rounded-md bg-blue-600/10 border border-blue-500/30 p-3 sm:p-4 md:p-5 hover:border-blue-500/50 hover:bg-blue-600/15 transition-colors"
-                >
-                  <div className="flex items-center md:items-start justify-between md:mb-6">
-                    <div className="flex items-center gap-3 md:block">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-                        <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-                      </div>
-                      <div className="md:hidden">
-                        <p className="text-sm sm:text-base font-semibold text-white">Manage Keepers</p>
-                        <p className="text-xs text-gray-400">Select your {league.season} keepers</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div className="hidden md:block">
-                    <p className="text-lg font-semibold text-white mb-1">Manage Keepers</p>
-                    <p className="text-sm text-gray-400">Select and lock your {league.season} keepers</p>
-                  </div>
-                </Link>
-              </div>
-            )}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="flex items-center justify-center gap-2 h-9 sm:h-10 px-3 sm:px-4 rounded-md bg-[#222222] hover:bg-[#2a2a2a] active:bg-[#333333] border border-[#2a2a2a] hover:border-[#333333] text-sm font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync"}</span>
+              </button>
+              <Link
+                href={`/league/${leagueId}/draft-board`}
+                className="flex items-center justify-center gap-2 h-9 sm:h-10 px-4 sm:px-5 rounded-md bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-sm font-semibold text-white transition-colors"
+              >
+                <Target className="w-4 h-4" />
+                <span className="hidden xs:inline">Draft Board</span>
+                <span className="xs:hidden">Draft</span>
+              </Link>
+            </div>
           </div>
         </section>
 
