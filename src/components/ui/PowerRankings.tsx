@@ -211,7 +211,10 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
               <div>
                 <h3 className="text-base font-semibold text-white">Power Rankings</h3>
                 {!condensed && (
-                  <p className="text-sm text-slate-500">50% roster · 20% stars · 10% depth · 10% keepers · 10% picks</p>
+                  <p className="text-sm text-slate-500">
+                    <span className="hidden sm:inline">ROS 50% · STR 20% · DEP 10% · KPR 10% · PCK 10%</span>
+                    <span className="sm:hidden">Roster + Stars + Depth + Keepers + Picks</span>
+                  </p>
                 )}
               </div>
             </div>
@@ -368,6 +371,17 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
                         )}
                         {!condensed && <span className="hidden sm:inline">★ {team.starPower.toFixed(1)} PPG</span>}
                       </div>
+
+                      {/* Component Score Breakdown */}
+                      {!condensed && (
+                        <div className="mt-3 flex items-center gap-1 flex-wrap">
+                          <ScoreChip label="ROS" value={Math.round(team.positionalStrength.reduce((a, p) => a + p.score, 0) / Math.max(team.positionalStrength.length, 1))} tooltip="Roster (50%)" />
+                          <ScoreChip label="STR" value={Math.round(team.starPower)} tooltip="Stars (20%)" />
+                          <ScoreChip label="DEP" value={Math.round(team.depth)} tooltip="Depth (10%)" />
+                          <ScoreChip label="KPR" value={Math.round(team.keeperValue)} tooltip="Keepers (10%)" />
+                          <ScoreChip label="PCK" value={Math.round(team.draftCapital)} tooltip="Picks (10%)" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Grade badge */}
@@ -399,6 +413,19 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
             <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
           </Link>
         )}
+      </div>
+    );
+  }
+
+  // ScoreChip component for breakdown display
+  function ScoreChip({ label, value, tooltip }: { label: string; value: number; tooltip: string }) {
+    return (
+      <div
+        className="px-2 py-1 rounded bg-white/[0.04] border border-white/[0.06] text-[11px] flex items-center gap-1.5 group relative cursor-help"
+        title={tooltip}
+      >
+        <span className="text-slate-500 font-medium">{label}</span>
+        <span className="text-white font-bold">{value}</span>
       </div>
     );
   }

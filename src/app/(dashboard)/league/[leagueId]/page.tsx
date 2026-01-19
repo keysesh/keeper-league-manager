@@ -7,10 +7,10 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { AlertsBanner } from "@/components/ui/AlertsBanner";
-import { PositionBadge, FranchiseBadge } from "@/components/ui/PositionBadge";
+import { PositionBadge } from "@/components/ui/PositionBadge";
 import { AgeIndicator } from "@/components/ui/AgeBadge";
 import { WidgetSkeleton } from "@/components/ui/WidgetSkeleton";
-import { Card, HeroCard, FeatureCard } from "@/components/ui/Card";
+import { Card, HeroCard } from "@/components/ui/Card";
 import { BigStat, StatGrid } from "@/components/ui/BigStat";
 import { cn } from "@/lib/design-tokens";
 import {
@@ -19,22 +19,15 @@ import {
   Crown,
   Target,
   Zap,
-  BarChart3,
-  Users,
   Star,
   TrendingUp,
   ArrowRight,
 } from "lucide-react";
 
 // Dynamic imports for better performance
-const PowerRankings = dynamic(
-  () => import("@/components/ui/PowerRankings").then(mod => ({ default: mod.PowerRankings })),
-  { loading: () => <WidgetSkeleton rows={5} />, ssr: false }
-);
-
-const LuckFactor = dynamic(
-  () => import("@/components/ui/LuckFactor").then(mod => ({ default: mod.LuckFactor })),
-  { loading: () => <WidgetSkeleton rows={5} />, ssr: false }
+const AnalyticsTabs = dynamic(
+  () => import("@/components/ui/AnalyticsTabs").then(mod => ({ default: mod.AnalyticsTabs })),
+  { loading: () => <WidgetSkeleton rows={8} />, ssr: false }
 );
 
 const RecentTrades = dynamic(
@@ -47,15 +40,6 @@ const ChampionshipHistory = dynamic(
   { loading: () => <WidgetSkeleton rows={3} />, ssr: false }
 );
 
-const TopScorers = dynamic(
-  () => import("@/components/ui/TopScorers").then(mod => ({ default: mod.TopScorers })),
-  { loading: () => <WidgetSkeleton rows={8} />, ssr: false }
-);
-
-const DraftPickValueChart = dynamic(
-  () => import("@/components/ui/DraftPickValueChart").then(mod => ({ default: mod.DraftPickValueChart })),
-  { loading: () => <WidgetSkeleton rows={4} />, ssr: false }
-);
 
 const UserStatsHero = dynamic(
   () => import("@/components/ui/UserStatsHero").then(mod => ({ default: mod.UserStatsHero })),
@@ -245,6 +229,7 @@ export default function LeaguePage() {
         {/* TWO COLUMN LAYOUT: Standings + Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* STANDINGS */}
+          <div id="standings" className="scroll-mt-20">
           <Card variant="default" padding="none" className="overflow-hidden">
             <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -316,6 +301,7 @@ export default function LeaguePage() {
               })}
             </div>
           </Card>
+          </div>
 
           {/* RECENT TRADES */}
           <RecentTrades
@@ -418,7 +404,7 @@ export default function LeaguePage() {
             gradient="warm"
           />
           <QuickActionCard
-            href={`/league/${leagueId}/power-rankings`}
+            href={`/league/${leagueId}#power-rankings`}
             icon={<TrendingUp className="w-5 h-5" />}
             label="Power Rankings"
             description="Team analysis"
@@ -433,20 +419,11 @@ export default function LeaguePage() {
           />
         </section>
 
-        {/* ANALYTICS GRID - Power Rankings & Luck Factor */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PowerRankings
+        {/* ANALYTICS - Tabbed Power Rankings, Luck Factor & Top Scorers */}
+        <section id="power-rankings" className="scroll-mt-20">
+          <AnalyticsTabs
             leagueId={leagueId}
             userRosterId={userRoster?.id}
-            useApi={true}
-            condensed={true}
-            viewAllHref={`/league/${leagueId}/power-rankings`}
-          />
-          <LuckFactor
-            leagueId={leagueId}
-            userRosterId={userRoster?.id}
-            condensed={true}
-            viewAllHref={`/league/${leagueId}/luck`}
           />
         </section>
 
@@ -456,22 +433,6 @@ export default function LeaguePage() {
           userRosterId={userRoster?.id}
           compact={true}
         />
-
-        {/* TOP SCORERS */}
-        <section>
-          <TopScorers condensed={true} />
-        </section>
-
-        {/* DRAFT PICK VALUES */}
-        <section>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center">
-              <Target className="w-4 h-4 text-emerald-400" />
-            </div>
-            <h2 className="font-semibold text-white">Draft Pick Values</h2>
-          </div>
-          <DraftPickValueChart />
-        </section>
 
         {/* Footer */}
         {league.lastSyncedAt && (

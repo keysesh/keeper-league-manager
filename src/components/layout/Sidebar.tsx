@@ -83,9 +83,9 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         {
           title: "League",
           items: [
-            { name: "Standings", href: `/league/${leagueId}/standings`, icon: BarChart3 },
-            { name: "Power Rankings", href: `/league/${leagueId}/power-rankings`, icon: TrendingUp },
-            { name: "Luck Factor", href: `/league/${leagueId}/luck`, icon: Dices },
+            { name: "Standings", href: `/league/${leagueId}#standings`, icon: BarChart3 },
+            { name: "Power Rankings", href: `/league/${leagueId}#power-rankings`, icon: TrendingUp },
+            { name: "Luck Factor", href: `/league/${leagueId}#luck`, icon: Dices },
             { name: "All Teams", href: `/league/${leagueId}/team`, icon: Users },
           ],
         },
