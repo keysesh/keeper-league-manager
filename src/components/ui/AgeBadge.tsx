@@ -93,7 +93,7 @@ export function AgeBadge({
         {age}
       </span>
 
-      {/* Experience indicator */}
+      {/* Experience indicator - shows entering year, not completed years */}
       {showExp && yearsExp !== null && (
         <span
           className={`
@@ -104,9 +104,9 @@ export function AgeBadge({
               : "bg-gray-800 text-gray-400"
             }
           `}
-          title={isRookie ? "Rookie - First NFL season" : `${yearsExp} years NFL experience`}
+          title={isRookie ? "Rookie - entering 1st NFL season" : `Entering year ${yearsExp + 1} in NFL`}
         >
-          {isRookie ? "R" : `${yearsExp}yr`}
+          {isRookie ? "R" : `${yearsExp + 1}yr`}
         </span>
       )}
     </div>

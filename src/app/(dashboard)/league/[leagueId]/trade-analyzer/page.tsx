@@ -1107,8 +1107,13 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
   const perGame = (total: number) => gamesPlayed > 0 ? (total / gamesPlayed).toFixed(1) : "—";
 
   // Position-specific stats rendering - PER GAME focused
+  // Only show if we have detailed season stats (not just PPG/Total from Player model)
   const renderPositionStats = () => {
     if (!seasonStats || gamesPlayed === 0) return null;
+    // Check if we have actual detailed stats (not just fantasy points)
+    const hasDetailedStats = seasonStats.passingYards > 0 || seasonStats.rushingYards > 0 ||
+                             seasonStats.receivingYards > 0 || seasonStats.targets > 0;
+    if (!hasDetailedStats) return null;
 
     const pos = player.position?.toUpperCase();
 
@@ -1278,9 +1283,9 @@ function PlayerInfoCard({ player, isAfterDeadline, byeWeek }: { player: PlayerTr
               />
             ) : (
               <StatCell
-                value={player.yearsExp !== null ? `${player.yearsExp}yr` : "—"}
-                label="Exp"
-                tooltip="Years of NFL experience"
+                value={player.yearsExp !== null ? (player.yearsExp === 0 ? "R" : `Yr ${player.yearsExp + 1}`) : "—"}
+                label="Season"
+                tooltip={player.yearsExp === 0 ? "Rookie - entering 1st NFL season" : `Entering year ${(player.yearsExp || 0) + 1} in NFL`}
                 muted
               />
             )}
