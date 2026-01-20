@@ -233,26 +233,35 @@ export function PlayerModal({
       {/* Keeper History */}
       {keeperHistory.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Keeper History</h3>
-          <div className="bg-gray-900 rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Season</th>
-                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Cost</th>
-                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {keeperHistory.map((entry, i) => (
-                  <tr key={i} className="border-b border-gray-800 last:border-0">
-                    <td className="py-2 px-3 text-white">{entry.season}</td>
-                    <td className="py-2 px-3 text-white">Round {entry.cost}</td>
-                    <td className="py-2 px-3 text-white capitalize">{entry.type.toLowerCase()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500/25 to-purple-600/15 border border-purple-400/30 shadow-lg shadow-purple-500/10 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-white">Keeper History</h3>
+          </div>
+          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+            <div className="divide-y divide-white/[0.06]">
+              {keeperHistory.map((entry, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold text-white">{entry.season}</span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-md ${
+                      entry.type === "FRANCHISE"
+                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                        : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                    }`}>
+                      {entry.type === "FRANCHISE" ? "FT" : "REG"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-400">Round</span>
+                    <span className="text-lg font-bold text-white">{entry.cost}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -260,14 +269,35 @@ export function PlayerModal({
       {/* Trade History */}
       {tradeHistory.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Trade History</h3>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500/25 to-cyan-500/15 border border-blue-400/30 shadow-lg shadow-blue-500/10 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-semibold text-white">Trade History</h3>
+          </div>
           <div className="space-y-2">
             {tradeHistory.map((trade, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm bg-gray-900 rounded-lg p-3">
-                <span className="text-gray-500">{trade.date}</span>
-                <span className="text-gray-400">{trade.from}</span>
-                <span className="text-gray-500">→</span>
-                <span className="text-white">{trade.to}</span>
+              <div key={i} className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-xs font-medium text-slate-500 bg-white/[0.05] px-2 py-1 rounded-md">
+                    {trade.date}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 text-right">
+                    <span className="text-sm text-slate-400">{trade.from}</span>
+                  </div>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-white">{trade.to}</span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
