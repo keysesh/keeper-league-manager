@@ -997,20 +997,30 @@ export async function syncUserLeagues(
     throw new Error("User not found");
   }
 
-  // Check both current season and next season in case leagues have rolled over
-  const [currentSeasonLeagues, nextSeasonLeagues] = await Promise.all([
-    sleeper.getUserLeagues(user.sleeperId, season),
-    sleeper.getUserLeagues(user.sleeperId, season + 1),
-  ]);
+  // Check all seasons from 2020 to next year to find all leagues
+  const currentYear = new Date().getFullYear();
+  const seasonsToCheck: number[] = [];
+  for (let year = 2020; year <= currentYear + 1; year++) {
+    seasonsToCheck.push(year);
+  }
+
+  // Fetch leagues from all seasons in parallel
+  const leagueResults = await Promise.all(
+    seasonsToCheck.map(s =>
+      sleeper.getUserLeagues(user.sleeperId, s).catch(() => [] as SleeperLeague[])
+    )
+  );
 
   // Combine leagues, avoiding duplicates (use league_id as key)
   const seenLeagueIds = new Set<string>();
   const allLeagues: SleeperLeague[] = [];
 
-  for (const league of [...currentSeasonLeagues, ...nextSeasonLeagues]) {
-    if (!seenLeagueIds.has(league.league_id)) {
-      seenLeagueIds.add(league.league_id);
-      allLeagues.push(league);
+  for (const seasonLeagues of leagueResults) {
+    for (const league of seasonLeagues) {
+      if (!seenLeagueIds.has(league.league_id)) {
+        seenLeagueIds.add(league.league_id);
+        allLeagues.push(league);
+      }
     }
   }
 

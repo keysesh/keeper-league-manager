@@ -32,9 +32,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "userId and sleeperId are required" }, { status: 400 });
     }
 
-    // Check both current year and next year for leagues
+    // Check all seasons from 2020 to next year
     const currentYear = new Date().getFullYear();
-    const seasons = [currentYear - 1, currentYear, currentYear + 1];
+    const seasons: number[] = [];
+    for (let year = 2020; year <= currentYear + 1; year++) {
+      seasons.push(year);
+    }
 
     const allLeagues: Array<{ league_id: string }> = [];
     const seenIds = new Set<string>();
