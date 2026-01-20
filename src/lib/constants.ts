@@ -7,8 +7,8 @@
 // RATE LIMITING
 // ============================================
 
-/** Maximum requests per minute to Sleeper API (their limit is ~100, we use conservative value) */
-export const SLEEPER_RATE_LIMIT_PER_MINUTE = 60;
+/** Maximum requests per minute to Sleeper API (their limit is 1000, we stay well under) */
+export const SLEEPER_RATE_LIMIT_PER_MINUTE = 500;
 
 /** Base delay in milliseconds for retry logic */
 export const RETRY_DELAY_MS = 1000;
@@ -26,8 +26,8 @@ export const NFL_SEASON_WEEKS = 18;
 /** Default number of draft rounds */
 export const DEFAULT_DRAFT_ROUNDS = 16;
 
-/** Maximum seasons to sync for historical data */
-export const MAX_HISTORICAL_SEASONS = 10;
+/** Maximum seasons to sync for historical data (keep low to avoid timeouts) */
+export const MAX_HISTORICAL_SEASONS = 5;
 
 // ============================================
 // DATABASE OPERATIONS

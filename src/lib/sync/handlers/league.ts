@@ -106,8 +106,9 @@ export async function handleFullSync(
     return createSyncError("You don't have access to this league", 403);
   }
 
-  // Sync all historical seasons (this includes rosters, drafts, transactions, traded picks)
-  const historyResult = await syncLeagueWithHistory(league.sleeperId, 10);
+  // Sync all historical seasons (this includes rosters, drafts, traded picks)
+  // Limit to 5 seasons to avoid timeout - user can run again for more history
+  const historyResult = await syncLeagueWithHistory(league.sleeperId, 5);
 
   // Populate keepers for all synced seasons
   let totalKeepers = 0;
