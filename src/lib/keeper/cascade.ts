@@ -293,6 +293,12 @@ export async function recalculateAndApplyCascade(
   }
 
   // Update all keeper final costs
+  // IMPORTANT: Only finalCost is updated, NOT baseCost!
+  // - baseCost = player's TRUE keeper value (original draft round - years kept)
+  // - finalCost = draft SLOT this year (may be bumped up due to same-round conflicts)
+  // Cascade is a ONE-TIME draft penalty, not a permanent cost change.
+  // Next year's calculations use baseCost, so cascade doesn't carry forward.
+  // If player is traded, new owner gets baseCost, not cascaded finalCost.
   let updatedCount = 0;
   for (const result of cascadeResult.keepers) {
     const keeper = keepers.find(
@@ -302,7 +308,7 @@ export async function recalculateAndApplyCascade(
     if (keeper && keeper.finalCost !== result.finalCost) {
       await prisma.keeper.update({
         where: { id: keeper.id },
-        data: { finalCost: result.finalCost },
+        data: { finalCost: result.finalCost }, // Only finalCost, never baseCost
       });
       updatedCount++;
     }
