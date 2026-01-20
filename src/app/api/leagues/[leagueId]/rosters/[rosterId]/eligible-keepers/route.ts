@@ -502,24 +502,39 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       // 2. DraftPick.isKeeper = true (Sleeper's historical keeper data)
       const keeperPickSeasons = keeperPicksByPlayer.get(playerId) || [];
 
-      // FIX: Merge BOTH sources to get accurate keeper year count
-      // Collect unique seasons from both sources
-      const allKeeperSeasons = new Set<number>();
+      // Check if this is a post-deadline (offseason) trade - years reset for new owner
+      const isPostDeadlineTrade = origin.originSeason === season && origin.acquisitionType === AcquisitionType.TRADE;
 
-      // Add seasons from Keeper table
-      for (const keeper of playerKeepers) {
-        allKeeperSeasons.add(keeper.season);
+      // FIX: For offseason trades, reset keeper years to 0 (don't count previous owner's history)
+      // This is the core rule: "Offseason trades reset keeper years"
+      let pastKeeperCount: number;
+      let isAlreadyKeptThisSeason: boolean;
+
+      if (isPostDeadlineTrade) {
+        // Offseason trade: new owner starts fresh at Year 1
+        // Don't count any keeper history from previous owners
+        pastKeeperCount = 0;
+        isAlreadyKeptThisSeason = false;
+      } else {
+        // Same owner or pre-deadline trade: count all keeper years
+        // Collect unique seasons from both sources
+        const allKeeperSeasons = new Set<number>();
+
+        // Add seasons from Keeper table
+        for (const keeper of playerKeepers) {
+          allKeeperSeasons.add(keeper.season);
+        }
+
+        // Add seasons from isKeeper draft picks
+        for (const pickSeason of keeperPickSeasons) {
+          allKeeperSeasons.add(pickSeason);
+        }
+
+        // Count past keeper seasons (before the planning season)
+        const pastKeeperSeasons = Array.from(allKeeperSeasons).filter(s => s < season);
+        pastKeeperCount = pastKeeperSeasons.length;
+        isAlreadyKeptThisSeason = allKeeperSeasons.has(season);
       }
-
-      // Add seasons from isKeeper draft picks
-      for (const pickSeason of keeperPickSeasons) {
-        allKeeperSeasons.add(pickSeason);
-      }
-
-      // Count past keeper seasons (before the planning season)
-      const pastKeeperSeasons = Array.from(allKeeperSeasons).filter(s => s < season);
-      const pastKeeperCount = pastKeeperSeasons.length;
-      const isAlreadyKeptThisSeason = allKeeperSeasons.has(season);
 
       // Determine display year (how many times kept including this potential keep)
       let displayYear: number;
