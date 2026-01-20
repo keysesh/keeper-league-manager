@@ -396,35 +396,47 @@ export class SyncService {
       maxSeasons,
     });
 
-    // Sync all historical seasons
-    const historyResult = await syncLeagueWithHistory(
-      league.sleeperId,
-      maxSeasons
-    );
+    try {
+      // Sync all historical seasons
+      const historyResult = await syncLeagueWithHistory(
+        league.sleeperId,
+        maxSeasons
+      );
 
-    // Populate keepers for all synced seasons
-    let totalKeepers = 0;
-    for (const season of historyResult.seasons) {
-      try {
-        const keeperResult = await populateKeepersFromDraftPicks(
-          season.leagueId
-        );
-        totalKeepers += keeperResult.created;
+      // Populate keepers for all synced seasons
+      let totalKeepers = 0;
+      for (const season of historyResult.seasons) {
+        try {
+          const keeperResult = await populateKeepersFromDraftPicks(
+            season.leagueId
+          );
+          totalKeepers += keeperResult.created;
 
-        // Recalculate keeper years for each season
-        await recalculateKeeperYears(season.leagueId);
-      } catch (err) {
-        logger.warn(`Failed to populate keepers for ${season.season}:`, { error: err });
+          // Recalculate keeper years for each season
+          await recalculateKeeperYears(season.leagueId);
+        } catch (err) {
+          logger.warn(`Failed to populate keepers for ${season.season}:`, { error: err });
+        }
       }
-    }
 
-    return {
-      success: true,
-      message: `Synced ${historyResult.seasons.length} seasons, ${historyResult.totalTransactions} transactions, ${totalKeepers} keepers`,
-      seasons: historyResult.seasons,
-      totalTransactions: historyResult.totalTransactions,
-      totalKeepers,
-    };
+      return {
+        success: true,
+        message: `Synced ${historyResult.seasons.length} seasons, ${historyResult.totalTransactions} transactions, ${totalKeepers} keepers`,
+        seasons: historyResult.seasons,
+        totalTransactions: historyResult.totalTransactions,
+        totalKeepers,
+      };
+    } catch (err) {
+      logger.error("History sync failed", { leagueId, error: err });
+      // Return partial success with error info
+      return {
+        success: false,
+        message: `History sync failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+        seasons: [],
+        totalTransactions: 0,
+        totalKeepers: 0,
+      };
+    }
   }
 
   /**

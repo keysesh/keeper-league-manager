@@ -1152,34 +1152,42 @@ export async function syncLeagueWithHistory(
 
   logger.info("Found league chain", { count: leagueChain.length, seasons: leagueChain.map(l => l.season) });
 
-  // Step 2: Process all seasons in parallel (skip transactions for speed)
-  const syncPromises = leagueChain.map(async (leagueInfo) => {
+  // Step 2: Process seasons sequentially to avoid overwhelming DB/API
+  // (Parallel was causing 500 errors from connection pool exhaustion)
+  const syncResults: Array<{
+    season: number;
+    leagueId: string;
+    name: string;
+    draftPicks: number;
+    success: boolean;
+  }> = [];
+
+  for (const leagueInfo of leagueChain) {
     try {
       const syncResult = await syncLeague(leagueInfo.sleeperId, { skipTransactions: true });
-      return {
+      syncResults.push({
         season: parseInt(leagueInfo.season) || 0,
         leagueId: syncResult.league.id,
         name: syncResult.league.name,
         draftPicks: syncResult.draftPicks,
         success: true,
-      };
+      });
+      logger.info("Synced season", { season: leagueInfo.season, leagueId: syncResult.league.id });
     } catch (err) {
       logger.warn("Failed to sync historical league", {
         leagueId: leagueInfo.sleeperId,
         season: leagueInfo.season,
         error: err instanceof Error ? err.message : err,
       });
-      return {
+      syncResults.push({
         season: parseInt(leagueInfo.season) || 0,
         leagueId: "",
         name: leagueInfo.name,
         draftPicks: 0,
         success: false,
-      };
+      });
     }
-  });
-
-  const syncResults = await Promise.all(syncPromises);
+  }
 
   // Filter successful syncs
   const successfulSyncs = syncResults.filter(r => r.success);
