@@ -6,24 +6,6 @@ import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-/** Get the most recent NFL season with available data */
-function getCurrentSeason(): number {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  // Before September, previous year's season is most recent with data
-  return month >= 8 ? year : year - 1;
-}
-
-/** Get the upcoming NFL season for projections */
-function getUpcomingSeason(): number {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  // Before September, current year is upcoming; after September, next year
-  return month >= 8 ? year + 1 : year;
-}
-
 interface Player {
   id: string;
   sleeperId: string;
@@ -38,12 +20,7 @@ export default function AdminPlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncingNflverse, setSyncingNflverse] = useState(false);
-  const [syncingProjections, setSyncingProjections] = useState(false);
-  const [syncingRankings, setSyncingRankings] = useState(false);
-  const [syncingDepthCharts, setSyncingDepthCharts] = useState(false);
-  const [syncingInjuries, setSyncingInjuries] = useState(false);
-  const [syncingSchedule, setSyncingSchedule] = useState(false);
+  const [syncingStats, setSyncingStats] = useState(false);
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("");
   const [page, setPage] = useState(1);
@@ -76,7 +53,7 @@ export default function AdminPlayersPage() {
       const res = await fetch("/api/sleeper/sync/players", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        success(`Synced ${data.total} players`);
+        success(`Synced ${data.total} players from Sleeper`);
         fetchPlayers();
       } else {
         error(data.error || "Sync failed");
@@ -88,149 +65,46 @@ export default function AdminPlayersPage() {
     }
   };
 
-  const syncNflverseStats = async () => {
-    setSyncingNflverse(true);
+  // Combined stats sync: stats + projections + rankings from NFLverse
+  const syncAllStats = async () => {
+    setSyncingStats(true);
     try {
-      // No season param - API defaults to most recent season with data
-      const res = await fetch("/api/nflverse/sync?type=stats", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        const playersUpdated = data.result?.stats?.playersUpdated || 0;
-        const season = data.season || getCurrentSeason();
-        success(`Synced ${playersUpdated} player stats from ${season} season`);
-      } else {
-        error(data.error || "NFLverse sync failed");
-      }
-    } catch {
-      error("NFLverse sync failed");
-    } finally {
-      setSyncingNflverse(false);
-    }
-  };
+      // Sync stats, projections, and rankings in sequence
+      const results: string[] = [];
 
-  const syncProjections = async () => {
-    setSyncingProjections(true);
-    try {
-      // No season param - API defaults to upcoming season
-      const res = await fetch("/api/nflverse/sync?type=projections", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        const playersUpdated = data.result?.projections?.playersUpdated || 0;
-        const errors = data.result?.projections?.errors || [];
-        const season = data.season || getUpcomingSeason();
-        if (playersUpdated > 0) {
-          success(`Synced ${playersUpdated} player projections for ${season}`);
-        } else if (errors.length > 0) {
-          error(errors[0]);
-        } else {
-          error(`No projections available for ${season} yet`);
-        }
-      } else {
-        error(data.error || "Projections sync failed");
+      // Stats
+      const statsRes = await fetch("/api/nflverse/sync?type=stats", { method: "POST" });
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        const count = data.result?.stats?.playersUpdated || 0;
+        if (count > 0) results.push(`${count} stats`);
       }
-    } catch {
-      error("Projections sync failed");
-    } finally {
-      setSyncingProjections(false);
-    }
-  };
 
-  const syncRankings = async () => {
-    setSyncingRankings(true);
-    try {
-      const res = await fetch("/api/nflverse/sync?type=rankings", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        const playersUpdated = data.result?.rankings?.playersUpdated || 0;
-        if (playersUpdated > 0) {
-          success(`Synced ${playersUpdated} player rankings`);
-        } else {
-          error("No rankings data available");
-        }
-      } else {
-        error(data.error || "Rankings sync failed");
+      // Projections
+      const projRes = await fetch("/api/nflverse/sync?type=projections", { method: "POST" });
+      if (projRes.ok) {
+        const data = await projRes.json();
+        const count = data.result?.projections?.playersUpdated || 0;
+        if (count > 0) results.push(`${count} projections`);
       }
-    } catch {
-      error("Rankings sync failed");
-    } finally {
-      setSyncingRankings(false);
-    }
-  };
 
-  const syncDepthCharts = async () => {
-    setSyncingDepthCharts(true);
-    try {
-      const res = await fetch("/api/nflverse/sync?type=depth_charts", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        const playersUpdated = data.result?.depthCharts?.playersUpdated || 0;
-        const season = data.season || getCurrentSeason();
-        if (playersUpdated > 0) {
-          success(`Synced ${playersUpdated} depth chart entries for ${season}`);
-        } else {
-          error(`No depth chart data available for ${season}`);
-        }
-      } else {
-        error(data.error || "Depth charts sync failed");
+      // Rankings
+      const rankRes = await fetch("/api/nflverse/sync?type=rankings", { method: "POST" });
+      if (rankRes.ok) {
+        const data = await rankRes.json();
+        const count = data.result?.rankings?.playersUpdated || 0;
+        if (count > 0) results.push(`${count} rankings`);
       }
-    } catch {
-      error("Depth charts sync failed");
-    } finally {
-      setSyncingDepthCharts(false);
-    }
-  };
 
-  const syncInjuriesData = async () => {
-    setSyncingInjuries(true);
-    try {
-      const res = await fetch("/api/nflverse/sync?type=injuries", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        const playersUpdated = data.result?.injuries?.playersUpdated || 0;
-        const season = data.season || getCurrentSeason();
-        if (playersUpdated > 0) {
-          success(`Synced ${playersUpdated} injury reports for ${season}`);
-        } else {
-          error(`No injury data available for ${season} (may not be published yet)`);
-        }
+      if (results.length > 0) {
+        success(`Synced: ${results.join(", ")}`);
       } else {
-        error(data.error || "Injuries sync failed");
+        error("No data available to sync");
       }
     } catch {
-      error("Injuries sync failed");
+      error("Stats sync failed");
     } finally {
-      setSyncingInjuries(false);
-    }
-  };
-
-  const syncScheduleData = async () => {
-    setSyncingSchedule(true);
-    try {
-      // Default to upcoming season (current year)
-      const upcomingSeason = new Date().getFullYear();
-      const res = await fetch(`/api/nflverse/sync?type=schedule&season=${upcomingSeason}`, { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        const schedule = data.result?.schedule;
-        const teams = schedule?.teamsProcessed || 0;
-        const games = schedule?.gamesProcessed || 0;
-        const season = schedule?.season || upcomingSeason;
-        const scheduleErrors = schedule?.errors || [];
-        if (teams > 0) {
-          success(`Synced ${season} schedule: ${teams} teams, ${games} games`);
-        } else if (scheduleErrors.length > 0) {
-          // Show the specific error (e.g., "schedule not yet released")
-          error(scheduleErrors[0]);
-        } else {
-          error(`No schedule data available for ${season}`);
-        }
-      } else {
-        error(data.error || "Schedule sync failed");
-      }
-    } catch {
-      error("Schedule sync failed");
-    } finally {
-      setSyncingSchedule(false);
+      setSyncingStats(false);
     }
   };
 
@@ -238,55 +112,20 @@ export default function AdminPlayersPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-white">Player Management</h1>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={syncPlayers}
             disabled={syncing}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
             {syncing ? "Syncing..." : "Sync Players"}
           </button>
           <button
-            onClick={syncNflverseStats}
-            disabled={syncingNflverse}
-            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
+            onClick={syncAllStats}
+            disabled={syncingStats}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
           >
-            {syncingNflverse ? "Syncing..." : "Stats"}
-          </button>
-          <button
-            onClick={syncProjections}
-            disabled={syncingProjections}
-            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
-          >
-            {syncingProjections ? "Syncing..." : "Projections"}
-          </button>
-          <button
-            onClick={syncRankings}
-            disabled={syncingRankings}
-            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
-          >
-            {syncingRankings ? "Syncing..." : "Rankings"}
-          </button>
-          <button
-            onClick={syncDepthCharts}
-            disabled={syncingDepthCharts}
-            className="px-3 py-2 bg-[#1a1a1a] hover:bg-[#222222] border border-[#2a2a2a] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
-          >
-            {syncingDepthCharts ? "Syncing..." : "Depth Charts"}
-          </button>
-          <button
-            onClick={syncInjuriesData}
-            disabled={syncingInjuries}
-            className="px-3 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
-          >
-            {syncingInjuries ? "Syncing..." : "Injuries"}
-          </button>
-          <button
-            onClick={syncScheduleData}
-            disabled={syncingSchedule}
-            className="px-3 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-white text-sm font-medium"
-          >
-            {syncingSchedule ? "Syncing..." : "Schedule"}
+            {syncingStats ? "Syncing..." : "Sync Stats"}
           </button>
         </div>
       </div>
