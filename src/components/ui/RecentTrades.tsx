@@ -59,7 +59,7 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
   }>(
     `/api/leagues/${leagueId}/recent-trades?limit=${limit}`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   // All hooks must be called before any early returns

@@ -81,7 +81,7 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
   }>(
     `/api/leagues/${leagueId}/history/championships`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   if (isLoading) {

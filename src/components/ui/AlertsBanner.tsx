@@ -23,11 +23,11 @@ export function AlertsBanner({ leagueId }: AlertsBannerProps) {
   const [dismissed, setDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Fetch pending trades
+  // Fetch pending trades - cache for 5 minutes to reduce API calls during navigation
   const { data: tradesData } = useSWR(
     `/api/leagues/${leagueId}/trade-proposals?status=PENDING`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   useEffect(() => {

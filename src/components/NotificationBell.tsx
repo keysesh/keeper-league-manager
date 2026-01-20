@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Bell, Check, CheckCheck, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -21,14 +21,33 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Only poll when dropdown is open
   useEffect(() => {
-    fetchNotifications();
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isOpen) {
+      // Fetch immediately when opened
+      if (!hasFetched) {
+        fetchNotifications();
+        setHasFetched(true);
+      }
+      // Start polling while open (every 60 seconds)
+      intervalRef.current = setInterval(fetchNotifications, 60000);
+    } else {
+      // Stop polling when closed
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isOpen, hasFetched]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

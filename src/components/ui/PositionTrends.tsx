@@ -76,7 +76,7 @@ export function PositionTrends({ leagueId }: PositionTrendsProps) {
   const { data, error, isLoading } = useSWR<HistoryResponse>(
     `/api/leagues/${leagueId}/history`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   if (isLoading) {

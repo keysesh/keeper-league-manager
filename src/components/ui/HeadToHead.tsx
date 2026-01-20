@@ -50,7 +50,7 @@ export function HeadToHead({ leagueId, userRosterId }: HeadToHeadProps) {
   }>(
     `/api/leagues/${leagueId}/head-to-head`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   if (isLoading) {

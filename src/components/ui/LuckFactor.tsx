@@ -91,7 +91,7 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
   }>(
     `/api/leagues/${leagueId}/luck-factor`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   if (isLoading) {

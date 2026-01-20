@@ -426,7 +426,7 @@ export async function GET(
         draftCapital: "10%",
       },
     });
-    response.headers.set('Cache-Control', 'private, s-maxage=60, stale-while-revalidate=300');
+    response.headers.set('Cache-Control', 'private, s-maxage=300, stale-while-revalidate=600');
     return response;
   } catch (error) {
     logger.error("Power rankings fetch error", error);

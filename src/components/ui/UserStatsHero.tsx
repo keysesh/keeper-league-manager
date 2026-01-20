@@ -46,14 +46,14 @@ export function UserStatsHero({
   const { data: powerData } = useSWR<{ rankings: PowerRanking[] }>(
     `/api/leagues/${leagueId}/power-rankings`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   // Fetch luck factor
   const { data: luckData } = useSWR<{ luckRatings: LuckRating[] }>(
     `/api/leagues/${leagueId}/luck-factor`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   const userPowerRanking = powerData?.rankings?.find(r => r.rosterId === roster.id);

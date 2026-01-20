@@ -194,8 +194,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       counts: league._count,
     });
 
-    // Cache for 30 seconds, stale-while-revalidate for 60 seconds
-    response.headers.set('Cache-Control', 'private, s-maxage=30, stale-while-revalidate=60');
+    // Cache for 5 minutes, stale-while-revalidate for 10 minutes
+    response.headers.set('Cache-Control', 'private, s-maxage=300, stale-while-revalidate=600');
     return response;
   } catch (error) {
     logger.error("Error fetching league", error);

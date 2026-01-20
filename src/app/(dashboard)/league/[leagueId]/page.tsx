@@ -128,7 +128,7 @@ export default function LeaguePage() {
   const { data: league, error, isLoading } = useSWR<League>(
     `/api/leagues/${leagueId}`,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 5000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   if (isLoading) {

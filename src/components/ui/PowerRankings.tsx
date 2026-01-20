@@ -105,7 +105,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
   const { data: apiData, isLoading } = useSWR<{ rankings: ApiPowerRanking[] }>(
     useApi && leagueId ? `/api/leagues/${leagueId}/power-rankings` : null,
     fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30000 }
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   const clientRankedTeams = useMemo(() => {
