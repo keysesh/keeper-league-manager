@@ -305,19 +305,27 @@ export function DraftCapital({
                 : "grid-cols-4 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-16"
             }`}>
               {Array.from({ length: maxRounds }, (_, i) => i + 1).map((round) => {
-                const ownPick = ownPicks.find((p) => p.round === round);
-                const acquiredPick = acquiredPicks.find((p) => p.round === round);
-                const hasPick = ownPick || acquiredPick;
+                // Get ALL picks in this round (not just first)
+                const ownPicksInRound = ownPicks.filter((p) => p.round === round);
+                const acquiredPicksInRound = acquiredPicks.filter((p) => p.round === round);
+                const allPicksInRound = [...ownPicksInRound, ...acquiredPicksInRound];
+                const hasPick = allPicksInRound.length > 0;
                 const tradedPick = tradedPicksInfo.get(`${season}-${round}`);
                 const tooltipKey = `${season}-${round}`;
                 const keepersInRound = keepersByRound.get(round) || [];
                 const hasKeeper = keepersInRound.length > 0;
+                const totalPicksInRound = allPicksInRound.length;
 
                 // Build tooltip content
                 let tooltipContent = "";
-                if (acquiredPick) {
-                  tooltipContent = `R${round} acquired from ${acquiredPick.originalOwnerName || "trade"}`;
-                } else if (ownPick) {
+                if (totalPicksInRound > 1) {
+                  const ownCount = ownPicksInRound.length;
+                  const acqCount = acquiredPicksInRound.length;
+                  const acqFrom = acquiredPicksInRound.map(p => p.originalOwnerName || "trade").join(", ");
+                  tooltipContent = `R${round}: ${ownCount > 0 ? `${ownCount} own` : ""}${ownCount > 0 && acqCount > 0 ? " + " : ""}${acqCount > 0 ? `${acqCount} acquired (${acqFrom})` : ""}`;
+                } else if (acquiredPicksInRound.length > 0) {
+                  tooltipContent = `R${round} acquired from ${acquiredPicksInRound[0].originalOwnerName || "trade"}`;
+                } else if (ownPicksInRound.length > 0) {
                   tooltipContent = `R${round} (own pick)`;
                 } else if (tradedPick) {
                   tooltipContent = `R${round} traded to ${tradedPick.currentOwnerName || "another team"}`;
@@ -325,7 +333,7 @@ export function DraftCapital({
 
                 // Render keeper card(s) if there are keepers in this round
                 if (hasKeeper) {
-                  const isAcquiredPick = !!acquiredPick;
+                  const isAcquiredPick = acquiredPicksInRound.length > 0;
 
                   // If multiple keepers in same round (cascade conflict), show them stacked
                   return (
@@ -437,6 +445,9 @@ export function DraftCapital({
                 }
 
                 // Render standard pick cell (no keeper)
+                const hasAcquired = acquiredPicksInRound.length > 0;
+                const hasOwn = ownPicksInRound.length > 0;
+
                 return (
                   <div
                     key={round}
@@ -447,9 +458,9 @@ export function DraftCapital({
                       className={`
                         flex items-center justify-center rounded-md text-xs font-semibold transition-all cursor-pointer
                         ${keepers.length > 0 ? "h-[88px]" : "h-9"}
-                        ${acquiredPick
+                        ${hasAcquired
                           ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ring-1 ring-emerald-500/20 hover:ring-emerald-500/40"
-                          : ownPick
+                          : hasOwn
                           ? "bg-[#2a2a2a] text-gray-300 border border-[#3a3a3a] hover:border-[#4a4a4a]"
                           : "bg-[#1a1a1a] text-gray-600 border border-dashed border-[#333] hover:border-[#444]"
                         }
@@ -459,11 +470,17 @@ export function DraftCapital({
                         <span className="font-bold">R{round}</span>
                         {keepers.length > 0 && (
                           <span className="text-[9px] text-gray-500">
-                            {tradedPick ? "Traded" : acquiredPick ? "Acquired" : ownPick ? "Available" : "—"}
+                            {tradedPick && !hasPick ? "Traded" : hasAcquired ? "Acquired" : hasOwn ? "Available" : "—"}
                           </span>
                         )}
                       </div>
-                      {acquiredPick && (
+                      {/* Show count badge for multiple picks in same round */}
+                      {totalPicksInRound > 1 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[9px] text-white font-bold shadow-sm">
+                          {totalPicksInRound}x
+                        </span>
+                      )}
+                      {totalPicksInRound === 1 && hasAcquired && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-[9px] text-white font-bold shadow-sm">
                           +
                         </span>
@@ -477,7 +494,7 @@ export function DraftCapital({
 
                     {/* Mobile-friendly tooltip (click to show) */}
                     {activeTooltip === tooltipKey && tooltipContent && (
-                      <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[200px]">
+                      <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[250px]">
                         <div className="bg-[#222] border border-[#333] rounded-md shadow-xl px-3 py-2 text-xs text-white">
                           <div className="flex items-start justify-between gap-2">
                             <span>{tooltipContent}</span>
