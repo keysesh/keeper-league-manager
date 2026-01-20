@@ -997,30 +997,26 @@ export async function syncUserLeagues(
     throw new Error("User not found");
   }
 
-  // Check all seasons from 2020 to next year to find all leagues
+  // Start from next year, work backwards to 2023 (when most leagues started on Sleeper)
+  // Stop once we find leagues - syncLeague will follow previous_league_id chain for history
   const currentYear = new Date().getFullYear();
-  const seasonsToCheck: number[] = [];
-  for (let year = 2020; year <= currentYear + 1; year++) {
-    seasonsToCheck.push(year);
-  }
-
-  // Fetch leagues from all seasons in parallel
-  const leagueResults = await Promise.all(
-    seasonsToCheck.map(s =>
-      sleeper.getUserLeagues(user.sleeperId, s).catch(() => [] as SleeperLeague[])
-    )
-  );
-
-  // Combine leagues, avoiding duplicates (use league_id as key)
   const seenLeagueIds = new Set<string>();
   const allLeagues: SleeperLeague[] = [];
 
-  for (const seasonLeagues of leagueResults) {
-    for (const league of seasonLeagues) {
-      if (!seenLeagueIds.has(league.league_id)) {
-        seenLeagueIds.add(league.league_id);
-        allLeagues.push(league);
+  for (let year = currentYear + 1; year >= 2023; year--) {
+    try {
+      const leagues = await sleeper.getUserLeagues(user.sleeperId, year);
+      for (const league of leagues) {
+        if (!seenLeagueIds.has(league.league_id)) {
+          seenLeagueIds.add(league.league_id);
+          allLeagues.push(league);
+        }
       }
+      // Found leagues - stop checking older seasons
+      // syncLeague will follow previous_league_id for history
+      if (allLeagues.length > 0) break;
+    } catch {
+      // Continue to next season if this one fails
     }
   }
 

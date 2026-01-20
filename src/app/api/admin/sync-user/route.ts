@@ -32,34 +32,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "userId and sleeperId are required" }, { status: 400 });
     }
 
-    // Check all seasons from 2020 to next year
+    // Start from next year, work backwards to 2023 (when league started on Sleeper)
     const currentYear = new Date().getFullYear();
-    const seasons: number[] = [];
-    for (let year = 2020; year <= currentYear + 1; year++) {
-      seasons.push(year);
-    }
-
-    const allLeagues: Array<{ league_id: string }> = [];
     const seenIds = new Set<string>();
+    const allLeagues: Array<{ league_id: string; previous_league_id?: string }> = [];
 
-    for (const season of seasons) {
+    // Check seasons from newest to oldest, stop once we find leagues
+    for (let year = currentYear + 1; year >= 2023; year--) {
       try {
-        const leagues = await sleeper.getUserLeagues(sleeperId, season);
+        const leagues = await sleeper.getUserLeagues(sleeperId, year);
         for (const league of leagues) {
           if (!seenIds.has(league.league_id)) {
             seenIds.add(league.league_id);
             allLeagues.push(league);
           }
         }
+        // If we found leagues, no need to check older seasons
+        // (we'll follow previous_league_id chain instead)
+        if (allLeagues.length > 0) break;
       } catch (e) {
         // Ignore errors for individual seasons
-        console.log(`No leagues found for season ${season}`);
+        console.log(`No leagues found for season ${year}`);
       }
     }
 
     if (allLeagues.length === 0) {
       return NextResponse.json({
-        error: "No leagues found for this user on Sleeper",
+        error: "No leagues found for this user on Sleeper (checked 2023-present)",
         leagues: 0
       }, { status: 404 });
     }
