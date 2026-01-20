@@ -8,6 +8,7 @@ const sleeper = new SleeperClient();
 /**
  * Lightweight transaction sync - only syncs transactions for a single league
  * Designed to complete within Vercel's 10 second timeout
+ * Uses batch operations to minimize database round trips
  */
 export async function handleSyncTransactions(
   context: SyncContext,
@@ -19,24 +20,33 @@ export async function handleSyncTransactions(
     return createSyncError("leagueId is required", 400);
   }
 
-  // Get league info
-  const league = await prisma.league.findUnique({
-    where: { id: leagueId },
-    select: {
-      id: true,
-      sleeperId: true,
-      season: true,
-      rosters: {
-        select: { id: true, sleeperId: true }
-      }
-    },
-  });
+  // Single query: Get league with rosters and all players (for mapping)
+  const [league, allPlayers, existingTransactions] = await Promise.all([
+    prisma.league.findUnique({
+      where: { id: leagueId },
+      select: {
+        id: true,
+        sleeperId: true,
+        season: true,
+        rosters: {
+          select: { id: true, sleeperId: true }
+        }
+      },
+    }),
+    prisma.player.findMany({
+      select: { id: true, sleeperId: true }
+    }),
+    prisma.transaction.findMany({
+      where: { leagueId },
+      select: { sleeperId: true }
+    })
+  ]);
 
   if (!league) {
     return createSyncError("League not found", 404);
   }
 
-  // Build roster mapping
+  // Build maps for fast lookup
   const rosterMap = new Map<string, string>();
   for (const roster of league.rosters) {
     if (roster.sleeperId) {
@@ -44,76 +54,98 @@ export async function handleSyncTransactions(
     }
   }
 
-  // Fetch transactions from Sleeper (trades only for speed)
-  const transactions = await sleeper.getTransactions(league.sleeperId, 1); // Round 1 = offseason
+  const playerMap = new Map<string, string>();
+  for (const player of allPlayers) {
+    playerMap.set(player.sleeperId, player.id);
+  }
 
+  const existingTxIds = new Set(existingTransactions.map(t => t.sleeperId));
+
+  // Fetch transactions from Sleeper - get multiple rounds for better coverage
+  const [round1, round2, round3] = await Promise.all([
+    sleeper.getTransactions(league.sleeperId, 1).catch(() => []),
+    sleeper.getTransactions(league.sleeperId, 2).catch(() => []),
+    sleeper.getTransactions(league.sleeperId, 3).catch(() => []),
+  ]);
+
+  const allTransactions = [...round1, ...round2, ...round3];
+
+  // Filter to trades only, and only new ones
+  const newTrades = allTransactions
+    .filter((tx: { type: string; transaction_id?: string; created: number }) => {
+      if (tx.type !== "trade") return false;
+      const sleeperId = tx.transaction_id || `trade-${tx.created}`;
+      return !existingTxIds.has(sleeperId);
+    });
+
+  if (newTrades.length === 0) {
+    return createSyncResponse({
+      success: true,
+      message: "No new trades to sync",
+      data: { created: 0, skipped: allTransactions.filter((t: {type: string}) => t.type === "trade").length },
+    });
+  }
+
+  // Batch create all transactions and their players
   let created = 0;
-  let skipped = 0;
 
-  // Process only TRADE transactions
-  const trades = transactions.filter((tx: { type: string }) => tx.type === "trade");
-
-  for (const tx of trades) {
+  for (const tx of newTrades) {
     try {
       const sleeperId = tx.transaction_id || `trade-${tx.created}`;
 
-      // Check if transaction already exists
-      const existing = await prisma.transaction.findFirst({
-        where: {
-          sleeperId,
-        },
-      });
+      // Create transaction with players in a single transaction
+      await prisma.$transaction(async (prisma) => {
+        const transaction = await prisma.transaction.create({
+          data: {
+            sleeperId,
+            leagueId: league.id,
+            type: "TRADE",
+            status: tx.status || "complete",
+            createdAt: new Date(tx.created),
+            week: tx.leg || null,
+          },
+        });
 
-      if (existing) {
-        skipped++;
-        continue;
-      }
+        // Batch create all player records
+        const playerRecords: Array<{
+          transactionId: string;
+          playerId: string;
+          toRosterId: string | null;
+          fromRosterId: string | null;
+        }> = [];
 
-      // Create transaction
-      const transaction = await prisma.transaction.create({
-        data: {
-          sleeperId,
-          leagueId: league.id,
-          type: "TRADE",
-          status: tx.status || "complete",
-          createdAt: new Date(tx.created),
-          week: tx.leg || null,
-        },
-      });
+        if (tx.adds) {
+          for (const [sleeperPlayerId, rosterId] of Object.entries(tx.adds)) {
+            const dbPlayerId = playerMap.get(sleeperPlayerId);
+            const dbRosterId = rosterMap.get(String(rosterId));
+            if (!dbPlayerId || !dbRosterId) continue;
 
-      // Process adds (players received)
-      if (tx.adds) {
-        for (const [playerId, rosterId] of Object.entries(tx.adds)) {
-          const dbRosterId = rosterMap.get(String(rosterId));
-          if (!dbRosterId) continue;
-
-          // Find player
-          const player = await prisma.player.findFirst({
-            where: { sleeperId: playerId },
-          });
-          if (!player) continue;
-
-          // Find who gave up the player
-          let fromRosterId: string | null = null;
-          if (tx.drops) {
-            for (const [dropPlayerId, dropRosterId] of Object.entries(tx.drops)) {
-              if (dropPlayerId === playerId) {
-                fromRosterId = rosterMap.get(String(dropRosterId)) || null;
-                break;
+            // Find who gave up the player
+            let fromRosterId: string | null = null;
+            if (tx.drops) {
+              for (const [dropPlayerId, dropRosterId] of Object.entries(tx.drops)) {
+                if (dropPlayerId === sleeperPlayerId) {
+                  fromRosterId = rosterMap.get(String(dropRosterId)) || null;
+                  break;
+                }
               }
             }
-          }
 
-          await prisma.transactionPlayer.create({
-            data: {
+            playerRecords.push({
               transactionId: transaction.id,
-              playerId: player.id,
+              playerId: dbPlayerId,
               toRosterId: dbRosterId,
               fromRosterId,
-            },
+            });
+          }
+        }
+
+        if (playerRecords.length > 0) {
+          await prisma.transactionPlayer.createMany({
+            data: playerRecords,
           });
         }
-      }
+      });
 
       created++;
     } catch (err) {
@@ -129,7 +161,7 @@ export async function handleSyncTransactions(
 
   return createSyncResponse({
     success: true,
-    message: `Synced ${created} trades, skipped ${skipped} existing`,
-    data: { created, skipped, total: trades.length },
+    message: `Synced ${created} trades`,
+    data: { created, total: newTrades.length },
   });
 }
