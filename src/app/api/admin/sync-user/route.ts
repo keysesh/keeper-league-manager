@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SleeperClient } from "@/lib/sleeper/client";
-import { syncLeague } from "@/lib/sleeper/sync";
+import { syncLeagueWithHistory } from "@/lib/sleeper/sync";
 
 const sleeper = new SleeperClient();
 
@@ -63,14 +63,14 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Sync each league
-    let syncedCount = 0;
+    // Sync each league WITH HISTORY (follows previous_league_id chain)
+    let totalSeasons = 0;
     const errors: string[] = [];
 
     for (const league of allLeagues) {
       try {
-        await syncLeague(league.league_id);
-        syncedCount++;
+        const result = await syncLeagueWithHistory(league.league_id);
+        totalSeasons += result.seasons.length;
       } catch (e) {
         errors.push(`Failed to sync league ${league.league_id}: ${e}`);
       }
@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      leagues: syncedCount,
-      total: allLeagues.length,
+      leagues: allLeagues.length,
+      seasons: totalSeasons,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {

@@ -980,15 +980,16 @@ export async function syncUserLeaguesFast(
 
 /**
  * Perform a full sync for a user's leagues
- * Checks both current season and next season to handle league rollovers
+ * Checks seasons from current+1 down to 2023, then follows previous_league_id chain for history
  */
 export async function syncUserLeagues(
   userId: string,
-  season: number
+  _season?: number // Deprecated - we now auto-detect seasons
 ): Promise<{
   leagues: Array<{ id: string; name: string }>;
   totalRosters: number;
   totalPlayers: number;
+  totalSeasons: number;
 }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -999,7 +1000,7 @@ export async function syncUserLeagues(
   }
 
   // Start from next year, work backwards to 2023 (when most leagues started on Sleeper)
-  // Stop once we find leagues - syncLeague will follow previous_league_id chain for history
+  // Stop once we find leagues - then use syncLeagueWithHistory to follow the chain
   const currentYear = new Date().getFullYear();
   const seenLeagueIds = new Set<string>();
   const allLeagues: SleeperLeague[] = [];
@@ -1014,7 +1015,7 @@ export async function syncUserLeagues(
         }
       }
       // Found leagues - stop checking older seasons
-      // syncLeague will follow previous_league_id for history
+      // syncLeagueWithHistory will follow previous_league_id for history
       if (allLeagues.length > 0) break;
     } catch {
       // Continue to next season if this one fails
@@ -1025,13 +1026,16 @@ export async function syncUserLeagues(
     leagues: [] as Array<{ id: string; name: string }>,
     totalRosters: 0,
     totalPlayers: 0,
+    totalSeasons: 0,
   };
 
   for (const league of allLeagues) {
-    const syncResult = await syncLeague(league.league_id);
-    results.leagues.push(syncResult.league);
-    results.totalRosters += syncResult.rosters;
-    results.totalPlayers += syncResult.players;
+    // Use syncLeagueWithHistory to follow the previous_league_id chain
+    const historyResult = await syncLeagueWithHistory(league.league_id);
+    for (const season of historyResult.seasons) {
+      results.leagues.push({ id: season.leagueId, name: season.name });
+    }
+    results.totalSeasons += historyResult.seasons.length;
   }
 
   return results;
