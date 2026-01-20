@@ -405,33 +405,19 @@ export default function TeamRosterPage() {
   const syncKeepers = async () => {
     setSyncingKeepers(true);
     try {
-      const populateRes = await fetch("/api/sleeper/sync", {
+      const res = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "populate-keepers", leagueId }),
+        body: JSON.stringify({ action: "update-keepers", leagueId }),
       });
 
-      if (!populateRes.ok) {
-        const err = await populateRes.json();
-        throw new Error(err.error || "Failed to populate keepers");
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to sync keepers");
       }
 
-      const populateResult = await populateRes.json();
-
-      const recalcRes = await fetch("/api/sleeper/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "recalculate-keeper-years", leagueId }),
-      });
-
-      if (!recalcRes.ok) {
-        const err = await recalcRes.json();
-        throw new Error(err.error || "Failed to recalculate keeper years");
-      }
-
-      const recalcResult = await recalcRes.json();
-
-      success(`Synced: ${populateResult.data?.created || 0} created, ${recalcResult.data?.updated || 0} years fixed`);
+      const result = await res.json();
+      success(`Synced: ${result.data?.populated?.created || 0} created, ${result.data?.recalculated?.updated || 0} updated`);
       mutate();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Failed to sync keepers");

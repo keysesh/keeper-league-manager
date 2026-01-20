@@ -36,9 +36,9 @@ async function syncTradedPicksAndCascade() {
     // Sync traded picks with proper owner_id mapping
     let synced = 0;
     for (const pick of tradedPicks) {
-      // Convert roster slots to owner IDs
-      const originalOwnerId = slotToOwner.get(pick.owner_id);
-      const currentOwnerId = slotToOwner.get(pick.roster_id);
+      // Per Sleeper API: roster_id = ORIGINAL owner, owner_id = CURRENT owner
+      const originalOwnerId = slotToOwner.get(pick.roster_id);
+      const currentOwnerId = slotToOwner.get(pick.owner_id);
 
       if (!originalOwnerId || !currentOwnerId) {
         console.log(`  Skipping: slot ${pick.owner_id} -> ${pick.roster_id} (no owner mapping)`);

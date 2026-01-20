@@ -94,6 +94,13 @@ export const TradeVoteSchema = z.object({
 // ============================================
 
 export const SyncActionSchema = z.enum([
+  // New unified actions (preferred)
+  "refresh",
+  "sync",
+  "sync-history",
+  "update-keepers",
+  "sync-players",
+  // Legacy actions (backward compatible)
   "league",
   "user-leagues",
   "quick",

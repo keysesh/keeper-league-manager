@@ -36,10 +36,11 @@ async function main() {
       // Sync traded picks
       let synced = 0;
       for (const pick of tradedPicks) {
+        // Per Sleeper API: roster_id = ORIGINAL owner, owner_id = CURRENT owner
         const originalOwnerId =
-          slotToOwnerMap.get(pick.owner_id) || String(pick.owner_id);
-        const currentOwnerId =
           slotToOwnerMap.get(pick.roster_id) || String(pick.roster_id);
+        const currentOwnerId =
+          slotToOwnerMap.get(pick.owner_id) || String(pick.owner_id);
 
         await prisma.tradedPick.upsert({
           where: {

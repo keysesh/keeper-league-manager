@@ -192,9 +192,9 @@ export interface SleeperWaiverBudget {
 export interface SleeperTradedPick {
   season: string;
   round: number;
-  roster_id: number; // current owner
-  previous_owner_id: number;
-  owner_id: number; // original owner
+  roster_id: number; // ORIGINAL owner's roster_id (who the pick belonged to originally)
+  previous_owner_id: number; // previous owner's roster_id (before most recent trade)
+  owner_id: number; // CURRENT owner's roster_id (who owns the pick now)
 }
 
 export interface SleeperNFLState {

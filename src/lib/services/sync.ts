@@ -124,8 +124,9 @@ async function syncTradedPicks(leagueId: string): Promise<number> {
   let synced = 0;
 
   for (const pick of tradedPicks) {
-    const originalOwnerId = slotToOwnerMap.get(pick.owner_id);
-    const currentOwnerId = slotToOwnerMap.get(pick.roster_id);
+    // Per Sleeper API: roster_id = ORIGINAL owner, owner_id = CURRENT owner
+    const originalOwnerId = slotToOwnerMap.get(pick.roster_id);
+    const currentOwnerId = slotToOwnerMap.get(pick.owner_id);
 
     if (!originalOwnerId || !currentOwnerId) {
       continue;
