@@ -430,15 +430,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     // Recalculate cascade for remaining keepers to update finalCosts
-    const cascadeResult = await recalculateAndApplyCascade(leagueId, season);
-    if (cascadeResult.errors.length > 0) {
-      logger.warn("Cascade recalculation warnings after delete", { errors: cascadeResult.errors });
+    // Wrapped in try-catch so delete still succeeds even if cascade fails
+    let cascadeApplied = false;
+    try {
+      const cascadeResult = await recalculateAndApplyCascade(leagueId, season);
+      if (cascadeResult.errors.length > 0) {
+        logger.warn("Cascade recalculation warnings after delete", { errors: cascadeResult.errors });
+      }
+      cascadeApplied = cascadeResult.updatedCount > 0;
+    } catch (cascadeError) {
+      logger.warn("Cascade recalculation failed after delete", { error: cascadeError });
+      // Continue - delete was successful, cascade will be recalculated on next operation
     }
 
     return NextResponse.json({
       success: true,
       message: "Keeper removed",
-      cascadeApplied: cascadeResult.updatedCount > 0,
+      cascadeApplied,
     });
   } catch (error) {
     logger.error("Error deleting keeper", error);
