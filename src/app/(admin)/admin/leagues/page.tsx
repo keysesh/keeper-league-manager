@@ -161,6 +161,35 @@ export default function AdminLeaguesPage() {
     }
   };
 
+  // Sync Drafts - All historical drafts (slow but needed for keeper costs)
+  const handleSyncDrafts = async (leagueId: string) => {
+    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing", message: "Syncing drafts..." } }));
+    try {
+      const res = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-drafts", leagueId }),
+      });
+
+      if (!res.ok) throw new Error("Draft sync failed");
+
+      const data = await res.json();
+      const picks = data.data?.picks || 0;
+      const seasons = data.data?.seasons || 0;
+      setSyncStatus(prev => ({
+        ...prev,
+        [leagueId]: {
+          leagueId,
+          status: "success",
+          message: `Synced ${picks} draft picks from ${seasons} seasons`
+        }
+      }));
+      fetchLeagues();
+    } catch (error) {
+      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "error", message: String(error) } }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -266,9 +295,16 @@ export default function AdminLeaguesPage() {
                         <button
                           onClick={() => handleSyncHistory(league.id)}
                           className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-                          title="Sync all historical seasons"
+                          title="Sync rosters + traded picks for all seasons (fast)"
                         >
                           History
+                        </button>
+                        <button
+                          onClick={() => handleSyncDrafts(league.id)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors"
+                          title="Sync all draft picks for all seasons (slow, needed for keeper costs)"
+                        >
+                          Drafts
                         </button>
                       </>
                     )}

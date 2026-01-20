@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { RefreshCw, Check, AlertCircle, ChevronDown, History, Calculator } from "lucide-react";
+import { RefreshCw, Check, AlertCircle, ChevronDown, History, Calculator, FileText } from "lucide-react";
 
 interface SyncButtonProps {
   leagueId?: string;
@@ -9,7 +9,7 @@ interface SyncButtonProps {
   onSuccess?: () => void;
 }
 
-type SyncAction = "refresh" | "sync" | "sync-history" | "update-keepers";
+type SyncAction = "refresh" | "sync" | "sync-history" | "sync-drafts" | "update-keepers";
 
 interface SyncOption {
   action: SyncAction;
@@ -37,8 +37,15 @@ const syncOptions: SyncOption[] = [
   {
     action: "sync-history",
     label: "Sync History",
-    description: "All historical seasons",
+    description: "Rosters + traded picks (fast)",
     icon: <History size={14} />,
+    requiresLeagueId: true,
+  },
+  {
+    action: "sync-drafts",
+    label: "Sync Drafts",
+    description: "All draft picks (slow)",
+    icon: <FileText size={14} />,
     requiresLeagueId: true,
   },
   {

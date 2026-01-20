@@ -138,6 +138,41 @@ const handleSyncHistory: SyncHandler = async (context, body) => {
 };
 
 /**
+ * Sync Drafts - Sync all historical drafts (60-120s)
+ * Use case: First-time setup, get draft pick history for keeper costs
+ */
+const handleSyncDrafts: SyncHandler = async (context, body) => {
+  const { leagueId, maxSeasons = 5 } = body;
+
+  if (!leagueId || typeof leagueId !== "string") {
+    return createSyncError("leagueId is required for sync-drafts", 400);
+  }
+
+  try {
+    const result = await syncService.syncDrafts(
+      leagueId,
+      context.userId,
+      typeof maxSeasons === "number" ? maxSeasons : 5
+    );
+    return createSyncResponse({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "League not found") {
+        return createSyncError("League not found", 404);
+      }
+      if (error.message.includes("access")) {
+        return createSyncError(error.message, 403);
+      }
+    }
+    throw error;
+  }
+};
+
+/**
  * Update Keepers - Recalculate keeper records from DB (5-15s)
  * Use case: Fix keeper eligibility/costs
  */
@@ -215,6 +250,7 @@ const actionHandlers: Record<string, SyncHandler> = {
   refresh: handleRefresh,
   sync: handleSync,
   "sync-history": handleSyncHistory,
+  "sync-drafts": handleSyncDrafts,
   "update-keepers": handleUpdateKeepers,
   "sync-players": handleSyncPlayers,
 

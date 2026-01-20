@@ -67,6 +67,14 @@ export interface PlayersResult {
   updated: number;
 }
 
+export interface DraftsResult {
+  success: boolean;
+  message: string;
+  seasons: number;
+  drafts: number;
+  picks: number;
+}
+
 /**
  * Verify user has access to a league
  */
@@ -489,6 +497,94 @@ export class SyncService {
       populated: { created: totalCreated, skipped: totalSkipped },
       recalculated: { updated: totalUpdated, total: totalRecords },
       seasonsProcessed: leagueIds.length,
+    };
+  }
+
+  /**
+   * Sync Drafts - Sync all historical drafts
+   *
+   * Sleeper API calls:
+   * - GET /league/{id}/drafts for each season
+   * - GET /draft/{id}/picks for each draft
+   *
+   * Duration: 60-120s
+   * Timeout risk: Medium (but separate from history sync)
+   *
+   * Use case: First-time setup, get draft history for keeper costs
+   */
+  async syncDrafts(
+    leagueId: string,
+    userId?: string,
+    maxSeasons = 5
+  ): Promise<DraftsResult> {
+    if (userId && !(await verifyLeagueAccess(leagueId, userId))) {
+      throw new Error("You don't have access to this league");
+    }
+
+    const league = await getLeagueOrError(leagueId);
+
+    logger.info("Starting draft sync", {
+      leagueId,
+      leagueName: league.name,
+      maxSeasons,
+    });
+
+    // Get all leagues in the chain
+    const leagueIds = await getLeagueChain(leagueId);
+    const limitedLeagueIds = leagueIds.slice(0, maxSeasons);
+
+    let totalDrafts = 0;
+    let totalPicks = 0;
+
+    // Process each season sequentially
+    for (const id of limitedLeagueIds) {
+      try {
+        const leagueData = await prisma.league.findUnique({
+          where: { id },
+          select: { sleeperId: true, name: true },
+        });
+
+        if (!leagueData) continue;
+
+        // Sync just the drafts for this league (with drafts enabled)
+        const result = await syncLeague(leagueData.sleeperId, {
+          skipTransactions: true,
+          skipDrafts: false, // Actually sync drafts
+        });
+
+        totalDrafts += result.draftPicks > 0 ? 1 : 0;
+        totalPicks += result.draftPicks;
+
+        logger.info("Synced drafts for season", {
+          leagueId: id,
+          leagueName: leagueData.name,
+          picks: result.draftPicks,
+        });
+      } catch (err) {
+        logger.warn("Failed to sync drafts for league", {
+          leagueId: id,
+          error: err instanceof Error ? err.message : err,
+        });
+      }
+    }
+
+    // After syncing drafts, populate keepers from draft picks
+    let keepersCreated = 0;
+    for (const id of limitedLeagueIds) {
+      try {
+        const result = await populateKeepersFromDraftPicks(id);
+        keepersCreated += result.created;
+      } catch (err) {
+        logger.warn("Failed to populate keepers", { leagueId: id, error: err });
+      }
+    }
+
+    return {
+      success: true,
+      message: `Synced ${limitedLeagueIds.length} seasons: ${totalPicks} draft picks, ${keepersCreated} keepers created`,
+      seasons: limitedLeagueIds.length,
+      drafts: totalDrafts,
+      picks: totalPicks,
     };
   }
 
