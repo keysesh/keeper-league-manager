@@ -298,221 +298,318 @@ export function DraftCapital({
               </div>
             </div>
 
-            {/* Picks grid - use larger cells when keepers are present */}
-            <div className={`grid gap-2 ${
-              keepers.length > 0
-                ? "grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8"
-                : "grid-cols-4 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-16"
-            }`}>
-              {Array.from({ length: maxRounds }, (_, i) => i + 1).map((round) => {
-                // Get ALL picks in this round (not just first)
-                const ownPicksInRound = ownPicks.filter((p) => p.round === round);
-                const acquiredPicksInRound = acquiredPicks.filter((p) => p.round === round);
-                const allPicksInRound = [...ownPicksInRound, ...acquiredPicksInRound];
-                const hasPick = allPicksInRound.length > 0;
-                const tradedPick = tradedPicksInfo.get(`${season}-${round}`);
-                const tooltipKey = `${season}-${round}`;
+            {/* Picks grid - show each pick as its own cell */}
+            {(() => {
+              // Build a flat list of all cells to render (picks + empty slots)
+              interface GridCell {
+                type: "keeper" | "pick" | "empty" | "traded";
+                round: number;
+                cellIndex: number; // For multiple picks in same round
+                keeper?: Keeper;
+                pick?: DraftPick;
+                isAcquired?: boolean;
+                tradedTo?: string;
+              }
+
+              const cells: GridCell[] = [];
+              const usedSlots = new Map<number, number>(); // round -> count of picks used
+
+              // First, add all keepers at their final cost round
+              for (const keeper of keepers) {
+                const round = keeper.finalCost;
+                const cellIndex = usedSlots.get(round) || 0;
+                usedSlots.set(round, cellIndex + 1);
+
+                const isAcquiredPick = acquiredPicks.some(p => p.round === round);
+                cells.push({
+                  type: "keeper",
+                  round,
+                  cellIndex,
+                  keeper,
+                  isAcquired: isAcquiredPick,
+                });
+              }
+
+              // Then add available (non-keeper) picks
+              for (let round = 1; round <= maxRounds; round++) {
                 const keepersInRound = keepersByRound.get(round) || [];
-                const hasKeeper = keepersInRound.length > 0;
-                const totalPicksInRound = allPicksInRound.length;
+                const ownPicksInRound = ownPicks.filter(p => p.round === round);
+                const acquiredPicksInRound = acquiredPicks.filter(p => p.round === round);
+                const totalPicksInRound = ownPicksInRound.length + acquiredPicksInRound.length;
+                const tradedPick = tradedPicksInfo.get(`${season}-${round}`);
 
-                // Build tooltip content
-                let tooltipContent = "";
-                if (totalPicksInRound > 1) {
-                  const ownCount = ownPicksInRound.length;
-                  const acqCount = acquiredPicksInRound.length;
-                  const acqFrom = acquiredPicksInRound.map(p => p.originalOwnerName || "trade").join(", ");
-                  tooltipContent = `R${round}: ${ownCount > 0 ? `${ownCount} own` : ""}${ownCount > 0 && acqCount > 0 ? " + " : ""}${acqCount > 0 ? `${acqCount} acquired (${acqFrom})` : ""}`;
-                } else if (acquiredPicksInRound.length > 0) {
-                  tooltipContent = `R${round} acquired from ${acquiredPicksInRound[0].originalOwnerName || "trade"}`;
-                } else if (ownPicksInRound.length > 0) {
-                  tooltipContent = `R${round} (own pick)`;
-                } else if (tradedPick) {
-                  tooltipContent = `R${round} traded to ${tradedPick.currentOwnerName || "another team"}`;
+                // Calculate how many non-keeper slots we have
+                const availableSlots = totalPicksInRound - keepersInRound.length;
+
+                if (availableSlots > 0) {
+                  // Add available pick slots
+                  const currentUsed = usedSlots.get(round) || 0;
+                  for (let i = 0; i < availableSlots; i++) {
+                    const isAcquired = i < acquiredPicksInRound.length - keepersInRound.filter(k => acquiredPicksInRound.some(ap => ap.round === k.finalCost)).length;
+                    cells.push({
+                      type: "pick",
+                      round,
+                      cellIndex: currentUsed + i,
+                      isAcquired: acquiredPicksInRound.length > ownPicksInRound.length ? true : isAcquired,
+                      pick: isAcquired ? acquiredPicksInRound[i] : ownPicksInRound[i],
+                    });
+                  }
+                  usedSlots.set(round, currentUsed + availableSlots);
+                } else if (totalPicksInRound === 0 && !keepersInRound.length) {
+                  // No picks in this round - show empty or traded
+                  if (tradedPick) {
+                    cells.push({
+                      type: "traded",
+                      round,
+                      cellIndex: 0,
+                      tradedTo: tradedPick.currentOwnerName || "another team",
+                    });
+                  } else {
+                    cells.push({
+                      type: "empty",
+                      round,
+                      cellIndex: 0,
+                    });
+                  }
                 }
+              }
 
-                // Render keeper card(s) if there are keepers in this round
-                if (hasKeeper) {
-                  const isAcquiredPick = acquiredPicksInRound.length > 0;
+              // Sort cells by round, then by cellIndex
+              cells.sort((a, b) => a.round - b.round || a.cellIndex - b.cellIndex);
 
-                  // If multiple keepers in same round (cascade conflict), show them stacked
-                  return (
-                    <div key={round} className="space-y-2">
-                      {keepersInRound.map((keeper, idx) => {
-                        const isFranchise = keeper.type === "FRANCHISE";
-                        const yearsKept = keeper.yearsKept || 1;
+              return (
+                <div className={`grid gap-2 ${
+                  keepers.length > 0
+                    ? "grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8"
+                    : "grid-cols-4 sm:grid-cols-8 md:grid-cols-8 lg:grid-cols-16"
+                }`}>
+                  {cells.map((cell, idx) => {
+                    const tooltipKey = `${season}-${cell.round}-${cell.cellIndex}`;
 
-                        // Get display name (J. LastName format)
-                        const nameParts = keeper.player.fullName.split(" ");
-                        const firstName = nameParts[0] || "";
-                        const lastName = nameParts.slice(1).join(" ") || "";
-                        const displayName = lastName ? `${firstName.charAt(0)}. ${lastName}` : firstName;
+                    // Render keeper card
+                    if (cell.type === "keeper" && cell.keeper) {
+                      const keeper = cell.keeper;
+                      const isFranchise = keeper.type === "FRANCHISE";
+                      const yearsKept = keeper.yearsKept || 1;
+                      const isAcquiredPick = cell.isAcquired;
 
-                        // Get sleeper ID for avatar
-                        const sleeperId = keeper.sleeperId || keeper.playerId || keeper.player.sleeperId || keeper.id;
+                      // Get display name (J. LastName format)
+                      const nameParts = keeper.player.fullName.split(" ");
+                      const firstName = nameParts[0] || "";
+                      const lastName = nameParts.slice(1).join(" ") || "";
+                      const displayName = lastName ? `${firstName.charAt(0)}. ${lastName}` : firstName;
 
-                        return (
-                          <div
-                            key={keeper.id}
-                            className={`
-                              relative rounded-lg overflow-hidden
-                              ${isFranchise
-                                ? "bg-gradient-to-br from-amber-500/20 to-orange-500/10 border-2 border-amber-500/40"
-                                : isAcquiredPick
-                                  ? "bg-[#1a1a1a] border border-emerald-500/40"
-                                  : "bg-[#1a1a1a] border border-[#333]"
-                              }
-                              ${idx > 0 ? "ring-2 ring-purple-500/50" : ""}
-                            `}
-                          >
-                            {/* Conflict indicator for stacked keepers */}
-                            {keepersInRound.length > 1 && idx === 0 && (
-                              <div className="absolute -right-1 -top-1 z-10">
-                                <span className="text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm">
-                                  {keepersInRound.length} in R{round}
-                                </span>
-                              </div>
-                            )}
+                      // Get sleeper ID for avatar
+                      const sleeperId = keeper.sleeperId || keeper.playerId || keeper.player.sleeperId || keeper.id;
 
-                            {/* Round header with badges */}
-                            <div className={`flex items-center justify-between px-2 py-1.5 ${
-                              isFranchise ? "bg-amber-500/10" : "bg-[#222]"
+                      return (
+                        <div
+                          key={`keeper-${keeper.id}`}
+                          className={`
+                            relative rounded-lg overflow-hidden
+                            ${isFranchise
+                              ? "bg-gradient-to-br from-amber-500/20 to-orange-500/10 border-2 border-amber-500/40"
+                              : isAcquiredPick
+                                ? "bg-[#1a1a1a] border border-emerald-500/40"
+                                : "bg-[#1a1a1a] border border-[#333]"
+                            }
+                          `}
+                        >
+                          {/* Round header with badges */}
+                          <div className={`flex items-center justify-between px-2 py-1.5 ${
+                            isFranchise ? "bg-amber-500/10" : "bg-[#222]"
+                          }`}>
+                            <span className={`text-[10px] font-bold ${
+                              isFranchise ? "text-amber-400" : isAcquiredPick ? "text-emerald-400" : "text-gray-400"
                             }`}>
-                              <span className={`text-[10px] font-bold ${
-                                isFranchise ? "text-amber-400" : isAcquiredPick ? "text-emerald-400" : "text-gray-400"
-                              }`}>
-                                R{round}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                {isAcquiredPick && !isFranchise && (
-                                  <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
-                                    +ACQ
-                                  </span>
-                                )}
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                  isFranchise
-                                    ? "bg-amber-400/30 text-amber-200"
-                                    : yearsKept >= 3
-                                      ? "bg-red-500/30 text-red-200"
-                                      : yearsKept === 2
-                                        ? "bg-yellow-500/30 text-yellow-200"
-                                        : "bg-[#333] text-gray-300"
-                                }`}>
-                                  {isFranchise ? "FT" : `Y${yearsKept}`}
+                              R{cell.round}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {isAcquiredPick && !isFranchise && (
+                                <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
+                                  +ACQ
                                 </span>
-                              </div>
-                            </div>
-
-                            {/* Player card content */}
-                            <div className="p-2 flex items-center gap-2">
-                              {/* Avatar with team overlay */}
-                              <div className="relative shrink-0">
-                                <div className={`rounded-md overflow-hidden ${
-                                  isFranchise ? "ring-2 ring-amber-400/50" : "ring-1 ring-[#444]"
-                                }`}>
-                                  <PlayerAvatar
-                                    sleeperId={sleeperId}
-                                    name={keeper.player.fullName}
-                                    size="md"
-                                  />
-                                </div>
-                                {keeper.player.team && (
-                                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1a1a1a] ring-1 ring-[#333] flex items-center justify-center">
-                                    <TeamLogo team={keeper.player.team} size="xs" />
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Player info */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <PositionBadge position={keeper.player.position} size="xs" />
-                                  {isFranchise && <Star size={10} className="text-amber-400" />}
-                                </div>
-                                <p className="text-[11px] font-bold text-white truncate leading-tight" title={keeper.player.fullName}>
-                                  {displayName}
-                                </p>
-                                {keeper.player.team && (
-                                  <p className="text-[9px] text-gray-500">{keeper.player.team}</p>
-                                )}
-                              </div>
+                              )}
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                isFranchise
+                                  ? "bg-amber-400/30 text-amber-200"
+                                  : yearsKept >= 3
+                                    ? "bg-red-500/30 text-red-200"
+                                    : yearsKept === 2
+                                      ? "bg-yellow-500/30 text-yellow-200"
+                                      : "bg-[#333] text-gray-300"
+                              }`}>
+                                {isFranchise ? "FT" : `Y${yearsKept}`}
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  );
-                }
 
-                // Render standard pick cell (no keeper)
-                const hasAcquired = acquiredPicksInRound.length > 0;
-                const hasOwn = ownPicksInRound.length > 0;
+                          {/* Player card content */}
+                          <div className="p-2 flex items-center gap-2">
+                            {/* Avatar with team overlay */}
+                            <div className="relative shrink-0">
+                              <div className={`rounded-md overflow-hidden ${
+                                isFranchise ? "ring-2 ring-amber-400/50" : "ring-1 ring-[#444]"
+                              }`}>
+                                <PlayerAvatar
+                                  sleeperId={sleeperId}
+                                  name={keeper.player.fullName}
+                                  size="md"
+                                />
+                              </div>
+                              {keeper.player.team && (
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1a1a1a] ring-1 ring-[#333] flex items-center justify-center">
+                                  <TeamLogo team={keeper.player.team} size="xs" />
+                                </div>
+                              )}
+                            </div>
 
-                return (
-                  <div
-                    key={round}
-                    className="relative"
-                    onClick={() => setActiveTooltip(activeTooltip === tooltipKey ? null : tooltipKey)}
-                  >
-                    <div
-                      className={`
-                        flex items-center justify-center rounded-md text-xs font-semibold transition-all cursor-pointer
-                        ${keepers.length > 0 ? "h-[88px]" : "h-9"}
-                        ${hasAcquired
-                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ring-1 ring-emerald-500/20 hover:ring-emerald-500/40"
-                          : hasOwn
-                          ? "bg-[#2a2a2a] text-gray-300 border border-[#3a3a3a] hover:border-[#4a4a4a]"
-                          : "bg-[#1a1a1a] text-gray-600 border border-dashed border-[#333] hover:border-[#444]"
-                        }
-                      `}
-                    >
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="font-bold">R{round}</span>
-                        {keepers.length > 0 && (
-                          <span className="text-[9px] text-gray-500">
-                            {tradedPick && !hasPick ? "Traded" : hasAcquired ? "Acquired" : hasOwn ? "Available" : "—"}
-                          </span>
-                        )}
-                      </div>
-                      {/* Show count badge for multiple picks in same round */}
-                      {totalPicksInRound > 1 && (
-                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-[9px] text-white font-bold shadow-sm">
-                          {totalPicksInRound}x
-                        </span>
-                      )}
-                      {totalPicksInRound === 1 && hasAcquired && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-[9px] text-white font-bold shadow-sm">
-                          +
-                        </span>
-                      )}
-                      {!hasPick && tradedPick && (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <span className="w-5 h-px bg-red-500/60 rotate-45 absolute" />
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Mobile-friendly tooltip (click to show) */}
-                    {activeTooltip === tooltipKey && tooltipContent && (
-                      <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[250px]">
-                        <div className="bg-[#222] border border-[#333] rounded-md shadow-xl px-3 py-2 text-xs text-white">
-                          <div className="flex items-start justify-between gap-2">
-                            <span>{tooltipContent}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setActiveTooltip(null); }}
-                              className="text-gray-500 hover:text-white"
-                            >
-                              <X size={12} />
-                            </button>
+                            {/* Player info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1 mb-0.5">
+                                <PositionBadge position={keeper.player.position} size="xs" />
+                                {isFranchise && <Star size={10} className="text-amber-400" />}
+                              </div>
+                              <p className="text-[11px] font-bold text-white truncate leading-tight" title={keeper.player.fullName}>
+                                {displayName}
+                              </p>
+                              {keeper.player.team && (
+                                <p className="text-[9px] text-gray-500">{keeper.player.team}</p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-[#222] border-r border-b border-[#333] rotate-45 -bottom-1" />
+                      );
+                    }
+
+                    // Render available pick cell
+                    if (cell.type === "pick") {
+                      const hasAcquired = cell.isAcquired;
+                      const fromTeam = cell.pick?.originalOwnerName;
+
+                      return (
+                        <div
+                          key={`pick-${cell.round}-${cell.cellIndex}`}
+                          className="relative"
+                          onClick={() => setActiveTooltip(activeTooltip === tooltipKey ? null : tooltipKey)}
+                        >
+                          <div
+                            className={`
+                              flex items-center justify-center rounded-md text-xs font-semibold transition-all cursor-pointer
+                              ${keepers.length > 0 ? "h-[88px]" : "h-9"}
+                              ${hasAcquired
+                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 ring-1 ring-emerald-500/20 hover:ring-emerald-500/40"
+                                : "bg-[#2a2a2a] text-gray-300 border border-[#3a3a3a] hover:border-[#4a4a4a]"
+                              }
+                            `}
+                          >
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="font-bold">R{cell.round}</span>
+                              {keepers.length > 0 && (
+                                <span className="text-[9px] text-gray-500">
+                                  {hasAcquired ? "Acquired" : "Available"}
+                                </span>
+                              )}
+                            </div>
+                            {hasAcquired && (
+                              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-[9px] text-white font-bold shadow-sm">
+                                +
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Tooltip */}
+                          {activeTooltip === tooltipKey && (
+                            <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[250px]">
+                              <div className="bg-[#222] border border-[#333] rounded-md shadow-xl px-3 py-2 text-xs text-white">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span>
+                                    {hasAcquired ? `R${cell.round} acquired from ${fromTeam || "trade"}` : `R${cell.round} (own pick)`}
+                                  </span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setActiveTooltip(null); }}
+                                    className="text-gray-500 hover:text-white"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-[#222] border-r border-b border-[#333] rotate-45 -bottom-1" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Render traded pick cell
+                    if (cell.type === "traded") {
+                      return (
+                        <div
+                          key={`traded-${cell.round}`}
+                          className="relative"
+                          onClick={() => setActiveTooltip(activeTooltip === tooltipKey ? null : tooltipKey)}
+                        >
+                          <div
+                            className={`
+                              flex items-center justify-center rounded-md text-xs font-semibold transition-all cursor-pointer
+                              ${keepers.length > 0 ? "h-[88px]" : "h-9"}
+                              bg-[#1a1a1a] text-gray-600 border border-dashed border-[#333] hover:border-[#444]
+                            `}
+                          >
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="font-bold">R{cell.round}</span>
+                              {keepers.length > 0 && (
+                                <span className="text-[9px] text-red-400">Traded</span>
+                              )}
+                            </div>
+                            <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="w-5 h-px bg-red-500/60 rotate-45 absolute" />
+                            </span>
+                          </div>
+
+                          {/* Tooltip */}
+                          {activeTooltip === tooltipKey && (
+                            <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[250px]">
+                              <div className="bg-[#222] border border-[#333] rounded-md shadow-xl px-3 py-2 text-xs text-white">
+                                <div className="flex items-start justify-between gap-2">
+                                  <span>R{cell.round} traded to {cell.tradedTo}</span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setActiveTooltip(null); }}
+                                    className="text-gray-500 hover:text-white"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-[#222] border-r border-b border-[#333] rotate-45 -bottom-1" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Render empty cell (no pick)
+                    return (
+                      <div
+                        key={`empty-${cell.round}`}
+                        className={`
+                          flex items-center justify-center rounded-md text-xs font-semibold
+                          ${keepers.length > 0 ? "h-[88px]" : "h-9"}
+                          bg-[#1a1a1a] text-gray-600 border border-dashed border-[#333]
+                        `}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-bold">R{cell.round}</span>
+                          {keepers.length > 0 && (
+                            <span className="text-[9px] text-gray-500">—</span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {/* Traded pick details for this season */}
             {Array.from(tradedPicksInfo.values()).filter(p => p.season === season).length > 0 && (

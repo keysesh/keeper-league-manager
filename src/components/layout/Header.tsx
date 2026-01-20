@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signOut } from "next-auth/react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { LogoFull, LogoMark } from "@/components/ui/Logo";
@@ -27,6 +26,40 @@ import {
   UserCircle,
   Bookmark,
 } from "lucide-react";
+
+/**
+ * Avatar component with built-in error handling
+ */
+function UserAvatar({
+  src,
+  name,
+  size = "sm"
+}: {
+  src?: string | null;
+  name: string;
+  size?: "sm" | "md"
+}) {
+  const [hasError, setHasError] = useState(false);
+  const sizeClasses = size === "sm" ? "w-8 h-8" : "w-11 h-11";
+  const textSize = size === "sm" ? "text-xs" : "text-sm";
+
+  if (!src || hasError) {
+    return (
+      <div className={`${sizeClasses} rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center ${textSize} font-bold text-white`}>
+        {name[0].toUpperCase()}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={`${name} avatar`}
+      className={`${sizeClasses} rounded-full ring-2 ring-white/[0.1] object-cover`}
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 interface HeaderProps {
   user: {
@@ -161,19 +194,7 @@ export function Header({ user }: HeaderProps) {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#1a2435] transition-colors"
               >
-                {user.image ? (
-                  <Image
-                    src={user.image}
-                    alt={`${displayName} avatar`}
-                    width={32}
-                    height={32}
-                    className="rounded-full ring-2 ring-white/[0.1]"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white">
-                    {displayName[0].toUpperCase()}
-                  </div>
-                )}
+                <UserAvatar src={user.image} name={displayName} size="sm" />
                 <span className="hidden sm:block text-sm text-slate-200 font-medium max-w-[100px] truncate">
                   {displayName}
                 </span>
@@ -261,19 +282,7 @@ export function Header({ user }: HeaderProps) {
             {/* User Info */}
             <div className="p-4 border-b border-white/[0.06] bg-[#0d1420]">
               <div className="flex items-center gap-3">
-                {user.image ? (
-                  <Image
-                    src={user.image}
-                    alt={`${displayName} avatar`}
-                    width={44}
-                    height={44}
-                    className="rounded-full ring-2 ring-white/[0.1]"
-                  />
-                ) : (
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-sm font-bold text-white">
-                    {displayName[0].toUpperCase()}
-                  </div>
-                )}
+                <UserAvatar src={user.image} name={displayName} size="md" />
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-semibold truncate">{displayName}</p>
                   <p className="text-xs text-slate-500">Keeper Manager</p>
