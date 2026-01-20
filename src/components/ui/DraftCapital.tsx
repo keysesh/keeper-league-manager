@@ -323,107 +323,115 @@ export function DraftCapital({
                   tooltipContent = `R${round} traded to ${tradedPick.currentOwnerName || "another team"}`;
                 }
 
-                // Render keeper card if there's a keeper in this round
+                // Render keeper card(s) if there are keepers in this round
                 if (hasKeeper) {
-                  const keeper = keepersInRound[0];
-                  const isFranchise = keeper.type === "FRANCHISE";
-                  const yearsKept = keeper.yearsKept || 1;
                   const isAcquiredPick = !!acquiredPick;
 
-                  // Get display name (J. LastName format)
-                  const nameParts = keeper.player.fullName.split(" ");
-                  const firstName = nameParts[0] || "";
-                  const lastName = nameParts.slice(1).join(" ") || "";
-                  const displayName = lastName ? `${firstName.charAt(0)}. ${lastName}` : firstName;
-
-                  // Get sleeper ID for avatar
-                  const sleeperId = keeper.sleeperId || keeper.playerId || keeper.player.sleeperId || keeper.id;
-
+                  // If multiple keepers in same round (cascade conflict), show them stacked
                   return (
-                    <div
-                      key={round}
-                      className={`
-                        relative rounded-lg overflow-hidden
-                        ${isFranchise
-                          ? "bg-gradient-to-br from-amber-500/20 to-orange-500/10 border-2 border-amber-500/40"
-                          : isAcquiredPick
-                            ? "bg-[#1a1a1a] border border-emerald-500/40"
-                            : "bg-[#1a1a1a] border border-[#333]"
-                        }
-                      `}
-                    >
-                      {/* Round header with badges */}
-                      <div className={`flex items-center justify-between px-2 py-1.5 ${
-                        isFranchise ? "bg-amber-500/10" : "bg-[#222]"
-                      }`}>
-                        <span className={`text-[10px] font-bold ${
-                          isFranchise ? "text-amber-400" : isAcquiredPick ? "text-emerald-400" : "text-gray-400"
-                        }`}>
-                          R{round}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {isAcquiredPick && !isFranchise && (
-                            <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
-                              +ACQ
-                            </span>
-                          )}
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            isFranchise
-                              ? "bg-amber-400/30 text-amber-200"
-                              : yearsKept >= 3
-                                ? "bg-red-500/30 text-red-200"
-                                : yearsKept === 2
-                                  ? "bg-yellow-500/30 text-yellow-200"
-                                  : "bg-[#333] text-gray-300"
-                          }`}>
-                            {isFranchise ? "FT" : `Y${yearsKept}`}
-                          </span>
-                        </div>
-                      </div>
+                    <div key={round} className="space-y-2">
+                      {keepersInRound.map((keeper, idx) => {
+                        const isFranchise = keeper.type === "FRANCHISE";
+                        const yearsKept = keeper.yearsKept || 1;
 
-                      {/* Player card content */}
-                      <div className="p-2 flex items-center gap-2">
-                        {/* Avatar with team overlay */}
-                        <div className="relative shrink-0">
-                          <div className={`rounded-md overflow-hidden ${
-                            isFranchise ? "ring-2 ring-amber-400/50" : "ring-1 ring-[#444]"
-                          }`}>
-                            <PlayerAvatar
-                              sleeperId={sleeperId}
-                              name={keeper.player.fullName}
-                              size="md"
-                            />
-                          </div>
-                          {keeper.player.team && (
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1a1a1a] ring-1 ring-[#333] flex items-center justify-center">
-                              <TeamLogo team={keeper.player.team} size="xs" />
+                        // Get display name (J. LastName format)
+                        const nameParts = keeper.player.fullName.split(" ");
+                        const firstName = nameParts[0] || "";
+                        const lastName = nameParts.slice(1).join(" ") || "";
+                        const displayName = lastName ? `${firstName.charAt(0)}. ${lastName}` : firstName;
+
+                        // Get sleeper ID for avatar
+                        const sleeperId = keeper.sleeperId || keeper.playerId || keeper.player.sleeperId || keeper.id;
+
+                        return (
+                          <div
+                            key={keeper.id}
+                            className={`
+                              relative rounded-lg overflow-hidden
+                              ${isFranchise
+                                ? "bg-gradient-to-br from-amber-500/20 to-orange-500/10 border-2 border-amber-500/40"
+                                : isAcquiredPick
+                                  ? "bg-[#1a1a1a] border border-emerald-500/40"
+                                  : "bg-[#1a1a1a] border border-[#333]"
+                              }
+                              ${idx > 0 ? "ring-2 ring-purple-500/50" : ""}
+                            `}
+                          >
+                            {/* Conflict indicator for stacked keepers */}
+                            {keepersInRound.length > 1 && idx === 0 && (
+                              <div className="absolute -right-1 -top-1 z-10">
+                                <span className="text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm">
+                                  {keepersInRound.length} in R{round}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Round header with badges */}
+                            <div className={`flex items-center justify-between px-2 py-1.5 ${
+                              isFranchise ? "bg-amber-500/10" : "bg-[#222]"
+                            }`}>
+                              <span className={`text-[10px] font-bold ${
+                                isFranchise ? "text-amber-400" : isAcquiredPick ? "text-emerald-400" : "text-gray-400"
+                              }`}>
+                                R{round}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {isAcquiredPick && !isFranchise && (
+                                  <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
+                                    +ACQ
+                                  </span>
+                                )}
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                  isFranchise
+                                    ? "bg-amber-400/30 text-amber-200"
+                                    : yearsKept >= 3
+                                      ? "bg-red-500/30 text-red-200"
+                                      : yearsKept === 2
+                                        ? "bg-yellow-500/30 text-yellow-200"
+                                        : "bg-[#333] text-gray-300"
+                                }`}>
+                                  {isFranchise ? "FT" : `Y${yearsKept}`}
+                                </span>
+                              </div>
                             </div>
-                          )}
-                        </div>
 
-                        {/* Player info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1 mb-0.5">
-                            <PositionBadge position={keeper.player.position} size="xs" />
-                            {isFranchise && <Star size={10} className="text-amber-400" />}
+                            {/* Player card content */}
+                            <div className="p-2 flex items-center gap-2">
+                              {/* Avatar with team overlay */}
+                              <div className="relative shrink-0">
+                                <div className={`rounded-md overflow-hidden ${
+                                  isFranchise ? "ring-2 ring-amber-400/50" : "ring-1 ring-[#444]"
+                                }`}>
+                                  <PlayerAvatar
+                                    sleeperId={sleeperId}
+                                    name={keeper.player.fullName}
+                                    size="md"
+                                  />
+                                </div>
+                                {keeper.player.team && (
+                                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#1a1a1a] ring-1 ring-[#333] flex items-center justify-center">
+                                    <TeamLogo team={keeper.player.team} size="xs" />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Player info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <PositionBadge position={keeper.player.position} size="xs" />
+                                  {isFranchise && <Star size={10} className="text-amber-400" />}
+                                </div>
+                                <p className="text-[11px] font-bold text-white truncate leading-tight" title={keeper.player.fullName}>
+                                  {displayName}
+                                </p>
+                                {keeper.player.team && (
+                                  <p className="text-[9px] text-gray-500">{keeper.player.team}</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-[11px] font-bold text-white truncate leading-tight" title={keeper.player.fullName}>
-                            {displayName}
-                          </p>
-                          {keeper.player.team && (
-                            <p className="text-[9px] text-gray-500">{keeper.player.team}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Multi-keeper indicator */}
-                      {keepersInRound.length > 1 && (
-                        <div className="absolute -right-1 -bottom-1">
-                          <span className="text-[8px] bg-purple-500 text-white px-1.5 py-0.5 rounded-full font-bold shadow-sm">
-                            +{keepersInRound.length - 1}
-                          </span>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   );
                 }
