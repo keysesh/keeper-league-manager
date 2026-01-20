@@ -979,6 +979,7 @@ export async function syncUserLeaguesFast(
 
 /**
  * Perform a full sync for a user's leagues
+ * Checks both current season and next season to handle league rollovers
  */
 export async function syncUserLeagues(
   userId: string,
@@ -996,7 +997,22 @@ export async function syncUserLeagues(
     throw new Error("User not found");
   }
 
-  const sleeperLeagues = await sleeper.getUserLeagues(user.sleeperId, season);
+  // Check both current season and next season in case leagues have rolled over
+  const [currentSeasonLeagues, nextSeasonLeagues] = await Promise.all([
+    sleeper.getUserLeagues(user.sleeperId, season),
+    sleeper.getUserLeagues(user.sleeperId, season + 1),
+  ]);
+
+  // Combine leagues, avoiding duplicates (use league_id as key)
+  const seenLeagueIds = new Set<string>();
+  const allLeagues: SleeperLeague[] = [];
+
+  for (const league of [...currentSeasonLeagues, ...nextSeasonLeagues]) {
+    if (!seenLeagueIds.has(league.league_id)) {
+      seenLeagueIds.add(league.league_id);
+      allLeagues.push(league);
+    }
+  }
 
   const results = {
     leagues: [] as Array<{ id: string; name: string }>,
@@ -1004,7 +1020,7 @@ export async function syncUserLeagues(
     totalPlayers: 0,
   };
 
-  for (const league of sleeperLeagues) {
+  for (const league of allLeagues) {
     const syncResult = await syncLeague(league.league_id);
     results.leagues.push(syncResult.league);
     results.totalRosters += syncResult.rosters;
