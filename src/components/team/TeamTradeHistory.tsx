@@ -37,6 +37,7 @@ interface TeamTradeHistoryProps {
   defaultLimit?: number;
   variant?: "full" | "compact";
   viewAllHref?: string;
+  allTimeTrades?: number;  // From superlatives API - all-time trade count
   className?: string;
 }
 
@@ -53,6 +54,7 @@ export function TeamTradeHistory({
   defaultLimit = 5,
   variant = "full",
   viewAllHref,
+  allTimeTrades,
   className,
 }: TeamTradeHistoryProps) {
   // teamName is kept for potential future use in "View All" links
@@ -64,9 +66,9 @@ export function TeamTradeHistory({
     trade.parties.some((party) => party.rosterId === rosterId)
   );
 
-  if (teamTrades.length === 0) return null;
+  if (teamTrades.length === 0 && !allTimeTrades) return null;
 
-  // Count assets involved in trades
+  // Count assets involved in trades (from recent trades prop)
   const totalPlayersTraded = teamTrades.reduce((sum, trade) => {
     const teamParty = trade.parties.find(p => p.rosterId === rosterId);
     if (!teamParty) return sum;
@@ -79,6 +81,9 @@ export function TeamTradeHistory({
     return sum + teamParty.picksGiven.length + teamParty.picksReceived.length;
   }, 0);
 
+  // Use allTimeTrades from API if available, otherwise fall back to trades prop count
+  const displayAllTimeTrades = allTimeTrades ?? teamTrades.length;
+
   // Compact variant - summary card
   if (variant === "compact") {
     const latestTrade = teamTrades[0];
@@ -86,6 +91,10 @@ export function TeamTradeHistory({
     const formattedDate = latestTradeDate
       ? latestTradeDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })
       : null;
+
+    // Count trades from current season (if we have trade data)
+    const currentYear = new Date().getFullYear();
+    const currentSeasonTrades = teamTrades.filter(t => t.season >= currentYear - 1).length;
 
     return (
       <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl p-3", className)}>
@@ -96,11 +105,15 @@ export function TeamTradeHistory({
           <h3 className="text-sm font-semibold text-white">Trade Activity</h3>
         </div>
 
-        {/* Compact stats */}
+        {/* Compact stats - All-Time first, then This Season */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-slate-500">Total Trades</span>
-            <span className="text-xs font-bold text-white">{teamTrades.length}</span>
+            <span className="text-[11px] text-slate-500">All-Time Trades</span>
+            <span className="text-xs font-bold text-white">{displayAllTimeTrades}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-500">This Season</span>
+            <span className="text-xs font-medium text-slate-300">{currentSeasonTrades}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-slate-500">Players Traded</span>

@@ -10,12 +10,20 @@ interface BestSeason {
   points: number;
 }
 
+interface TeamRankings {
+  byWins: number;
+  byPoints: number;
+  byWinPct: number;
+  totalTeams: number;
+}
+
 interface TeamHistoricalStatsProps {
   allTimeRecord: { wins: number; losses: number };
   totalPoints: number;
   bestSeason: BestSeason | null;
   seasonsPlayed: number;
   playoffAppearances: number;
+  rankings?: TeamRankings | null;
   variant?: "full" | "compact";
   className?: string;
 }
@@ -30,6 +38,7 @@ export function TeamHistoricalStats({
   bestSeason,
   seasonsPlayed,
   playoffAppearances,
+  rankings,
   variant = "full",
   className,
 }: TeamHistoricalStatsProps) {
@@ -45,11 +54,27 @@ export function TeamHistoricalStats({
   if (variant === "compact") {
     return (
       <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl p-4", className)}>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-md bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
-            <ChartRising className="w-3.5 h-3.5 text-blue-400" />
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
+              <ChartRising className="w-3.5 h-3.5 text-blue-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-white">All-Time Stats</h3>
           </div>
-          <h3 className="text-sm font-semibold text-white">All-Time Stats</h3>
+          {/* Ranking badge */}
+          {rankings && (
+            <div className={cn(
+              "px-2 py-1 rounded-md text-xs font-bold",
+              rankings.byWins === 1 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+              rankings.byWins <= 3 ? "bg-slate-500/20 text-slate-300 border border-slate-500/30" :
+              "bg-slate-500/10 text-slate-400 border border-white/[0.04]"
+            )}>
+              #{rankings.byWins}
+              <span className="text-[9px] text-slate-500 ml-1 font-normal">
+                of {rankings.totalTeams}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Compact 3-stat display */}
@@ -86,11 +111,27 @@ export function TeamHistoricalStats({
   return (
     <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden", className)}>
       <div className="px-4 sm:px-5 py-3 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
-            <ChartRising className="w-4 h-4 text-blue-400" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
+              <ChartRising className="w-4 h-4 text-blue-400" />
+            </div>
+            <h2 className="text-sm sm:text-base font-semibold text-white">All-Time Stats</h2>
           </div>
-          <h2 className="text-sm sm:text-base font-semibold text-white">All-Time Stats</h2>
+          {/* Ranking badge */}
+          {rankings && (
+            <div className={cn(
+              "px-2.5 py-1 rounded-md text-sm font-bold",
+              rankings.byWins === 1 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+              rankings.byWins <= 3 ? "bg-slate-500/20 text-slate-300 border border-slate-500/30" :
+              "bg-slate-500/10 text-slate-400 border border-white/[0.04]"
+            )}>
+              #{rankings.byWins}
+              <span className="text-[10px] text-slate-500 ml-1 font-normal">
+                All-Time (of {rankings.totalTeams})
+              </span>
+            </div>
+          )}
         </div>
       </div>
       <div className="p-3 sm:p-4">

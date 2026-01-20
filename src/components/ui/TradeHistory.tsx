@@ -41,6 +41,7 @@ interface TradeHistoryProps {
 /**
  * Trade History visualization
  * Shows all trades in the league with visual breakdown
+ * Features: Season grouping, better styling, hover effects
  */
 export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
   const sortedTrades = useMemo(() => {
@@ -48,6 +49,18 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }, [trades]);
+
+  // Group trades by season
+  const tradesBySeason = useMemo(() => {
+    const grouped = new Map<number, typeof trades>();
+    for (const trade of sortedTrades) {
+      const existing = grouped.get(trade.season) || [];
+      existing.push(trade);
+      grouped.set(trade.season, existing);
+    }
+    // Sort seasons descending (most recent first)
+    return Array.from(grouped.entries()).sort((a, b) => b[0] - a[0]);
+  }, [sortedTrades]);
 
   // Trade stats
   const stats = useMemo(() => {
@@ -119,7 +132,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
         )}
       </div>
 
-      {/* Trade list */}
+      {/* Trade list - Grouped by season */}
       <div className="bg-[#0d1420] border border-white/[0.06] rounded-lg overflow-hidden">
         <div className="px-3 py-2.5 border-b border-white/[0.06]">
           <div className="flex items-center gap-2">
@@ -128,90 +141,103 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
           </div>
         </div>
 
-        <div className="divide-y divide-white/[0.06]">
-          {sortedTrades.map((trade) => {
-            const isHighlighted = trade.parties.some(p => p.rosterId === highlightRosterId);
-
-            return (
-              <div
-                key={trade.id}
-                className={`p-3 ${isHighlighted ? "bg-blue-500/5" : ""}`}
-              >
-                {/* Trade header */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Calendar className="w-3 h-3" />
-                    <span>{new Date(trade.date).toLocaleDateString()}</span>
-                    <span className="text-slate-600">•</span>
-                    <span>{trade.season} Season</span>
-                  </div>
-                </div>
-
-                {/* Trade parties */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {trade.parties.map((party) => (
-                    <div
-                      key={party.rosterId}
-                      className={`rounded-md p-2.5 ${
-                        party.rosterId === highlightRosterId
-                          ? "bg-blue-500/10 border border-blue-500/20"
-                          : "bg-[#131a28] border border-white/[0.04]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <User className="w-3 h-3 text-slate-500" />
-                        <span className="text-xs font-medium text-white">
-                          {party.rosterName || `Team ${party.rosterId.slice(0, 6)}`}
-                        </span>
-                      </div>
-
-                      {/* Sent */}
-                      {(party.playersGiven.length > 0 || party.picksGiven.length > 0) && (
-                        <div className="mb-1.5">
-                          <span className="text-[8px] text-red-400 uppercase tracking-wider">Sent</span>
-                          <div className="mt-0.5 space-y-0.5">
-                            {party.playersGiven.map((player) => (
-                              <div key={player.playerId} className="flex items-center gap-1.5">
-                                <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
-                                <PositionBadge position={player.position} size="xs" />
-                                <span className="text-xs text-slate-300">{player.playerName}</span>
-                              </div>
-                            ))}
-                            {party.picksGiven.map((pick, i) => (
-                              <div key={i} className="text-xs text-slate-400">
-                                {pick.season} Round {pick.round}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Received */}
-                      {(party.playersReceived.length > 0 || party.picksReceived.length > 0) && (
-                        <div>
-                          <span className="text-[8px] text-emerald-400 uppercase tracking-wider">Received</span>
-                          <div className="mt-0.5 space-y-0.5">
-                            {party.playersReceived.map((player) => (
-                              <div key={player.playerId} className="flex items-center gap-1.5">
-                                <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
-                                <PositionBadge position={player.position} size="xs" />
-                                <span className="text-xs text-slate-300">{player.playerName}</span>
-                              </div>
-                            ))}
-                            {party.picksReceived.map((pick, i) => (
-                              <div key={i} className="text-xs text-slate-400">
-                                {pick.season} Round {pick.round}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+        <div>
+          {tradesBySeason.map(([season, seasonTrades]) => (
+            <div key={season}>
+              {/* Season header */}
+              <div className="px-3 py-2 bg-[#0a0f17] border-b border-white/[0.04] sticky top-0 z-10">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-400">{season} Season</span>
+                  <span className="text-[10px] text-slate-500 px-1.5 py-0.5 rounded bg-slate-500/10">
+                    {seasonTrades.length} trade{seasonTrades.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
               </div>
-            );
-          })}
+
+              {/* Trades in this season */}
+              <div className="divide-y divide-white/[0.04]">
+                {seasonTrades.map((trade) => {
+                  const isHighlighted = trade.parties.some(p => p.rosterId === highlightRosterId);
+
+                  return (
+                    <div
+                      key={trade.id}
+                      className={`p-3 transition-colors hover:bg-white/[0.02] ${isHighlighted ? "bg-blue-500/5" : ""}`}
+                    >
+                      {/* Trade header - just date now since season is in header */}
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                        <Calendar className="w-3 h-3" />
+                        <span>{new Date(trade.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      </div>
+
+                      {/* Trade parties */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {trade.parties.map((party) => (
+                          <div
+                            key={party.rosterId}
+                            className={`rounded-lg p-2.5 transition-all hover:border-white/[0.08] ${
+                              party.rosterId === highlightRosterId
+                                ? "bg-blue-500/10 border border-blue-500/25"
+                                : "bg-[#131a28] border border-white/[0.04]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-white/[0.04]">
+                              <User className="w-3 h-3 text-slate-500" />
+                              <span className="text-xs font-medium text-white truncate">
+                                {party.rosterName || `Team ${party.rosterId.slice(0, 6)}`}
+                              </span>
+                            </div>
+
+                            {/* Sent */}
+                            {(party.playersGiven.length > 0 || party.picksGiven.length > 0) && (
+                              <div className="mb-2">
+                                <span className="text-[8px] text-red-400 uppercase tracking-wider font-semibold">Sent</span>
+                                <div className="mt-1 space-y-1">
+                                  {party.playersGiven.map((player) => (
+                                    <div key={player.playerId} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-red-500/5 border border-red-500/10">
+                                      <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
+                                      <PositionBadge position={player.position} size="xs" />
+                                      <span className="text-xs text-slate-300 truncate">{player.playerName}</span>
+                                    </div>
+                                  ))}
+                                  {party.picksGiven.map((pick, i) => (
+                                    <div key={i} className="text-xs text-red-300/70 px-1.5 py-1 rounded bg-red-500/5 border border-red-500/10">
+                                      {pick.season} Rd {pick.round}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Received */}
+                            {(party.playersReceived.length > 0 || party.picksReceived.length > 0) && (
+                              <div>
+                                <span className="text-[8px] text-emerald-400 uppercase tracking-wider font-semibold">Received</span>
+                                <div className="mt-1 space-y-1">
+                                  {party.playersReceived.map((player) => (
+                                    <div key={player.playerId} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-emerald-500/5 border border-emerald-500/10">
+                                      <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
+                                      <PositionBadge position={player.position} size="xs" />
+                                      <span className="text-xs text-slate-300 truncate">{player.playerName}</span>
+                                    </div>
+                                  ))}
+                                  {party.picksReceived.map((pick, i) => (
+                                    <div key={i} className="text-xs text-emerald-300/70 px-1.5 py-1 rounded bg-emerald-500/5 border border-emerald-500/10">
+                                      {pick.season} Rd {pick.round}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

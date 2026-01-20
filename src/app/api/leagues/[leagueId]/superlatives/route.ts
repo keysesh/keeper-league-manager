@@ -71,6 +71,28 @@ interface TeamSuperlative {
   detail?: string;
 }
 
+// Badge tier types
+type SeasonsTier = 'veteran' | 'regular' | 'newcomer';
+type TradesTier = 'master' | 'dealer' | 'active' | 'first' | null;
+type ScoringTier = 'elite' | 'prolific' | 'scorer' | null;
+type WinsTier = 'dominant' | 'winner' | 'competitor' | 'club500' | null;
+type PlayoffsTier = 'king' | 'regular' | 'contender' | null;
+
+interface TieredBadges {
+  seasons: SeasonsTier;
+  trades: TradesTier;
+  scoring: ScoringTier;
+  wins: WinsTier;
+  playoffs: PlayoffsTier;
+}
+
+interface TeamRankings {
+  byWins: number;
+  byPoints: number;
+  byWinPct: number;
+  totalTeams: number;
+}
+
 interface SuperlativesResponse {
   leagueSuperlatives: {
     mostTrades: TeamSuperlative | null;
@@ -89,6 +111,10 @@ interface SuperlativesResponse {
     isWaiverHawk: boolean;
     allTimeRecord: { wins: number; losses: number } | null;
     seasonsPlayed: number;
+    // NEW: All-time rankings
+    rankings: TeamRankings | null;
+    // NEW: Tiered badges
+    badges: TieredBadges | null;
   }>;
   badges: {
     tradeMasters: string[];  // roster IDs of top 3 traders
@@ -398,6 +424,121 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .slice(0, 3)
       .map(([rid]) => rid);
 
+    // Prepare data for rankings calculations
+    const teamStatsForRanking: Array<{
+      rosterId: string;
+      wins: number;
+      losses: number;
+      points: number;
+      winPct: number;
+      seasonsPlayed: number;
+      playoffAppearances: number;
+      championships: number;
+    }> = [];
+
+    for (const roster of league.rosters) {
+      const stats = [...ownerStats.values()].find(s => s.rosterId === roster.id) || null;
+      if (stats) {
+        const totalGames = stats.totalWins + stats.totalLosses;
+        teamStatsForRanking.push({
+          rosterId: roster.id,
+          wins: stats.totalWins,
+          losses: stats.totalLosses,
+          points: stats.totalPoints,
+          winPct: totalGames > 0 ? stats.totalWins / totalGames : 0,
+          seasonsPlayed: stats.seasonsPlayed,
+          playoffAppearances: stats.playoffAppearances,
+          championships: stats.championships,
+        });
+      }
+    }
+
+    // Sort for rankings
+    const sortedByWins = [...teamStatsForRanking].sort((a, b) => b.wins - a.wins);
+    const sortedByPoints = [...teamStatsForRanking].sort((a, b) => b.points - a.points);
+    const sortedByWinPct = [...teamStatsForRanking].sort((a, b) => b.winPct - a.winPct);
+
+    // Find most playoff appearances for "playoff king" badge
+    const maxPlayoffAppearances = Math.max(...teamStatsForRanking.map(t => t.playoffAppearances), 0);
+
+    // Helper to get ranking position
+    function getRanking(rosterId: string): TeamRankings | null {
+      const byWinsIdx = sortedByWins.findIndex(t => t.rosterId === rosterId);
+      const byPointsIdx = sortedByPoints.findIndex(t => t.rosterId === rosterId);
+      const byWinPctIdx = sortedByWinPct.findIndex(t => t.rosterId === rosterId);
+
+      if (byWinsIdx === -1) return null;
+
+      return {
+        byWins: byWinsIdx + 1,
+        byPoints: byPointsIdx + 1,
+        byWinPct: byWinPctIdx + 1,
+        totalTeams: teamStatsForRanking.length,
+      };
+    }
+
+    // Helper to calculate tiered badges
+    function calculateBadges(
+      rosterId: string,
+      seasonsPlayed: number,
+      tradeCount: number,
+      totalPoints: number,
+      wins: number,
+      losses: number,
+      playoffAppearances: number
+    ): TieredBadges {
+      // Seasons badge (everyone gets one): veteran (5+), regular (3+), newcomer (1+)
+      let seasonsTier: SeasonsTier = 'newcomer';
+      if (seasonsPlayed >= 5) seasonsTier = 'veteran';
+      else if (seasonsPlayed >= 3) seasonsTier = 'regular';
+
+      // Trades badge: master (top3), dealer (10+), active (5+), first (1+)
+      let tradesTier: TradesTier = null;
+      if (sortedByTrades.includes(rosterId) && tradeCount > 0) {
+        tradesTier = 'master';
+      } else if (tradeCount >= 10) {
+        tradesTier = 'dealer';
+      } else if (tradeCount >= 5) {
+        tradesTier = 'active';
+      } else if (tradeCount >= 1) {
+        tradesTier = 'first';
+      }
+
+      // Scoring badge: elite (20k+), prolific (10k+), scorer (5k+)
+      let scoringTier: ScoringTier = null;
+      if (totalPoints >= 20000) scoringTier = 'elite';
+      else if (totalPoints >= 10000) scoringTier = 'prolific';
+      else if (totalPoints >= 5000) scoringTier = 'scorer';
+
+      // Wins badge: dominant (50+), winner (25+), competitor (10+), club500 (.500+)
+      let winsTier: WinsTier = null;
+      const totalGames = wins + losses;
+      const winPct = totalGames > 0 ? wins / totalGames : 0;
+
+      if (wins >= 50) winsTier = 'dominant';
+      else if (wins >= 25) winsTier = 'winner';
+      else if (wins >= 10) winsTier = 'competitor';
+      else if (winPct >= 0.5 && totalGames >= 5) winsTier = 'club500';
+
+      // Playoffs badge: king (most), regular (3+), contender (1+)
+      let playoffsTier: PlayoffsTier = null;
+      if (playoffAppearances > 0 && playoffAppearances === maxPlayoffAppearances && maxPlayoffAppearances >= 2) {
+        playoffsTier = 'king';
+      } else if (playoffAppearances >= 3) {
+        playoffsTier = 'regular';
+      } else if (playoffAppearances >= 1) {
+        playoffsTier = 'contender';
+      }
+
+      return {
+        seasons: seasonsTier,
+        trades: tradesTier,
+        scoring: scoringTier,
+        wins: winsTier,
+        playoffs: playoffsTier,
+      };
+    }
+
     // Build team-specific superlatives
     const teamSuperlatives: Record<string, {
       totalTrades: number;
@@ -409,6 +550,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       isWaiverHawk: boolean;
       allTimeRecord: { wins: number; losses: number } | null;
       seasonsPlayed: number;
+      rankings: TeamRankings | null;
+      badges: TieredBadges | null;
     }> = {};
 
     for (const roster of league.rosters) {
@@ -417,16 +560,32 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const stats = [...ownerStats.values()].find(s => s.rosterId === roster.id) || null;
       const tradeCount = tradeCountMap.get(roster.id) || 0;
 
+      const seasonsPlayed = stats?.seasonsPlayed || 0;
+      const totalPoints = stats ? Math.round(stats.totalPoints) : 0;
+      const wins = stats?.totalWins || 0;
+      const losses = stats?.totalLosses || 0;
+      const playoffAppearances = stats?.playoffAppearances || 0;
+
       teamSuperlatives[roster.id] = {
         totalTrades: tradeCount,
         bestSeason: stats?.bestSeason || null,
-        totalPoints: stats ? Math.round(stats.totalPoints) : 0,
-        playoffAppearances: stats?.playoffAppearances || 0,
+        totalPoints,
+        playoffAppearances,
         championships: stats?.championships || 0,
         isTradeMaster: sortedByTrades.includes(roster.id),
         isWaiverHawk: false, // Placeholder - would need waiver transaction data
-        allTimeRecord: stats ? { wins: stats.totalWins, losses: stats.totalLosses } : null,
-        seasonsPlayed: stats?.seasonsPlayed || 0,
+        allTimeRecord: stats ? { wins, losses } : null,
+        seasonsPlayed,
+        rankings: getRanking(roster.id),
+        badges: seasonsPlayed > 0 ? calculateBadges(
+          roster.id,
+          seasonsPlayed,
+          tradeCount,
+          totalPoints,
+          wins,
+          losses,
+          playoffAppearances
+        ) : null,
       };
     }
 

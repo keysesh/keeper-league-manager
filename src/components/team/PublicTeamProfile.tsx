@@ -51,6 +51,28 @@ interface Trade {
   }>;
 }
 
+// Badge tier types (must match API)
+type SeasonsTier = 'veteran' | 'regular' | 'newcomer';
+type TradesTier = 'master' | 'dealer' | 'active' | 'first' | null;
+type ScoringTier = 'elite' | 'prolific' | 'scorer' | null;
+type WinsTier = 'dominant' | 'winner' | 'competitor' | 'club500' | null;
+type PlayoffsTier = 'king' | 'regular' | 'contender' | null;
+
+interface TieredBadges {
+  seasons: SeasonsTier;
+  trades: TradesTier;
+  scoring: ScoringTier;
+  wins: WinsTier;
+  playoffs: PlayoffsTier;
+}
+
+interface TeamRankings {
+  byWins: number;
+  byPoints: number;
+  byWinPct: number;
+  totalTeams: number;
+}
+
 interface SuperlativesData {
   teamSuperlatives: Record<string, {
     totalTrades: number;
@@ -62,6 +84,8 @@ interface SuperlativesData {
     isWaiverHawk: boolean;
     allTimeRecord: { wins: number; losses: number } | null;
     seasonsPlayed: number;
+    rankings: TeamRankings | null;
+    badges: TieredBadges | null;
   }>;
   leagueSuperlatives: {
     mostTrades: { rosterId: string; value: number; teamName?: string } | null;
@@ -116,7 +140,7 @@ export function PublicTeamProfile({
     { revalidateOnFocus: false }
   );
 
-  // Build superlatives for this team - prioritize league-best achievements
+  // Build superlatives for this team - prioritize league-best achievements, then tiered badges
   const teamSuperlatives = useMemo(() => {
     const superlatives: Superlative[] = [];
     const teamData = superlativesData?.teamSuperlatives?.[rosterId];
@@ -124,7 +148,7 @@ export function PublicTeamProfile({
 
     if (!teamData) return superlatives;
 
-    // Championships - highest priority achievement
+    // 1. Championships - highest priority achievement
     if (teamData.championships > 0) {
       superlatives.push({
         icon: getSuperlativeIcon("champion"),
@@ -134,6 +158,7 @@ export function PublicTeamProfile({
       });
     }
 
+    // 2. League-best achievements (gold tier)
     // Most trades - show league achievement label if league leader
     if (leagueData?.mostTrades?.rosterId === rosterId && teamData.totalTrades > 0) {
       superlatives.push({
@@ -141,13 +166,6 @@ export function PublicTeamProfile({
         label: "League Trade Leader",
         value: `${teamData.totalTrades} trades`,
         isLeagueBest: true,
-      });
-    } else if (teamData.totalTrades > 0) {
-      superlatives.push({
-        icon: getSuperlativeIcon("most_trades"),
-        label: "Trades",
-        value: teamData.totalTrades.toString(),
-        isLeagueBest: false,
       });
     }
 
@@ -160,30 +178,15 @@ export function PublicTeamProfile({
         season: teamData.bestSeason.season,
         isLeagueBest: true,
       });
-    } else if (teamData.bestSeason) {
-      superlatives.push({
-        icon: getSuperlativeIcon("best_record"),
-        label: "Best Season",
-        value: `${teamData.bestSeason.wins}-${teamData.bestSeason.losses}`,
-        season: teamData.bestSeason.season,
-        isLeagueBest: false,
-      });
     }
 
-    // Playoff appearances - show league achievement label if league leader
+    // Playoff king - show if league leader
     if (leagueData?.mostPlayoffAppearances?.rosterId === rosterId && teamData.playoffAppearances > 0) {
       superlatives.push({
         icon: getSuperlativeIcon("playoff_appearances"),
         label: "Playoff King",
         value: `${teamData.playoffAppearances} appearances`,
         isLeagueBest: true,
-      });
-    } else if (teamData.playoffAppearances > 0) {
-      superlatives.push({
-        icon: getSuperlativeIcon("playoff_appearances"),
-        label: "Playoff Apps",
-        value: teamData.playoffAppearances.toString(),
-        isLeagueBest: false,
       });
     }
 
@@ -197,14 +200,70 @@ export function PublicTeamProfile({
       });
     }
 
-    // Trade Master badge (top 3 trader)
-    if (teamData.isTradeMaster && leagueData?.mostTrades?.rosterId !== rosterId) {
+    // 3. Tiered badges from API (ensures every team has achievements)
+    const badges = teamData.badges;
+    if (badges) {
+      // Seasons badge (everyone gets one)
       superlatives.push({
-        icon: getSuperlativeIcon("trade_master"),
-        label: "Trade Master",
-        value: "Top 3 Trader",
-        isLeagueBest: true,
+        icon: getSuperlativeIcon("seasons_" + badges.seasons),
+        label: badges.seasons === 'veteran' ? 'League Veteran' :
+               badges.seasons === 'regular' ? 'Established' : 'First Season',
+        value: `${teamData.seasonsPlayed} season${teamData.seasonsPlayed !== 1 ? 's' : ''}`,
+        tier: badges.seasons === 'veteran' ? 'gold' :
+              badges.seasons === 'regular' ? 'silver' : 'bronze',
       });
+
+      // Trade badge (if not already shown as league leader)
+      if (badges.trades && leagueData?.mostTrades?.rosterId !== rosterId) {
+        superlatives.push({
+          icon: getSuperlativeIcon("trades_" + badges.trades),
+          label: badges.trades === 'master' ? 'Trade Master' :
+                 badges.trades === 'dealer' ? 'Deal Maker' :
+                 badges.trades === 'active' ? 'Active Trader' : 'First Trade',
+          value: `${teamData.totalTrades} trade${teamData.totalTrades !== 1 ? 's' : ''}`,
+          tier: badges.trades === 'master' ? 'gold' :
+                badges.trades === 'dealer' ? 'silver' :
+                badges.trades === 'active' ? 'bronze' : 'blue',
+        });
+      }
+
+      // Win milestone badge (if not already shown as league leader)
+      if (badges.wins && leagueData?.bestRecord?.rosterId !== rosterId) {
+        superlatives.push({
+          icon: getSuperlativeIcon("wins_" + badges.wins),
+          label: badges.wins === 'dominant' ? 'Dominant Force' :
+                 badges.wins === 'winner' ? 'Proven Winner' :
+                 badges.wins === 'competitor' ? 'Competitor' : '.500 Club',
+          value: `${teamData.allTimeRecord?.wins ?? 0} wins`,
+          tier: badges.wins === 'dominant' ? 'gold' :
+                badges.wins === 'winner' ? 'silver' :
+                badges.wins === 'competitor' ? 'bronze' : 'blue',
+        });
+      }
+
+      // Scoring milestone badge (if not already shown as league leader)
+      if (badges.scoring && leagueData?.mostPoints?.rosterId !== rosterId) {
+        superlatives.push({
+          icon: getSuperlativeIcon("scoring_" + badges.scoring),
+          label: badges.scoring === 'elite' ? 'Elite Scorer' :
+                 badges.scoring === 'prolific' ? 'Prolific Scorer' : 'Point Getter',
+          value: `${(teamData.totalPoints / 1000).toFixed(1)}k pts`,
+          tier: badges.scoring === 'elite' ? 'gold' :
+                badges.scoring === 'prolific' ? 'silver' : 'bronze',
+        });
+      }
+
+      // Playoffs badge (if not already shown as playoff king)
+      if (badges.playoffs && leagueData?.mostPlayoffAppearances?.rosterId !== rosterId) {
+        superlatives.push({
+          icon: getSuperlativeIcon("playoffs_" + badges.playoffs),
+          label: badges.playoffs === 'king' ? 'Playoff King' :
+                 badges.playoffs === 'regular' ? 'Playoff Regular' : 'Playoff Contender',
+          value: `${teamData.playoffAppearances} appearance${teamData.playoffAppearances !== 1 ? 's' : ''}`,
+          tier: badges.playoffs === 'king' ? 'gold' :
+                badges.playoffs === 'regular' ? 'silver' : 'bronze',
+        });
+      }
     }
 
     return superlatives;
@@ -213,7 +272,7 @@ export function PublicTeamProfile({
   // Derive historical stats from superlatives API (single source of truth)
   const derivedHistoricalStats = useMemo(() => {
     const teamData = superlativesData?.teamSuperlatives?.[rosterId];
-    if (!teamData?.allTimeRecord) return historicalStats ?? null; // Fallback to prop
+    if (!teamData?.allTimeRecord) return historicalStats ? { ...historicalStats, rankings: null } : null; // Fallback to prop
 
     return {
       allTimeRecord: teamData.allTimeRecord,
@@ -221,8 +280,12 @@ export function PublicTeamProfile({
       bestSeason: teamData.bestSeason,
       seasonsPlayed: teamData.seasonsPlayed,
       playoffAppearances: teamData.playoffAppearances,
+      rankings: teamData.rankings,
     };
   }, [superlativesData, rosterId, historicalStats]);
+
+  // Get all-time trade count from superlatives API
+  const allTimeTrades = superlativesData?.teamSuperlatives?.[rosterId]?.totalTrades;
 
   // Get keepers and regular players
   const keepers = players.filter(p => p.existingKeeper);
@@ -310,6 +373,7 @@ export function PublicTeamProfile({
             teamName={teamName}
             rosterId={rosterId}
             variant="compact"
+            allTimeTrades={allTimeTrades}
           />
         )}
 
