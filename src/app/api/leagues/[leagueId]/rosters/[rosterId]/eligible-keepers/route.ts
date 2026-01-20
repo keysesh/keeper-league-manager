@@ -262,7 +262,40 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
       visited.add(key);
 
-      // 0. Check existing keeper records first - they have authoritative yearsKept data
+      // IMPORTANT: Check for trade acquisition FIRST before looking at keeper records
+      // This ensures offseason trades properly reset keeper years
+      const tradeAcquisition = transactions.find(
+        (tx) => tx.playerId === playerId &&
+                tx.toRosterId &&
+                rosterToSleeperMap.get(tx.toRosterId) === targetSleeperId &&
+                tx.transaction.type === "TRADE"
+      );
+
+      if (tradeAcquisition) {
+        const txDate = tradeAcquisition.transaction.createdAt;
+        const txSeason = getSeasonFromDate(txDate);
+        const isOffseasonTrade = isTradeAfterDeadline(txDate, txSeason);
+
+        if (isOffseasonTrade) {
+          // Offseason trade: years reset for new owner
+          // Get original draft round from any source for cost calculation
+          const originalDraft = draftPicks.find(
+            (p) => p.playerId === playerId && !p.isKeeper
+          );
+          const playerKeepers = keepersByPlayer.get(playerId) || [];
+          const earliestKeeper = playerKeepers.length > 0
+            ? playerKeepers.reduce((e, k) => k.season < e.season ? k : e)
+            : null;
+
+          return {
+            originSeason: season, // Reset to current season = Year 1
+            acquisitionType: AcquisitionType.TRADE,
+            draftRound: originalDraft?.round ?? earliestKeeper?.baseCost,
+          };
+        }
+      }
+
+      // 0. Check existing keeper records - they have authoritative yearsKept data
       // This handles cases where historical draft data isn't synced
       const playerKeepers = keepersByPlayer.get(playerId) || [];
       if (playerKeepers.length > 0) {
