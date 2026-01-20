@@ -88,8 +88,13 @@ export async function syncAllPlayers(): Promise<{
 
 /**
  * Sync a single league and all its data
+ * @param sleeperLeagueId - Sleeper league ID
+ * @param options.skipTransactions - Skip transaction sync (faster, avoids timeout)
  */
-export async function syncLeague(sleeperLeagueId: string): Promise<{
+export async function syncLeague(
+  sleeperLeagueId: string,
+  options: { skipTransactions?: boolean } = {}
+): Promise<{
   league: { id: string; name: string };
   rosters: number;
   players: number;
@@ -293,12 +298,14 @@ export async function syncLeague(sleeperLeagueId: string): Promise<{
     }
   }
 
-  // Sync transactions (waivers, trades, FA pickups)
-  try {
-    const transactionCount = await syncTransactions(league.id);
-    logger.info("Synced transactions", { leagueName: league.name, count: transactionCount });
-  } catch (err) {
-    logger.warn("Failed to sync transactions", { leagueName: league.name, error: err instanceof Error ? err.message : err });
+  // Sync transactions (waivers, trades, FA pickups) - skip if option set
+  if (!options.skipTransactions) {
+    try {
+      const transactionCount = await syncTransactions(league.id);
+      logger.info("Synced transactions", { leagueName: league.name, count: transactionCount });
+    } catch (err) {
+      logger.warn("Failed to sync transactions", { leagueName: league.name, error: err instanceof Error ? err.message : err });
+    }
   }
 
   logger.info("League sync complete", { leagueName: league.name });

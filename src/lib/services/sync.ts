@@ -333,12 +333,12 @@ export class SyncService {
    * - GET /league/{id}/drafts - Draft list
    * - GET /draft/{id}/picks - Draft picks (per draft)
    * - GET /league/{id}/traded_picks - Traded picks
-   * - GET /league/{id}/transactions/{week} - Transactions (weeks 0-18)
    *
    * Duration: 10-20s
    * Timeout risk: Low
    *
    * Use case: After draft, after trades
+   * Note: Transaction sync moved to sync-history to avoid Vercel timeout
    */
   async sync(leagueId: string, userId?: string): Promise<SyncResult> {
     if (userId && !(await verifyLeagueAccess(leagueId, userId))) {
@@ -349,29 +349,26 @@ export class SyncService {
 
     logger.info("Starting full sync", { leagueId, leagueName: league.name });
 
-    // 1. Sync league data (rosters, drafts, picks)
-    const syncResult = await syncLeague(league.sleeperId);
+    // 1. Sync league data (rosters, drafts, picks) - skip transactions for speed
+    const syncResult = await syncLeague(league.sleeperId, { skipTransactions: true });
 
     // 2. Sync traded picks
     const tradedPicks = await syncTradedPicks(leagueId);
 
-    // 3. Sync transactions (trades)
-    const transactions = await syncTransactions(leagueId);
-
-    // 4. Populate keepers from draft picks
+    // 3. Populate keepers from draft picks
     const keepers = await populateKeepersFromDraftPicks(leagueId);
 
-    // 5. Recalculate keeper years
+    // 4. Recalculate keeper years
     await recalculateKeeperYears(leagueId);
 
     return {
       success: true,
-      message: `Synced ${league.name}: ${syncResult.rosters} rosters, ${syncResult.draftPicks} draft picks, ${tradedPicks} traded picks, ${transactions} transactions`,
+      message: `Synced ${league.name}: ${syncResult.rosters} rosters, ${syncResult.draftPicks} draft picks, ${tradedPicks} traded picks`,
       league: syncResult.league,
       rosters: syncResult.rosters,
       draftPicks: syncResult.draftPicks,
       tradedPicks,
-      transactions,
+      transactions: 0, // Transaction sync moved to sync-history
       keepers,
     };
   }
