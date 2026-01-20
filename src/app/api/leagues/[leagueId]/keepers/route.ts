@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { getKeeperPlanningSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
 import { KeeperType, AcquisitionType } from "@prisma/client";
+import { recalculateAndApplyCascade } from "@/lib/keeper/cascade";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -291,12 +292,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Skip cascade recalculation for speed - cascade is calculated on-demand when viewing draft board
+    // Recalculate cascade for all keepers in the league to handle same-round conflicts
+    const cascadeResult = await recalculateAndApplyCascade(leagueId, season);
+    if (cascadeResult.errors.length > 0) {
+      logger.warn("Cascade recalculation warnings", { errors: cascadeResult.errors });
+    }
+
+    // Fetch the updated keeper with cascaded finalCost
+    const updatedKeeper = await prisma.keeper.findUnique({
+      where: { id: keeper.id },
+      include: { player: true },
+    });
 
     return NextResponse.json({
       success: true,
       keeper: {
-        id: keeper.id,
+        id: updatedKeeper?.id || keeper.id,
         player: {
           id: keeper.player.id,
           fullName: keeper.player.fullName,
@@ -305,9 +316,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
         type: keeper.type,
         baseCost: keeper.baseCost,
-        finalCost: keeper.finalCost,
+        finalCost: updatedKeeper?.finalCost || keeper.finalCost,
         yearsKept: keeper.yearsKept,
       },
+      cascadeApplied: cascadeResult.updatedCount > 0,
     });
   } catch (error) {
     logger.error("Error creating keeper", error);
@@ -411,15 +423,22 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    const season = keeper.season;
+
     await prisma.keeper.delete({
       where: { id: keeperId },
     });
 
-    // Skip cascade recalculation for speed - cascade is calculated on-demand
+    // Recalculate cascade for remaining keepers to update finalCosts
+    const cascadeResult = await recalculateAndApplyCascade(leagueId, season);
+    if (cascadeResult.errors.length > 0) {
+      logger.warn("Cascade recalculation warnings after delete", { errors: cascadeResult.errors });
+    }
 
     return NextResponse.json({
       success: true,
       message: "Keeper removed",
+      cascadeApplied: cascadeResult.updatedCount > 0,
     });
   } catch (error) {
     logger.error("Error deleting keeper", error);
