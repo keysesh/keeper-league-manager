@@ -192,16 +192,16 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                             {(party.playersGiven.length > 0 || party.picksGiven.length > 0) && (
                               <div className="mb-2">
                                 <span className="text-[8px] text-red-400 uppercase tracking-wider font-semibold">Sent</span>
-                                <div className="mt-1 space-y-1">
+                                <div className="mt-1 flex flex-wrap gap-1">
                                   {party.playersGiven.map((player) => (
-                                    <div key={player.playerId} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-red-500/5 border border-red-500/10">
+                                    <div key={player.playerId} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/5 border border-red-500/10">
                                       <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
                                       <PositionBadge position={player.position} size="xs" />
-                                      <span className="text-xs text-slate-300 truncate">{player.playerName}</span>
+                                      <span className="text-[11px] text-slate-300">{player.playerName}</span>
                                     </div>
                                   ))}
                                   {party.picksGiven.map((pick, i) => (
-                                    <div key={i} className="text-xs text-red-300/70 px-1.5 py-1 rounded bg-red-500/5 border border-red-500/10">
+                                    <div key={i} className="inline-flex text-[11px] text-red-300/70 px-1.5 py-0.5 rounded bg-red-500/5 border border-red-500/10">
                                       {pick.season} Rd {pick.round}
                                     </div>
                                   ))}
@@ -213,16 +213,16 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                             {(party.playersReceived.length > 0 || party.picksReceived.length > 0) && (
                               <div>
                                 <span className="text-[8px] text-emerald-400 uppercase tracking-wider font-semibold">Received</span>
-                                <div className="mt-1 space-y-1">
+                                <div className="mt-1 flex flex-wrap gap-1">
                                   {party.playersReceived.map((player) => (
-                                    <div key={player.playerId} className="flex items-center gap-1.5 px-1.5 py-1 rounded bg-emerald-500/5 border border-emerald-500/10">
+                                    <div key={player.playerId} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/5 border border-emerald-500/10">
                                       <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
                                       <PositionBadge position={player.position} size="xs" />
-                                      <span className="text-xs text-slate-300 truncate">{player.playerName}</span>
+                                      <span className="text-[11px] text-slate-300">{player.playerName}</span>
                                     </div>
                                   ))}
                                   {party.picksReceived.map((pick, i) => (
-                                    <div key={i} className="text-xs text-emerald-300/70 px-1.5 py-1 rounded bg-emerald-500/5 border border-emerald-500/10">
+                                    <div key={i} className="inline-flex text-[11px] text-emerald-300/70 px-1.5 py-0.5 rounded bg-emerald-500/5 border border-emerald-500/10">
                                       {pick.season} Rd {pick.round}
                                     </div>
                                   ))}
