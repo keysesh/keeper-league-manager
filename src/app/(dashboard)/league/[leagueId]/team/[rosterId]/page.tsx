@@ -219,7 +219,7 @@ export default function TeamRosterPage() {
       winner: { rosterId: string; teamName: string | null };
       runnerUp: { rosterId: string; teamName: string | null };
     }>;
-  }>(`/api/leagues/${leagueId}/championships`, fetcher, {
+  }>(`/api/leagues/${leagueId}/history/championships`, fetcher, {
     revalidateOnFocus: false,
   });
 
