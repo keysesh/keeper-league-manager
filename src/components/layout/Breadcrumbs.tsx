@@ -61,8 +61,6 @@ export function Breadcrumbs({ items: explicitItems, leagueName, teamName, classN
         breadcrumbs.push({ label: "All Teams", href: `/league/${leagueId}/team`, current: true });
       } else if (pathAfterLeague.startsWith("/settings")) {
         breadcrumbs.push({ label: "Settings", href: `/league/${leagueId}/settings`, current: true });
-      } else if (pathAfterLeague.startsWith("/history")) {
-        breadcrumbs.push({ label: "History", href: `/league/${leagueId}/history`, current: true });
       } else if (pathAfterLeague.startsWith("/activity")) {
         breadcrumbs.push({ label: "Activity", href: `/league/${leagueId}/activity`, current: true });
       } else if (pathAfterLeague.startsWith("/commissioner")) {

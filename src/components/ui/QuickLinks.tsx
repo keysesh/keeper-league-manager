@@ -6,7 +6,6 @@ import {
   ArrowLeftRight,
   MessageCircle,
   Activity,
-  TrendingUp,
   Settings,
   Star,
   LucideIcon,
@@ -67,14 +66,6 @@ export function QuickLinks({ leagueId, userRosterId }: QuickLinksProps) {
       description: "Recent transactions",
       color: "text-orange-400",
       gradient: "from-orange-500/10 to-orange-600/5",
-    },
-    {
-      href: `/league/${leagueId}/history`,
-      icon: TrendingUp,
-      label: "History",
-      description: "Past seasons",
-      color: "text-amber-400",
-      gradient: "from-amber-500/10 to-amber-600/5",
     },
     {
       href: `/league/${leagueId}/settings`,

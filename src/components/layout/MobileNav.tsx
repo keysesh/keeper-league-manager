@@ -9,7 +9,6 @@ import {
   ArrowLeftRight,
   MoreHorizontal,
   LayoutDashboard,
-  UserCircle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
@@ -44,7 +43,7 @@ export function MobileNav({ className }: MobileNavProps) {
     ? [
         { name: "Home", href: `/league/${leagueId}`, icon: Home },
         { name: "Team", href: `/league/${leagueId}/my-team`, icon: User },
-        { name: "League", href: `/league/${leagueId}/standings`, icon: BarChart3 },
+        { name: "Teams", href: `/league/${leagueId}/team`, icon: BarChart3 },
         { name: "Trades", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
       ]
     : [];
@@ -54,12 +53,9 @@ export function MobileNav({ className }: MobileNavProps) {
   // More menu items for league view
   const moreItems: NavItem[] = leagueId
     ? [
-        { name: "Power Rankings", href: `/league/${leagueId}/power-rankings`, icon: BarChart3 },
-        { name: "Luck Factor", href: `/league/${leagueId}/luck`, icon: BarChart3 },
-        { name: "All Teams", href: `/league/${leagueId}/team`, icon: User },
+        { name: "Draft Board", href: `/league/${leagueId}/draft-board`, icon: LayoutDashboard },
         { name: "Trade Proposals", href: `/league/${leagueId}/trade-proposals`, icon: ArrowLeftRight },
         { name: "Activity", href: `/league/${leagueId}/activity`, icon: LayoutDashboard },
-        { name: "History", href: `/league/${leagueId}/history`, icon: LayoutDashboard },
         { name: "Settings", href: `/league/${leagueId}/settings`, icon: LayoutDashboard },
       ]
     : [];

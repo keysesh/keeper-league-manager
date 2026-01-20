@@ -18,9 +18,6 @@ import {
   Settings,
   Home,
   ChevronDown,
-  TrendingUp,
-  Dices,
-  Trophy,
   Activity,
   FileText,
   UserCircle,
@@ -101,9 +98,6 @@ export function Header({ user }: HeaderProps) {
         {
           title: "League",
           items: [
-            { name: "Standings", href: `/league/${leagueId}/standings`, icon: TrendingUp },
-            { name: "Power Rankings", href: `/league/${leagueId}/power-rankings`, icon: TrendingUp },
-            { name: "Luck Factor", href: `/league/${leagueId}/luck`, icon: Dices },
             { name: "All Teams", href: `/league/${leagueId}/team`, icon: Users },
           ],
         },
@@ -116,9 +110,8 @@ export function Header({ user }: HeaderProps) {
           ],
         },
         {
-          title: "History",
+          title: "Draft",
           items: [
-            { name: "Championships", href: `/league/${leagueId}/history`, icon: Trophy },
             { name: "Draft Board", href: `/league/${leagueId}/draft-board`, icon: LayoutGrid },
           ],
         },
