@@ -61,6 +61,7 @@ interface Eligibility {
   yearsKept: number;
   consecutiveYears?: number;
   acquisitionType: string;
+  mustBeFranchise?: boolean;
   originalDraft?: {
     draftYear: number;
     draftRound: number;
@@ -280,14 +281,14 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
             </div>
             <div className={`text-[11px] sm:text-xs font-semibold ${
               isKeeper ? "text-blue-400" :
-              (eligibility?.yearsKept ?? 0) >= 2 ? "text-amber-400" :
+              eligibility?.mustBeFranchise ? "text-amber-400" :
               "text-emerald-400"
             }`}>
               {isKeeper
                 ? existingKeeper?.type === "FRANCHISE" ? "FT" : `Yr ${eligibility?.yearsKept ?? 1}`
-                : eligibility?.yearsKept
-                  ? eligibility.yearsKept >= 2 ? "FT Only" : `→ Yr ${eligibility.yearsKept + 1}`
-                  : "→ Yr 1"
+                : eligibility?.mustBeFranchise
+                  ? "FT Only"
+                  : `→ Yr ${(eligibility?.yearsKept ?? 0) + 1}`
               }
             </div>
           </div>
@@ -326,7 +327,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           )}
 
           {/* Cost Trajectory - show future keeper costs */}
-          {costs?.regular && eligibility.yearsKept < 2 && (
+          {costs?.regular && !eligibility.mustBeFranchise && (
             <div className="mt-2 sm:mt-3">
               <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase mb-1 text-center">
                 Future Costs
@@ -342,7 +343,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           )}
 
           {/* Maxed out - Franchise Tag only */}
-          {!isKeeper && (eligibility.yearsKept ?? 0) >= 2 && (
+          {!isKeeper && eligibility.mustBeFranchise && (
             <div className="mt-1.5 sm:mt-2 text-[8px] sm:text-[9px] text-amber-400 text-center">
               Maxed out ({eligibility.yearsKept} years) — Franchise Tag required
             </div>
@@ -372,12 +373,12 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
               {isLoading ? "..." : `Franchise Tag (R${costs.franchise.finalCost})`}
             </button>
           )}
-          {/* Compact FT button (blue) - when both regular keep and FT are available */}
+          {/* Compact FT button (gold) - when both regular keep and FT are available */}
           {costs.franchise && costs.regular && (
             <button
               onClick={() => onAddKeeper(player.id, "FRANCHISE")}
               disabled={!canAddFranchise || isLoading}
-              className="min-h-[44px] sm:min-h-0 min-w-[44px] px-4 sm:px-3 py-2.5 sm:py-1.5 rounded-md sm:rounded text-xs sm:text-[10px] font-bold bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-white disabled:opacity-40 transition-colors"
+              className="min-h-[44px] sm:min-h-0 min-w-[44px] px-4 sm:px-3 py-2.5 sm:py-1.5 rounded-md sm:rounded text-xs sm:text-[10px] font-bold bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black disabled:opacity-40 transition-colors"
             >
               {isLoading ? "..." : "FT"}
             </button>

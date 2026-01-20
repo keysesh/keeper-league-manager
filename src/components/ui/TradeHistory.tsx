@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowLeftRight, Calendar, User, Award } from "lucide-react";
+import { ArrowLeftRight, Calendar, Award } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 
@@ -39,9 +39,8 @@ interface TradeHistoryProps {
 }
 
 /**
- * Trade History visualization
- * Shows all trades in the league with visual breakdown
- * Features: Season grouping, better styling, hover effects
+ * Trade History visualization - Exchange View
+ * Shows all trades with a compact Team A ⇄ Team B layout
  */
 export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
   const sortedTrades = useMemo(() => {
@@ -154,83 +153,153 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                 </div>
               </div>
 
-              {/* Trades in this season */}
+              {/* Trades in this season - Exchange View */}
               <div className="divide-y divide-white/[0.04]">
                 {seasonTrades.map((trade) => {
                   const isHighlighted = trade.parties.some(p => p.rosterId === highlightRosterId);
 
+                  // For 2-party trades, show exchange view
+                  if (trade.parties.length === 2) {
+                    const [partyA, partyB] = trade.parties;
+                    const partyAHighlighted = partyA.rosterId === highlightRosterId;
+                    const partyBHighlighted = partyB.rosterId === highlightRosterId;
+
+                    return (
+                      <div
+                        key={trade.id}
+                        className={`p-3 transition-colors hover:bg-white/[0.02] ${isHighlighted ? "bg-blue-500/5" : ""}`}
+                      >
+                        {/* Date */}
+                        <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                          <Calendar className="w-3 h-3" />
+                          <span>{new Date(trade.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                        </div>
+
+                        {/* Exchange View: Team A | ⇄ | Team B */}
+                        <div className="flex items-stretch gap-2">
+                          {/* Team A's items (what they gave) */}
+                          <div className={`flex-1 min-w-0 rounded-lg p-2 ${partyAHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#131a28]"}`}>
+                            <div className="text-[10px] font-medium text-slate-400 mb-1.5 truncate">
+                              {partyA.rosterName || `Team ${partyA.rosterId.slice(0, 6)}`}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {partyA.playersGiven.map((player) => (
+                                <div key={player.playerId} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.04]">
+                                  <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
+                                  <PositionBadge position={player.position} size="xs" />
+                                  <span className="text-[10px] text-slate-300 truncate max-w-[80px]">{player.playerName}</span>
+                                </div>
+                              ))}
+                              {partyA.picksGiven.map((pick, i) => (
+                                <div key={i} className="inline-flex text-[10px] text-slate-400 px-1.5 py-0.5 rounded bg-white/[0.04]">
+                                  '{String(pick.season).slice(-2)} R{pick.round}
+                                </div>
+                              ))}
+                              {partyA.playersGiven.length === 0 && partyA.picksGiven.length === 0 && (
+                                <span className="text-[10px] text-slate-500 italic">Nothing</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Exchange Icon */}
+                          <div className="flex items-center justify-center px-1">
+                            <ArrowLeftRight className="w-4 h-4 text-slate-500" />
+                          </div>
+
+                          {/* Team B's items (what they gave) */}
+                          <div className={`flex-1 min-w-0 rounded-lg p-2 ${partyBHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#131a28]"}`}>
+                            <div className="text-[10px] font-medium text-slate-400 mb-1.5 truncate">
+                              {partyB.rosterName || `Team ${partyB.rosterId.slice(0, 6)}`}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {partyB.playersGiven.map((player) => (
+                                <div key={player.playerId} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.04]">
+                                  <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
+                                  <PositionBadge position={player.position} size="xs" />
+                                  <span className="text-[10px] text-slate-300 truncate max-w-[80px]">{player.playerName}</span>
+                                </div>
+                              ))}
+                              {partyB.picksGiven.map((pick, i) => (
+                                <div key={i} className="inline-flex text-[10px] text-slate-400 px-1.5 py-0.5 rounded bg-white/[0.04]">
+                                  '{String(pick.season).slice(-2)} R{pick.round}
+                                </div>
+                              ))}
+                              {partyB.playersGiven.length === 0 && partyB.picksGiven.length === 0 && (
+                                <span className="text-[10px] text-slate-500 italic">Nothing</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Multi-party trades (3+ parties) - show compact list
                   return (
                     <div
                       key={trade.id}
                       className={`p-3 transition-colors hover:bg-white/[0.02] ${isHighlighted ? "bg-blue-500/5" : ""}`}
                     >
-                      {/* Trade header - just date now since season is in header */}
+                      {/* Date */}
                       <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
                         <Calendar className="w-3 h-3" />
-                        <span>{new Date(trade.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                        <span>{new Date(trade.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                          {trade.parties.length}-way trade
+                        </span>
                       </div>
 
-                      {/* Trade parties */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {trade.parties.map((party) => (
-                          <div
-                            key={party.rosterId}
-                            className={`rounded-lg p-2.5 transition-all hover:border-white/[0.08] ${
-                              party.rosterId === highlightRosterId
-                                ? "bg-blue-500/10 border border-blue-500/25"
-                                : "bg-[#131a28] border border-white/[0.04]"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-white/[0.04]">
-                              <User className="w-3 h-3 text-slate-500" />
-                              <span className="text-xs font-medium text-white truncate">
+                      {/* Multi-party exchange */}
+                      <div className="space-y-2">
+                        {trade.parties.map((party) => {
+                          const partyHighlighted = party.rosterId === highlightRosterId;
+                          return (
+                            <div
+                              key={party.rosterId}
+                              className={`rounded-lg p-2 ${partyHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#131a28]"}`}
+                            >
+                              <div className="text-[10px] font-medium text-slate-400 mb-1 truncate">
                                 {party.rosterName || `Team ${party.rosterId.slice(0, 6)}`}
-                              </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1">
+                                {/* Given */}
+                                {(party.playersGiven.length > 0 || party.picksGiven.length > 0) && (
+                                  <>
+                                    <span className="text-[8px] text-red-400 font-medium">SENT:</span>
+                                    {party.playersGiven.map((player) => (
+                                      <div key={player.playerId} className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-red-500/10 border border-red-500/10">
+                                        <PositionBadge position={player.position} size="xs" />
+                                        <span className="text-[9px] text-slate-300">{player.playerName}</span>
+                                      </div>
+                                    ))}
+                                    {party.picksGiven.map((pick, i) => (
+                                      <span key={i} className="text-[9px] text-red-300/70 px-1 py-0.5 rounded bg-red-500/10">
+                                        '{String(pick.season).slice(-2)} R{pick.round}
+                                      </span>
+                                    ))}
+                                  </>
+                                )}
+                                {/* Received */}
+                                {(party.playersReceived.length > 0 || party.picksReceived.length > 0) && (
+                                  <>
+                                    <span className="text-[8px] text-emerald-400 font-medium ml-2">GOT:</span>
+                                    {party.playersReceived.map((player) => (
+                                      <div key={player.playerId} className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/10">
+                                        <PositionBadge position={player.position} size="xs" />
+                                        <span className="text-[9px] text-slate-300">{player.playerName}</span>
+                                      </div>
+                                    ))}
+                                    {party.picksReceived.map((pick, i) => (
+                                      <span key={i} className="text-[9px] text-emerald-300/70 px-1 py-0.5 rounded bg-emerald-500/10">
+                                        '{String(pick.season).slice(-2)} R{pick.round}
+                                      </span>
+                                    ))}
+                                  </>
+                                )}
+                              </div>
                             </div>
-
-                            {/* Sent */}
-                            {(party.playersGiven.length > 0 || party.picksGiven.length > 0) && (
-                              <div className="mb-2">
-                                <span className="text-[8px] text-red-400 uppercase tracking-wider font-semibold">Sent</span>
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                  {party.playersGiven.map((player) => (
-                                    <div key={player.playerId} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-500/5 border border-red-500/10">
-                                      <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
-                                      <PositionBadge position={player.position} size="xs" />
-                                      <span className="text-[11px] text-slate-300">{player.playerName}</span>
-                                    </div>
-                                  ))}
-                                  {party.picksGiven.map((pick, i) => (
-                                    <div key={i} className="inline-flex text-[11px] text-red-300/70 px-1.5 py-0.5 rounded bg-red-500/5 border border-red-500/10">
-                                      {pick.season} Rd {pick.round}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Received */}
-                            {(party.playersReceived.length > 0 || party.picksReceived.length > 0) && (
-                              <div>
-                                <span className="text-[8px] text-emerald-400 uppercase tracking-wider font-semibold">Received</span>
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                  {party.playersReceived.map((player) => (
-                                    <div key={player.playerId} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/5 border border-emerald-500/10">
-                                      <PlayerAvatar sleeperId={player.sleeperId} name={player.playerName} size="xs" />
-                                      <PositionBadge position={player.position} size="xs" />
-                                      <span className="text-[11px] text-slate-300">{player.playerName}</span>
-                                    </div>
-                                  ))}
-                                  {party.picksReceived.map((pick, i) => (
-                                    <div key={i} className="inline-flex text-[11px] text-emerald-300/70 px-1.5 py-0.5 rounded bg-emerald-500/5 border border-emerald-500/10">
-                                      {pick.season} Rd {pick.round}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );

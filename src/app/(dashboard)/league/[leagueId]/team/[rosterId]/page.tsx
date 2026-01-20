@@ -613,6 +613,10 @@ export default function TeamRosterPage() {
           yearsKept: p.eligibility.consecutiveYears || 1,
         }));
 
+        // Calculate max rounds from actual draft picks (typically 16 for NFL leagues)
+        const maxDraftRound = draftPicksData.picks.reduce((max, pick) => Math.max(max, pick.round), 0);
+        const draftRounds = Math.max(maxDraftRound, 16); // Default to 16 if no picks found
+
         return (
           <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
             <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
@@ -634,7 +638,7 @@ export default function TeamRosterPage() {
                 teamSleeperId={thisRoster.sleeperId}
                 teamName={thisRoster.teamName || undefined}
                 showSeasons={1}
-                maxRounds={data.limits.maxKeepers > 8 ? data.limits.maxKeepers : 8}
+                maxRounds={draftRounds}
                 keepers={keepersForCapital}
               />
             </div>
