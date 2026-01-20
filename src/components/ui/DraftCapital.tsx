@@ -104,7 +104,7 @@ export function DraftCapital({
     return tradedInfo;
   }, [picks, allPicks, teamSleeperId, seasons]);
 
-  // Map keepers by their final cost (round)
+  // Map keepers by their final cost (round) - but we'll cascade them into available picks
   const keepersByRound = useMemo(() => {
     const map = new Map<number, Keeper[]>();
     for (const keeper of keepers) {
@@ -116,6 +116,58 @@ export function DraftCapital({
     }
     return map;
   }, [keepers]);
+
+  // Cascade keepers into actual available picks for current season
+  // Priority: lower round numbers are better picks, so assign keepers to best available
+  const cascadedKeepers = useMemo(() => {
+    const currentSeason = seasons[0];
+    const currentSeasonPicks = picksBySeason.get(currentSeason) || [];
+
+    // Get all available rounds (picks we own), sorted by round number (lower = better)
+    const availableRounds = currentSeasonPicks
+      .map(p => p.round)
+      .sort((a, b) => a - b);
+
+    // Sort keepers by their desired round (finalCost) - lower cost keepers get priority
+    const sortedKeepers = [...keepers].sort((a, b) => a.finalCost - b.finalCost);
+
+    // Track which rounds are used
+    const usedRounds = new Set<number>();
+    const result: { keeper: Keeper; assignedRound: number; originalRound: number }[] = [];
+
+    for (const keeper of sortedKeepers) {
+      const desiredRound = keeper.finalCost;
+
+      // Find the best available round (lowest number first)
+      // This ensures keepers cascade to the best available pick
+      let assignedRound: number | null = null;
+
+      // First, check if the desired round is available
+      if (availableRounds.includes(desiredRound) && !usedRounds.has(desiredRound)) {
+        assignedRound = desiredRound;
+      } else {
+        // Otherwise, find the best (lowest) available round
+        for (const round of availableRounds) {
+          if (!usedRounds.has(round)) {
+            assignedRound = round;
+            break;
+          }
+        }
+      }
+
+      // If we found a round, assign it
+      if (assignedRound !== null) {
+        usedRounds.add(assignedRound);
+        result.push({
+          keeper,
+          assignedRound,
+          originalRound: desiredRound,
+        });
+      }
+    }
+
+    return result;
+  }, [keepers, picksBySeason, seasons]);
 
   // Calculate summary stats with details - focused on current/first season
   const summary = useMemo(() => {
@@ -306,71 +358,85 @@ export function DraftCapital({
                 round: number;
                 cellIndex: number; // For multiple picks in same round
                 keeper?: Keeper;
+                originalRound?: number; // For cascaded keepers - their original finalCost
                 pick?: DraftPick;
                 isAcquired?: boolean;
                 tradedTo?: string;
               }
 
               const cells: GridCell[] = [];
-              const usedSlots = new Map<number, number>(); // round -> count of picks used
+              const usedRounds = new Set<number>(); // Tracks which rounds are used by keepers
 
-              // First, add all keepers at their final cost round
-              for (const keeper of keepers) {
-                const round = keeper.finalCost;
-                const cellIndex = usedSlots.get(round) || 0;
-                usedSlots.set(round, cellIndex + 1);
+              // Only use cascaded keepers for the current (first) season
+              const isCurrentSeason = season === seasons[0];
 
-                const isAcquiredPick = acquiredPicks.some(p => p.round === round);
-                cells.push({
-                  type: "keeper",
-                  round,
-                  cellIndex,
-                  keeper,
-                  isAcquired: isAcquiredPick,
-                });
+              // First, add all keepers at their CASCADED round (not finalCost)
+              if (isCurrentSeason) {
+                for (const { keeper, assignedRound, originalRound } of cascadedKeepers) {
+                  const isAcquiredPick = acquiredPicks.some(p => p.round === assignedRound);
+                  cells.push({
+                    type: "keeper",
+                    round: assignedRound,
+                    cellIndex: 0,
+                    keeper,
+                    originalRound, // Store original round for display
+                    isAcquired: isAcquiredPick,
+                  });
+                  usedRounds.add(assignedRound);
+                }
+              } else {
+                // For future seasons, just show keepers at finalCost
+                for (const keeper of keepers) {
+                  const round = keeper.finalCost;
+                  const isAcquiredPick = acquiredPicks.some(p => p.round === round);
+                  cells.push({
+                    type: "keeper",
+                    round,
+                    cellIndex: 0,
+                    keeper,
+                    isAcquired: isAcquiredPick,
+                  });
+                  usedRounds.add(round);
+                }
               }
 
-              // Then add available (non-keeper) picks
+              // Then add available (non-keeper) picks and traded/empty slots
               for (let round = 1; round <= maxRounds; round++) {
-                const keepersInRound = keepersByRound.get(round) || [];
+                // Skip if this round is used by a keeper
+                if (usedRounds.has(round)) continue;
+
                 const ownPicksInRound = ownPicks.filter(p => p.round === round);
                 const acquiredPicksInRound = acquiredPicks.filter(p => p.round === round);
                 const totalPicksInRound = ownPicksInRound.length + acquiredPicksInRound.length;
                 const tradedPick = tradedPicksInfo.get(`${season}-${round}`);
 
-                // Calculate how many non-keeper slots we have
-                const availableSlots = totalPicksInRound - keepersInRound.length;
-
-                if (availableSlots > 0) {
+                if (totalPicksInRound > 0) {
                   // Add available pick slots
-                  const currentUsed = usedSlots.get(round) || 0;
-                  for (let i = 0; i < availableSlots; i++) {
-                    const isAcquired = i < acquiredPicksInRound.length - keepersInRound.filter(k => acquiredPicksInRound.some(ap => ap.round === k.finalCost)).length;
+                  for (let i = 0; i < totalPicksInRound; i++) {
+                    const isAcquired = i < acquiredPicksInRound.length;
                     cells.push({
                       type: "pick",
                       round,
-                      cellIndex: currentUsed + i,
-                      isAcquired: acquiredPicksInRound.length > ownPicksInRound.length ? true : isAcquired,
-                      pick: isAcquired ? acquiredPicksInRound[i] : ownPicksInRound[i],
+                      cellIndex: i,
+                      isAcquired,
+                      pick: isAcquired ? acquiredPicksInRound[i] : ownPicksInRound[i - acquiredPicksInRound.length],
                     });
                   }
-                  usedSlots.set(round, currentUsed + availableSlots);
-                } else if (totalPicksInRound === 0 && !keepersInRound.length) {
-                  // No picks in this round - show empty or traded
-                  if (tradedPick) {
-                    cells.push({
-                      type: "traded",
-                      round,
-                      cellIndex: 0,
-                      tradedTo: tradedPick.currentOwnerName || "another team",
-                    });
-                  } else {
-                    cells.push({
-                      type: "empty",
-                      round,
-                      cellIndex: 0,
-                    });
-                  }
+                } else if (tradedPick) {
+                  // No picks in this round - traded
+                  cells.push({
+                    type: "traded",
+                    round,
+                    cellIndex: 0,
+                    tradedTo: tradedPick.currentOwnerName || "another team",
+                  });
+                } else {
+                  // Empty slot (shouldn't have pick in standard draft)
+                  cells.push({
+                    type: "empty",
+                    round,
+                    cellIndex: 0,
+                  });
                 }
               }
 
@@ -392,6 +458,7 @@ export function DraftCapital({
                       const isFranchise = keeper.type === "FRANCHISE";
                       const yearsKept = keeper.yearsKept || 1;
                       const isAcquiredPick = cell.isAcquired;
+                      const wasCascaded = cell.originalRound && cell.originalRound !== cell.round;
 
                       // Get display name (J. LastName format)
                       const nameParts = keeper.player.fullName.split(" ");
@@ -419,11 +486,18 @@ export function DraftCapital({
                           <div className={`flex items-center justify-between px-2 py-1.5 ${
                             isFranchise ? "bg-amber-500/10" : "bg-[#222]"
                           }`}>
-                            <span className={`text-[10px] font-bold ${
-                              isFranchise ? "text-amber-400" : isAcquiredPick ? "text-emerald-400" : "text-gray-400"
-                            }`}>
-                              R{cell.round}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className={`text-[10px] font-bold ${
+                                isFranchise ? "text-amber-400" : isAcquiredPick ? "text-emerald-400" : "text-gray-400"
+                              }`}>
+                                R{cell.round}
+                              </span>
+                              {wasCascaded && (
+                                <span className="text-[8px] text-gray-500" title={`Cost: R${cell.originalRound}`}>
+                                  (R{cell.originalRound} cost)
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-1">
                               {isAcquiredPick && !isFranchise && (
                                 <span className="text-[8px] px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">
