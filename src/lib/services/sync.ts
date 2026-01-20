@@ -349,27 +349,24 @@ export class SyncService {
 
     logger.info("Starting full sync", { leagueId, leagueName: league.name });
 
-    // 1. Sync league data (rosters, drafts, picks, transactions)
-    // Transactions now fetch in parallel so this is fast
+    // 1. Sync league data (rosters, drafts, picks, traded picks, transactions)
+    // All fetched in parallel for speed - traded picks and transactions included
     const syncResult = await syncLeague(league.sleeperId);
 
-    // 2. Sync traded picks
-    const tradedPicks = await syncTradedPicks(leagueId);
-
-    // 3. Populate keepers from draft picks
+    // 2. Populate keepers from draft picks
     const keepers = await populateKeepersFromDraftPicks(leagueId);
 
-    // 4. Recalculate keeper years
+    // 3. Recalculate keeper years
     await recalculateKeeperYears(leagueId);
 
     return {
       success: true,
-      message: `Synced ${league.name}: ${syncResult.rosters} rosters, ${syncResult.draftPicks} draft picks, ${tradedPicks} traded picks`,
+      message: `Synced ${league.name}: ${syncResult.rosters} rosters, ${syncResult.draftPicks} draft picks`,
       league: syncResult.league,
       rosters: syncResult.rosters,
       draftPicks: syncResult.draftPicks,
-      tradedPicks,
-      transactions: 0, // Transactions synced inside syncLeague
+      tradedPicks: 0, // Synced inside syncLeague
+      transactions: 0, // Synced inside syncLeague
       keepers,
     };
   }

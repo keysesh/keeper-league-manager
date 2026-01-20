@@ -250,11 +250,15 @@ export async function syncLeague(
     }
   }
 
+  // Clear existing traded picks to ensure clean data (fixes any inverted mappings)
+  await prisma.tradedPick.deleteMany({
+    where: { leagueId: league.id },
+  });
+
   for (const pick of tradedPicks) {
-    // Sleeper traded picks use roster slot IDs, not owner user IDs
-    // owner_id = original owner's roster_id, roster_id = current owner's roster_id
-    const originalOwnerId = tradedPickRosterIdToOwnerId.get(pick.owner_id);
-    const currentOwnerId = tradedPickRosterIdToOwnerId.get(pick.roster_id);
+    // Per Sleeper API: roster_id = ORIGINAL owner, owner_id = CURRENT owner
+    const originalOwnerId = tradedPickRosterIdToOwnerId.get(pick.roster_id);
+    const currentOwnerId = tradedPickRosterIdToOwnerId.get(pick.owner_id);
 
     if (!originalOwnerId || !currentOwnerId) {
       logger.warn("Could not map traded pick roster IDs", {
