@@ -503,14 +503,38 @@ export function DraftCapital({
                 {Array.from(tradedPicksInfo.values())
                   .filter(p => p.season === season)
                   .sort((a, b) => a.round - b.round)
-                  .map(pick => (
-                    <span
-                      key={`traded-${pick.round}`}
-                      className="text-[10px] px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20"
-                    >
-                      R{pick.round} → {pick.currentOwnerName || "?"}
-                    </span>
-                  ))
+                  .map(pick => {
+                    const ordinal = pick.round === 1 ? "1st" : pick.round === 2 ? "2nd" : pick.round === 3 ? "3rd" : `${pick.round}th`;
+                    return (
+                      <span
+                        key={`traded-${pick.round}`}
+                        className="text-[10px] px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20"
+                      >
+                        {season} {ordinal} Rd → {pick.currentOwnerName || "?"}
+                      </span>
+                    );
+                  })
+                }
+              </div>
+            )}
+
+            {/* Acquired pick details for this season (show original owner) */}
+            {seasonPicks.filter(p => p.originalOwnerSleeperId !== teamSleeperId).length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {seasonPicks
+                  .filter(p => p.originalOwnerSleeperId !== teamSleeperId)
+                  .sort((a, b) => a.round - b.round)
+                  .map(pick => {
+                    const ordinal = pick.round === 1 ? "1st" : pick.round === 2 ? "2nd" : pick.round === 3 ? "3rd" : `${pick.round}th`;
+                    return (
+                      <span
+                        key={`acquired-${pick.round}-${pick.originalOwnerSleeperId}`}
+                        className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      >
+                        {season} {ordinal} Rd ({pick.originalOwnerName || "trade"})
+                      </span>
+                    );
+                  })
                 }
               </div>
             )}

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { recalculateAndApplyCascade } from "@/lib/keeper/cascade";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -267,6 +268,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         await prisma.keeper.delete({
           where: { id: action.keeperId },
         });
+
+        // Recalculate cascade for remaining keepers after deletion
+        const currentSeason = new Date().getFullYear();
+        await recalculateAndApplyCascade(leagueId, currentSeason);
 
         await prisma.auditLog.create({
           data: {

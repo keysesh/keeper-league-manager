@@ -61,15 +61,15 @@ export async function handleSyncTransactions(
 
   const existingTxIds = new Set(existingTransactions.map(t => t.sleeperId));
 
-  // Fetch transactions from Sleeper - include week 0 for offseason trades
-  const [round0, round1, round2, round3] = await Promise.all([
-    sleeper.getTransactions(league.sleeperId, 0).catch(() => []),  // Offseason
-    sleeper.getTransactions(league.sleeperId, 1).catch(() => []),
-    sleeper.getTransactions(league.sleeperId, 2).catch(() => []),
-    sleeper.getTransactions(league.sleeperId, 3).catch(() => []),
-  ]);
-
-  const allTransactions = [...round0, ...round1, ...round2, ...round3];
+  // Fetch transactions from Sleeper - ALL weeks (0-18) to get complete trade history
+  const weekPromises = [];
+  for (let week = 0; week <= 18; week++) {
+    weekPromises.push(
+      sleeper.getTransactions(league.sleeperId, week).catch(() => [])
+    );
+  }
+  const allWeeksTransactions = await Promise.all(weekPromises);
+  const allTransactions = allWeeksTransactions.flat();
 
   // Filter to trades only, and only new ones
   const newTrades = allTransactions
@@ -90,12 +90,7 @@ export async function handleSyncTransactions(
         created: 0,
         existingTrades: totalTrades,
         totalTransactions: allTransactions.length,
-        byWeek: {
-          week0: round0.length,
-          week1: round1.length,
-          week2: round2.length,
-          week3: round3.length,
-        }
+        weeksScanned: 19, // Weeks 0-18
       },
     });
   }

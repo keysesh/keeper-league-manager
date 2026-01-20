@@ -126,6 +126,7 @@ interface DraftPick {
 interface DraftPicksData {
   season: number;
   picks: DraftPick[];
+  allPicks?: DraftPick[];
   rosters: Array<{
     id: string;
     sleeperId: string | null;
@@ -224,7 +225,7 @@ export default function TeamRosterPage() {
 
   // Fetch recent trades for this team (only for non-owner view)
   const { data: tradesData } = useSWR<RecentTradesData>(
-    !isOwnTeam ? `/api/leagues/${leagueId}/recent-trades?limit=20` : null,
+    !isOwnTeam ? `/api/leagues/${leagueId}/recent-trades?limit=100` : null,
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -635,6 +636,7 @@ export default function TeamRosterPage() {
             <div className="p-3 sm:p-5">
               <DraftCapital
                 picks={draftPicksData.picks}
+                allPicks={draftPicksData.allPicks}
                 teamSleeperId={thisRoster.sleeperId}
                 teamName={thisRoster.teamName || undefined}
                 showSeasons={1}

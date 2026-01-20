@@ -137,7 +137,7 @@ export function TeamTradeHistory({
         {viewAllHref && teamTrades.length > 0 && (
           <Link
             href={viewAllHref}
-            className="flex items-center justify-center gap-1.5 mt-2 pt-2 border-t border-white/[0.04] text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            className="flex items-center justify-center gap-1.5 mt-1 pt-1 border-t border-white/[0.04] text-xs text-blue-400 hover:text-blue-300 transition-colors"
           >
             View All Trades
             <ExternalLink className="w-3 h-3" />

@@ -6,6 +6,7 @@ import { Eye } from "lucide-react";
 import { UsersTeam } from "@/components/ui/CustomIcons";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { AwardsSection, type TeamAward } from "@/components/ui/AwardBadge";
+import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { TeamTrophyCase } from "./TeamTrophyCase";
 import { TeamHistoricalStats } from "./TeamHistoricalStats";
 import { TeamTradeHistory } from "./TeamTradeHistory";
@@ -19,6 +20,7 @@ const fetcher = (url: string) => fetch(url).then(res => {
 
 interface Player {
   id: string;
+  sleeperId?: string;
   fullName: string;
   position: string | null;
   team: string | null;
@@ -410,16 +412,25 @@ export function PublicTeamProfile({
                   <div
                     key={p.player.id}
                     className={cn(
-                      "px-2 py-1.5 rounded-md text-xs border transition-colors",
+                      "px-2 py-1.5 rounded-md text-xs border transition-colors flex items-center gap-2",
                       p.existingKeeper
                         ? "bg-amber-500/10 border-amber-500/20 text-amber-200"
                         : "bg-[#131a28] border-white/[0.04] text-slate-300"
                     )}
                   >
-                    <div className="font-medium truncate">{p.player.fullName}</div>
-                    {p.player.team && (
-                      <div className="text-[9px] text-slate-500">{p.player.team}</div>
+                    {p.player.sleeperId && (
+                      <PlayerAvatar
+                        sleeperId={p.player.sleeperId}
+                        name={p.player.fullName}
+                        size="xs"
+                      />
                     )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{p.player.fullName}</div>
+                      {p.player.team && (
+                        <div className="text-[9px] text-slate-500">{p.player.team}</div>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {(playersByPosition[pos]?.length || 0) > 3 && (

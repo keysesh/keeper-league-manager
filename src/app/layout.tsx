@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { PostHogProvider } from "@/providers/PostHogProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -45,7 +46,9 @@ export default function RootLayout({
       >
         <AuthProvider>
           <QueryProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <PostHogProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </PostHogProvider>
           </QueryProvider>
         </AuthProvider>
         <SpeedInsights />

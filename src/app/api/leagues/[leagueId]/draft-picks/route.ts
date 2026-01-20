@@ -123,9 +123,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Build allPicks - all traded picks in the league for DraftCapital display
+    const allPicks = pickOwnership.map(pick => ({
+      ...pick,
+      currentOwnerName: sleeperToName.get(pick.currentOwnerSleeperId) || `Team ${pick.currentOwnerSleeperId.slice(0, 6)}`,
+    }));
+
     return NextResponse.json({
       season: planningSeason,
       picks: pickOwnership,
+      allPicks, // Include all picks for DraftCapital component
       rosters: rosters.map(r => ({
         id: r.id,
         sleeperId: r.sleeperId,

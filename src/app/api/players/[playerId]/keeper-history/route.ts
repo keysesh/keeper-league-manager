@@ -241,7 +241,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           },
         },
       },
-      orderBy: { transaction: { createdAt: "asc" } },
+      orderBy: { transaction: { createdAt: "desc" } },
     });
 
     // Get all unique roster IDs from transactions
@@ -434,13 +434,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     };
 
     timeline.sort((a, b) => {
-      // First sort by date if both have dates
+      // First sort by date if both have dates (descending - newest first)
       if (a.date && b.date) {
-        const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
+        const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
         if (dateCompare !== 0) return dateCompare;
       }
-      // Then by season
-      if (a.season !== b.season) return a.season - b.season;
+      // Then by season (descending - newest first)
+      if (a.season !== b.season) return b.season - a.season;
       // Then by event priority
       return (eventPriority[a.event] || 99) - (eventPriority[b.event] || 99);
     });

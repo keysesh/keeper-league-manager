@@ -14,6 +14,7 @@ declare module "next-auth" {
     image?: string | null;
     discordId?: string | null;
     discordUsername?: string | null;
+    discordAvatar?: string | null;
   }
 
   interface Session {
@@ -25,6 +26,7 @@ declare module "next-auth" {
       image?: string | null;
       discordId?: string | null;
       discordUsername?: string | null;
+      discordAvatar?: string | null;
     };
   }
 }
@@ -35,6 +37,7 @@ declare module "next-auth/jwt" {
     username?: string;
     discordId?: string | null;
     discordUsername?: string | null;
+    discordAvatar?: string | null;
     needsSleeperLink?: boolean;
   }
 }
@@ -214,11 +217,12 @@ export const authOptions: NextAuthOptions = {
         token.username = user.username;
         token.discordId = user.discordId;
         token.discordUsername = user.discordUsername;
+        token.discordAvatar = user.discordAvatar;
       }
 
       // Initial sign in with Discord (already linked user)
       if (account?.provider === "discord") {
-        const discordProfile = profile as { id: string; username: string };
+        const discordProfile = profile as { id: string; username: string; avatar?: string };
         const linkedUser = await prisma.user.findUnique({
           where: { discordId: discordProfile.id },
         });
@@ -229,6 +233,7 @@ export const authOptions: NextAuthOptions = {
           token.username = linkedUser.sleeperUsername;
           token.discordId = linkedUser.discordId;
           token.discordUsername = linkedUser.discordUsername;
+          token.discordAvatar = linkedUser.discordAvatar;
         }
       }
 
@@ -241,6 +246,7 @@ export const authOptions: NextAuthOptions = {
         session.user.username = token.username || "";
         session.user.discordId = token.discordId;
         session.user.discordUsername = token.discordUsername;
+        session.user.discordAvatar = token.discordAvatar;
       }
       return session;
     },

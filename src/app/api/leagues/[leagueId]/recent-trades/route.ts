@@ -47,7 +47,7 @@ export async function GET(
 
     const { leagueId } = await params;
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 50);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "10"), 200);
 
     // Get league with sleeperId for Sleeper API calls
     const league = await prisma.league.findUnique({

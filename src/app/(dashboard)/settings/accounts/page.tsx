@@ -179,8 +179,8 @@ export default function AccountsSettingsPage() {
   };
 
   const sleeperAvatar = session?.user?.image;
-  const discordAvatar = session?.user?.discordId
-    ? `https://cdn.discordapp.com/avatars/${session.user.discordId}/${session.user.discordUsername}.png`
+  const discordAvatar = session?.user?.discordId && session?.user?.discordAvatar
+    ? `https://cdn.discordapp.com/avatars/${session.user.discordId}/${session.user.discordAvatar}.png`
     : null;
 
   return (
