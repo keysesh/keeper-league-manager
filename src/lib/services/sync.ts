@@ -324,21 +324,18 @@ export class SyncService {
   }
 
   /**
-   * Sync - Standard full sync
+   * Sync - Fast sync for regular use
    *
    * Sleeper API calls:
-   * - GET /league/{id} - League metadata
    * - GET /league/{id}/rosters - Current rosters
    * - GET /league/{id}/users - League members
-   * - GET /league/{id}/drafts - Draft list
-   * - GET /draft/{id}/picks - Draft picks (per draft)
    * - GET /league/{id}/traded_picks - Traded picks
    *
-   * Duration: 10-20s
-   * Timeout risk: Low
+   * Duration: 5-10s
+   * Timeout risk: None
    *
-   * Use case: After draft, after trades
-   * Note: Transaction sync moved to sync-history to avoid Vercel timeout
+   * Use case: Regular sync, after trades
+   * Note: Drafts and transactions only sync in History
    */
   async sync(leagueId: string, userId?: string): Promise<SyncResult> {
     if (userId && !(await verifyLeagueAccess(leagueId, userId))) {
@@ -347,27 +344,26 @@ export class SyncService {
 
     const league = await getLeagueOrError(leagueId);
 
-    logger.info("Starting full sync", { leagueId, leagueName: league.name });
+    logger.info("Starting sync", { leagueId, leagueName: league.name });
 
-    // 1. Sync league data (rosters, drafts, picks, traded picks, transactions)
-    // All fetched in parallel for speed - traded picks and transactions included
-    const syncResult = await syncLeague(league.sleeperId);
+    // 1. Quick sync rosters (fast - just rosters and users)
+    const rosterResult = await quickSyncLeague(leagueId);
 
-    // 2. Populate keepers from draft picks
-    const keepers = await populateKeepersFromDraftPicks(leagueId);
+    // 2. Sync traded picks (fast - one API call)
+    const tradedPicks = await syncTradedPicks(leagueId);
 
     // 3. Recalculate keeper years
     await recalculateKeeperYears(leagueId);
 
     return {
       success: true,
-      message: `Synced ${league.name}: ${syncResult.rosters} rosters, ${syncResult.draftPicks} draft picks`,
-      league: syncResult.league,
-      rosters: syncResult.rosters,
-      draftPicks: syncResult.draftPicks,
-      tradedPicks: 0, // Synced inside syncLeague
-      transactions: 0, // Synced inside syncLeague
-      keepers,
+      message: `Synced ${league.name}: ${rosterResult.rosters} rosters, ${tradedPicks} traded picks`,
+      league: { id: leagueId, name: league.name },
+      rosters: rosterResult.rosters,
+      draftPicks: 0, // Drafts sync in History only
+      tradedPicks,
+      transactions: 0, // Transactions sync in History only
+      keepers: { created: 0, skipped: 0 },
     };
   }
 
