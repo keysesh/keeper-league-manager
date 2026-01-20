@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { SleeperClient } from "./client";
+import { SleeperLeague } from "./types";
 import {
   mapSleeperPlayer,
   mapSleeperRoster,
