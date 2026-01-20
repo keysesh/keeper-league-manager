@@ -122,6 +122,33 @@ export default function AdminLeaguesPage() {
     }
   };
 
+  const handleSyncTrades = async (leagueId: string) => {
+    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing", message: "Syncing trades..." } }));
+    try {
+      const res = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-transactions", leagueId }),
+      });
+
+      if (!res.ok) throw new Error("Trade sync failed");
+
+      const data = await res.json();
+      const created = data.data?.created || 0;
+      setSyncStatus(prev => ({
+        ...prev,
+        [leagueId]: {
+          leagueId,
+          status: "success",
+          message: `Synced ${created} trades`
+        }
+      }));
+      fetchLeagues();
+    } catch (error) {
+      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "error", message: String(error) } }));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -218,9 +245,16 @@ export default function AdminLeaguesPage() {
                           Quick
                         </button>
                         <button
+                          onClick={() => handleSyncTrades(league.id)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                          title="Sync trades only (fast)"
+                        >
+                          Trades
+                        </button>
+                        <button
                           onClick={() => handleFullSync(league.id)}
                           className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-                          title="Full sync (all seasons, trades, history)"
+                          title="Full sync (all seasons, trades, history) - may timeout"
                         >
                           Full
                         </button>

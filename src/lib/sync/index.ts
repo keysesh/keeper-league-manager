@@ -25,6 +25,9 @@ import {
 // Traded picks handlers
 import { handleSyncTradedPicks } from "./handlers/traded-picks";
 
+// Transaction sync (lightweight)
+import { handleSyncTransactions } from "./handlers/transactions";
+
 // Debug handlers
 import {
   handleDebugKeepers,
@@ -53,6 +56,9 @@ const actionHandlers: Record<string, SyncHandler> = {
 
   // Traded picks
   "sync-traded-picks": handleSyncTradedPicks,
+
+  // Transactions (lightweight - for Vercel free tier)
+  "sync-transactions": handleSyncTransactions,
 
   // Debug utilities
   "debug-keepers": handleDebugKeepers,
