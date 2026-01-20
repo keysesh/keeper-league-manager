@@ -7,6 +7,9 @@ import { syncLeagueWithHistory } from "@/lib/sleeper/sync";
 
 const sleeper = new SleeperClient();
 
+// Only sync leagues matching this name pattern
+const TARGET_LEAGUE_NAME = "E Pluribus";
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -35,53 +38,50 @@ export async function POST(request: NextRequest) {
     // Start from next year, work backwards to 2023 (when league started on Sleeper)
     const currentYear = new Date().getFullYear();
     const seenIds = new Set<string>();
-    const allLeagues: Array<{ league_id: string; previous_league_id?: string }> = [];
+    let ePluribusLeague: { league_id: string; name: string } | null = null;
 
-    // Check seasons from newest to oldest, stop once we find leagues
+    // Check seasons from newest to oldest, looking for the E Pluribus league
     for (let year = currentYear + 1; year >= 2023; year--) {
       try {
         const leagues = await sleeper.getUserLeagues(sleeperId, year);
         for (const league of leagues) {
-          if (!seenIds.has(league.league_id)) {
+          // Only consider E Pluribus leagues
+          if (league.name?.includes(TARGET_LEAGUE_NAME) && !seenIds.has(league.league_id)) {
             seenIds.add(league.league_id);
-            allLeagues.push(league);
+            ePluribusLeague = { league_id: league.league_id, name: league.name };
+            break;
           }
         }
-        // If we found leagues, no need to check older seasons
-        // (we'll follow previous_league_id chain instead)
-        if (allLeagues.length > 0) break;
+        // If we found the E Pluribus league, stop searching
+        if (ePluribusLeague) break;
       } catch (e) {
         // Ignore errors for individual seasons
         console.log(`No leagues found for season ${year}`);
       }
     }
 
-    if (allLeagues.length === 0) {
+    if (!ePluribusLeague) {
       return NextResponse.json({
-        error: "No leagues found for this user on Sleeper (checked 2023-present)",
+        error: `User is not in the ${TARGET_LEAGUE_NAME} league on Sleeper`,
         leagues: 0
       }, { status: 404 });
     }
 
-    // Sync each league WITH HISTORY (follows previous_league_id chain)
-    let totalSeasons = 0;
-    const errors: string[] = [];
+    // Sync the E Pluribus league WITH HISTORY (follows previous_league_id chain)
+    try {
+      const result = await syncLeagueWithHistory(ePluribusLeague.league_id);
 
-    for (const league of allLeagues) {
-      try {
-        const result = await syncLeagueWithHistory(league.league_id);
-        totalSeasons += result.seasons.length;
-      } catch (e) {
-        errors.push(`Failed to sync league ${league.league_id}: ${e}`);
-      }
+      return NextResponse.json({
+        success: true,
+        league: ePluribusLeague.name,
+        seasons: result.seasons.length,
+        seasonsList: result.seasons.map(s => s.season),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        error: `Failed to sync ${ePluribusLeague.name}: ${e}`,
+      }, { status: 500 });
     }
-
-    return NextResponse.json({
-      success: true,
-      leagues: allLeagues.length,
-      seasons: totalSeasons,
-      errors: errors.length > 0 ? errors : undefined,
-    });
   } catch (error) {
     console.error("Error syncing user leagues:", error);
     return NextResponse.json({ error: "Failed to sync user leagues" }, { status: 500 });

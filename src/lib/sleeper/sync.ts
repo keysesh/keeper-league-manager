@@ -978,8 +978,11 @@ export async function syncUserLeaguesFast(
 // FULL SYNC
 // ============================================
 
+// Only sync leagues matching this name pattern
+const TARGET_LEAGUE_NAME = "E Pluribus";
+
 /**
- * Perform a full sync for a user's leagues
+ * Perform a full sync for a user's E Pluribus league
  * Checks seasons from current+1 down to 2023, then follows previous_league_id chain for history
  */
 export async function syncUserLeagues(
@@ -999,24 +1002,22 @@ export async function syncUserLeagues(
     throw new Error("User not found");
   }
 
-  // Start from next year, work backwards to 2023 (when most leagues started on Sleeper)
-  // Stop once we find leagues - then use syncLeagueWithHistory to follow the chain
+  // Start from next year, work backwards to 2023 (when league started on Sleeper)
+  // Looking specifically for the E Pluribus league
   const currentYear = new Date().getFullYear();
-  const seenLeagueIds = new Set<string>();
-  const allLeagues: SleeperLeague[] = [];
+  let ePluribusLeague: SleeperLeague | null = null;
 
   for (let year = currentYear + 1; year >= 2023; year--) {
     try {
       const leagues = await sleeper.getUserLeagues(user.sleeperId, year);
       for (const league of leagues) {
-        if (!seenLeagueIds.has(league.league_id)) {
-          seenLeagueIds.add(league.league_id);
-          allLeagues.push(league);
+        // Only sync E Pluribus league
+        if (league.name?.includes(TARGET_LEAGUE_NAME)) {
+          ePluribusLeague = league;
+          break;
         }
       }
-      // Found leagues - stop checking older seasons
-      // syncLeagueWithHistory will follow previous_league_id for history
-      if (allLeagues.length > 0) break;
+      if (ePluribusLeague) break;
     } catch {
       // Continue to next season if this one fails
     }
@@ -1029,14 +1030,17 @@ export async function syncUserLeagues(
     totalSeasons: 0,
   };
 
-  for (const league of allLeagues) {
-    // Use syncLeagueWithHistory to follow the previous_league_id chain
-    const historyResult = await syncLeagueWithHistory(league.league_id);
-    for (const season of historyResult.seasons) {
-      results.leagues.push({ id: season.leagueId, name: season.name });
-    }
-    results.totalSeasons += historyResult.seasons.length;
+  if (!ePluribusLeague) {
+    logger.warn("User not in E Pluribus league", { userId, sleeperId: user.sleeperId });
+    return results;
   }
+
+  // Use syncLeagueWithHistory to follow the previous_league_id chain
+  const historyResult = await syncLeagueWithHistory(ePluribusLeague.league_id);
+  for (const season of historyResult.seasons) {
+    results.leagues.push({ id: season.leagueId, name: season.name });
+  }
+  results.totalSeasons += historyResult.seasons.length;
 
   return results;
 }

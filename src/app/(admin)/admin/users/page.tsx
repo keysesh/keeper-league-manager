@@ -54,7 +54,7 @@ export default function AdminUsersPage() {
       if (res.ok) {
         setSyncStatus((prev) => ({
           ...prev,
-          [userId]: { status: "success", message: `Synced ${data.seasons || 0} seasons across ${data.leagues || 0} leagues` },
+          [userId]: { status: "success", message: `Synced ${data.seasons || 0} seasons` },
         }));
         // Refresh user list to show updated team count
         fetchUsers();
