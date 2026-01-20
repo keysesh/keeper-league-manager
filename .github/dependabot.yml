@@ -12,13 +12,23 @@ updates:
         patterns:
           - "@types/*"
           - "eslint*"
-          - "vitest*"
           - "typescript"
       production-dependencies:
         dependency-type: "production"
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Prisma 7 has breaking changes (requires schema migration)
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      # Vitest 4 has peer dependency conflicts with coverage-v8
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
