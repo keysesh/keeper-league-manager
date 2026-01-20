@@ -12,9 +12,8 @@ import {
   RATE_LIMITS,
 } from "@/lib/rate-limit";
 
-// Extend timeout for sync operations (requires Vercel Pro for >10s)
-// Max 60s on Pro plan, increase to 300 for Enterprise if needed
-export const maxDuration = 60;
+// Extend timeout for sync operations (Pro plan: up to 300s)
+export const maxDuration = 300;
 
 /**
  * POST /api/sleeper/sync
