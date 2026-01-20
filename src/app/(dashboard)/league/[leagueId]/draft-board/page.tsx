@@ -139,9 +139,16 @@ export default function DraftBoardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Detect mobile viewport
+  // Detect mobile viewport and set default view mode
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Default to list view on mobile for better UX
+      if (mobile && viewMode === "grid") {
+        setViewMode("list");
+      }
+    };
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
@@ -579,8 +586,8 @@ export default function DraftBoardPage() {
                     {row.slots.filter(s => s.status === "keeper").length} keepers
                   </span>
                 </div>
-                {/* Horizontal scrolling picks */}
-                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                {/* Horizontal scrolling picks with snap */}
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent snap-x snap-mandatory">
                   <div className="flex gap-2 p-3 min-w-max">
                     {row.slots.map((slot, slotIndex) => {
                       const columnColor = getTeamColor(slotIndex);
@@ -589,9 +596,9 @@ export default function DraftBoardPage() {
                       const teamName = slot.rosterName || `Team ${slotIndex + 1}`;
 
                       return (
-                        <div key={slot.rosterId} className="flex flex-col gap-1.5 w-28 sm:w-32 md:w-36 flex-shrink-0">
+                        <div key={slot.rosterId} className="flex flex-col gap-1.5 w-24 sm:w-28 flex-shrink-0 snap-start">
                           {/* Team name chip */}
-                          <div className={`text-center text-[10px] font-semibold ${columnColor.accent} truncate px-1`}>
+                          <div className={`text-center text-[9px] font-semibold ${columnColor.accent} truncate px-0.5`}>
                             {teamName}
                           </div>
                           <MobileDraftCell
@@ -605,6 +612,10 @@ export default function DraftBoardPage() {
                       );
                     })}
                   </div>
+                </div>
+                {/* Scroll hint */}
+                <div className="flex justify-center pb-2">
+                  <span className="text-[9px] text-gray-600">← Swipe to see all teams →</span>
                 </div>
               </div>
             ))}
@@ -1056,10 +1067,10 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
     const ownerName = newOwnerInfo?.name || slot.tradedTo;
 
     return (
-      <div className="h-[72px] rounded-md bg-[#1a1a1a] border-2 border-dashed border-gray-600 flex flex-col items-center justify-center gap-0.5">
-        <ArrowLeftRight size={14} className={ownerColor.accent} />
-        <span className="text-[8px] text-gray-500 uppercase">To</span>
-        <span className={`${ownerColor.accent} text-[9px] font-semibold truncate max-w-[90%] text-center`}>
+      <div className="h-[64px] rounded-md bg-[#1a1a1a] border-2 border-dashed border-gray-600 flex flex-col items-center justify-center gap-0.5">
+        <ArrowLeftRight size={12} className={ownerColor.accent} />
+        <span className="text-[7px] text-gray-500 uppercase">To</span>
+        <span className={`${ownerColor.accent} text-[8px] font-semibold truncate max-w-[90%] text-center`}>
           {ownerName}
         </span>
       </div>
@@ -1081,7 +1092,7 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
       <div
         onClick={() => slot.keeper && onPlayerClick?.(slot.keeper.playerId)}
         className={`
-          h-[72px] rounded-md relative overflow-hidden cursor-pointer active:scale-95 transition-transform
+          h-[64px] rounded-md relative overflow-hidden cursor-pointer active:scale-95 transition-transform
           ${isFranchise
             ? "bg-amber-500/20 border-2 border-amber-400"
             : isAcquiredPick
@@ -1095,53 +1106,42 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
           isFranchise ? "bg-amber-400" : isAcquiredPick ? "bg-emerald-400" : posAccent.border.replace("border-l-", "bg-")
         }`} />
 
-        {/* Acquired pick indicator */}
-        {isAcquiredPick && !isFranchise && (
-          <div className="absolute top-1 right-1">
-            <ArrowLeftRight size={10} className="text-emerald-400" />
-          </div>
-        )}
+        {/* Badges row - top right corner */}
+        <div className="absolute top-1 right-1 flex items-center gap-0.5">
+          {isAcquiredPick && !isFranchise && (
+            <ArrowLeftRight size={9} className="text-emerald-400" />
+          )}
+          {isFranchise && (
+            <Star size={10} className="text-amber-400" />
+          )}
+          <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
+            isFranchise ? "bg-amber-400/30 text-amber-100" :
+            yearsKept >= 3 ? "bg-red-500/30 text-red-200" :
+            yearsKept === 2 ? "bg-yellow-500/30 text-yellow-200" :
+            "bg-[#222222] text-gray-300"
+          }`}>
+            {isFranchise ? "FT" : `Y${yearsKept}`}
+          </span>
+        </div>
 
-        {/* Franchise star */}
-        {isFranchise && (
-          <div className="absolute top-1 right-1">
-            <Star size={12} className="text-amber-400" />
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="flex items-center h-full pl-2.5 pr-2 gap-2">
+        {/* Content - stacked vertically for narrow cells */}
+        <div className="flex flex-col items-center justify-center h-full pt-3 pb-1 px-1">
           {/* Avatar */}
-          <div className="shrink-0">
-            <div className={`rounded overflow-hidden ${isFranchise ? "ring-1 ring-amber-400/60" : "ring-1 ring-[#333333]"}`}>
-              <PlayerAvatar
-                sleeperId={slot.keeper.playerId}
-                name={slot.keeper.playerName}
-                size="md"
-              />
-            </div>
+          <div className={`rounded overflow-hidden ${isFranchise ? "ring-1 ring-amber-400/60" : "ring-1 ring-[#333333]"}`}>
+            <PlayerAvatar
+              sleeperId={slot.keeper.playerId}
+              name={slot.keeper.playerName}
+              size="sm"
+            />
           </div>
 
           {/* Info */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-            <div className="flex items-center gap-1">
-              <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
-              <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${
-                isFranchise ? "bg-amber-400/30 text-amber-100" :
-                yearsKept >= 3 ? "bg-red-500/30 text-red-200" :
-                yearsKept === 2 ? "bg-yellow-500/30 text-yellow-200" :
-                "bg-[#222222] text-gray-300"
-              }`}>
-                {isFranchise ? "FT" : `Y${yearsKept}`}
-              </span>
-            </div>
-            <span className="text-[11px] font-bold text-white truncate leading-tight">
-              {lastName}
-            </span>
-            {slot.keeper.team && (
-              <span className="text-[9px] text-gray-400">{slot.keeper.team}</span>
-            )}
+          <div className="flex items-center gap-1 mt-1">
+            <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
           </div>
+          <span className="text-[9px] font-bold text-white truncate leading-tight max-w-full text-center">
+            {lastName}
+          </span>
         </div>
       </div>
     );
@@ -1150,16 +1150,16 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
   // Empty cell - show if acquired via trade
   const isAcquiredEmpty = !!slot.acquiredFrom;
   return (
-    <div className={`h-[72px] rounded-md ${
+    <div className={`h-[64px] rounded-md ${
       isAcquiredEmpty
         ? "bg-emerald-900/10 border border-emerald-500/20"
         : "bg-[#111111] border border-[#1a1a1a]"
     } relative`}>
       {isAcquiredEmpty && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-          <ArrowLeftRight size={12} className="text-emerald-500/50" />
-          <span className="text-[8px] text-emerald-500/70">
-            via {slot.acquiredFrom?.split(' ')[0]}
+          <ArrowLeftRight size={10} className="text-emerald-500/50" />
+          <span className="text-[7px] text-emerald-500/70">
+            +{slot.acquiredFrom?.split(' ')[0]}
           </span>
         </div>
       )}
