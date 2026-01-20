@@ -93,7 +93,7 @@ export async function syncAllPlayers(): Promise<{
  */
 export async function syncLeague(
   sleeperLeagueId: string,
-  options: { skipTransactions?: boolean } = {}
+  options: { skipTransactions?: boolean; skipDrafts?: boolean } = {}
 ): Promise<{
   league: { id: string; name: string };
   rosters: number;
@@ -292,13 +292,15 @@ export async function syncLeague(
     });
   }
 
-  // Sync drafts
+  // Sync drafts (skip for faster history sync)
   let draftPickCount = 0;
-  for (const draft of drafts) {
-    try {
-      draftPickCount += await syncDraft(league.id, draft, rosters);
-    } catch (err) {
-      logger.warn("Failed to sync draft", { draftId: draft.draft_id, error: err instanceof Error ? err.message : err });
+  if (!options.skipDrafts) {
+    for (const draft of drafts) {
+      try {
+        draftPickCount += await syncDraft(league.id, draft, rosters);
+      } catch (err) {
+        logger.warn("Failed to sync draft", { draftId: draft.draft_id, error: err instanceof Error ? err.message : err });
+      }
     }
   }
 
@@ -1164,7 +1166,7 @@ export async function syncLeagueWithHistory(
 
   for (const leagueInfo of leagueChain) {
     try {
-      const syncResult = await syncLeague(leagueInfo.sleeperId, { skipTransactions: true });
+      const syncResult = await syncLeague(leagueInfo.sleeperId, { skipTransactions: true, skipDrafts: true });
       syncResults.push({
         season: parseInt(leagueInfo.season) || 0,
         leagueId: syncResult.league.id,
