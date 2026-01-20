@@ -357,10 +357,10 @@ export default function LeaguePage() {
               gradient="success"
             />
             <QuickActionCard
-              href={`/league/${leagueId}/history`}
+              href={`/league/${leagueId}/activity`}
               icon={<Crown className="w-5 h-5" />}
-              label="Championships"
-              description="League history"
+              label="Activity"
+              description="League activity"
               gradient="cool"
             />
           </div>

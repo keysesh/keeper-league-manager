@@ -216,8 +216,8 @@ export default function TeamRosterPage() {
   const { data: championshipData } = useSWR<{
     championships: Array<{
       season: number;
-      winner: { rosterId: string; teamName: string | null };
-      runnerUp: { rosterId: string; teamName: string | null };
+      champion: { rosterId: string; teamName: string | null };
+      runnerUp: { rosterId: string; teamName: string | null } | null;
     }>;
   }>(`/api/leagues/${leagueId}/history/championships`, fetcher, {
     revalidateOnFocus: false,
@@ -237,12 +237,12 @@ export default function TeamRosterPage() {
     if (championshipData?.championships && leagueData?.rosters) {
       // Count championships won
       const championshipsWon = championshipData.championships.filter(
-        c => c.winner.rosterId === rosterId
+        c => c.champion?.rosterId === rosterId
       ).length;
 
       // Count runner-up finishes
       const runnerUpFinishes = championshipData.championships.filter(
-        c => c.runnerUp.rosterId === rosterId
+        c => c.runnerUp?.rosterId === rosterId
       ).length;
 
       // Dynasty award (2+ championships)
@@ -277,7 +277,7 @@ export default function TeamRosterPage() {
   const teamChampionships = useMemo(() => {
     if (!championshipData?.championships) return [];
     return championshipData.championships
-      .filter(c => c.winner.rosterId === rosterId)
+      .filter(c => c.champion?.rosterId === rosterId)
       .map(c => ({ season: c.season }));
   }, [championshipData, rosterId]);
 
