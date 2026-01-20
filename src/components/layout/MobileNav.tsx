@@ -9,6 +9,7 @@ import {
   ArrowLeftRight,
   MoreHorizontal,
   LayoutDashboard,
+  UserCircle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
