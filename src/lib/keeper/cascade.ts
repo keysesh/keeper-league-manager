@@ -258,67 +258,84 @@ export async function recalculateAndApplyCascade(
   updatedCount: number;
   errors: string[];
 }> {
-  // Get all keepers for this season
-  const keepers = await prisma.keeper.findMany({
-    where: {
-      roster: { leagueId },
-      season,
-    },
-    include: {
-      player: true,
-    },
-  });
+  try {
+    // Get all keepers for this season
+    const keepers = await prisma.keeper.findMany({
+      where: {
+        roster: { leagueId },
+        season,
+      },
+      include: {
+        player: true,
+      },
+    });
 
-  if (keepers.length === 0) {
-    return { success: true, updatedCount: 0, errors: [] };
-  }
+    if (keepers.length === 0) {
+      return { success: true, updatedCount: 0, errors: [] };
+    }
 
-  // Prepare keeper inputs (use database playerId for consistency)
-  const keeperInputs: KeeperInput[] = keepers.map((k) => ({
-    playerId: k.playerId,
-    rosterId: k.rosterId,
-    playerName: k.player.fullName,
-    type: k.type as "FRANCHISE" | "REGULAR",
-  }));
+    // Prepare keeper inputs (use database playerId for consistency)
+    // Filter out any keepers with null player (shouldn't happen but be safe)
+    const keeperInputs: KeeperInput[] = keepers
+      .filter((k) => k.player !== null)
+      .map((k) => ({
+        playerId: k.playerId,
+        rosterId: k.rosterId,
+        playerName: k.player.fullName,
+        type: k.type as "FRANCHISE" | "REGULAR",
+      }));
 
-  // Calculate cascade
-  const cascadeResult = await calculateCascade(leagueId, keeperInputs, season);
+    if (keeperInputs.length === 0) {
+      return { success: true, updatedCount: 0, errors: [] };
+    }
 
-  if (cascadeResult.hasErrors) {
+    // Calculate cascade
+    const cascadeResult = await calculateCascade(leagueId, keeperInputs, season);
+
+    if (cascadeResult.hasErrors) {
+      return {
+        success: false,
+        updatedCount: 0,
+        errors: cascadeResult.errors,
+      };
+    }
+
+    // Update all keeper final costs
+    // IMPORTANT: Only finalCost is updated, NOT baseCost!
+    // - baseCost = player's TRUE keeper value (original draft round - years kept)
+    // - finalCost = draft SLOT this year (may be bumped up due to same-round conflicts)
+    // Cascade is a ONE-TIME draft penalty, not a permanent cost change.
+    // Next year's calculations use baseCost, so cascade doesn't carry forward.
+    // If player is traded, new owner gets baseCost, not cascaded finalCost.
+    let updatedCount = 0;
+    for (const result of cascadeResult.keepers) {
+      const keeper = keepers.find(
+        (k) => k.playerId === result.playerId && k.rosterId === result.rosterId
+      );
+
+      if (keeper && keeper.finalCost !== result.finalCost) {
+        await prisma.keeper.update({
+          where: { id: keeper.id },
+          data: { finalCost: result.finalCost }, // Only finalCost, never baseCost
+        });
+        updatedCount++;
+      }
+    }
+
+    return {
+      success: true,
+      updatedCount,
+      errors: [],
+    };
+  } catch (error) {
+    // Log the actual error for debugging
+    console.error("Cascade calculation error:", error);
     return {
       success: false,
       updatedCount: 0,
-      errors: cascadeResult.errors,
+      errors: [error instanceof Error ? error.message : "Unknown cascade error"],
     };
   }
-
-  // Update all keeper final costs
-  // IMPORTANT: Only finalCost is updated, NOT baseCost!
-  // - baseCost = player's TRUE keeper value (original draft round - years kept)
-  // - finalCost = draft SLOT this year (may be bumped up due to same-round conflicts)
-  // Cascade is a ONE-TIME draft penalty, not a permanent cost change.
-  // Next year's calculations use baseCost, so cascade doesn't carry forward.
-  // If player is traded, new owner gets baseCost, not cascaded finalCost.
-  let updatedCount = 0;
-  for (const result of cascadeResult.keepers) {
-    const keeper = keepers.find(
-      (k) => k.playerId === result.playerId && k.rosterId === result.rosterId
-    );
-
-    if (keeper && keeper.finalCost !== result.finalCost) {
-      await prisma.keeper.update({
-        where: { id: keeper.id },
-        data: { finalCost: result.finalCost }, // Only finalCost, never baseCost
-      });
-      updatedCount++;
-    }
-  }
-
-  return {
-    success: true,
-    updatedCount,
-    errors: [],
-  };
 }
 
 /**
