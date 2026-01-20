@@ -1,3 +1,6 @@
+import { config } from "dotenv";
+config({ path: ".env.local" });
+
 import { PrismaClient } from "@prisma/client";
 import { calculateBaseCost } from "../src/lib/keeper/calculator";
 

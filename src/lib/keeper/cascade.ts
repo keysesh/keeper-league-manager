@@ -77,7 +77,7 @@ export async function calculateCascade(
   }
 
   const settings = league.keeperSettings;
-  const maxRounds = settings?.undraftedRound ?? DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
+  const maxRounds = league.draftRounds || DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
   const minRound = DEFAULT_KEEPER_RULES.MINIMUM_ROUND; // Round 1
 
   // FIXED: Build map of which picks each roster actually owns
@@ -126,40 +126,78 @@ export async function calculateCascade(
     let cascadeSteps = 0;
     const conflictsWith: string[] = [];
 
-    // FIXED: Cascade UP toward better rounds (lower numbers)
-    // Stop at Round 1 (minRound) - cannot go lower than that
+    // Helper to check if a slot is available (owned and not used)
+    const isSlotAvailable = (round: number) =>
+      ownedPicks.has(round) && !rosterUsedSlots.has(round);
+
+    // First, try cascading DOWN toward better rounds (lower numbers)
+    // This rewards teams for finding late-round value
     while (
-      (rosterUsedSlots.has(finalCost) || !ownedPicks.has(finalCost)) &&
-      finalCost >= minRound
+      !isSlotAvailable(finalCost) &&
+      finalCost > minRound
     ) {
-      // Find which keeper is causing the conflict
-      const conflictingKeeper = sortedKeepers.find(
-        (k) =>
-          k.rosterId === keeper.rosterId &&
-          k !== keeper &&
-          k.baseCost === keeper.baseCost - cascadeSteps
-      );
-
-      if (conflictingKeeper) {
-        conflictsWith.push(conflictingKeeper.playerName);
-      }
-
-      // Check if this round was traded away
       if (!ownedPicks.has(finalCost)) {
         conflictsWith.push(`Round ${finalCost} traded away`);
+      } else if (rosterUsedSlots.has(finalCost)) {
+        const conflictingKeeper = sortedKeepers.find(
+          (k) =>
+            k.rosterId === keeper.rosterId &&
+            k !== keeper &&
+            k.baseCost === finalCost
+        );
+        if (conflictingKeeper) {
+          conflictsWith.push(conflictingKeeper.playerName);
+        }
       }
 
       cascadeSteps++;
-      finalCost--; // FIXED: Decrement to go UP toward better rounds
+      finalCost--;
     }
 
-    // Check if we went below minimum round (should not happen normally)
-    if (finalCost < minRound) {
+    // If we couldn't find a slot going down, try going UP (higher round numbers)
+    // This handles cases where better rounds are all taken or not owned
+    if (!isSlotAvailable(finalCost)) {
+      // Reset and try from baseCost going UP
+      finalCost = keeper.baseCost;
+      cascadeSteps = 0;
+      conflictsWith.length = 0; // Clear previous conflicts
+
+      while (
+        !isSlotAvailable(finalCost) &&
+        finalCost <= maxRounds
+      ) {
+        if (!ownedPicks.has(finalCost)) {
+          conflictsWith.push(`Round ${finalCost} traded away`);
+        } else if (rosterUsedSlots.has(finalCost)) {
+          const conflictingKeeper = sortedKeepers.find(
+            (k) =>
+              k.rosterId === keeper.rosterId &&
+              k !== keeper &&
+              k.baseCost === finalCost
+          );
+          if (conflictingKeeper) {
+            conflictsWith.push(conflictingKeeper.playerName);
+          }
+        }
+
+        cascadeSteps++;
+        finalCost++;
+      }
+    }
+
+    // Check if we couldn't find any available slot
+    if (!isSlotAvailable(finalCost)) {
       result.hasErrors = true;
       result.errors.push(
-        `${keeper.playerName}: Cannot assign slot - all better rounds exhausted (cascaded to Round ${finalCost})`
+        `${keeper.playerName}: Cannot assign slot - no available rounds (base: R${keeper.baseCost})`
       );
-      finalCost = minRound; // Cap at Round 1
+      // Find any available slot as last resort
+      for (let r = minRound; r <= maxRounds; r++) {
+        if (isSlotAvailable(r)) {
+          finalCost = r;
+          break;
+        }
+      }
     }
 
     // Mark slot as used
