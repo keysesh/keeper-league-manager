@@ -349,8 +349,9 @@ export class SyncService {
 
     logger.info("Starting full sync", { leagueId, leagueName: league.name });
 
-    // 1. Sync league data (rosters, drafts, picks) - skip transactions for speed
-    const syncResult = await syncLeague(league.sleeperId, { skipTransactions: true });
+    // 1. Sync league data (rosters, drafts, picks, transactions)
+    // Transactions now fetch in parallel so this is fast
+    const syncResult = await syncLeague(league.sleeperId);
 
     // 2. Sync traded picks
     const tradedPicks = await syncTradedPicks(leagueId);
@@ -368,7 +369,7 @@ export class SyncService {
       rosters: syncResult.rosters,
       draftPicks: syncResult.draftPicks,
       tradedPicks,
-      transactions: 0, // Transaction sync moved to sync-history
+      transactions: 0, // Transactions synced inside syncLeague
       keepers,
     };
   }

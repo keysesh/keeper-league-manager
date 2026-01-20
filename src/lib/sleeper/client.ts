@@ -214,25 +214,19 @@ export class SleeperClient {
   }
 
   /**
-   * Get all transactions for a league (all weeks)
+   * Get all transactions for a league (all weeks in parallel)
    */
   async getAllTransactions(leagueId: string): Promise<SleeperTransaction[]> {
-    const allTransactions: SleeperTransaction[] = [];
-
-    // Fetch all weeks in NFL season
-    for (let week = 1; week <= NFL_SEASON_WEEKS; week++) {
-      try {
-        const weekTransactions = await this.getTransactions(leagueId, week);
-        if (weekTransactions && weekTransactions.length > 0) {
-          allTransactions.push(...weekTransactions);
-        }
-      } catch {
-        // Week might not exist yet, continue
-        break;
-      }
+    // Fetch all weeks in parallel for speed (week 0 = offseason, 1-18 = regular season)
+    const weekPromises = [];
+    for (let week = 0; week <= NFL_SEASON_WEEKS; week++) {
+      weekPromises.push(
+        this.getTransactions(leagueId, week).catch(() => [] as SleeperTransaction[])
+      );
     }
 
-    return allTransactions;
+    const results = await Promise.all(weekPromises);
+    return results.flat();
   }
 
   // ============================================
