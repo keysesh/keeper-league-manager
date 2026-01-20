@@ -286,7 +286,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         // - It's before September of the planning season year (pre-season trade)
         // - OR it's after the trade deadline of the previous season
         const isPreSeasonTrade = tradeYear === season && tradeMonth < 8; // Jan-Aug of planning year
-        const isOffseasonTrade = isPreSeasonTrade || isTradeAfterDeadline(txDate, txSeason);
+        const isAfterDeadline = isTradeAfterDeadline(txDate, txSeason);
+        const isOffseasonTrade = isPreSeasonTrade || isAfterDeadline;
+
+        logger.debug("Trade detection", {
+          playerId,
+          txDate: txDate.toISOString(),
+          tradeYear,
+          tradeMonth,
+          planningSeason: season,
+          isPreSeasonTrade,
+          isAfterDeadline,
+          isOffseasonTrade
+        });
 
         if (isOffseasonTrade) {
           // Offseason trade: years reset for new owner
@@ -763,6 +775,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             yearsOnRoster: eligibility.consecutiveYears,
             maxYearsForRegular: maxYears,
             calculatedCanBeRegular: eligibility.consecutiveYears < maxYears,
+            isPostDeadlineTrade: eligibility.isPostDeadlineTrade,
           },
         },
         costs: {
