@@ -274,7 +274,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       if (tradeAcquisition) {
         const txDate = tradeAcquisition.transaction.createdAt;
         const txSeason = getSeasonFromDate(txDate);
-        const isOffseasonTrade = isTradeAfterDeadline(txDate, txSeason);
+
+        // Check if this is an offseason trade (should reset keeper years)
+        // Two conditions make a trade "offseason":
+        // 1. Trade happened after the previous season's deadline (Dec-Aug)
+        // 2. Trade happened before the current planning season started (before Sept)
+        const tradeMonth = txDate.getMonth();
+        const tradeYear = txDate.getFullYear();
+
+        // A trade is offseason if:
+        // - It's before September of the planning season year (pre-season trade)
+        // - OR it's after the trade deadline of the previous season
+        const isPreSeasonTrade = tradeYear === season && tradeMonth < 8; // Jan-Aug of planning year
+        const isOffseasonTrade = isPreSeasonTrade || isTradeAfterDeadline(txDate, txSeason);
 
         if (isOffseasonTrade) {
           // Offseason trade: years reset for new owner
