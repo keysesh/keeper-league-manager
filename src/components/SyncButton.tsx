@@ -1,26 +1,91 @@
 "use client";
 
-import { useState } from "react";
-import { RefreshCw, Check, AlertCircle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { RefreshCw, Check, AlertCircle, ChevronDown, History, Calculator } from "lucide-react";
 
 interface SyncButtonProps {
+  leagueId?: string;
   variant?: "default" | "compact";
   onSuccess?: () => void;
 }
 
-export function SyncButton({ variant = "default", onSuccess }: SyncButtonProps) {
+type SyncAction = "refresh" | "sync" | "sync-history" | "update-keepers";
+
+interface SyncOption {
+  action: SyncAction;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  requiresLeagueId: boolean;
+}
+
+const syncOptions: SyncOption[] = [
+  {
+    action: "refresh",
+    label: "Refresh",
+    description: "Quick roster update",
+    icon: <RefreshCw size={14} />,
+    requiresLeagueId: true,
+  },
+  {
+    action: "sync",
+    label: "Sync Data",
+    description: "League + drafts + trades",
+    icon: <RefreshCw size={14} />,
+    requiresLeagueId: true,
+  },
+  {
+    action: "sync-history",
+    label: "Sync History",
+    description: "All historical seasons",
+    icon: <History size={14} />,
+    requiresLeagueId: true,
+  },
+  {
+    action: "update-keepers",
+    label: "Recalculate Keepers",
+    description: "Fix keeper costs",
+    icon: <Calculator size={14} />,
+    requiresLeagueId: true,
+  },
+];
+
+export function SyncButton({ leagueId, variant = "default", onSuccess }: SyncButtonProps) {
   const [syncing, setSyncing] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentAction, setCurrentAction] = useState<SyncAction | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleSync = async () => {
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSync = async (action: SyncAction) => {
     setSyncing(true);
     setStatus("idle");
+    setCurrentAction(action);
+    setIsOpen(false);
 
     try {
+      // For actions that require a leagueId, use the new action format
+      // For user-leagues (when no leagueId), fall back to the old behavior
+      const body = leagueId
+        ? { action, leagueId }
+        : { action: "user-leagues" };
+
       const res = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "user-leagues" }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
@@ -36,6 +101,7 @@ export function SyncButton({ variant = "default", onSuccess }: SyncButtonProps) 
       setTimeout(() => setStatus("idle"), 3000);
     } finally {
       setSyncing(false);
+      setCurrentAction(null);
     }
   };
 
@@ -58,31 +124,96 @@ export function SyncButton({ variant = "default", onSuccess }: SyncButtonProps) 
     return "bg-[#222222] text-blue-400";
   };
 
+  const getButtonText = () => {
+    if (syncing) {
+      const option = syncOptions.find(o => o.action === currentAction);
+      return option ? `${option.label}...` : "Syncing...";
+    }
+    if (status === "success") return "Synced!";
+    if (status === "error") return "Failed";
+    return leagueId ? "Sync" : "Sync Leagues";
+  };
+
+  // Compact variant - simple button without dropdown
   if (variant === "compact") {
     return (
       <button
-        onClick={handleSync}
+        onClick={() => handleSync(leagueId ? "refresh" : "sync")}
         disabled={syncing}
         className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all disabled:opacity-50 ${getStatusColor()}`}
       >
         {getIcon()}
-        <span>{syncing ? "Syncing..." : status === "success" ? "Synced!" : status === "error" ? "Failed" : "Sync"}</span>
+        <span>{getButtonText()}</span>
+      </button>
+    );
+  }
+
+  // Default variant - button with dropdown menu
+  // If no leagueId, show simple button for user-leagues sync
+  if (!leagueId) {
+    return (
+      <button
+        onClick={() => handleSync("sync")}
+        disabled={syncing}
+        className={`group flex items-center gap-3 px-5 py-3 rounded-md border transition-all duration-150 disabled:opacity-50 ${getStatusColor()}`}
+      >
+        <span className={`flex items-center justify-center w-9 h-9 rounded-md ${getIconColor()}`}>
+          {getIcon()}
+        </span>
+        <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+          {getButtonText()}
+        </span>
       </button>
     );
   }
 
   return (
-    <button
-      onClick={handleSync}
-      disabled={syncing}
-      className={`group flex items-center gap-3 px-5 py-3 rounded-md border transition-all duration-150 disabled:opacity-50 ${getStatusColor()}`}
-    >
-      <span className={`flex items-center justify-center w-9 h-9 rounded-md ${getIconColor()}`}>
-        {getIcon()}
-      </span>
-      <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
-        {syncing ? "Syncing..." : status === "success" ? "Synced!" : status === "error" ? "Sync Failed" : "Sync Leagues"}
-      </span>
-    </button>
+    <div className="relative" ref={dropdownRef}>
+      <div className="flex">
+        {/* Main button */}
+        <button
+          onClick={() => handleSync("refresh")}
+          disabled={syncing}
+          className={`group flex items-center gap-3 px-4 py-3 rounded-l-md border-l border-y transition-all duration-150 disabled:opacity-50 ${getStatusColor()}`}
+        >
+          <span className={`flex items-center justify-center w-9 h-9 rounded-md ${getIconColor()}`}>
+            {getIcon()}
+          </span>
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+            {getButtonText()}
+          </span>
+        </button>
+
+        {/* Dropdown trigger */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          disabled={syncing}
+          className={`flex items-center px-2 py-3 rounded-r-md border-r border-y border-l-0 transition-all duration-150 disabled:opacity-50 ${getStatusColor()}`}
+        >
+          <ChevronDown size={16} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+
+      {/* Dropdown menu */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-56 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] shadow-lg z-50">
+          <div className="py-1">
+            {syncOptions.map((option) => (
+              <button
+                key={option.action}
+                onClick={() => handleSync(option.action)}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[#222222] transition-colors"
+              >
+                <span className="text-gray-400 mt-0.5">{option.icon}</span>
+                <div>
+                  <div className="text-sm font-medium text-gray-200">{option.label}</div>
+                  <div className="text-xs text-gray-500">{option.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

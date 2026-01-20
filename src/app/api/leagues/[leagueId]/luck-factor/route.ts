@@ -13,6 +13,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { getLeagueChain } from "@/lib/services/league-chain";
 
 interface LuckRating {
   rosterId: string;
@@ -37,38 +38,6 @@ interface LuckRating {
     pointsFor: number;
     luck: number;
   }>;
-}
-
-/**
- * Get all league IDs in the chain (current + all previous seasons)
- */
-async function getLeagueChain(leagueId: string): Promise<string[]> {
-  const leagueIds: string[] = [];
-  let currentId: string | null = leagueId;
-
-  while (currentId) {
-    const league: { id: string; previousLeagueId: string | null; sleeperId: string } | null =
-      await prisma.league.findUnique({
-        where: { id: currentId },
-        select: { id: true, previousLeagueId: true, sleeperId: true },
-      });
-
-    if (!league) break;
-    leagueIds.push(league.id);
-
-    // Find league with matching sleeperId as previousLeagueId
-    if (league.previousLeagueId && league.previousLeagueId !== "0") {
-      const prevLeague: { id: string } | null = await prisma.league.findFirst({
-        where: { sleeperId: league.previousLeagueId },
-        select: { id: true },
-      });
-      currentId = prevLeague?.id || null;
-    } else {
-      currentId = null;
-    }
-  }
-
-  return leagueIds;
 }
 
 export async function GET(

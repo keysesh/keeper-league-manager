@@ -76,71 +76,83 @@ export default function AdminLeaguesPage() {
     }
   };
 
-  const handleQuickSync = async (leagueId: string) => {
-    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing" } }));
+  // Refresh - Quick roster update
+  const handleRefresh = async (leagueId: string) => {
+    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing", message: "Refreshing..." } }));
     try {
       const res = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "quick", leagueId }),
+        body: JSON.stringify({ action: "refresh", leagueId }),
       });
 
-      if (!res.ok) throw new Error("Quick sync failed");
+      if (!res.ok) throw new Error("Refresh failed");
 
-      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "success", message: "Quick sync complete" } }));
-      fetchLeagues(); // Refresh the list
+      const data = await res.json();
+      setSyncStatus(prev => ({
+        ...prev,
+        [leagueId]: {
+          leagueId,
+          status: "success",
+          message: `Refreshed ${data.data?.rosters || 0} rosters`
+        }
+      }));
+      fetchLeagues();
     } catch (error) {
       setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "error", message: String(error) } }));
     }
   };
 
-  const handleFullSync = async (leagueId: string) => {
+  // Sync - Standard full sync (league + drafts + trades)
+  const handleSync = async (leagueId: string) => {
+    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing", message: "Syncing data..." } }));
+    try {
+      const res = await fetch("/api/sleeper/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync", leagueId }),
+      });
+
+      if (!res.ok) throw new Error("Sync failed");
+
+      const data = await res.json();
+      const draftPicks = data.data?.draftPicks || 0;
+      const transactions = data.data?.transactions || 0;
+      setSyncStatus(prev => ({
+        ...prev,
+        [leagueId]: {
+          leagueId,
+          status: "success",
+          message: `Synced ${draftPicks} picks, ${transactions} trades`
+        }
+      }));
+      fetchLeagues();
+    } catch (error) {
+      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "error", message: String(error) } }));
+    }
+  };
+
+  // Sync History - All historical seasons
+  const handleSyncHistory = async (leagueId: string) => {
     setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing", message: "Syncing all seasons..." } }));
     try {
       const res = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "full-sync", leagueId }),
+        body: JSON.stringify({ action: "sync-history", leagueId }),
       });
 
-      if (!res.ok) throw new Error("Full sync failed");
+      if (!res.ok) throw new Error("History sync failed");
 
       const data = await res.json();
       const seasons = data.data?.seasons?.length || 0;
-      const transactions = data.data?.totalTransactions || 0;
+      const totalTransactions = data.data?.totalTransactions || 0;
       setSyncStatus(prev => ({
         ...prev,
         [leagueId]: {
           leagueId,
           status: "success",
-          message: `Synced ${seasons} seasons, ${transactions} transactions`
-        }
-      }));
-      fetchLeagues(); // Refresh the list
-    } catch (error) {
-      setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "error", message: String(error) } }));
-    }
-  };
-
-  const handleSyncTrades = async (leagueId: string) => {
-    setSyncStatus(prev => ({ ...prev, [leagueId]: { leagueId, status: "syncing", message: "Syncing trades..." } }));
-    try {
-      const res = await fetch("/api/sleeper/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "sync-transactions", leagueId }),
-      });
-
-      if (!res.ok) throw new Error("Trade sync failed");
-
-      const data = await res.json();
-      const created = data.data?.created || 0;
-      setSyncStatus(prev => ({
-        ...prev,
-        [leagueId]: {
-          leagueId,
-          status: "success",
-          message: `Synced ${created} trades`
+          message: `Synced ${seasons} seasons, ${totalTransactions} transactions`
         }
       }));
       fetchLeagues();
@@ -238,25 +250,25 @@ export default function AdminLeaguesPage() {
                     ) : (
                       <>
                         <button
-                          onClick={() => handleQuickSync(league.id)}
+                          onClick={() => handleRefresh(league.id)}
                           className="px-2 py-1 rounded text-xs font-medium bg-[#2a2a2a] text-gray-300 hover:bg-[#333] hover:text-white transition-colors"
-                          title="Quick sync (rosters only)"
+                          title="Refresh rosters only (fast)"
                         >
-                          Quick
+                          Refresh
                         </button>
                         <button
-                          onClick={() => handleSyncTrades(league.id)}
+                          onClick={() => handleSync(league.id)}
                           className="px-2 py-1 rounded text-xs font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
-                          title="Sync trades only (fast)"
+                          title="Sync league + drafts + trades"
                         >
-                          Trades
+                          Sync
                         </button>
                         <button
-                          onClick={() => handleFullSync(league.id)}
+                          onClick={() => handleSyncHistory(league.id)}
                           className="px-2 py-1 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-                          title="Full sync (all seasons, trades, history) - may timeout"
+                          title="Sync all historical seasons"
                         >
-                          Full
+                          History
                         </button>
                       </>
                     )}

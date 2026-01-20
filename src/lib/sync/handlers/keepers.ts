@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { populateKeepersFromDraftPicks, recalculateKeeperYears } from "@/lib/sleeper/sync";
+import { getLeagueChain } from "@/lib/services/league-chain";
 import { SyncContext, createSyncResponse, createSyncError } from "../types";
 
 /**
@@ -15,38 +16,6 @@ async function verifyLeagueAccess(leagueId: string, userId: string) {
     },
   });
   return !!roster;
-}
-
-/**
- * Get all league IDs in the historical chain (current + all previous seasons)
- */
-async function getLeagueChain(startLeagueId: string): Promise<string[]> {
-  const leagueIds: string[] = [];
-
-  async function addToChain(leagueId: string, depth: number): Promise<void> {
-    if (depth >= 10) return;
-
-    leagueIds.push(leagueId);
-
-    const leagueData = await prisma.league.findUnique({
-      where: { id: leagueId },
-      select: { previousLeagueId: true },
-    });
-
-    if (!leagueData?.previousLeagueId) return;
-
-    const prevLeague = await prisma.league.findUnique({
-      where: { sleeperId: leagueData.previousLeagueId },
-      select: { id: true },
-    });
-
-    if (prevLeague?.id) {
-      await addToChain(prevLeague.id, depth + 1);
-    }
-  }
-
-  await addToChain(startLeagueId, 0);
-  return leagueIds;
 }
 
 /**

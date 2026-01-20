@@ -17,6 +17,7 @@ import {
   MAX_HISTORICAL_SEASONS,
 } from "@/lib/constants";
 import { isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
+import { getLeagueChain } from "@/lib/services/league-chain";
 
 const sleeper = new SleeperClient();
 
@@ -642,7 +643,7 @@ export async function buildPlayerOwnershipHistory(
   leagueId: string
 ): Promise<OwnershipPeriod[]> {
   // Get league chain (current + historical seasons)
-  const leagueChain = await getLeagueChainForSync(leagueId);
+  const leagueChain = await getLeagueChain(leagueId);
 
   // Get all relevant data in batch
   const [transactions, draftPicks, rosters] = await Promise.all([
@@ -1408,38 +1409,6 @@ export async function populateKeepersFromDraftPicks(
 }
 
 /**
- * Get all league IDs in the historical chain (current + all previous seasons)
- */
-async function getLeagueChainForSync(startLeagueId: string): Promise<string[]> {
-  const leagueIds: string[] = [];
-
-  async function addToChain(leagueId: string, depth: number): Promise<void> {
-    if (depth >= 10) return;
-
-    leagueIds.push(leagueId);
-
-    const leagueData = await prisma.league.findUnique({
-      where: { id: leagueId },
-      select: { previousLeagueId: true },
-    });
-
-    if (!leagueData?.previousLeagueId) return;
-
-    const prevLeague = await prisma.league.findUnique({
-      where: { sleeperId: leagueData.previousLeagueId },
-      select: { id: true },
-    });
-
-    if (prevLeague?.id) {
-      await addToChain(prevLeague.id, depth + 1);
-    }
-  }
-
-  await addToChain(startLeagueId, 0);
-  return leagueIds;
-}
-
-/**
  * Recalculate yearsKept for all keepers in a league
  * Uses transaction history to properly handle trades:
  * - If player was traded to current owner, years reset to 1
@@ -1449,7 +1418,7 @@ export async function recalculateKeeperYears(
   leagueId: string
 ): Promise<{ updated: number; total: number }> {
   // Get all leagues in the chain
-  const leagueChain = await getLeagueChainForSync(leagueId);
+  const leagueChain = await getLeagueChain(leagueId);
 
   // Get all rosters across the chain, mapped by sleeperId for cross-season matching
   const allRosters = await prisma.roster.findMany({

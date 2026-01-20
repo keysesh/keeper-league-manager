@@ -3,43 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { getLeagueChain } from "@/lib/services/league-chain";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
-}
-
-/**
- * Get all league IDs in the historical chain (current + all previous seasons)
- */
-async function getLeagueChain(startLeagueId: string): Promise<string[]> {
-  const leagueIds: string[] = [];
-
-  // Recursively build the chain
-  async function addToChain(leagueId: string, depth: number): Promise<void> {
-    if (depth >= 10) return; // Max 10 seasons to prevent infinite loops
-
-    leagueIds.push(leagueId);
-
-    const leagueData = await prisma.league.findUnique({
-      where: { id: leagueId },
-      select: { previousLeagueId: true },
-    });
-
-    if (!leagueData?.previousLeagueId) return;
-
-    // Find the previous league by its sleeper ID
-    const prevLeague = await prisma.league.findUnique({
-      where: { sleeperId: leagueData.previousLeagueId },
-      select: { id: true },
-    });
-
-    if (prevLeague?.id) {
-      await addToChain(prevLeague.id, depth + 1);
-    }
-  }
-
-  await addToChain(startLeagueId, 0);
-  return leagueIds;
 }
 
 /**
