@@ -111,12 +111,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Get all player IDs on this roster
     const playerIds = roster.rosterPlayers.map(rp => rp.playerId);
 
-    // BATCH QUERY 2: Get all draft picks for all players in THIS LEAGUE
-    // Include roster to get sleeperId for matching across seasons
+    // Build league chain to get ALL historical leagues (previousLeagueId is stored as sleeperId)
+    const allLeagueIds: string[] = [leagueId];
+    let currentPrevId = league.previousLeagueId;
+    let chainDepth = 0;
+    while (currentPrevId && chainDepth < 10) {
+      // previousLeagueId is stored as Sleeper ID, need to find by sleeperId
+      const prevLeague = await prisma.league.findFirst({
+        where: { sleeperId: currentPrevId },
+        select: { id: true, previousLeagueId: true },
+      });
+      if (!prevLeague) break;
+      allLeagueIds.push(prevLeague.id);
+      currentPrevId = prevLeague.previousLeagueId;
+      chainDepth++;
+    }
+
+    // BATCH QUERY 2: Get all draft picks for all players across ALL leagues in the chain
+    // This ensures we count keeper years from previous seasons correctly
     const draftPicks = await prisma.draftPick.findMany({
       where: {
         playerId: { in: playerIds },
-        draft: { leagueId: leagueId }, // Filter to current league only
+        draft: { leagueId: { in: allLeagueIds } }, // Include all historical leagues
       },
       include: {
         draft: true,
@@ -135,10 +151,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       orderBy: { transaction: { createdAt: "desc" } },
     });
 
-    // BATCH QUERY 4: Get all rosters for this league (all seasons) to build rosterId -> sleeperId map
+    // BATCH QUERY 4: Get all rosters across ALL leagues in chain to build rosterId -> sleeperId map
     // This allows us to match transactions across seasons (roster IDs change each year)
     const allRosters = await prisma.roster.findMany({
-      where: { leagueId },
+      where: { leagueId: { in: allLeagueIds } },
       select: { id: true, sleeperId: true },
     });
 
