@@ -282,12 +282,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const tradeMonth = txDate.getMonth();
         const tradeYear = txDate.getFullYear();
 
-        // A trade is offseason if:
-        // - It's before September of the planning season year (pre-season trade)
-        // - OR it's after the trade deadline of the previous season
-        const isPreSeasonTrade = tradeYear === season && tradeMonth < 8; // Jan-Aug of planning year
+        // A trade is offseason if it happened AFTER the player was last kept by someone else
+        // For the current planning season, offseason trades include:
+        // 1. Trades in the current year before September (Jan-Aug of planning year)
+        // 2. Trades in the previous year after the trade deadline (Dec of previous year)
+        // 3. Trades in the previous year's offseason (Jan-Aug of previous year, before that draft)
+        //
+        // The key insight: if the player was traded to current owner BEFORE their first keeper season,
+        // that trade resets their keeper years to Year 1.
+        const isCurrentYearPreSeason = tradeYear === season && tradeMonth < 8;
+        const isPreviousYearOffseason = tradeYear === season - 1 && (tradeMonth >= 11 || tradeMonth < 8);
         const isAfterDeadline = isTradeAfterDeadline(txDate, txSeason);
-        const isOffseasonTrade = isPreSeasonTrade || isAfterDeadline;
+        const isOffseasonTrade = isCurrentYearPreSeason || isPreviousYearOffseason || isAfterDeadline;
 
         logger.debug("Trade detection", {
           playerId,
@@ -295,7 +301,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           tradeYear,
           tradeMonth,
           planningSeason: season,
-          isPreSeasonTrade,
+          isCurrentYearPreSeason,
+          isPreviousYearOffseason,
           isAfterDeadline,
           isOffseasonTrade
         });
