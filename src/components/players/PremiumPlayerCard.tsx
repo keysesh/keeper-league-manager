@@ -281,12 +281,12 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
             </div>
             <div className={`text-[11px] sm:text-xs font-semibold ${
               isKeeper ? "text-blue-400" :
-              eligibility?.mustBeFranchise ? "text-amber-400" :
+              !costs?.regular ? "text-amber-400" :
               "text-emerald-400"
             }`}>
               {isKeeper
                 ? existingKeeper?.type === "FRANCHISE" ? "FT" : `Yr ${eligibility?.yearsKept ?? 1}`
-                : eligibility?.mustBeFranchise
+                : !costs?.regular
                   ? "FT Only"
                   : `→ Yr ${(eligibility?.yearsKept ?? 0) + 1}`
               }
@@ -327,7 +327,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           )}
 
           {/* Cost Trajectory - show future keeper costs */}
-          {costs?.regular && !eligibility.mustBeFranchise && (
+          {costs?.regular && (
             <div className="mt-2 sm:mt-3">
               <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase mb-1 text-center">
                 Future Costs
@@ -343,7 +343,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
           )}
 
           {/* Maxed out - Franchise Tag only */}
-          {!isKeeper && eligibility.mustBeFranchise && (
+          {!isKeeper && !costs?.regular && costs?.franchise && (
             <div className="mt-1.5 sm:mt-2 text-[8px] sm:text-[9px] text-amber-400 text-center">
               Maxed out ({eligibility.yearsKept} years) — Franchise Tag required
             </div>
