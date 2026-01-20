@@ -104,6 +104,7 @@ export const SyncActionSchema = z.enum([
   "sync-league-history",
   "sync-league-chain",
   "sync-traded-picks",
+  "sync-transactions",
   "debug-keepers",
   "check-sleeper-keepers",
   "debug-traded-picks",
