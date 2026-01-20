@@ -52,20 +52,36 @@ export async function GET(
     // Get league with sleeperId for Sleeper API calls
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
-      select: { sleeperId: true },
+      select: { sleeperId: true, previousLeagueId: true },
     });
 
     if (!league) {
       return NextResponse.json({ error: "League not found" }, { status: 404 });
     }
 
-    // Get rosters for name lookup
+    // Build league chain to get ALL historical leagues
+    const allLeagueIds: string[] = [leagueId];
+    let currentPrevId = league.previousLeagueId;
+    let chainDepth = 0;
+    while (currentPrevId && chainDepth < 10) {
+      const prevLeague = await prisma.league.findFirst({
+        where: { sleeperId: currentPrevId },
+        select: { id: true, previousLeagueId: true },
+      });
+      if (!prevLeague) break;
+      allLeagueIds.push(prevLeague.id);
+      currentPrevId = prevLeague.previousLeagueId;
+      chainDepth++;
+    }
+
+    // Get rosters for ALL leagues in chain for name lookup
     const rosters = await prisma.roster.findMany({
-      where: { leagueId },
+      where: { leagueId: { in: allLeagueIds } },
       select: {
         id: true,
         teamName: true,
         sleeperId: true,
+        leagueId: true,
       },
     });
 
@@ -89,13 +105,16 @@ export async function GET(
     // Build owner_id → DB roster ID mapping
     const ownerIdToDbRosterId = new Map(rosters.map((r) => [r.sleeperId, r.id]));
 
-    // Get recent trades from Transaction model
+    // Get recent trades from Transaction model (across all seasons)
     const transactions = await prisma.transaction.findMany({
       where: {
-        leagueId,
+        leagueId: { in: allLeagueIds },
         type: "TRADE",
       },
       include: {
+        league: {
+          select: { season: true },
+        },
         players: {
           include: {
             player: {
@@ -111,16 +130,19 @@ export async function GET(
         },
       },
       orderBy: { createdAt: "desc" },
-      take: limit,
+      take: limit * allLeagueIds.length, // Get more to ensure we have enough after combining
     });
 
-    // Also get trades from TradeProposal model (accepted ones)
+    // Also get trades from TradeProposal model (accepted ones, across all seasons)
     const acceptedProposals = await prisma.tradeProposal.findMany({
       where: {
-        leagueId,
+        leagueId: { in: allLeagueIds },
         status: "ACCEPTED",
       },
       include: {
+        league: {
+          select: { season: true },
+        },
         assets: {
           include: {
             player: {
@@ -146,7 +168,7 @@ export async function GET(
         },
       },
       orderBy: { respondedAt: "desc" },
-      take: limit,
+      take: limit * allLeagueIds.length,
     });
 
     const now = new Date();
@@ -291,7 +313,7 @@ export async function GET(
       return {
         id: tx.id,
         date: tx.createdAt.toISOString(),
-        season: new Date(tx.createdAt).getFullYear(),
+        season: tx.league.season, // Use actual league season
         isNew: new Date(tx.createdAt) > oneDayAgo,
         parties: Array.from(partiesMap.values()),
       };
@@ -350,7 +372,7 @@ export async function GET(
       return {
         id: tp.id,
         date: tradeDate.toISOString(),
-        season: new Date(tradeDate).getFullYear(),
+        season: tp.league.season, // Use actual league season
         isNew: new Date(tradeDate) > oneDayAgo,
         parties: Array.from(partiesMap.values()),
       };
