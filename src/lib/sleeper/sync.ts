@@ -16,8 +16,26 @@ import {
   DEFAULT_DRAFT_ROUNDS,
   MAX_HISTORICAL_SEASONS,
 } from "@/lib/constants";
+import { isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
 
 const sleeper = new SleeperClient();
+
+/**
+ * Get the NFL season for a given date
+ * NFL season runs Sept-Feb: 2024 season = Sept 2024 - Feb 2025
+ */
+function getSeasonFromDate(date: Date): number {
+  const month = date.getMonth(); // 0-indexed
+  const year = date.getFullYear();
+
+  // January/February = still previous season (playoffs)
+  if (month < 2) {
+    return year - 1;
+  }
+  // March-August = offseason, preparing for current year's season
+  // September+ = current year's season
+  return year;
+}
 
 // ============================================
 // PLAYER SYNC
@@ -1476,35 +1494,66 @@ export async function recalculateKeeperYears(
       const rosterSleeperId = keeper.roster.sleeperId;
       const teamRosterIds = rosterChainMap.get(rosterSleeperId) || [keeper.rosterId];
 
-      // FIX: Merge keeper years from BOTH Keeper table AND isKeeper draft picks
-      // This ensures we count all historical keeper seasons, not just those in the Keeper table
-
-      // 1. Get seasons from Keeper table for this team
-      const previousKeepers = await prisma.keeper.findMany({
+      // Check if player was acquired via offseason trade - if so, years reset to 0
+      // An offseason trade means the new owner starts fresh at Year 1
+      const tradeAcquisition = await prisma.transactionPlayer.findFirst({
         where: {
           playerId: keeper.playerId,
-          rosterId: { in: teamRosterIds },
-          season: { lt: keeper.season },
+          toRosterId: { in: teamRosterIds },
+          transaction: { type: "TRADE" },
         },
+        include: { transaction: true },
+        orderBy: { transaction: { createdAt: "desc" } },
       });
-      const keeperSeasons = new Set(previousKeepers.map(k => k.season));
 
-      // 2. Get seasons from draft picks marked as keepers for this team
-      const keeperPicks = await prisma.draftPick.findMany({
-        where: {
-          playerId: keeper.playerId,
-          isKeeper: true,
-          rosterId: { in: teamRosterIds },
-          draft: { season: { lt: keeper.season } },
-        },
-        include: { draft: { select: { season: true } } },
-      });
-      for (const pick of keeperPicks) {
-        keeperSeasons.add(pick.draft.season);
+      let pastKeeperCount = 0;
+      let isOffseasonTrade = false;
+
+      if (tradeAcquisition) {
+        const tradeDate = tradeAcquisition.transaction.createdAt;
+        const tradeSeason = getSeasonFromDate(tradeDate);
+        isOffseasonTrade = isTradeAfterDeadline(tradeDate, tradeSeason);
       }
 
-      // 3. Count unique past keeper seasons
-      const pastKeeperCount = keeperSeasons.size;
+      if (isOffseasonTrade) {
+        // Offseason trade: new owner starts fresh, don't count previous keeper years
+        pastKeeperCount = 0;
+        logger.info("Offseason trade detected - resetting keeper years", {
+          player: keeper.player.fullName,
+          season: keeper.season,
+        });
+      } else {
+        // Same owner or pre-deadline trade: count all keeper years
+        // FIX: Merge keeper years from BOTH Keeper table AND isKeeper draft picks
+        // This ensures we count all historical keeper seasons, not just those in the Keeper table
+
+        // 1. Get seasons from Keeper table for this team
+        const previousKeepers = await prisma.keeper.findMany({
+          where: {
+            playerId: keeper.playerId,
+            rosterId: { in: teamRosterIds },
+            season: { lt: keeper.season },
+          },
+        });
+        const keeperSeasons = new Set(previousKeepers.map(k => k.season));
+
+        // 2. Get seasons from draft picks marked as keepers for this team
+        const keeperPicks = await prisma.draftPick.findMany({
+          where: {
+            playerId: keeper.playerId,
+            isKeeper: true,
+            rosterId: { in: teamRosterIds },
+            draft: { season: { lt: keeper.season } },
+          },
+          include: { draft: { select: { season: true } } },
+        });
+        for (const pick of keeperPicks) {
+          keeperSeasons.add(pick.draft.season);
+        }
+
+        // 3. Count unique past keeper seasons
+        pastKeeperCount = keeperSeasons.size;
+      }
       const correctYearsKept = pastKeeperCount + 1;
 
       // 4. FIX: Also correct baseCost - should be the original draft round, NOT escalated cost
@@ -1549,7 +1598,8 @@ export async function recalculateKeeperYears(
           newBaseCost: correctBaseCost,
           oldFinalCost: keeper.finalCost,
           newFinalCost: correctFinalCost,
-          pastKeeperSeasons: Array.from(keeperSeasons),
+          pastKeeperCount,
+          isOffseasonTrade,
           originalDraftRound: originalDraftPick?.round ?? "undrafted",
         });
         updated++;
