@@ -116,14 +116,14 @@ export default function AdminLeaguesPage() {
       if (!res.ok) throw new Error("Sync failed");
 
       const data = await res.json();
-      const draftPicks = data.data?.draftPicks || 0;
-      const transactions = data.data?.transactions || 0;
+      const rosters = data.data?.rosters || 0;
+      const tradedPicks = data.data?.tradedPicks || 0;
       setSyncStatus(prev => ({
         ...prev,
         [leagueId]: {
           leagueId,
           status: "success",
-          message: `Synced ${draftPicks} picks, ${transactions} trades`
+          message: `Synced ${rosters} rosters, ${tradedPicks} traded picks`
         }
       }));
       fetchLeagues();
