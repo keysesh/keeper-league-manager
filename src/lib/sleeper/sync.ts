@@ -1128,47 +1128,21 @@ export async function syncLeagueWithHistory(
 }> {
   logger.info("Syncing league with history", { sleeperLeagueId, maxSeasons });
 
-  const results = {
-    seasons: [] as Array<{ season: number; leagueId: string; name: string }>,
-    totalTransactions: 0,
-  };
-
+  // Step 1: Quickly collect all league IDs in the chain (just metadata calls)
+  const leagueChain: Array<{ sleeperId: string; season: string; name: string }> = [];
   let currentLeagueId: string | null = sleeperLeagueId;
-  let seasonsProcessed = 0;
 
-  while (currentLeagueId && seasonsProcessed < maxSeasons) {
+  while (currentLeagueId && leagueChain.length < maxSeasons) {
     try {
-      // Get league data from Sleeper
       const leagueData = await sleeper.getLeague(currentLeagueId);
-
-      // Sync the league
-      const syncResult = await syncLeague(currentLeagueId);
-
-      // Count transactions
-      const league = await prisma.league.findUnique({
-        where: { sleeperId: currentLeagueId },
-        include: { _count: { select: { transactions: true } } },
+      leagueChain.push({
+        sleeperId: currentLeagueId,
+        season: leagueData.season || "0",
+        name: leagueData.name,
       });
-
-      results.seasons.push({
-        season: leagueData.season ? parseInt(leagueData.season) : 0,
-        leagueId: syncResult.league.id,
-        name: syncResult.league.name,
-      });
-
-      results.totalTransactions += league?._count.transactions || 0;
-
-      logger.info("Synced historical season", {
-        season: leagueData.season,
-        leagueName: syncResult.league.name,
-        draftPicks: syncResult.draftPicks,
-      });
-
-      // Move to previous season
       currentLeagueId = leagueData.previous_league_id || null;
-      seasonsProcessed++;
     } catch (err) {
-      logger.warn("Failed to sync historical league", {
+      logger.warn("Failed to fetch league metadata", {
         leagueId: currentLeagueId,
         error: err instanceof Error ? err.message : err,
       });
@@ -1176,12 +1150,54 @@ export async function syncLeagueWithHistory(
     }
   }
 
-  logger.info("Historical sync complete", {
-    seasons: results.seasons.length,
-    totalTransactions: results.totalTransactions,
+  logger.info("Found league chain", { count: leagueChain.length, seasons: leagueChain.map(l => l.season) });
+
+  // Step 2: Process all seasons in parallel (skip transactions for speed)
+  const syncPromises = leagueChain.map(async (leagueInfo) => {
+    try {
+      const syncResult = await syncLeague(leagueInfo.sleeperId, { skipTransactions: true });
+      return {
+        season: parseInt(leagueInfo.season) || 0,
+        leagueId: syncResult.league.id,
+        name: syncResult.league.name,
+        draftPicks: syncResult.draftPicks,
+        success: true,
+      };
+    } catch (err) {
+      logger.warn("Failed to sync historical league", {
+        leagueId: leagueInfo.sleeperId,
+        season: leagueInfo.season,
+        error: err instanceof Error ? err.message : err,
+      });
+      return {
+        season: parseInt(leagueInfo.season) || 0,
+        leagueId: "",
+        name: leagueInfo.name,
+        draftPicks: 0,
+        success: false,
+      };
+    }
   });
 
-  return results;
+  const syncResults = await Promise.all(syncPromises);
+
+  // Filter successful syncs
+  const successfulSyncs = syncResults.filter(r => r.success);
+
+  logger.info("Historical sync complete", {
+    requested: leagueChain.length,
+    successful: successfulSyncs.length,
+    seasons: successfulSyncs.map(s => s.season),
+  });
+
+  return {
+    seasons: successfulSyncs.map(s => ({
+      season: s.season,
+      leagueId: s.leagueId,
+      name: s.name,
+    })),
+    totalTransactions: 0, // Skipped for speed
+  };
 }
 
 /**
