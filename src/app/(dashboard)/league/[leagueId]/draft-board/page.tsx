@@ -799,8 +799,8 @@ export default function DraftBoardPage() {
             <span>Keeper</span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-amber-500/20 border-2 border-amber-400 relative flex items-center justify-center">
-              <Star size={10} className="text-amber-400" />
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-blue-900/30 border border-blue-500/50 relative flex items-center justify-center">
+              <Star size={10} className="text-amber-400 fill-amber-400" />
             </div>
             <span>Franchise</span>
           </div>
@@ -966,21 +966,16 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
           group h-[88px] rounded-md relative overflow-hidden cursor-pointer
           transition-all duration-200
           hover:scale-105 hover:z-20
-          ${isFranchise
-            ? "bg-amber-500/20 border-2 border-amber-400"
-            : `${teamColor.bgMuted} border ${teamColor.border} hover:border-opacity-80`
-          }
+          ${teamColor.bgMuted} border ${teamColor.border} hover:border-opacity-80
         `}
       >
         {/* Team color stripe */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-          isFranchise ? "bg-amber-400" : teamColor.bg
-        }`} />
+        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${teamColor.bg}`} />
 
         {/* Franchise star badge */}
         {isFranchise && (
           <div className="absolute top-1.5 right-1.5 z-10">
-            <Star size={16} className="text-amber-400" />
+            <Star size={16} className="text-amber-400 fill-amber-400" />
           </div>
         )}
 
@@ -988,7 +983,7 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
         <div className="flex h-full pl-3 pr-2 py-2 gap-2">
           {/* Large Player Avatar */}
           <div className="relative shrink-0 self-center">
-            <div className={`rounded-md overflow-hidden ${isFranchise ? "ring-2 ring-amber-400/60" : `ring-2 ${teamColor.ring}`}`}>
+            <div className={`rounded-md overflow-hidden ring-2 ${teamColor.ring}`}>
               <PlayerAvatar
                 sleeperId={slot.keeper.playerId}
                 name={slot.keeper.playerName}
@@ -1005,17 +1000,15 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
 
           {/* Info Column */}
           <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-            {/* Top: Position + Year */}
+            {/* Top: Position + Year/Franchise badge */}
             <div className="flex items-center justify-between gap-1">
               <PositionBadge position={slot.keeper.position} size="xs" variant="filled" />
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                isFranchise
-                  ? "bg-amber-400/30 text-amber-100"
-                  : yearsKept >= 3
-                    ? "bg-red-500/30 text-red-200"
-                    : yearsKept === 2
-                      ? "bg-yellow-500/30 text-yellow-200"
-                      : "bg-[#222222] text-gray-300"
+                yearsKept >= 3
+                  ? "bg-red-500/30 text-red-200"
+                  : yearsKept === 2
+                    ? "bg-yellow-500/30 text-yellow-200"
+                    : "bg-[#222222] text-gray-300"
               }`}>
                 {isFranchise ? "FT" : `Y${yearsKept}`}
               </span>
@@ -1024,13 +1017,13 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
             {/* Middle: Player Name */}
             <div className="flex-1 flex flex-col justify-center min-w-0">
               <span
-                className={`text-[13px] font-bold leading-tight truncate ${isFranchise ? "text-white" : teamColor.text}`}
+                className={`text-[13px] font-bold leading-tight truncate ${teamColor.text}`}
                 title={slot.keeper.playerName}
               >
                 {displayName}
               </span>
               {slot.keeper.team && (
-                <span className={`text-[10px] font-medium ${isFranchise ? "text-amber-200/70" : "text-gray-400"}`}>
+                <span className="text-[10px] font-medium text-gray-400">
                   {slot.keeper.team}
                 </span>
               )}
@@ -1044,9 +1037,7 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
                 </span>
               </div>
             ) : (
-              <div className={`text-[8px] font-semibold uppercase tracking-wider ${
-                isFranchise ? "text-amber-300" : teamColor.accent
-              }`}>
+              <div className={`text-[8px] font-semibold uppercase tracking-wider ${teamColor.accent}`}>
                 {isFranchise ? "Franchise" : "Keeper"}
               </div>
             )}
@@ -1161,24 +1152,18 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
         onClick={() => slot.keeper && onPlayerClick?.(slot.keeper.playerId)}
         className={`
           h-[64px] rounded-md relative overflow-hidden cursor-pointer active:scale-95 transition-transform
-          ${isFranchise
-            ? "bg-amber-500/20 border-2 border-amber-400"
-            : `${teamColor.bgMuted} border ${teamColor.border}`
-          }
+          ${teamColor.bgMuted} border ${teamColor.border}
         `}
       >
         {/* Team color stripe */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-          isFranchise ? "bg-amber-400" : teamColor.bg
-        }`} />
+        <div className={`absolute left-0 top-0 bottom-0 w-1 ${teamColor.bg}`} />
 
         {/* Badges row - top right corner */}
         <div className="absolute top-1 right-1 flex items-center gap-0.5">
           {isFranchise && (
-            <Star size={10} className="text-amber-400" />
+            <Star size={10} className="text-amber-400 fill-amber-400" />
           )}
           <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
-            isFranchise ? "bg-amber-400/30 text-amber-100" :
             yearsKept >= 3 ? "bg-red-500/30 text-red-200" :
             yearsKept === 2 ? "bg-yellow-500/30 text-yellow-200" :
             "bg-[#222222] text-gray-300"
@@ -1190,7 +1175,7 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
         {/* Content - stacked vertically for narrow cells */}
         <div className="flex flex-col items-center justify-center h-full pt-3 pb-1 px-1">
           {/* Avatar */}
-          <div className={`rounded overflow-hidden ${isFranchise ? "ring-1 ring-amber-400/60" : `ring-1 ${teamColor.ring}`}`}>
+          <div className={`rounded overflow-hidden ring-1 ${teamColor.ring}`}>
             <PlayerAvatar
               sleeperId={slot.keeper.playerId}
               name={slot.keeper.playerName}
