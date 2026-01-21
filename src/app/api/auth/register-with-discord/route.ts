@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { SleeperClient } from "@/lib/sleeper/client";
+import { syncUserLeagues } from "@/lib/sleeper/sync";
 import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
@@ -96,6 +97,14 @@ export async function POST(request: NextRequest) {
     logger.info("New user registered with Discord", {
       userId: user.id,
       discordId,
+    });
+
+    // Auto-sync user's leagues in the background (don't block registration)
+    // This links them to their rosters/teams immediately after signup
+    syncUserLeagues(user.id).catch((err) => {
+      logger.error("Failed to auto-sync leagues after registration", err, {
+        userId: user.id,
+      });
     });
 
     return NextResponse.json({
