@@ -195,11 +195,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     for (let round = 1; round <= league.draftRounds; round++) {
       const slots = league.rosters.map(roster => {
-        const ownedPicks = rosterOwnedPicks.get(roster.id) || new Set();
         const rosterKeepers = keepersByRoster.get(roster.id) || [];
-
-        // Check if this roster OWNS this round's pick (original or acquired)
-        const ownsPick = ownedPicks.has(round);
 
         // Check if this roster's original pick was traded away
         const tradedAwayPick = tradedPicks.find(
@@ -208,33 +204,57 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             p.currentOwnerId !== roster.sleeperId
         );
 
-        // Check if this roster acquired a pick at this round
+        // Check if this roster acquired a pick at this round from someone else
         const acquiredPick = tradedPicks.find(
           p => p.round === round &&
             p.currentOwnerId === roster.sleeperId &&
             p.originalOwnerId !== roster.sleeperId
         );
 
-        // Check if this slot has a keeper
-        const keeperInSlot = rosterKeepers.find(k => k.finalCost === round);
+        // If they traded away their original pick at this round
+        if (tradedAwayPick) {
+          // Find the new owner and check if THEY have a keeper at this round
+          const newOwnerRoster = league.rosters.find(r => r.sleeperId === tradedAwayPick.currentOwnerId);
+          const newOwnerKeepers = newOwnerRoster ? (keepersByRoster.get(newOwnerRoster.id) || []) : [];
+          const newOwnerKeeperInSlot = newOwnerKeepers.find(k => k.finalCost === round);
 
-        // If they traded away their original pick and didn't acquire another at this round
-        if (tradedAwayPick && !ownsPick) {
-          const newOwner = league.rosters.find(r => r.sleeperId === tradedAwayPick.currentOwnerId);
+          // Check if the new owner is using this acquired pick for a keeper
+          // They need to have a keeper at this round AND this pick needs to be one they're using
+          // (i.e., they acquired this pick OR it's their original pick)
+          if (newOwnerKeeperInSlot && newOwnerRoster) {
+            const keeper = keepers.find(k => k.playerId === newOwnerKeeperInSlot.playerId);
+            return {
+              rosterId: roster.id,
+              rosterName: roster.teamName,
+              status: "keeper" as const,
+              keeper: {
+                playerId: keeper?.player.sleeperId || newOwnerKeeperInSlot.playerId,
+                playerName: newOwnerKeeperInSlot.playerName,
+                position: keeper?.player.position || null,
+                team: keeper?.player.team || null,
+                yearsKept: keeper?.yearsKept || 1,
+                keeperType: keeper?.type || "REGULAR",
+              },
+              // Mark that this keeper belongs to the new owner (who acquired this pick)
+              keeperOwner: newOwnerRoster.teamName,
+              acquiredFrom: roster.teamName, // Original owner of this draft slot
+            };
+          }
+
+          // No keeper - show that the new owner picks here
           return {
             rosterId: roster.id,
             rosterName: roster.teamName,
             status: "traded" as const,
-            tradedTo: newOwner?.teamName || tradedAwayPick.currentOwnerId,
+            tradedTo: newOwnerRoster?.teamName || tradedAwayPick.currentOwnerId,
           };
         }
 
-        // If they have a keeper at this round
-        if (keeperInSlot && ownsPick) {
+        // Check if this roster has a keeper at this round (for their own or acquired picks)
+        const keeperInSlot = rosterKeepers.find(k => k.finalCost === round);
+
+        if (keeperInSlot) {
           const keeper = keepers.find(k => k.playerId === keeperInSlot.playerId);
-          const fromTeam = acquiredPick
-            ? league.rosters.find(r => r.sleeperId === acquiredPick.originalOwnerId)?.teamName
-            : null;
           return {
             rosterId: roster.id,
             rosterName: roster.teamName,
@@ -247,38 +267,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
               yearsKept: keeper?.yearsKept || 1,
               keeperType: keeper?.type || "REGULAR",
             },
-            acquiredFrom: fromTeam || undefined,
+            // If this is on an acquired pick, note where it came from
+            acquiredFrom: acquiredPick
+              ? league.rosters.find(r => r.sleeperId === acquiredPick.originalOwnerId)?.teamName
+              : undefined,
           };
         }
 
-        // Available slot (own pick or acquired, no keeper)
-        if (ownsPick) {
-          const fromTeam = acquiredPick
-            ? league.rosters.find(r => r.sleeperId === acquiredPick.originalOwnerId)?.teamName
-            : null;
-          return {
-            rosterId: roster.id,
-            rosterName: roster.teamName,
-            status: "available" as const,
-            acquiredFrom: fromTeam || undefined,
-          };
-        }
-
-        // Traded away (shouldn't reach here, but fallback)
-        if (tradedAwayPick) {
-          const newOwner = league.rosters.find(r => r.sleeperId === tradedAwayPick.currentOwnerId);
-          return {
-            rosterId: roster.id,
-            rosterName: roster.teamName,
-            status: "traded" as const,
-            tradedTo: newOwner?.teamName || tradedAwayPick.currentOwnerId,
-          };
-        }
-
+        // Available slot - either original pick or acquired with no keeper
         return {
           rosterId: roster.id,
           rosterName: roster.teamName,
           status: "available" as const,
+          acquiredFrom: acquiredPick
+            ? league.rosters.find(r => r.sleeperId === acquiredPick.originalOwnerId)?.teamName
+            : undefined,
         };
       });
 
