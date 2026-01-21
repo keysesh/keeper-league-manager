@@ -804,10 +804,17 @@ export default function DraftBoardPage() {
             <span>Franchise</span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-[#1a1a1a] border-2 border-dashed border-gray-500 flex items-center justify-center">
-              <ArrowLeftRight size={6} className="md:w-2 md:h-2 text-gray-500" />
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-[#0a0a0a] border border-[#1a1a1a] flex items-center justify-center opacity-50">
+              <span className="text-[6px] md:text-[7px] text-gray-600 italic">traded</span>
             </div>
-            <span>Traded</span>
+            <span>Traded Away</span>
+          </div>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded border-2 border-dashed border-blue-500/50 flex items-center justify-center relative overflow-hidden" style={{ backgroundColor: 'rgba(30, 30, 30, 0.8)' }}>
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 md:w-1 bg-blue-500 opacity-60" />
+              <span className="text-[6px] md:text-[7px] text-blue-400">via</span>
+            </div>
+            <span>Acquired</span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-[#111111] border border-[#2a2a2a]" />
@@ -888,33 +895,11 @@ const POSITION_ACCENTS: Record<string, { border: string }> = {
 };
 
 function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerClick }: DraftCellProps) {
-  // Traded pick - show who owns this pick now
+  // Traded away pick - this team no longer picks here, show minimal cell
   if (slot.status === "traded" && slot.tradedTo) {
-    let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
-
-    if (!newOwnerInfo) {
-      for (const [name, info] of teamNameToInfo) {
-        if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
-          newOwnerInfo = info;
-          break;
-        }
-      }
-    }
-
-    const ownerColor = newOwnerInfo?.color || columnColor;
-    const ownerName = newOwnerInfo?.name || slot.tradedTo;
-
     return (
-      <div className="h-[88px] rounded-md bg-[#1a1a1a] border-2 border-dashed border-gray-600 flex flex-col items-center justify-center gap-1 relative overflow-hidden">
-        <div className={`w-8 h-8 rounded-full ${ownerColor.bgMuted} flex items-center justify-center`}>
-          <ArrowLeftRight size={14} className={ownerColor.accent} />
-        </div>
-        <div className="text-center px-2">
-          <span className="text-[9px] text-gray-500 uppercase tracking-wide block">Traded to</span>
-          <span className={`${ownerColor.accent} text-[10px] font-semibold truncate block max-w-[100px]`}>
-            {ownerName}
-          </span>
-        </div>
+      <div className="h-[88px] rounded-md bg-[#0a0a0a] border border-[#1a1a1a] flex items-center justify-center relative overflow-hidden opacity-50">
+        <span className="text-[10px] text-gray-600 italic">traded</span>
       </div>
     );
   }
@@ -925,6 +910,22 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
     const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
     const yearsKept = slot.keeper.yearsKept || 1;
     const isAcquiredPick = !!slot.acquiredFrom;
+
+    // Get original owner info for "via" badge
+    let originalOwnerInfo: { color: ReturnType<typeof getTeamColor>; name: string } | undefined;
+    if (isAcquiredPick && slot.acquiredFrom) {
+      originalOwnerInfo = teamNameToInfo.get(slot.acquiredFrom) || teamInfoMap.get(slot.acquiredFrom);
+      if (!originalOwnerInfo) {
+        for (const [name, info] of teamNameToInfo) {
+          if (name.includes(slot.acquiredFrom) || slot.acquiredFrom.includes(name)) {
+            originalOwnerInfo = info;
+            break;
+          }
+        }
+      }
+    }
+    const viaTeamName = originalOwnerInfo?.name || slot.acquiredFrom;
+    const viaTeamColor = originalOwnerInfo?.color;
 
     // Get the first name initial and last name for compact display
     const nameParts = slot.keeper.playerName.split(" ");
@@ -941,23 +942,14 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
           hover:scale-105 hover:z-20
           ${isFranchise
             ? "bg-amber-500/20 border-2 border-amber-400"
-            : isAcquiredPick
-              ? "bg-[#1a1a1a] border border-emerald-500/50 hover:border-emerald-400"
-              : "bg-[#1a1a1a] border border-[#333333] hover:border-[#444444]"
+            : "bg-[#1a1a1a] border border-[#333333] hover:border-[#444444]"
           }
         `}
       >
         {/* Position stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-          isFranchise ? "bg-amber-400" : isAcquiredPick ? "bg-emerald-400" : posAccent.border.replace("border-l-", "bg-")
+          isFranchise ? "bg-amber-400" : posAccent.border.replace("border-l-", "bg-")
         }`} />
-
-        {/* Acquired pick indicator */}
-        {isAcquiredPick && !isFranchise && (
-          <div className="absolute top-1.5 right-1.5 z-10" title={`Acquired from ${slot.acquiredFrom}`}>
-            <ArrowLeftRight size={12} className="text-emerald-400" />
-          </div>
-        )}
 
         {/* Franchise star badge */}
         {isFranchise && (
@@ -1018,61 +1010,83 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
               )}
             </div>
 
-            {/* Bottom: Status indicator */}
-            <div className={`text-[8px] font-semibold uppercase tracking-wider ${
-              isFranchise ? "text-amber-300" : "text-gray-500"
-            }`}>
-              {isFranchise ? "Franchise" : "Keeper"}
-            </div>
+            {/* Bottom: Status indicator or via badge */}
+            {isAcquiredPick && viaTeamName ? (
+              <div className={`flex items-center gap-1 ${viaTeamColor ? viaTeamColor.accent : "text-gray-400"}`}>
+                <span className="text-[8px] font-medium">via</span>
+                <span className="text-[8px] font-semibold truncate max-w-[60px]">
+                  {viaTeamName.split(' ')[0]}
+                </span>
+              </div>
+            ) : (
+              <div className={`text-[8px] font-semibold uppercase tracking-wider ${
+                isFranchise ? "text-amber-300" : "text-gray-500"
+              }`}>
+                {isFranchise ? "Franchise" : "Keeper"}
+              </div>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  // Empty cell - minimal, but show if acquired via trade
+  // Empty cell - show prominently if acquired via trade (this team picks here now)
   const isAcquiredEmpty = !!slot.acquiredFrom;
-  return (
-    <div className={`h-[88px] rounded-md ${
-      isAcquiredEmpty
-        ? "bg-emerald-900/10 border border-emerald-500/20"
-        : "bg-[#111111] border border-[#1a1a1a]"
-    } relative`}>
-      {isAcquiredEmpty && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-          <ArrowLeftRight size={14} className="text-emerald-500/50" />
-          <span className="text-[9px] text-emerald-500/70 text-center px-1">
-            via {slot.acquiredFrom?.split(' ')[0]}
-          </span>
+
+  if (isAcquiredEmpty) {
+    // Get original owner info for styling
+    let originalOwnerInfo: { color: ReturnType<typeof getTeamColor>; name: string } | undefined;
+    if (slot.acquiredFrom) {
+      originalOwnerInfo = teamNameToInfo.get(slot.acquiredFrom) || teamInfoMap.get(slot.acquiredFrom);
+      if (!originalOwnerInfo) {
+        for (const [name, info] of teamNameToInfo) {
+          if (name.includes(slot.acquiredFrom) || slot.acquiredFrom.includes(name)) {
+            originalOwnerInfo = info;
+            break;
+          }
+        }
+      }
+    }
+    const viaTeamName = originalOwnerInfo?.name || slot.acquiredFrom;
+    const viaTeamColor = originalOwnerInfo?.color;
+
+    return (
+      <div className={`h-[88px] rounded-md border-2 border-dashed relative overflow-hidden ${
+        viaTeamColor ? viaTeamColor.border : "border-gray-500"
+      }`} style={{ backgroundColor: 'rgba(30, 30, 30, 0.8)' }}>
+        {/* Team color stripe on left */}
+        {viaTeamColor && (
+          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${viaTeamColor.bg} opacity-60`} />
+        )}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+          <div className={`text-[10px] font-medium ${viaTeamColor ? viaTeamColor.accent : "text-gray-400"}`}>
+            Open Pick
+          </div>
+          <div className={`flex items-center gap-1 px-2 py-1 rounded ${viaTeamColor ? viaTeamColor.bgMuted : "bg-gray-800/50"}`}>
+            <span className={`text-[9px] ${viaTeamColor ? viaTeamColor.text : "text-gray-400"}`}>via</span>
+            <span className={`text-[10px] font-semibold truncate max-w-[70px] ${viaTeamColor ? viaTeamColor.accent : "text-gray-300"}`}>
+              {viaTeamName?.split(' ')[0]}
+            </span>
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  // Regular empty cell
+  return (
+    <div className="h-[88px] rounded-md bg-[#111111] border border-[#1a1a1a]" />
   );
 }
 
 // Mobile-optimized draft cell - more compact, touch-friendly
 function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerClick }: DraftCellProps) {
-  // Traded pick
+  // Traded away pick - this team no longer picks here
   if (slot.status === "traded" && slot.tradedTo) {
-    let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
-    if (!newOwnerInfo) {
-      for (const [name, info] of teamNameToInfo) {
-        if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
-          newOwnerInfo = info;
-          break;
-        }
-      }
-    }
-    const ownerColor = newOwnerInfo?.color || columnColor;
-    const ownerName = newOwnerInfo?.name || slot.tradedTo;
-
     return (
-      <div className="h-[64px] rounded-md bg-[#1a1a1a] border-2 border-dashed border-gray-600 flex flex-col items-center justify-center gap-0.5">
-        <ArrowLeftRight size={12} className={ownerColor.accent} />
-        <span className="text-[7px] text-gray-500 uppercase">To</span>
-        <span className={`${ownerColor.accent} text-[8px] font-semibold truncate max-w-[90%] text-center`}>
-          {ownerName}
-        </span>
+      <div className="h-[64px] rounded-md bg-[#0a0a0a] border border-[#1a1a1a] flex items-center justify-center opacity-50">
+        <span className="text-[8px] text-gray-600 italic">traded</span>
       </div>
     );
   }
@@ -1083,6 +1097,21 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
     const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
     const yearsKept = slot.keeper.yearsKept || 1;
     const isAcquiredPick = !!slot.acquiredFrom;
+
+    // Get original owner info for "via" badge
+    let originalOwnerInfo: { color: ReturnType<typeof getTeamColor>; name: string } | undefined;
+    if (isAcquiredPick && slot.acquiredFrom) {
+      originalOwnerInfo = teamNameToInfo.get(slot.acquiredFrom) || teamInfoMap.get(slot.acquiredFrom);
+      if (!originalOwnerInfo) {
+        for (const [name, info] of teamNameToInfo) {
+          if (name.includes(slot.acquiredFrom) || slot.acquiredFrom.includes(name)) {
+            originalOwnerInfo = info;
+            break;
+          }
+        }
+      }
+    }
+    const viaTeamColor = originalOwnerInfo?.color;
 
     // Get last name for compact display
     const nameParts = slot.keeper.playerName.split(" ");
@@ -1095,22 +1124,17 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
           h-[64px] rounded-md relative overflow-hidden cursor-pointer active:scale-95 transition-transform
           ${isFranchise
             ? "bg-amber-500/20 border-2 border-amber-400"
-            : isAcquiredPick
-              ? "bg-[#1a1a1a] border border-emerald-500/50"
-              : "bg-[#1a1a1a] border border-[#333333]"
+            : "bg-[#1a1a1a] border border-[#333333]"
           }
         `}
       >
         {/* Position stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-          isFranchise ? "bg-amber-400" : isAcquiredPick ? "bg-emerald-400" : posAccent.border.replace("border-l-", "bg-")
+          isFranchise ? "bg-amber-400" : posAccent.border.replace("border-l-", "bg-")
         }`} />
 
         {/* Badges row - top right corner */}
         <div className="absolute top-1 right-1 flex items-center gap-0.5">
-          {isAcquiredPick && !isFranchise && (
-            <ArrowLeftRight size={9} className="text-emerald-400" />
-          )}
           {isFranchise && (
             <Star size={10} className="text-amber-400" />
           )}
@@ -1139,30 +1163,60 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
           <div className="flex items-center gap-1 mt-1">
             <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
           </div>
-          <span className="text-[9px] font-bold text-white truncate leading-tight max-w-full text-center">
-            {lastName}
+          {isAcquiredPick ? (
+            <span className={`text-[7px] font-medium ${viaTeamColor ? viaTeamColor.accent : "text-gray-400"}`}>
+              via {slot.acquiredFrom?.split(' ')[0]}
+            </span>
+          ) : (
+            <span className="text-[9px] font-bold text-white truncate leading-tight max-w-full text-center">
+              {lastName}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Empty cell - show prominently if acquired via trade
+  const isAcquiredEmpty = !!slot.acquiredFrom;
+
+  if (isAcquiredEmpty) {
+    // Get original owner info for styling
+    let originalOwnerInfo: { color: ReturnType<typeof getTeamColor>; name: string } | undefined;
+    if (slot.acquiredFrom) {
+      originalOwnerInfo = teamNameToInfo.get(slot.acquiredFrom) || teamInfoMap.get(slot.acquiredFrom);
+      if (!originalOwnerInfo) {
+        for (const [name, info] of teamNameToInfo) {
+          if (name.includes(slot.acquiredFrom) || slot.acquiredFrom.includes(name)) {
+            originalOwnerInfo = info;
+            break;
+          }
+        }
+      }
+    }
+    const viaTeamColor = originalOwnerInfo?.color;
+
+    return (
+      <div className={`h-[64px] rounded-md border-2 border-dashed relative overflow-hidden ${
+        viaTeamColor ? viaTeamColor.border : "border-gray-500"
+      }`} style={{ backgroundColor: 'rgba(30, 30, 30, 0.8)' }}>
+        {viaTeamColor && (
+          <div className={`absolute left-0 top-0 bottom-0 w-1 ${viaTeamColor.bg} opacity-60`} />
+        )}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+          <span className={`text-[8px] font-medium ${viaTeamColor ? viaTeamColor.accent : "text-gray-400"}`}>
+            Open
+          </span>
+          <span className={`text-[7px] ${viaTeamColor ? viaTeamColor.text : "text-gray-500"}`}>
+            via {slot.acquiredFrom?.split(' ')[0]}
           </span>
         </div>
       </div>
     );
   }
 
-  // Empty cell - show if acquired via trade
-  const isAcquiredEmpty = !!slot.acquiredFrom;
+  // Regular empty cell
   return (
-    <div className={`h-[64px] rounded-md ${
-      isAcquiredEmpty
-        ? "bg-emerald-900/10 border border-emerald-500/20"
-        : "bg-[#111111] border border-[#1a1a1a]"
-    } relative`}>
-      {isAcquiredEmpty && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
-          <ArrowLeftRight size={10} className="text-emerald-500/50" />
-          <span className="text-[7px] text-emerald-500/70">
-            +{slot.acquiredFrom?.split(' ')[0]}
-          </span>
-        </div>
-      )}
-    </div>
+    <div className="h-[64px] rounded-md bg-[#111111] border border-[#1a1a1a]" />
   );
 }

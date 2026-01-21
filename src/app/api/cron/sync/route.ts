@@ -72,7 +72,6 @@ export async function GET(request: NextRequest) {
     // Also sync any new users who may not have been synced during registration
     const unsyncedUsers = await prisma.user.findMany({
       where: {
-        sleeperId: { not: null },
         teamMemberships: { none: {} }, // Users with no team memberships
       },
       select: {
