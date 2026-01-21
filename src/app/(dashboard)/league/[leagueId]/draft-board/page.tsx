@@ -804,17 +804,11 @@ export default function DraftBoardPage() {
             <span>Franchise</span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-[#0a0a0a] border border-[#1a1a1a] flex items-center justify-center opacity-50">
-              <span className="text-[6px] md:text-[7px] text-gray-600 italic">traded</span>
+            <div className="w-6 h-5 md:w-8 md:h-6 rounded border-2 border-dashed border-blue-500/50 flex items-center justify-center relative overflow-hidden" style={{ backgroundColor: 'rgba(20, 20, 20, 0.9)' }}>
+              <div className="absolute left-0 top-0 bottom-0 w-0.5 md:w-1 bg-blue-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
             </div>
-            <span>Traded Away</span>
-          </div>
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-6 h-5 md:w-8 md:h-6 rounded border-2 border-dashed border-blue-500/50 flex items-center justify-center relative overflow-hidden" style={{ backgroundColor: 'rgba(30, 30, 30, 0.8)' }}>
-              <div className="absolute left-0 top-0 bottom-0 w-0.5 md:w-1 bg-blue-500 opacity-60" />
-              <span className="text-[6px] md:text-[7px] text-blue-400">via</span>
-            </div>
-            <span>Acquired</span>
+            <span>Traded Pick</span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-6 h-5 md:w-8 md:h-6 rounded bg-[#111111] border border-[#2a2a2a]" />
@@ -895,11 +889,41 @@ const POSITION_ACCENTS: Record<string, { border: string }> = {
 };
 
 function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerClick }: DraftCellProps) {
-  // Traded away pick - this team no longer picks here, show minimal cell
+  // Traded pick - show the NEW owner who will be drafting in this slot
   if (slot.status === "traded" && slot.tradedTo) {
+    // Find the new owner's team info
+    let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
+    if (!newOwnerInfo) {
+      for (const [name, info] of teamNameToInfo) {
+        if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
+          newOwnerInfo = info;
+          break;
+        }
+      }
+    }
+    const ownerColor = newOwnerInfo?.color || columnColor;
+    const ownerName = newOwnerInfo?.name || slot.tradedTo;
+
     return (
-      <div className="h-[88px] rounded-md bg-[#0a0a0a] border border-[#1a1a1a] flex items-center justify-center relative overflow-hidden opacity-50">
-        <span className="text-[10px] text-gray-600 italic">traded</span>
+      <div className={`h-[88px] rounded-md border-2 border-dashed relative overflow-hidden ${ownerColor.border}`}
+           style={{ backgroundColor: 'rgba(20, 20, 20, 0.9)' }}>
+        {/* New owner's team color stripe */}
+        <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${ownerColor.bg}`} />
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pl-2">
+          {/* Team color dot */}
+          <div className={`w-3 h-3 rounded-full ${ownerColor.bg}`} />
+
+          {/* New owner name */}
+          <div className="text-center px-2">
+            <span className={`${ownerColor.accent} text-[11px] font-bold truncate block max-w-[100px]`}>
+              {ownerName}
+            </span>
+          </div>
+
+          {/* Open pick indicator */}
+          <span className="text-[9px] text-gray-500 font-medium">picks here</span>
+        </div>
       </div>
     );
   }
@@ -1082,11 +1106,31 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
 
 // Mobile-optimized draft cell - more compact, touch-friendly
 function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerClick }: DraftCellProps) {
-  // Traded away pick - this team no longer picks here
+  // Traded pick - show the NEW owner who will be drafting in this slot
   if (slot.status === "traded" && slot.tradedTo) {
+    let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
+    if (!newOwnerInfo) {
+      for (const [name, info] of teamNameToInfo) {
+        if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
+          newOwnerInfo = info;
+          break;
+        }
+      }
+    }
+    const ownerColor = newOwnerInfo?.color || columnColor;
+    const ownerName = newOwnerInfo?.name || slot.tradedTo;
+
     return (
-      <div className="h-[64px] rounded-md bg-[#0a0a0a] border border-[#1a1a1a] flex items-center justify-center opacity-50">
-        <span className="text-[8px] text-gray-600 italic">traded</span>
+      <div className={`h-[64px] rounded-md border-2 border-dashed relative overflow-hidden ${ownerColor.border}`}
+           style={{ backgroundColor: 'rgba(20, 20, 20, 0.9)' }}>
+        <div className={`absolute left-0 top-0 bottom-0 w-1 ${ownerColor.bg}`} />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pl-1">
+          <div className={`w-2 h-2 rounded-full ${ownerColor.bg}`} />
+          <span className={`${ownerColor.accent} text-[9px] font-bold truncate max-w-[90%] text-center`}>
+            {ownerName?.split(' ')[0]}
+          </span>
+          <span className="text-[7px] text-gray-500">picks</span>
+        </div>
       </div>
     );
   }
