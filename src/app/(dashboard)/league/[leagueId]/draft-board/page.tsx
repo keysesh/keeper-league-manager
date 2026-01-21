@@ -929,10 +929,9 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
     );
   }
 
-  // Keeper cell - clean design
+  // Keeper cell - clean design with TEAM colors (not position colors)
   if (slot.status === "keeper" && slot.keeper) {
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
-    const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
     const yearsKept = slot.keeper.yearsKept || 1;
     const isOnTradedSlot = !!slot.keeperOwner; // Keeper belongs to someone who acquired this pick
 
@@ -949,7 +948,9 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
         }
       }
     }
-    const ownerColor = keeperOwnerInfo?.color;
+
+    // Use keeper owner's color if on traded slot, otherwise use the column's team color
+    const teamColor = isOnTradedSlot && keeperOwnerInfo?.color ? keeperOwnerInfo.color : columnColor;
     const ownerName = keeperOwnerInfo?.name || slot.keeperOwner;
 
     // Get the first name initial and last name for compact display
@@ -967,15 +968,13 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
           hover:scale-105 hover:z-20
           ${isFranchise
             ? "bg-amber-500/20 border-2 border-amber-400"
-            : isOnTradedSlot && ownerColor
-              ? `bg-[#1a1a1a] border ${ownerColor.border} hover:border-opacity-80`
-              : "bg-[#1a1a1a] border border-[#333333] hover:border-[#444444]"
+            : `${teamColor.bgMuted} border ${teamColor.border} hover:border-opacity-80`
           }
         `}
       >
-        {/* Position stripe - use owner's color if on traded slot */}
+        {/* Team color stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-          isFranchise ? "bg-amber-400" : isOnTradedSlot && ownerColor ? ownerColor.bg : posAccent.border.replace("border-l-", "bg-")
+          isFranchise ? "bg-amber-400" : teamColor.bg
         }`} />
 
         {/* Franchise star badge */}
@@ -989,7 +988,7 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
         <div className="flex h-full pl-3 pr-2 py-2 gap-2">
           {/* Large Player Avatar */}
           <div className="relative shrink-0 self-center">
-            <div className={`rounded-md overflow-hidden ${isFranchise ? "ring-2 ring-amber-400/60" : "ring-1 ring-[#333333]"}`}>
+            <div className={`rounded-md overflow-hidden ${isFranchise ? "ring-2 ring-amber-400/60" : `ring-2 ${teamColor.ring}`}`}>
               <PlayerAvatar
                 sleeperId={slot.keeper.playerId}
                 name={slot.keeper.playerName}
@@ -1025,7 +1024,7 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
             {/* Middle: Player Name */}
             <div className="flex-1 flex flex-col justify-center min-w-0">
               <span
-                className="text-[13px] font-bold leading-tight truncate text-white"
+                className={`text-[13px] font-bold leading-tight truncate ${isFranchise ? "text-white" : teamColor.text}`}
                 title={slot.keeper.playerName}
               >
                 {displayName}
@@ -1039,14 +1038,14 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
 
             {/* Bottom: Owner name if on traded slot, or status */}
             {isOnTradedSlot && ownerName ? (
-              <div className={`flex items-center gap-1 ${ownerColor ? ownerColor.accent : "text-gray-400"}`}>
+              <div className={`flex items-center gap-1 ${teamColor.accent}`}>
                 <span className="text-[8px] font-semibold truncate max-w-[80px]">
                   {ownerName}
                 </span>
               </div>
             ) : (
               <div className={`text-[8px] font-semibold uppercase tracking-wider ${
-                isFranchise ? "text-amber-300" : "text-gray-500"
+                isFranchise ? "text-amber-300" : teamColor.accent
               }`}>
                 {isFranchise ? "Franchise" : "Keeper"}
               </div>
@@ -1129,10 +1128,9 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
     );
   }
 
-  // Keeper cell - compact mobile design
+  // Keeper cell - compact mobile design with TEAM colors
   if (slot.status === "keeper" && slot.keeper) {
     const isFranchise = slot.keeper.keeperType === "FRANCHISE";
-    const posAccent = POSITION_ACCENTS[slot.keeper.position || ""] || POSITION_ACCENTS.DEF;
     const yearsKept = slot.keeper.yearsKept || 1;
     const isOnTradedSlot = !!slot.keeperOwner;
 
@@ -1149,7 +1147,9 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
         }
       }
     }
-    const ownerColor = keeperOwnerInfo?.color;
+
+    // Use keeper owner's color if on traded slot, otherwise use the column's team color
+    const teamColor = isOnTradedSlot && keeperOwnerInfo?.color ? keeperOwnerInfo.color : columnColor;
     const ownerName = keeperOwnerInfo?.name || slot.keeperOwner;
 
     // Get last name for compact display
@@ -1163,15 +1163,13 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
           h-[64px] rounded-md relative overflow-hidden cursor-pointer active:scale-95 transition-transform
           ${isFranchise
             ? "bg-amber-500/20 border-2 border-amber-400"
-            : isOnTradedSlot && ownerColor
-              ? `bg-[#1a1a1a] border ${ownerColor.border}`
-              : "bg-[#1a1a1a] border border-[#333333]"
+            : `${teamColor.bgMuted} border ${teamColor.border}`
           }
         `}
       >
-        {/* Position stripe - use owner's color if on traded slot */}
+        {/* Team color stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-          isFranchise ? "bg-amber-400" : isOnTradedSlot && ownerColor ? ownerColor.bg : posAccent.border.replace("border-l-", "bg-")
+          isFranchise ? "bg-amber-400" : teamColor.bg
         }`} />
 
         {/* Badges row - top right corner */}
@@ -1192,7 +1190,7 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
         {/* Content - stacked vertically for narrow cells */}
         <div className="flex flex-col items-center justify-center h-full pt-3 pb-1 px-1">
           {/* Avatar */}
-          <div className={`rounded overflow-hidden ${isFranchise ? "ring-1 ring-amber-400/60" : isOnTradedSlot && ownerColor ? `ring-1 ${ownerColor.ring}` : "ring-1 ring-[#333333]"}`}>
+          <div className={`rounded overflow-hidden ${isFranchise ? "ring-1 ring-amber-400/60" : `ring-1 ${teamColor.ring}`}`}>
             <PlayerAvatar
               sleeperId={slot.keeper.playerId}
               name={slot.keeper.playerName}
@@ -1205,7 +1203,7 @@ function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPla
             <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
           </div>
           {isOnTradedSlot && ownerName ? (
-            <span className={`text-[7px] font-semibold ${ownerColor ? ownerColor.accent : "text-gray-400"}`}>
+            <span className={`text-[7px] font-semibold ${teamColor.accent}`}>
               {ownerName?.split(' ')[0]}
             </span>
           ) : (
