@@ -1649,3 +1649,418 @@ export async function recalculateKeeperYears(
   logger.info("Recalculated keeper years", { updated, total: keepers.length });
   return { updated, total: keepers.length };
 }
+
+// ============================================
+// ACQUISITION CHAIN SYNC
+// ============================================
+
+/**
+ * Sync player acquisition chain for a league.
+ *
+ * Processes draft picks and transactions to build/update PlayerAcquisition records.
+ * Uses DraftCorrection table to handle 2023/2024 draft errors.
+ *
+ * This should be called AFTER draft and transaction syncs are complete.
+ * It is idempotent — re-running produces the same results.
+ *
+ * For new transactions (incremental sync), it creates new acquisition records
+ * and closes old ones as ownership changes.
+ */
+export async function syncAcquisitionChain(
+  leagueId: string
+): Promise<{ created: number; updated: number }> {
+  logger.info("Syncing acquisition chain", { leagueId });
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    include: { keeperSettings: true },
+  });
+
+  if (!league) {
+    throw new Error("League not found");
+  }
+
+  // Get all draft corrections for handling error drafts
+  const corrections = await prisma.draftCorrection.findMany({
+    orderBy: { season: "asc" },
+  });
+  const correctionsByDraft = new Map(
+    corrections.map((c) => [c.draftSleeperId, c])
+  );
+
+  // Get all drafts for this league chain
+  const allLeagueIds = [leagueId];
+  let prevId = league.previousLeagueId;
+  let depth = 0;
+  while (prevId && depth < MAX_HISTORICAL_SEASONS) {
+    const prev = await prisma.league.findFirst({
+      where: { sleeperId: prevId },
+      select: { id: true, previousLeagueId: true },
+    });
+    if (!prev) break;
+    allLeagueIds.push(prev.id);
+    prevId = prev.previousLeagueId;
+    depth++;
+  }
+
+  // Fetch all draft picks across the league chain
+  const draftPicks = await prisma.draftPick.findMany({
+    where: {
+      draft: { leagueId: { in: allLeagueIds } },
+      playerId: { not: null },
+    },
+    include: {
+      draft: { select: { season: true, sleeperId: true, leagueId: true } },
+      roster: { select: { sleeperId: true } },
+    },
+    orderBy: { draft: { season: "asc" } },
+  });
+
+  // Fetch all transactions across the league chain
+  const transactions = await prisma.transactionPlayer.findMany({
+    where: {
+      transaction: { leagueId: { in: allLeagueIds } },
+    },
+    include: {
+      transaction: {
+        select: {
+          type: true,
+          createdAt: true,
+          sleeperId: true,
+          leagueId: true,
+        },
+      },
+    },
+    orderBy: { transaction: { createdAt: "asc" } },
+  });
+
+  // Resolve roster IDs to sleeper IDs
+  const allRosterIds = new Set<string>();
+  for (const tp of transactions) {
+    if (tp.fromRosterId) allRosterIds.add(tp.fromRosterId);
+    if (tp.toRosterId) allRosterIds.add(tp.toRosterId);
+  }
+  const rosterLookup = await prisma.roster.findMany({
+    where: { id: { in: Array.from(allRosterIds) } },
+    select: { id: true, sleeperId: true },
+  });
+  const rosterToSleeper = new Map(rosterLookup.map((r) => [r.id, r.sleeperId]));
+
+  // Build round lookup from CORRECT_ROUNDS drafts
+  const correctRoundsByPlayer = new Map<string, { round: number; season: number }>();
+  for (const pick of draftPicks) {
+    const correction = correctionsByDraft.get(pick.draft.sleeperId);
+    if (correction?.role === "CORRECT_ROUNDS" && !pick.isKeeper && pick.playerId) {
+      if (!correctRoundsByPlayer.has(pick.playerId)) {
+        correctRoundsByPlayer.set(pick.playerId, {
+          round: pick.round,
+          season: pick.draft.season,
+        });
+      }
+    }
+  }
+
+  // Track current state per player
+  const currentAcq = new Map<
+    string,
+    { ownerSleeperId: string; originalDraftRound: number | null; originalDraftSeason: number | null }
+  >();
+
+  let created = 0;
+  let updated = 0;
+
+  // PHASE 1: Process draft picks by season
+  const seasons = [...new Set(draftPicks.map((p) => p.draft.season))].sort();
+
+  for (const season of seasons) {
+    const seasonPicks = draftPicks.filter((p) => p.draft.season === season);
+
+    for (const pick of seasonPicks) {
+      if (!pick.playerId || !pick.roster?.sleeperId) continue;
+
+      const correction = correctionsByDraft.get(pick.draft.sleeperId);
+
+      // Skip ERROR and ABORTED drafts entirely
+      if (correction?.role === "ERROR" || correction?.role === "ABORTED") continue;
+
+      // For CORRECT_OWNERS draft: use this for ownership, get round from CORRECT_ROUNDS
+      // For CLEAN draft: use as-is
+      // Skip keeper slots (isKeeper=true) — those are cascade-adjusted, not original drafts
+      if (pick.isKeeper) {
+        // Keeper slot — ensure the player has an acquisition record for this owner
+        const existing = currentAcq.get(pick.playerId);
+        if (!existing || existing.ownerSleeperId !== pick.roster.sleeperId) {
+          // Keeper from a prior season or different owner — create if needed
+          const roundInfo = correctRoundsByPlayer.get(pick.playerId);
+          const trueRound = roundInfo?.round ?? null;
+
+          await upsertAcquisition({
+            playerId: pick.playerId,
+            ownerSleeperId: pick.roster.sleeperId,
+            leagueId: pick.draft.leagueId,
+            season,
+            acquisitionType: "DRAFTED",
+            acquisitionDate: new Date(`${season}-08-01`),
+            originalDraftRound: trueRound,
+            originalDraftSeason: trueRound ? (roundInfo?.season ?? season) : null,
+            originalDrafterSleeperId: trueRound ? pick.roster.sleeperId : null,
+            sleeperDraftId: pick.draft.sleeperId,
+            notes: trueRound ? null : "Keeper — original round not in synced data",
+          });
+
+          currentAcq.set(pick.playerId, {
+            ownerSleeperId: pick.roster.sleeperId,
+            originalDraftRound: trueRound,
+            originalDraftSeason: trueRound ? (roundInfo?.season ?? season) : null,
+          });
+          created++;
+        }
+        continue;
+      }
+
+      // Non-keeper pick = actual draft
+      const existing = currentAcq.get(pick.playerId);
+
+      // Determine the true round
+      let trueRound = pick.round;
+      if (correction?.role === "CORRECT_OWNERS") {
+        // This draft has correct owners but possibly cascade-adjusted rounds
+        // Use the CORRECT_ROUNDS round if available
+        const roundInfo = correctRoundsByPlayer.get(pick.playerId);
+        if (roundInfo) {
+          trueRound = roundInfo.round;
+        }
+      }
+
+      // If player already has an open acquisition with the SAME owner, this is a
+      // correction pick (e.g., 2024 re-draft after error). Don't create a new one.
+      if (existing && existing.ownerSleeperId === pick.roster.sleeperId) {
+        continue;
+      }
+
+      // Close previous acquisition if exists
+      if (existing) {
+        await closeAcquisition(pick.playerId, existing.ownerSleeperId, "SEASON_END", new Date(`${season}-08-01`));
+        updated++;
+      }
+
+      await upsertAcquisition({
+        playerId: pick.playerId,
+        ownerSleeperId: pick.roster.sleeperId,
+        leagueId: pick.draft.leagueId,
+        season,
+        acquisitionType: "DRAFTED",
+        acquisitionDate: new Date(`${season}-08-15`),
+        originalDraftRound: trueRound,
+        originalDraftSeason: season,
+        originalDrafterSleeperId: pick.roster.sleeperId,
+        sleeperDraftId: pick.draft.sleeperId,
+      });
+
+      currentAcq.set(pick.playerId, {
+        ownerSleeperId: pick.roster.sleeperId,
+        originalDraftRound: trueRound,
+        originalDraftSeason: season,
+      });
+      created++;
+    }
+  }
+
+  // PHASE 2: Process transactions chronologically
+  for (const tp of transactions) {
+    if (!tp.playerId) continue;
+
+    const txDate = tp.transaction.createdAt;
+    const txSeason = getSeasonFromDate(txDate);
+    const txType = tp.transaction.type;
+    const fromSleeper = tp.fromRosterId ? rosterToSleeper.get(tp.fromRosterId) : null;
+    const toSleeper = tp.toRosterId ? rosterToSleeper.get(tp.toRosterId) : null;
+
+    if (txType === "TRADE" && toSleeper && fromSleeper) {
+      const existing = currentAcq.get(tp.playerId);
+      const postDeadline = isTradeAfterDeadline(txDate, txSeason);
+
+      // Close old acquisition
+      if (existing) {
+        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "TRADED", txDate);
+        updated++;
+      }
+
+      // Inherit original draft info
+      const inheritedRound = existing?.originalDraftRound ?? null;
+      const inheritedSeason = existing?.originalDraftSeason ?? null;
+
+      await upsertAcquisition({
+        playerId: tp.playerId,
+        ownerSleeperId: toSleeper,
+        leagueId: tp.transaction.leagueId,
+        season: txSeason,
+        acquisitionType: "TRADE",
+        acquisitionDate: txDate,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+        originalDrafterSleeperId: existing?.ownerSleeperId ?? null,
+        fromOwnerSleeperId: fromSleeper,
+        isPreDeadline: !postDeadline,
+        sleeperTransactionId: tp.transaction.sleeperId,
+      });
+
+      currentAcq.set(tp.playerId, {
+        ownerSleeperId: toSleeper,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+      });
+      created++;
+
+    } else if ((txType === "WAIVER" || txType === "FREE_AGENT") && toSleeper) {
+      const existing = currentAcq.get(tp.playerId);
+      const postDeadline = isTradeAfterDeadline(txDate, txSeason);
+
+      if (fromSleeper && existing) {
+        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate);
+        updated++;
+      }
+
+      // Before deadline: inherit from previous owner
+      let inheritedRound: number | null = null;
+      let inheritedSeason: number | null = null;
+      if (existing && !postDeadline) {
+        inheritedRound = existing.originalDraftRound;
+        inheritedSeason = existing.originalDraftSeason;
+      }
+
+      await upsertAcquisition({
+        playerId: tp.playerId,
+        ownerSleeperId: toSleeper,
+        leagueId: tp.transaction.leagueId,
+        season: txSeason,
+        acquisitionType: txType === "WAIVER" ? "WAIVER" : "FREE_AGENT",
+        acquisitionDate: txDate,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+        fromOwnerSleeperId: fromSleeper ?? undefined,
+        isPreDeadline: !postDeadline,
+        sleeperTransactionId: tp.transaction.sleeperId,
+      });
+
+      currentAcq.set(tp.playerId, {
+        ownerSleeperId: toSleeper,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+      });
+      created++;
+
+    } else if (fromSleeper && !toSleeper) {
+      // Pure drop
+      const existing = currentAcq.get(tp.playerId);
+      if (existing) {
+        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate);
+        currentAcq.delete(tp.playerId);
+        updated++;
+      }
+    }
+  }
+
+  logger.info("Acquisition chain sync complete", { created, updated });
+  return { created, updated };
+}
+
+/**
+ * Upsert a PlayerAcquisition record.
+ * Uses (playerId, ownerSleeperId, season, acquisitionDate) as the unique key.
+ * Preserves baseCostOverride if it exists.
+ */
+async function upsertAcquisition(data: {
+  playerId: string;
+  ownerSleeperId: string;
+  leagueId: string;
+  season: number;
+  acquisitionType: string;
+  acquisitionDate: Date;
+  originalDraftRound?: number | null;
+  originalDraftSeason?: number | null;
+  originalDrafterSleeperId?: string | null;
+  fromOwnerSleeperId?: string | null;
+  isPreDeadline?: boolean | null;
+  sleeperTransactionId?: string | null;
+  sleeperDraftId?: string | null;
+  notes?: string | null;
+}): Promise<void> {
+  // Check for existing record to preserve baseCostOverride
+  const existing = await prisma.playerAcquisition.findFirst({
+    where: {
+      playerId: data.playerId,
+      ownerSleeperId: data.ownerSleeperId,
+      season: data.season,
+    },
+    select: { id: true, baseCostOverride: true },
+  });
+
+  if (existing) {
+    await prisma.playerAcquisition.update({
+      where: { id: existing.id },
+      data: {
+        acquisitionType: data.acquisitionType as any,
+        acquisitionDate: data.acquisitionDate,
+        originalDraftRound: data.originalDraftRound ?? undefined,
+        originalDraftSeason: data.originalDraftSeason ?? undefined,
+        originalDrafterSleeperId: data.originalDrafterSleeperId ?? undefined,
+        fromOwnerSleeperId: data.fromOwnerSleeperId ?? undefined,
+        isPreDeadline: data.isPreDeadline ?? undefined,
+        sleeperTransactionId: data.sleeperTransactionId ?? undefined,
+        sleeperDraftId: data.sleeperDraftId ?? undefined,
+        notes: data.notes ?? undefined,
+        // baseCostOverride is PRESERVED — never overwritten by sync
+      },
+    });
+  } else {
+    await prisma.playerAcquisition.create({
+      data: {
+        playerId: data.playerId,
+        ownerSleeperId: data.ownerSleeperId,
+        leagueId: data.leagueId,
+        season: data.season,
+        acquisitionType: data.acquisitionType as any,
+        acquisitionDate: data.acquisitionDate,
+        originalDraftRound: data.originalDraftRound,
+        originalDraftSeason: data.originalDraftSeason,
+        originalDrafterSleeperId: data.originalDrafterSleeperId,
+        fromOwnerSleeperId: data.fromOwnerSleeperId,
+        isPreDeadline: data.isPreDeadline,
+        sleeperTransactionId: data.sleeperTransactionId,
+        sleeperDraftId: data.sleeperDraftId,
+        notes: data.notes,
+      },
+    });
+  }
+}
+
+/**
+ * Close a PlayerAcquisition record (set disposition).
+ */
+async function closeAcquisition(
+  playerId: string,
+  ownerSleeperId: string,
+  dispositionType: string,
+  dispositionDate: Date
+): Promise<void> {
+  // Find the open record for this player+owner
+  const open = await prisma.playerAcquisition.findFirst({
+    where: {
+      playerId,
+      ownerSleeperId,
+      dispositionType: null,
+    },
+    orderBy: { acquisitionDate: "desc" },
+  });
+
+  if (open) {
+    await prisma.playerAcquisition.update({
+      where: { id: open.id },
+      data: {
+        dispositionType: dispositionType as any,
+        dispositionDate,
+      },
+    });
+  }
+}
