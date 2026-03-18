@@ -250,6 +250,7 @@ model Player {
   draftPlanKeepers    DraftPlanKeeper[]
   tradeProposalAssets TradeProposalAsset[]
   seasonStats         PlayerSeasonStats[]
+  acquisitions        PlayerAcquisition[]
 
   @@index([position])
   @@index([team])
@@ -389,6 +390,8 @@ model Keeper {
   acquisitionType    AcquisitionType @map("acquisition_type")
   acquisitionDate    DateTime?       @map("acquisition_date")
   originalDraftRound Int?            @map("original_draft_round")
+  baseCostOverride   Int?            @map("base_cost_override") // Commissioner override — when set, cascade uses this instead of calculating from draft picks
+  acquisitionId      String?         @map("acquisition_id")    // Reference to PlayerAcquisition record
   isLocked           Boolean         @default(false) @map("is_locked")
   notes              String?
   createdAt          DateTime        @default(now()) @map("created_at")
@@ -621,6 +624,73 @@ enum VoteType {
   APPROVE
   VETO
   ABSTAIN
+}
+
+// ============================================
+// PLAYER ACQUISITIONS (Source of Truth)
+// ============================================
+
+model PlayerAcquisition {
+  id                      String           @id @default(cuid())
+  playerId                String           @map("player_id")
+  ownerSleeperId          String           @map("owner_sleeper_id")
+  leagueId                String           @map("league_id")
+  season                  Int
+  acquisitionType         AcquisitionType  @map("acquisition_type")
+  acquisitionDate         DateTime         @map("acquisition_date")
+  originalDraftRound      Int?             @map("original_draft_round")
+  originalDraftSeason     Int?             @map("original_draft_season")
+  originalDrafterSleeperId String?         @map("original_drafter_sleeper_id")
+  fromOwnerSleeperId      String?          @map("from_owner_sleeper_id")
+  isPreDeadline           Boolean?         @map("is_pre_deadline")
+  sleeperTransactionId    String?          @map("sleeper_transaction_id")
+  sleeperDraftId          String?          @map("sleeper_draft_id")
+  dispositionType         DispositionType? @map("disposition_type")
+  dispositionDate         DateTime?        @map("disposition_date")
+  baseCostOverride        Int?             @map("base_cost_override")
+  notes                   String?
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @updatedAt @map("updated_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, ownerSleeperId, season, acquisitionDate])
+  @@index([playerId])
+  @@index([ownerSleeperId])
+  @@index([season])
+  @@index([playerId, ownerSleeperId])
+  @@index([playerId, dispositionType])
+  @@map("player_acquisitions")
+}
+
+enum DispositionType {
+  DROPPED
+  TRADED
+  SEASON_END
+}
+
+// ============================================
+// DRAFT CORRECTIONS (Error Draft Metadata)
+// ============================================
+
+model DraftCorrection {
+  id              String              @id @default(cuid())
+  season          Int
+  draftSleeperId  String              @unique @map("draft_sleeper_id")
+  role            DraftCorrectionRole
+  pickCount       Int                 @map("pick_count")
+  notes           String?
+
+  @@index([season])
+  @@map("draft_corrections")
+}
+
+enum DraftCorrectionRole {
+  CORRECT_ROUNDS
+  CORRECT_OWNERS
+  ERROR
+  ABORTED
+  CLEAN
 }
 
 // ============================================

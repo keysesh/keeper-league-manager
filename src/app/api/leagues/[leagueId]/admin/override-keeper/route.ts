@@ -17,6 +17,8 @@ const OverrideKeeperSchema = z.object({
   season: z.number(),
   type: z.enum(["REGULAR", "FRANCHISE"]).optional(),
   finalCost: z.number().min(1).max(16).optional(),
+  baseCostOverride: z.number().min(1).max(16).optional(),
+  yearsKept: z.number().min(1).optional(),
   reason: z.string().min(1).max(500),
 });
 
@@ -120,9 +122,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             rosterId: validatedData.rosterId,
             season: validatedData.season,
             type: validatedData.type || "REGULAR",
-            baseCost: validatedData.finalCost || 10,
-            finalCost: validatedData.finalCost || 10,
-            acquisitionType: "WAIVER",
+            baseCost: validatedData.baseCostOverride || validatedData.finalCost || 10,
+            finalCost: validatedData.finalCost || validatedData.baseCostOverride || 10,
+            yearsKept: validatedData.yearsKept || 1,
+            baseCostOverride: validatedData.baseCostOverride || null,
+            acquisitionType: "COMMISSIONER",
             notes: `[Commissioner Override] ${validatedData.reason}`,
           },
         });
@@ -187,7 +191,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           where: { id: keeperToUpdate.id },
           data: {
             type: validatedData.type || keeperToUpdate.type,
+            baseCost: validatedData.baseCostOverride ?? keeperToUpdate.baseCost,
             finalCost: validatedData.finalCost ?? keeperToUpdate.finalCost,
+            yearsKept: validatedData.yearsKept ?? keeperToUpdate.yearsKept,
+            baseCostOverride: validatedData.baseCostOverride ?? keeperToUpdate.baseCostOverride,
             notes: `[Commissioner Override] ${validatedData.reason}`,
           },
         });

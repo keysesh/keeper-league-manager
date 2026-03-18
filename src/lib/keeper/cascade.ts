@@ -11,6 +11,7 @@ export interface KeeperInput {
   rosterId: string;
   playerName: string;
   type: "FRANCHISE" | "REGULAR";
+  baseCostOverride?: number | null; // Commissioner override — bypasses calculateBaseCost
 }
 
 export interface CascadeKeeperResult {
@@ -84,8 +85,12 @@ export async function calculateCascade(
   const rosterOwnedPicks = await buildPickOwnershipMap(leagueId, season, league.tradedPicks);
 
   // Calculate base costs for all keepers
+  // If a keeper has a baseCostOverride (commissioner override), use that directly
   const keepersWithCosts = await Promise.all(
     keepers.map(async (keeper) => {
+      if (keeper.baseCostOverride != null) {
+        return { ...keeper, baseCost: keeper.baseCostOverride };
+      }
       const baseCost = await calculateBaseCost(
         keeper.playerId,
         keeper.rosterId,
@@ -314,6 +319,7 @@ export async function recalculateAndApplyCascade(
 
     // Prepare keeper inputs (use database playerId for consistency)
     // Filter out any keepers with null player (shouldn't happen but be safe)
+    // Pass baseCostOverride so cascade respects commissioner overrides
     const keeperInputs: KeeperInput[] = keepers
       .filter((k) => k.player !== null)
       .map((k) => ({
@@ -321,6 +327,7 @@ export async function recalculateAndApplyCascade(
         rosterId: k.rosterId,
         playerName: k.player.fullName,
         type: k.type as "FRANCHISE" | "REGULAR",
+        baseCostOverride: (k as any).baseCostOverride ?? null,
       }));
 
     if (keeperInputs.length === 0) {
