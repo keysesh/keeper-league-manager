@@ -19,6 +19,7 @@ import {
   syncAllPlayers,
   populateKeepersFromDraftPicks,
   recalculateKeeperYears,
+  syncAcquisitionChain,
 } from "@/lib/sleeper/sync";
 import { getLeagueChain } from "./league-chain";
 import { logger } from "@/lib/logger";
@@ -422,6 +423,9 @@ export class SyncService {
 
           // Recalculate keeper years for each season
           await recalculateKeeperYears(season.leagueId);
+
+          // Build acquisition chain from draft picks + transactions
+          await syncAcquisitionChain(season.leagueId);
         } catch (err) {
           logger.warn(`Failed to populate keepers for ${season.season}:`, { error: err });
         }
@@ -489,6 +493,9 @@ export class SyncService {
       const recalcResult = await recalculateKeeperYears(id);
       totalUpdated += recalcResult.updated;
       totalRecords += recalcResult.total;
+
+      // Build/update acquisition chain from draft picks + transactions
+      await syncAcquisitionChain(id);
     }
 
     return {

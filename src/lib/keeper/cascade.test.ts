@@ -24,6 +24,10 @@ vi.mock("@/lib/prisma", () => ({
     player: {
       findUnique: vi.fn(),
     },
+    playerAcquisition: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -69,17 +73,17 @@ describe("Cascade Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record (cost.ts reads from PlayerAcquisition)
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        round: 5,
-        draft: { season: 2025 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+        ownerSleeperId: "owner-1",
+        acquisitionType: "DRAFTED",
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 5,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const keepers: KeeperInput[] = [
@@ -120,16 +124,16 @@ describe("Cascade Calculator", () => {
       } as any);
 
       // Both players have same base cost (round 5)
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
-        round: 5,
-        draft: { season: 2025 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
+        playerId: "player-1",
+        ownerSleeperId: "owner-1",
+        acquisitionType: "DRAFTED",
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 5,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const keepers: KeeperInput[] = [
@@ -180,15 +184,17 @@ describe("Cascade Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      // Three players all with round 8 cost
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue({
-        transaction: { type: "WAIVER", createdAt: new Date("2025-10-01") },
-      } as any);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+      // Three players all with round 8 cost (waiver pickups)
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
+        playerId: "player-1",
+        ownerSleeperId: "owner-1",
+        acquisitionType: "WAIVER",
+        acquisitionDate: new Date("2025-10-01"),
+        originalDraftRound: null,
+        originalDraftSeason: null,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const keepers: KeeperInput[] = [
@@ -229,17 +235,17 @@ describe("Cascade Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      // Player drafted in round 5
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
-        round: 5,
-        draft: { season: 2025 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+      // Mock acquisition record — drafted R5 (cost.ts reads from PlayerAcquisition)
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
+        playerId: "player-1",
+        ownerSleeperId: "owner-1",
+        acquisitionType: "DRAFTED",
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 5,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const keepers: KeeperInput[] = [
@@ -294,16 +300,17 @@ describe("Cascade Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
-        round: 5,
-        draft: { season: 2025 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+      // Mock acquisition record
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
+        playerId: "player-1",
+        ownerSleeperId: "owner-1",
+        acquisitionType: "DRAFTED",
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 5,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       vi.mocked(prisma.keeper.update).mockResolvedValue({} as any);
@@ -352,16 +359,17 @@ describe("Cascade Calculator", () => {
         { id: "roster-1", sleeperId: "owner-1" },
       ] as any);
 
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
-        round: 3,
-        draft: { season: 2025 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+      // Mock acquisition record
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
+        playerId: "player-1",
+        ownerSleeperId: "owner-1",
+        acquisitionType: "DRAFTED",
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 3,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const result = await previewTeamCascade("roster-1", 2026);

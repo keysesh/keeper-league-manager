@@ -18,7 +18,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<Record<string, { status: "success" | "error"; message: string }>>({});
+  const [syncStatus, setSyncStatus] = useState<Record<string, { status: "success" | "error"; message: string } | undefined>>({});
 
   useEffect(() => {
     fetchUsers();
@@ -40,7 +40,7 @@ export default function AdminUsersPage() {
 
   const handleSyncUser = async (userId: string, sleeperId: string) => {
     setSyncing(userId);
-    setSyncStatus((prev) => ({ ...prev, [userId]: undefined as any }));
+    setSyncStatus((prev) => ({ ...prev, [userId]: undefined }));
 
     try {
       const res = await fetch("/api/admin/sync-user", {
@@ -141,12 +141,12 @@ export default function AdminUsersPage() {
                     {syncStatus[user.id]?.status === "success" ? (
                       <div className="flex items-center gap-1 text-green-400 text-xs">
                         <CheckCircle className="w-4 h-4" />
-                        <span>{syncStatus[user.id].message}</span>
+                        <span>{syncStatus[user.id]?.message}</span>
                       </div>
                     ) : syncStatus[user.id]?.status === "error" ? (
                       <div className="flex items-center gap-1 text-red-400 text-xs">
                         <XCircle className="w-4 h-4" />
-                        <span>{syncStatus[user.id].message}</span>
+                        <span>{syncStatus[user.id]?.message}</span>
                       </div>
                     ) : (
                       <button

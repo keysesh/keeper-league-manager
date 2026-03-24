@@ -55,12 +55,18 @@ export async function syncAllPlayers(): Promise<{
   const players = await sleeper.getAllPlayers();
   const playerEntries = Object.entries(players);
 
-  const created = 0;
-  const updated = 0;
+  let created = 0;
+  let updated = 0;
 
   // Process in batches for performance
   for (let i = 0; i < playerEntries.length; i += DB_BATCH_SIZE) {
     const batch = playerEntries.slice(i, i + DB_BATCH_SIZE);
+
+    // Count existing players before upsert to determine created vs updated
+    const batchSleeperIds = batch.map(([playerId]) => playerId);
+    const existingCount = await prisma.player.count({
+      where: { sleeperId: { in: batchSleeperIds } },
+    });
 
     await prisma.$transaction(
       batch.map(([playerId, player]) => {
@@ -73,13 +79,16 @@ export async function syncAllPlayers(): Promise<{
       })
     );
 
+    created += batch.length - existingCount;
+    updated += existingCount;
+
     // Log progress at intervals
     if ((i + DB_BATCH_SIZE) % PROGRESS_LOG_INTERVAL === 0) {
       logger.syncProgress("Player sync", i + DB_BATCH_SIZE, playerEntries.length);
     }
   }
 
-  logger.info("Player sync complete", { total: playerEntries.length });
+  logger.info("Player sync complete", { total: playerEntries.length, created, updated });
   return { created, updated };
 }
 
@@ -217,11 +226,8 @@ export async function syncLeague(
     }
 
     // Sync roster players using batch operations
+    // Wrapped in a transaction so delete + create are atomic (no partial state)
     if (roster.players && roster.players.length > 0) {
-      await prisma.rosterPlayer.deleteMany({
-        where: { rosterId: dbRoster.id },
-      });
-
       // Build batch insert data using pre-fetched player map
       const rosterPlayerData = roster.players
         .map(playerId => {
@@ -235,10 +241,15 @@ export async function syncLeague(
         })
         .filter((d): d is NonNullable<typeof d> => d !== null);
 
-      if (rosterPlayerData.length > 0) {
-        await prisma.rosterPlayer.createMany({ data: rosterPlayerData });
-        playerCount += rosterPlayerData.length;
-      }
+      await prisma.$transaction(async (tx) => {
+        await tx.rosterPlayer.deleteMany({
+          where: { rosterId: dbRoster.id },
+        });
+        if (rosterPlayerData.length > 0) {
+          await tx.rosterPlayer.createMany({ data: rosterPlayerData });
+        }
+      });
+      playerCount += rosterPlayerData.length;
     }
   }
 
@@ -912,9 +923,8 @@ export async function syncLeagueFast(sleeperLeagueId: string): Promise<{
     }
 
     // Batch sync roster players using createMany
+    // Wrapped in a transaction so delete + create are atomic
     if (roster.players && roster.players.length > 0) {
-      await prisma.rosterPlayer.deleteMany({ where: { rosterId: dbRoster.id } });
-
       const rosterPlayerData = roster.players
         .map(playerId => {
           const dbPlayerId = playerMap.get(playerId);
@@ -927,10 +937,13 @@ export async function syncLeagueFast(sleeperLeagueId: string): Promise<{
         })
         .filter((d): d is NonNullable<typeof d> => d !== null);
 
-      if (rosterPlayerData.length > 0) {
-        await prisma.rosterPlayer.createMany({ data: rosterPlayerData });
-        playerCount += rosterPlayerData.length;
-      }
+      await prisma.$transaction(async (tx) => {
+        await tx.rosterPlayer.deleteMany({ where: { rosterId: dbRoster.id } });
+        if (rosterPlayerData.length > 0) {
+          await tx.rosterPlayer.createMany({ data: rosterPlayerData });
+        }
+      });
+      playerCount += rosterPlayerData.length;
     }
   }
 

@@ -184,21 +184,21 @@ export function isTradeAfterDeadline(
   const tradeMonth = tradeDate.getMonth(); // 0-indexed (0=Jan, 11=Dec)
   const tradeYear = tradeDate.getFullYear();
 
-  // Calculate approximate deadline date
-  // NFL Week 1 starts around Sept 7, so week 11 starts around Nov 16
-  const deadlineMonth = 10; // November (0-indexed)
-  const deadlineDay = 7 + (deadlineWeek - 1) * 7; // Approximate day in November
+  // Calculate the actual trade deadline date using calendar math
+  // NFL Week 1 starts the Thursday after Labor Day (first Monday of September)
+  // Trade deadline is the Tuesday of the deadline week
+  const sept1 = new Date(season, 8, 1); // September 1 of the season year
+  const dayOfWeek = sept1.getDay(); // 0=Sun, 1=Mon, ...
+  const daysToMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const laborDayDate = 1 + daysToMonday; // Day of month for Labor Day
+  // Tuesday of deadline week = Labor Day + 1 (Tue) + (deadlineWeek - 1) * 7
+  const deadlineDaySept = laborDayDate + 1 + (deadlineWeek - 1) * 7;
+  // Date constructor handles month overflow (e.g., Sept 73 → Nov 12)
+  const deadlineDateObj = new Date(season, 8, deadlineDaySept);
 
   // NFL Season runs Sept [YEAR] - Feb [YEAR+1]
   // Example: 2024 season = Sept 2024 - Feb 2025
   // Trade deadline for 2024 season = mid-Nov 2024
-  //
-  // A trade is AFTER deadline if:
-  // 1. Same calendar year as season, after Nov deadline (Dec trades)
-  // 2. Next calendar year, before Sept (Jan-Aug = offseason)
-  //
-  // A trade is BEFORE deadline if:
-  // 1. Same calendar year, Sept-Nov (before deadline day)
 
   if (tradeYear === season) {
     // Trade in same year as season (e.g., trade in 2024, season 2024)
@@ -209,16 +209,8 @@ export function isTradeAfterDeadline(
       // BEFORE the 2024 season even started - treat as before deadline
       return false;
     }
-    if (tradeMonth >= 8 && tradeMonth < deadlineMonth) {
-      // Sept-Oct = in-season, before deadline
-      return false;
-    }
-    if (tradeMonth === deadlineMonth) {
-      // November - check specific day
-      return tradeDate.getDate() > deadlineDay;
-    }
-    // December = after deadline
-    return true;
+    // Sept onwards: compare against computed deadline date
+    return tradeDate.getTime() > deadlineDateObj.getTime();
   }
 
   if (tradeYear === season + 1) {

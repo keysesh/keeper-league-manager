@@ -25,6 +25,10 @@ vi.mock("@/lib/prisma", () => ({
     transactionPlayer: {
       findFirst: vi.fn(),
     },
+    playerAcquisition: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -79,23 +83,17 @@ describe("Keeper Calculator", () => {
         { id: "roster-1", sleeperId: "sleeper-roster-1" },
       ] as any);
 
-      // Mock player was drafted by this owner
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record (cost.ts reads from PlayerAcquisition)
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 3,
-        draft: { season: 2025 },
-        pickedAt: new Date("2025-08-15"),
-      } as any);
-
-      // Mock no transaction for this player
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      // Mock player record
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
-        fullName: "Test Player",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 3,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const result = await calculateKeeperEligibility(
@@ -131,20 +129,21 @@ describe("Keeper Calculator", () => {
         { id: "roster-1", sleeperId: "sleeper-roster-1" },
       ] as any);
 
-      // Player was drafted in 2023 (3 years ago for 2026 target)
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record — drafted in 2023
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 5,
-        draft: { season: 2023 },
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2023-08-15"),
+        originalDraftRound: 5,
+        originalDraftSeason: 2023,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
-      } as any);
+      // Player kept 2 times before (2024, 2025) → yearsKept = 3 > maxYears(2)
+      vi.mocked(prisma.keeper.count).mockResolvedValue(2);
 
       const result = await calculateKeeperEligibility(
         "player-1",
@@ -154,7 +153,7 @@ describe("Keeper Calculator", () => {
       );
 
       expect(result.atMaxYears).toBe(true);
-      expect(result.reason).toContain("Franchise Tag only");
+      expect(result.reason).toContain("Franchise Tag");
     });
   });
 
@@ -166,24 +165,17 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-      ] as any);
-
-      // Drafted in round 3, season 2025
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record (cost.ts reads from PlayerAcquisition)
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 3,
-        draft: { season: 2025 },
-        pickedAt: new Date("2025-08-15"),
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 3,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const cost = await calculateBaseCost(
@@ -208,23 +200,17 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-      ] as any);
-
-      // Drafted in round 5, season 2024
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record — drafted in R5, season 2024
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 5,
-        draft: { season: 2024 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2024-08-15"),
+        originalDraftRound: 5,
+        originalDraftSeason: 2024,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       // Player was kept 1 time before (in 2025)
@@ -252,26 +238,17 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-      ] as any);
-
-      // No draft pick
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue(null);
-
-      // Waiver pickup transaction
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue({
+      // Mock acquisition record — waiver pickup, no draft round
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        toRosterId: "roster-1",
-        transaction: {
-          type: "WAIVER",
-          createdAt: new Date("2025-10-01"),
-        },
-      } as any);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.WAIVER,
+        acquisitionDate: new Date("2025-10-01"),
+        originalDraftRound: null,
+        originalDraftSeason: null,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const cost = await calculateBaseCost(
@@ -295,23 +272,17 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-      ] as any);
-
-      // Drafted in round 2, season 2022 (4 years ago)
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record — drafted R2 in 2022
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 2,
-        draft: { season: 2022 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2022-08-15"),
+        originalDraftRound: 2,
+        originalDraftSeason: 2022,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       // Player was kept 3 times before (in 2023, 2024, 2025)
@@ -339,37 +310,21 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-        { id: "roster-2", sleeperId: "sleeper-roster-2" },
-      ] as any);
-
-      // Player was traded to roster-2 in December 2025 (post-deadline)
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue({
+      // Mock acquisition record — post-deadline trade (isPreDeadline = false)
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        toRosterId: "roster-2",
-        fromRosterId: "roster-1",
-        transaction: {
-          type: "TRADE",
-          createdAt: new Date("2025-12-15"), // December = post-deadline
-        },
+        ownerSleeperId: "sleeper-roster-2",
+        acquisitionType: AcquisitionType.TRADE,
+        acquisitionDate: new Date("2025-12-15"), // December = post-deadline
+        originalDraftRound: 5,
+        originalDraftSeason: 2023,
+        isPreDeadline: false, // Post-deadline trade
+        baseCostOverride: null,
       } as any);
 
-      // Player was originally drafted in round 5
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
-        playerId: "player-1",
-        rosterId: "roster-1", // Original owner
-        round: 5,
-        draft: { season: 2023 },
-      } as any);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
-      } as any);
-
-      // Player was kept 2 times before trade (2024, 2025) - but this shouldn't count for new owner
-      vi.mocked(prisma.keeper.count).mockResolvedValue(0); // Post-deadline resets to 0
+      // Post-deadline resets keeper years — no keeper records for new owner after trade
+      vi.mocked(prisma.keeper.count).mockResolvedValue(0);
 
       const cost = await calculateBaseCost(
         "player-1",
@@ -383,7 +338,6 @@ describe("Keeper Calculator", () => {
       );
 
       // Post-deadline trade = cost resets: baseCost = 5, keeperYears = 0, cost = 5
-      // NOT baseCost = 5, keeperYears = 2, cost = 3
       expect(cost).toBe(5);
     });
 
@@ -394,36 +348,20 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-        { id: "roster-2", sleeperId: "sleeper-roster-2" },
-      ] as any);
-
-      // Player was traded to roster-2 in October 2025 (pre-deadline, week 5ish)
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue({
+      // Mock acquisition record — pre-deadline trade (isPreDeadline = true)
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        toRosterId: "roster-2",
-        fromRosterId: "roster-1",
-        transaction: {
-          type: "TRADE",
-          createdAt: new Date("2025-10-15"), // October = pre-deadline
-        },
+        ownerSleeperId: "sleeper-roster-2",
+        acquisitionType: AcquisitionType.TRADE,
+        acquisitionDate: new Date("2025-10-15"), // October = pre-deadline
+        originalDraftRound: 5,
+        originalDraftSeason: 2023,
+        isPreDeadline: true, // Pre-deadline trade
+        baseCostOverride: null,
       } as any);
 
-      // Player was originally drafted in round 5
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
-        playerId: "player-1",
-        rosterId: "roster-1", // Original owner
-        round: 5,
-        draft: { season: 2023 },
-      } as any);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
-      } as any);
-
-      // Player was kept 2 times before (2024, 2025) - this DOES count for pre-deadline trade
+      // Player was kept 2 times before (2024, 2025) - carries over for pre-deadline trade
       vi.mocked(prisma.keeper.count).mockResolvedValue(2);
 
       const cost = await calculateBaseCost(
@@ -459,22 +397,17 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-      ] as any);
-
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record — drafted R4, season 2025
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 4,
-        draft: { season: 2025 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 4,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const result = await calculateKeeperCost(
@@ -505,22 +438,17 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-      ] as any);
-
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition record — drafted R2, season 2024
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 2,
-        draft: { season: 2024 },
-      } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
-
-      vi.mocked(prisma.player.findUnique).mockResolvedValue({
-        id: "player-1",
-        sleeperId: "sleeper-player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2024-08-15"),
+        originalDraftRound: 2,
+        originalDraftSeason: 2024,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
 
       const result = await calculateKeeperCost(
@@ -565,18 +493,18 @@ describe("Keeper Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      vi.mocked(prisma.roster.findMany).mockResolvedValue([
-        { id: "roster-1", sleeperId: "sleeper-roster-1" },
-      ] as any);
-
-      vi.mocked(prisma.draftPick.findFirst).mockResolvedValue({
+      // Mock acquisition for validation
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
         playerId: "player-1",
-        rosterId: "roster-1",
-        round: 3,
-        draft: { season: 2025 },
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date("2025-08-15"),
+        originalDraftRound: 3,
+        originalDraftSeason: 2025,
+        isPreDeadline: null,
+        baseCostOverride: null,
       } as any);
-
-      vi.mocked(prisma.transactionPlayer.findFirst).mockResolvedValue(null);
 
       const result = await validateKeeperSelections(
         "roster-1",

@@ -270,9 +270,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Use client-provided cost data (calculated in eligible-keepers route)
     // This avoids expensive recalculation
     const keeperType = type === "FRANCHISE" ? KeeperType.FRANCHISE : KeeperType.REGULAR;
-    const effectiveBaseCost = keeperType === KeeperType.FRANCHISE ? 1 : (baseCost || settings.undraftedRound);
-    const effectiveFinalCost = keeperType === KeeperType.FRANCHISE ? 1 : (finalCost || effectiveBaseCost);
-    const effectiveYearsKept = yearsKept || 1;
+    const effectiveBaseCost = keeperType === KeeperType.FRANCHISE ? 1 : (baseCost ?? settings.undraftedRound);
+    const effectiveFinalCost = keeperType === KeeperType.FRANCHISE ? 1 : (finalCost ?? effectiveBaseCost);
+    const effectiveYearsKept = yearsKept ?? 1;
 
     // Create keeper with provided or default values
     const keeper = await prisma.keeper.create({

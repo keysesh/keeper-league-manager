@@ -172,11 +172,13 @@ export async function batchComputeKeeperCosts(
 
     if (isPostDeadline && acq.acquisitionDate) {
       const tradeSeason = getSeasonFromDate(acq.acquisitionDate);
-      // Recount: only keeper records after the trade season
+      // Recount: only keeper records after the trade season, scoped to current owner
+      // Post-deadline trades reset keeper years — only count this owner's records
       const postTradeCount = await prisma.keeper.count({
         where: {
           playerId,
           season: { gte: tradeSeason + 1, lt: targetSeason },
+          roster: { sleeperId: ownerSleeperId },
         },
       });
       pastKeeperCount = postTradeCount;
@@ -265,14 +267,17 @@ async function countKeeperYears(
 
   if (isPostDeadline) {
     const tradeSeason = getSeasonFromDate(acquisition.acquisitionDate);
+    // Post-deadline trades reset keeper years — only count this owner's records
     return prisma.keeper.count({
       where: {
         playerId,
         season: { gte: tradeSeason + 1, lt: targetSeason },
+        roster: { sleeperId: ownerSleeperId },
       },
     });
   }
 
+  // Pre-deadline: count ALL keeper records (inherits years from previous owners)
   return prisma.keeper.count({
     where: {
       playerId,

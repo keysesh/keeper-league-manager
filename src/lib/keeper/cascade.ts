@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
-import { calculateBaseCost } from "./calculator";
+import { calculateBaseCost } from "./calculator"; // Shim — delegates to cost.ts
 
 // ============================================
 // TYPES
@@ -82,7 +82,7 @@ export async function calculateCascade(
   const minRound = DEFAULT_KEEPER_RULES.MINIMUM_ROUND; // Round 1
 
   // FIXED: Build map of which picks each roster actually owns
-  const rosterOwnedPicks = await buildPickOwnershipMap(leagueId, season, league.tradedPicks);
+  const rosterOwnedPicks = await buildPickOwnershipMap(leagueId, season, league.tradedPicks, maxRounds);
 
   // Calculate base costs for all keepers
   // If a keeper has a baseCostOverride (commissioner override), use that directly
@@ -135,6 +135,15 @@ export async function calculateCascade(
     const isSlotAvailable = (round: number) =>
       ownedPicks.has(round) && !rosterUsedSlots.has(round);
 
+    // Helper to find which keeper is occupying a given round
+    const findOccupyingKeeper = (round: number) =>
+      sortedKeepers.find(
+        (k) =>
+          k.rosterId === keeper.rosterId &&
+          k !== keeper &&
+          k.baseCost === round
+      );
+
     // First, try cascading DOWN toward better rounds (lower numbers)
     // This rewards teams for finding late-round value
     while (
@@ -144,12 +153,7 @@ export async function calculateCascade(
       if (!ownedPicks.has(finalCost)) {
         conflictsWith.push(`Round ${finalCost} traded away`);
       } else if (rosterUsedSlots.has(finalCost)) {
-        const conflictingKeeper = sortedKeepers.find(
-          (k) =>
-            k.rosterId === keeper.rosterId &&
-            k !== keeper &&
-            k.baseCost === finalCost
-        );
+        const conflictingKeeper = findOccupyingKeeper(finalCost);
         if (conflictingKeeper) {
           conflictsWith.push(conflictingKeeper.playerName);
         }
@@ -174,12 +178,7 @@ export async function calculateCascade(
         if (!ownedPicks.has(finalCost)) {
           conflictsWith.push(`Round ${finalCost} traded away`);
         } else if (rosterUsedSlots.has(finalCost)) {
-          const conflictingKeeper = sortedKeepers.find(
-            (k) =>
-              k.rosterId === keeper.rosterId &&
-              k !== keeper &&
-              k.baseCost === finalCost
-          );
+          const conflictingKeeper = findOccupyingKeeper(finalCost);
           if (conflictingKeeper) {
             conflictsWith.push(conflictingKeeper.playerName);
           }
@@ -251,14 +250,13 @@ async function buildPickOwnershipMap(
     round: number;
     originalOwnerId: string;
     currentOwnerId: string;
-  }>
+  }>,
+  maxRounds: number = DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS
 ): Promise<Map<string, Set<number>>> {
   const rosters = await prisma.roster.findMany({
     where: { leagueId },
     select: { id: true, sleeperId: true },
   });
-
-  const maxRounds = DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
 
   // Initialize: each roster owns all their original picks
   const ownershipMap = new Map<string, Set<number>>();
@@ -485,7 +483,8 @@ export async function getDraftBoardWithKeepers(
   const ownershipMap = await buildPickOwnershipMap(
     leagueId,
     season,
-    league.tradedPicks
+    league.tradedPicks,
+    maxRounds
   );
 
   // Build draft board
