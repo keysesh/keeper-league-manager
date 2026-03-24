@@ -117,57 +117,49 @@ export function DraftCapital({
     return map;
   }, [keepers]);
 
-  // Cascade keepers into actual available picks for current season
-  // Priority: lower round numbers are better picks, so assign keepers to best available
+  // Place keepers at their server-computed finalCost round.
+  // The server cascade (cascade.ts) already handles traded picks, conflicts,
+  // and cascade direction. We only need a fallback for the rare edge case
+  // where two keepers somehow share the same finalCost (data inconsistency).
   const cascadedKeepers = useMemo(() => {
-    const currentSeason = seasons[0];
-    const currentSeasonPicks = picksBySeason.get(currentSeason) || [];
-
-    // Get all available rounds (picks we own), sorted by round number (lower = better)
-    const availableRounds = currentSeasonPicks
-      .map(p => p.round)
-      .sort((a, b) => a - b);
-
-    // Sort keepers by their desired round (finalCost) - lower cost keepers get priority
-    const sortedKeepers = [...keepers].sort((a, b) => a.finalCost - b.finalCost);
-
-    // Track which rounds are used
-    const usedRounds = new Set<number>();
     const result: { keeper: Keeper; assignedRound: number; originalRound: number }[] = [];
+    const usedRounds = new Set<number>();
+
+    // Sort by finalCost ascending — lower cost keepers get priority for their slot
+    const sortedKeepers = [...keepers].sort((a, b) => a.finalCost - b.finalCost);
 
     for (const keeper of sortedKeepers) {
       const desiredRound = keeper.finalCost;
 
-      // Find the best available round (lowest number first)
-      // This ensures keepers cascade to the best available pick
-      let assignedRound: number | null = null;
-
-      // First, check if the desired round is available
-      if (availableRounds.includes(desiredRound) && !usedRounds.has(desiredRound)) {
-        assignedRound = desiredRound;
+      if (!usedRounds.has(desiredRound)) {
+        // Place at server-computed finalCost (normal case)
+        usedRounds.add(desiredRound);
+        result.push({ keeper, assignedRound: desiredRound, originalRound: desiredRound });
       } else {
-        // Otherwise, find the best (lowest) available round
-        for (const round of availableRounds) {
-          if (!usedRounds.has(round)) {
-            assignedRound = round;
-            break;
+        // Duplicate finalCost (shouldn't happen if server cascade is correct).
+        // Find nearest available round to the desired cost.
+        let bestRound: number | null = null;
+        let bestDistance = Infinity;
+
+        for (let r = 1; r <= maxRounds; r++) {
+          if (!usedRounds.has(r)) {
+            const dist = Math.abs(r - desiredRound);
+            if (dist < bestDistance) {
+              bestDistance = dist;
+              bestRound = r;
+            }
           }
         }
-      }
 
-      // If we found a round, assign it
-      if (assignedRound !== null) {
-        usedRounds.add(assignedRound);
-        result.push({
-          keeper,
-          assignedRound,
-          originalRound: desiredRound,
-        });
+        if (bestRound !== null) {
+          usedRounds.add(bestRound);
+          result.push({ keeper, assignedRound: bestRound, originalRound: desiredRound });
+        }
       }
     }
 
     return result;
-  }, [keepers, picksBySeason, seasons]);
+  }, [keepers, maxRounds]);
 
   // Calculate summary stats with details - focused on current/first season
   const summary = useMemo(() => {
@@ -365,12 +357,13 @@ export function DraftCapital({
               }
 
               const cells: GridCell[] = [];
-              const usedRounds = new Set<number>(); // Tracks which rounds are used by keepers
+              // Track how many keeper slots consume picks per round (not binary — a round can have multiple picks)
+              const keeperCountPerRound = new Map<number, number>();
 
               // Only use cascaded keepers for the current (first) season
               const isCurrentSeason = season === seasons[0];
 
-              // First, add all keepers at their CASCADED round (not finalCost)
+              // First, add all keepers at their assigned round
               if (isCurrentSeason) {
                 for (const { keeper, assignedRound, originalRound } of cascadedKeepers) {
                   const isAcquiredPick = acquiredPicks.some(p => p.round === assignedRound);
@@ -379,10 +372,10 @@ export function DraftCapital({
                     round: assignedRound,
                     cellIndex: 0,
                     keeper,
-                    originalRound, // Store original round for display
+                    originalRound,
                     isAcquired: isAcquiredPick,
                   });
-                  usedRounds.add(assignedRound);
+                  keeperCountPerRound.set(assignedRound, (keeperCountPerRound.get(assignedRound) || 0) + 1);
                 }
               } else {
                 // For future seasons, just show keepers at finalCost
@@ -396,48 +389,64 @@ export function DraftCapital({
                     keeper,
                     isAcquired: isAcquiredPick,
                   });
-                  usedRounds.add(round);
+                  keeperCountPerRound.set(round, (keeperCountPerRound.get(round) || 0) + 1);
                 }
               }
 
-              // Then add available (non-keeper) picks and traded/empty slots
+              // Then add remaining (non-keeper) picks and traded/empty slots
               for (let round = 1; round <= maxRounds; round++) {
-                // Skip if this round is used by a keeper
-                if (usedRounds.has(round)) continue;
+                const keepersAtRound = keeperCountPerRound.get(round) || 0;
 
                 const ownPicksInRound = ownPicks.filter(p => p.round === round);
                 const acquiredPicksInRound = acquiredPicks.filter(p => p.round === round);
-                const totalPicksInRound = ownPicksInRound.length + acquiredPicksInRound.length;
+                // Keepers consume own picks first, preserving acquired picks for display
+                const ownAfterKeepers = Math.max(0, ownPicksInRound.length - keepersAtRound);
+                const keepersOverflow = Math.max(0, keepersAtRound - ownPicksInRound.length);
+                const acquiredAfterKeepers = Math.max(0, acquiredPicksInRound.length - keepersOverflow);
+
+                const remainingOwn = ownPicksInRound.slice(ownPicksInRound.length - ownAfterKeepers);
+                const remainingAcquired = acquiredPicksInRound.slice(acquiredPicksInRound.length - acquiredAfterKeepers);
+                const totalRemaining = remainingOwn.length + remainingAcquired.length;
                 const tradedPick = tradedPicksInfo.get(`${season}-${round}`);
 
-                if (totalPicksInRound > 0) {
-                  // Add available pick slots
-                  for (let i = 0; i < totalPicksInRound; i++) {
-                    const isAcquired = i < acquiredPicksInRound.length;
+                if (totalRemaining > 0) {
+                  // Show acquired picks first, then own picks
+                  let cellIdx = 0;
+                  for (const pick of remainingAcquired) {
                     cells.push({
                       type: "pick",
                       round,
-                      cellIndex: i,
-                      isAcquired,
-                      pick: isAcquired ? acquiredPicksInRound[i] : ownPicksInRound[i - acquiredPicksInRound.length],
+                      cellIndex: cellIdx++,
+                      isAcquired: true,
+                      pick,
                     });
                   }
-                } else if (tradedPick) {
-                  // No picks in this round - traded
+                  for (const pick of remainingOwn) {
+                    cells.push({
+                      type: "pick",
+                      round,
+                      cellIndex: cellIdx++,
+                      isAcquired: false,
+                      pick,
+                    });
+                  }
+                } else if (keepersAtRound === 0 && tradedPick) {
+                  // No picks and no keepers in this round — traded away
                   cells.push({
                     type: "traded",
                     round,
                     cellIndex: 0,
                     tradedTo: tradedPick.currentOwnerName || "another team",
                   });
-                } else {
-                  // Empty slot (shouldn't have pick in standard draft)
+                } else if (keepersAtRound === 0) {
+                  // Empty slot (no picks, no keepers, not traded)
                   cells.push({
                     type: "empty",
                     round,
                     cellIndex: 0,
                   });
                 }
+                // If keepersAtRound > 0 and no remaining picks, keeper cells already added above
               }
 
               // Sort cells by round, then by cellIndex
