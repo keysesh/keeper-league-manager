@@ -15,7 +15,9 @@ export default async function DashboardPage() {
     session?.user?.id
       ? prisma.league.findMany({
           where: {
-            season: currentSeason,
+            // Show current season and previous season (handles NFL offseason when
+            // the new Sleeper league hasn't been created yet, e.g. March-August)
+            season: { gte: currentSeason - 1 },
             rosters: {
               some: {
                 teamMembers: {
@@ -34,7 +36,7 @@ export default async function DashboardPage() {
               },
             },
           },
-          orderBy: { name: "asc" },
+          orderBy: { season: "desc" },
         })
       : [],
     session?.user?.id
