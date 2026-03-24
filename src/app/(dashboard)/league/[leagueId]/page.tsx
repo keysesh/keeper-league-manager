@@ -298,7 +298,7 @@ export default function LeaguePage() {
                 <Link
                   key={`empty-${i}`}
                   href={`/league/${leagueId}/team/${userRoster.id}`}
-                  className="rounded-xl p-3 border-2 border-dashed border-white/[0.1] hover:border-blue-500/50 flex flex-col items-center justify-center text-slate-600 hover:text-blue-400 transition-all min-h-[120px] hover:bg-blue-500/5"
+                  className="rounded-xl p-3 border-2 border-dashed border-white/[0.12] hover:border-blue-500/50 flex flex-col items-center justify-center text-slate-600 hover:text-blue-400 transition-all min-h-[120px] hover:bg-blue-500/5"
                 >
                   <div className="w-10 h-10 rounded-lg border-2 border-dashed border-current flex items-center justify-center mb-2">
                     <span className="text-xl">+</span>
@@ -422,7 +422,7 @@ function QuickActionCard({
   return (
     <Link
       href={href}
-      className="group p-4 rounded-xl bg-[#0d1420] border border-white/[0.06] hover:border-white/[0.12] transition-all hover:scale-[1.02]"
+      className="group p-4 rounded-xl bg-[#0c1219] border border-white/[0.08] hover:border-white/[0.12] transition-all hover:scale-[1.02]"
     >
       <div className={cn(
         "w-10 h-10 rounded-xl bg-gradient-to-br border flex items-center justify-center mb-3 transition-all",

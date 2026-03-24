@@ -74,7 +74,7 @@ function LoginContent() {
       </p>
 
       {/* Divider */}
-      <div className="my-6 border-t border-white/[0.06]" />
+      <div className="my-6 border-t border-white/[0.08]" />
 
       {/* Sleeper Info */}
       <div className="text-center">
@@ -115,7 +115,7 @@ export default function LoginPage() {
       <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
         <div className="w-full max-w-sm">
           {/* Card */}
-          <div className="bg-[#0d1420] border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/50 p-8">
+          <div className="bg-[#0c1219] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/50 p-8">
             {/* Logo/Header */}
             <div className="text-center mb-8">
               <div className="flex justify-center mb-5">

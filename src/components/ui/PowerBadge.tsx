@@ -214,7 +214,7 @@ export function TeamCardHeader({
         "p-4 rounded-xl border transition-colors",
         isCurrentUser
           ? "bg-blue-500/10 border-blue-500/20"
-          : "bg-[#0d1420] border-white/[0.06] hover:bg-[#131a28] hover:border-white/[0.1]",
+          : "bg-[#0c1219] border-white/[0.08] hover:bg-[#141c2b] hover:border-white/[0.12]",
         className
       )}
     >

@@ -13,11 +13,11 @@ interface CardProps {
 }
 
 const variantStyles = {
-  default: "bg-[#0d1420] border border-white/[0.06]",
-  elevated: "bg-[#131a28] border border-white/[0.08] shadow-xl",
-  interactive: "bg-[#0d1420] border border-white/[0.06] hover:bg-[#131a28] hover:border-white/[0.1] cursor-pointer",
-  gradient: "bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/[0.1]",
-  feature: "bg-[#0d1420]/80 backdrop-blur-xl border border-white/[0.1]",
+  default: "bg-[#0c1219] border border-white/[0.08]",
+  elevated: "bg-[#141c2b] border border-white/[0.08] shadow-xl",
+  interactive: "bg-[#0c1219] border border-white/[0.08] hover:bg-[#141c2b] hover:border-white/[0.12] cursor-pointer",
+  gradient: "bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/[0.12]",
+  feature: "bg-[#0c1219]/80 backdrop-blur-xl border border-white/[0.12]",
 };
 
 const paddingStyles = {
@@ -106,7 +106,7 @@ interface CardFooterProps {
 
 export function CardFooter({ children, className }: CardFooterProps) {
   return (
-    <div className={cn("mt-4 pt-4 border-t border-white/[0.06]", className)}>
+    <div className={cn("mt-4 pt-4 border-t border-white/[0.08]", className)}>
       {children}
     </div>
   );
@@ -135,7 +135,7 @@ export function FeatureCard({
   return (
     <div
       className={cn(
-        "relative rounded-xl overflow-hidden border border-white/[0.1]",
+        "relative rounded-xl overflow-hidden border border-white/[0.12]",
         className
       )}
     >
@@ -148,7 +148,7 @@ export function FeatureCard({
       />
 
       {/* Glass overlay */}
-      <div className="absolute inset-0 bg-[#0d1420]/80 backdrop-blur-xl" />
+      <div className="absolute inset-0 bg-[#0c1219]/80 backdrop-blur-xl" />
 
       {/* Content */}
       <div className={cn("relative z-10", paddingStyles[padding])}>{children}</div>
@@ -165,7 +165,7 @@ export function HeroCard({ children, className }: HeroCardProps) {
   return (
     <div
       className={cn(
-        "relative rounded-2xl overflow-hidden border border-white/[0.1]",
+        "relative rounded-2xl overflow-hidden border border-white/[0.12]",
         className
       )}
     >
@@ -173,7 +173,7 @@ export function HeroCard({ children, className }: HeroCardProps) {
       <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-blue-600/20 animate-gradient" />
 
       {/* Glass overlay */}
-      <div className="absolute inset-0 bg-[#0d1420]/70 backdrop-blur-2xl" />
+      <div className="absolute inset-0 bg-[#0c1219]/70 backdrop-blur-2xl" />
 
       {/* Content */}
       <div className="relative z-10 p-6 sm:p-8">{children}</div>

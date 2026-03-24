@@ -95,7 +95,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
 
   if (trades.length === 0) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-lg p-6 text-center">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-lg p-6 text-center">
         <ArrowLeftRight className="w-10 h-10 text-slate-600 mx-auto mb-2" />
         <p className="text-slate-400 font-medium text-sm">No trades recorded</p>
         <p className="text-xs text-slate-600 mt-1">Trades will appear here once they occur</p>
@@ -107,20 +107,20 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
     <div className="space-y-3">
       {/* Stats summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-        <div className="bg-[#131a28] border border-white/[0.04] rounded-md p-2 text-center">
+        <div className="bg-[#141c2b] border border-white/[0.04] rounded-md p-2 text-center">
           <div className="text-lg font-bold text-white">{stats.totalTrades}</div>
           <div className="text-[9px] text-slate-500 uppercase tracking-wider">Total Trades</div>
         </div>
-        <div className="bg-[#131a28] border border-white/[0.04] rounded-md p-2 text-center">
+        <div className="bg-[#141c2b] border border-white/[0.04] rounded-md p-2 text-center">
           <div className="text-lg font-bold text-blue-400">{stats.playersTradedCount}</div>
           <div className="text-[9px] text-slate-500 uppercase tracking-wider">Players Moved</div>
         </div>
-        <div className="bg-[#131a28] border border-white/[0.04] rounded-md p-2 text-center">
+        <div className="bg-[#141c2b] border border-white/[0.04] rounded-md p-2 text-center">
           <div className="text-lg font-bold text-emerald-400">{stats.picksTradedCount}</div>
           <div className="text-[9px] text-slate-500 uppercase tracking-wider">Picks Traded</div>
         </div>
         {stats.mostActiveTrader && (
-          <div className="bg-[#131a28] border border-white/[0.04] rounded-md p-2 text-center">
+          <div className="bg-[#141c2b] border border-white/[0.04] rounded-md p-2 text-center">
             <div className="flex items-center justify-center gap-1">
               <Award className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-sm font-bold text-amber-400">{stats.mostActiveTrader.count}</span>
@@ -132,8 +132,8 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
       </div>
 
       {/* Trade list - Grouped by season */}
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-lg overflow-hidden">
-        <div className="px-3 py-2.5 border-b border-white/[0.06]">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-lg overflow-hidden">
+        <div className="px-3 py-2.5 border-b border-white/[0.08]">
           <div className="flex items-center gap-2">
             <ArrowLeftRight className="w-3.5 h-3.5 text-blue-400" />
             <h3 className="font-semibold text-white text-sm">Trade History</h3>
@@ -178,7 +178,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                         {/* Exchange View: Team A | ⇄ | Team B */}
                         <div className="flex items-stretch gap-2">
                           {/* Team A's items (what they gave) */}
-                          <div className={`flex-1 min-w-0 rounded-lg p-2 ${partyAHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#131a28]"}`}>
+                          <div className={`flex-1 min-w-0 rounded-lg p-2 ${partyAHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#141c2b]"}`}>
                             <div className="text-[10px] font-medium text-slate-400 mb-1.5 truncate">
                               {partyA.rosterName || `Team ${partyA.rosterId.slice(0, 6)}`}
                             </div>
@@ -207,7 +207,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                           </div>
 
                           {/* Team B's items (what they gave) */}
-                          <div className={`flex-1 min-w-0 rounded-lg p-2 ${partyBHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#131a28]"}`}>
+                          <div className={`flex-1 min-w-0 rounded-lg p-2 ${partyBHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#141c2b]"}`}>
                             <div className="text-[10px] font-medium text-slate-400 mb-1.5 truncate">
                               {partyB.rosterName || `Team ${partyB.rosterId.slice(0, 6)}`}
                             </div>
@@ -256,7 +256,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                           return (
                             <div
                               key={party.rosterId}
-                              className={`rounded-lg p-2 ${partyHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#131a28]"}`}
+                              className={`rounded-lg p-2 ${partyHighlighted ? "bg-blue-500/10 border border-blue-500/20" : "bg-[#141c2b]"}`}
                             >
                               <div className="text-[10px] font-medium text-slate-400 mb-1 truncate">
                                 {party.rosterName || `Team ${party.rosterId.slice(0, 6)}`}

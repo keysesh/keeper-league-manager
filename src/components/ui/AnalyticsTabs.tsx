@@ -14,9 +14,9 @@ interface AnalyticsTabsProps {
  */
 export function AnalyticsTabs({ leagueId: _leagueId, userRosterId: _userRosterId }: AnalyticsTabsProps) {
   return (
-    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
+      <div className="px-4 sm:px-5 py-4 border-b border-white/[0.08]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/25 to-orange-500/15 border border-amber-400/30 shadow-lg shadow-amber-500/10 flex items-center justify-center">
             <Trophy className="w-5 h-5 text-amber-400" strokeWidth={2} />

@@ -47,7 +47,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#080c14]">
+    <div className="min-h-screen bg-[#06090f]">
       <Header user={session.user} />
       <div className="flex min-h-[calc(100vh-3.5rem)]">
         <Sidebar isAdmin={isAdmin} />

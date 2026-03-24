@@ -462,7 +462,7 @@ export default function TeamRosterPage() {
           <Skeleton className="h-10 w-64 mb-2 bg-white/[0.05]" />
           <Skeleton className="h-5 w-48 bg-white/[0.05]" />
         </div>
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-6">
+        <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-6">
           <Skeleton className="h-6 w-32 mb-4 bg-white/[0.05]" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
@@ -477,7 +477,7 @@ export default function TeamRosterPage() {
   if (error || !data) {
     return (
       <div className="max-w-7xl mx-auto p-4 md:p-6">
-        <div className="bg-[#0d1420] border border-rose-500/20 rounded-xl p-8 text-center">
+        <div className="bg-[#0c1219] border border-rose-500/20 rounded-xl p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto mb-4">
             <Trophy className="w-8 h-8 text-rose-400" />
           </div>
@@ -531,7 +531,7 @@ export default function TeamRosterPage() {
             <button
               onClick={syncKeepers}
               disabled={syncingKeepers}
-              className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 min-h-[44px] min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-[#131a28] text-slate-400 hover:text-white hover:bg-[#1a2435] border border-white/[0.08] hover:border-white/[0.12] text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
+              className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 min-h-[44px] min-w-[44px] sm:min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-[#141c2b] text-slate-400 hover:text-white hover:bg-[#1c2840] border border-white/[0.08] hover:border-white/[0.12] text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
             >
               <RefreshCw size={16} className={syncingKeepers ? "animate-spin" : ""} />
               <span className="hidden sm:inline">{syncingKeepers ? "Syncing..." : "Sync Keepers"}</span>
@@ -571,7 +571,7 @@ export default function TeamRosterPage() {
       {/* Keeper Summary Stats - Only show for own team */}
       {isOwnTeam && (
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
+          <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-2.5 sm:p-4">
             <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
                 <Users className="w-4 h-4 text-blue-400" />
@@ -582,7 +582,7 @@ export default function TeamRosterPage() {
               </div>
             </div>
           </div>
-          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
+          <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-2.5 sm:p-4">
             <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0">
                 <Star className="w-4 h-4 text-amber-400" />
@@ -593,7 +593,7 @@ export default function TeamRosterPage() {
               </div>
             </div>
           </div>
-          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-2.5 sm:p-4">
+          <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-2.5 sm:p-4">
             <div className="flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center flex-shrink-0">
                 <Trophy className="w-4 h-4 text-blue-400" />
@@ -643,8 +643,8 @@ export default function TeamRosterPage() {
         const draftRounds = Math.max(maxDraftRound, 16); // Default to 16 if no picks found
 
         return (
-          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+          <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.08]">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center">
                   <FileText className="w-3.5 h-3.5 text-purple-400" />
@@ -674,8 +674,8 @@ export default function TeamRosterPage() {
 
       {/* Current Keepers - Only show for owner */}
       {isOwnTeam && (
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+        <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.08]">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
                 <Star className="w-3.5 h-3.5 text-amber-400" />
@@ -716,8 +716,8 @@ export default function TeamRosterPage() {
 
       {/* Eligible Players - Only show for own team */}
       {isOwnTeam && (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.08]">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">

@@ -81,7 +81,7 @@ export function TrendingPlayers({
       className={`
         relative overflow-hidden rounded-2xl
         bg-gradient-to-br from-zinc-800/60 via-zinc-900/40 to-[#13111a]
-        border border-white/[0.06]
+        border border-white/[0.08]
         backdrop-blur-xl
         shadow-[0_0_30px_-5px_rgba(113,113,122,0.15)]
         ${className}
@@ -91,7 +91,7 @@ export function TrendingPlayers({
       <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/[0.02] pointer-events-none" />
 
       {/* Header */}
-      <div className="relative z-10 px-4 pt-4 pb-3 border-b border-white/[0.06]">
+      <div className="relative z-10 px-4 pt-4 pb-3 border-b border-white/[0.08]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-zinc-300">
             Trending Players
@@ -170,7 +170,7 @@ export function TrendingPlayers({
 
       {/* Footer */}
       {lastUpdated && (
-        <div className="relative z-10 px-4 py-2 border-t border-white/[0.06]">
+        <div className="relative z-10 px-4 py-2 border-t border-white/[0.08]">
           <p className="text-[10px] text-zinc-600 text-center">
             Last {hours}h on Sleeper • Updated {formatTimeAgo(lastUpdated)}
           </p>

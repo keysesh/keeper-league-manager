@@ -38,8 +38,8 @@ export function SuperlativesCard({ superlatives, className }: SuperlativesCardPr
   if (superlatives.length === 0) return null;
 
   return (
-    <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden", className)}>
-      <div className="px-3 sm:px-4 py-2.5 border-b border-white/[0.06]">
+    <div className={cn("bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden", className)}>
+      <div className="px-3 sm:px-4 py-2.5 border-b border-white/[0.08]">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center">
             <TrophyPremium className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-400" />
@@ -100,7 +100,7 @@ function SuperlativeItem({ icon, label, value, season, isLeagueBest, tier }: Sup
         "relative p-2 sm:p-2.5 rounded-md border transition-all duration-200",
         style
           ? `${style.bg} ${style.border}`
-          : "bg-[#131a28] border-white/[0.04]"
+          : "bg-[#141c2b] border-white/[0.04]"
       )}
     >
       {isLeagueBest && (

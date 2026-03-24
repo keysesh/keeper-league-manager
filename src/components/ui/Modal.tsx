@@ -100,7 +100,7 @@ export function Modal({
         tabIndex={-1}
         className={`
           relative w-full ${sizeClasses[size]} max-w-[calc(100vw-2rem)]
-          bg-[#13111a]/95 backdrop-blur-xl
+          bg-[#141c2b]/95 backdrop-blur-xl
           rounded-2xl shadow-2xl shadow-black/50
           border border-white/[0.08]
           focus:outline-none
@@ -111,7 +111,7 @@ export function Modal({
         <div className="absolute top-0 left-6 right-6 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
 
         {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
             <h3 id={titleId} className="text-lg font-semibold text-white tracking-tight">
               {title}
             </h3>

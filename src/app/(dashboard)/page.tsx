@@ -185,7 +185,7 @@ export default async function DashboardPage() {
               <>
                 <Link
                   href={`/league/${leagues[0].id}/draft-board`}
-                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-white/[0.06] hover:border-purple-500/30 transition-all duration-300 hover:scale-[1.02]"
+                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-white/[0.08] hover:border-purple-500/30 transition-all duration-300 hover:scale-[1.02]"
                 >
                   <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/20 ring-1 ring-purple-500/20">
                     <LayoutGrid size={20} className="text-purple-400" />
@@ -197,7 +197,7 @@ export default async function DashboardPage() {
                 </Link>
                 <Link
                   href={`/league/${leagues[0].id}/trade-analyzer`}
-                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-white/[0.06] hover:border-emerald-500/30 transition-all duration-300 hover:scale-[1.02]"
+                  className="group flex items-center gap-3 px-5 py-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-white/[0.08] hover:border-emerald-500/30 transition-all duration-300 hover:scale-[1.02]"
                 >
                   <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-500/20 ring-1 ring-emerald-500/20">
                     <ArrowLeftRight size={20} className="text-emerald-400" />

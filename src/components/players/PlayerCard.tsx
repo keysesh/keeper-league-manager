@@ -107,7 +107,7 @@ export const PlayerCard = memo(function PlayerCard({
   return (
     <div
       onClick={onClick}
-      className={`p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
+      className={`p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors ${onClick ? "cursor-pointer" : ""} ${className}`}
     >
       <div className="flex items-start gap-4">
         <PlayerAvatar
@@ -156,7 +156,7 @@ export const PlayerCard = memo(function PlayerCard({
       </div>
 
       {keeperInfo && (
-        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+        <div className="mt-4 pt-3 border-t border-white/[0.08]">
           <div className="flex justify-between text-sm">
             <span className="text-zinc-400">Keeper Cost</span>
             <span className="text-white font-medium">Round {keeperInfo.cost}</span>

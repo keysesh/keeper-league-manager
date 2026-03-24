@@ -125,7 +125,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
   return (
     <aside
-      className="hidden lg:flex lg:flex-col lg:w-60 xl:w-64 border-r border-white/[0.06] bg-[#080c14] min-h-[calc(100vh-3.5rem)]"
+      className="hidden lg:flex lg:flex-col lg:w-60 xl:w-64 border-r border-white/[0.08] bg-[#06090f] min-h-[calc(100vh-3.5rem)]"
       aria-label="Main navigation"
     >
       {/* Back to Leagues when in league view */}
@@ -133,7 +133,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
         <div className="px-4 pt-4">
           <Link
             href="/leagues"
-            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-blue-400 transition-colors px-2 py-1.5 -ml-2 rounded-lg hover:bg-[#1a2435]"
+            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-blue-400 transition-colors px-2 py-1.5 -ml-2 rounded-lg hover:bg-[#1c2840]"
           >
             <ChevronLeft className="w-4 h-4" />
             All Leagues
@@ -166,8 +166,8 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
                       "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
                       "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
                       isActive
-                        ? "bg-[#243044] text-white border-l-2 border-blue-500 pl-[10px]"
-                        : "text-slate-400 hover:text-white hover:bg-[#1a2435] border-l-2 border-transparent pl-[10px]"
+                        ? "bg-[#253654] text-white border-l-2 border-blue-500 pl-[10px]"
+                        : "text-slate-400 hover:text-white hover:bg-[#1c2840] border-l-2 border-transparent pl-[10px]"
                     )}
                   >
                     <Icon
@@ -194,7 +194,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto px-4 py-4 border-t border-white/[0.06]">
+      <div className="mt-auto px-4 py-4 border-t border-white/[0.08]">
         <div className="flex items-center justify-between">
           <p className="text-[11px] text-slate-600">{new Date().getFullYear()} Season</p>
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Connected" />

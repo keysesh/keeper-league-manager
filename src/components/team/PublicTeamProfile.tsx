@@ -308,7 +308,7 @@ export function PublicTeamProfile({
   return (
     <div className="max-w-5xl mx-auto space-y-2">
       {/* Header Card - Team name with inline trophies */}
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-slate-500/20 to-slate-600/20 border border-slate-500/25 flex items-center justify-center flex-shrink-0">
@@ -380,7 +380,7 @@ export function PublicTeamProfile({
         )}
 
         {/* Roster Preview - Spans 2 columns on larger screens */}
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4 lg:col-span-2">
+        <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-md bg-slate-500/15 border border-slate-500/25 flex items-center justify-center">
@@ -415,7 +415,7 @@ export function PublicTeamProfile({
                       "px-2 py-1.5 rounded-md text-xs border transition-colors flex items-center gap-2",
                       p.existingKeeper
                         ? "bg-amber-500/10 border-amber-500/20 text-amber-200"
-                        : "bg-[#131a28] border-white/[0.04] text-slate-300"
+                        : "bg-[#141c2b] border-white/[0.04] text-slate-300"
                     )}
                   >
                     {p.player.sleeperId && (

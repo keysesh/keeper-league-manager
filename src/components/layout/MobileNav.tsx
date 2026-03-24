@@ -77,7 +77,7 @@ export function MobileNav({ className }: MobileNavProps) {
       {/* Bottom Navigation Bar */}
       <nav
         className={cn(
-          "fixed bottom-0 left-0 right-0 bg-[#0d1420] border-t border-white/[0.06] z-50 lg:hidden",
+          "fixed bottom-0 left-0 right-0 bg-[#0c1219] border-t border-white/[0.08] z-50 lg:hidden",
           className
         )}
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
@@ -128,7 +128,7 @@ export function MobileNav({ className }: MobileNavProps) {
           />
 
           {/* Sheet */}
-          <div className="fixed bottom-0 left-0 right-0 bg-[#0d1420] border-t border-white/[0.1] rounded-t-2xl z-50 lg:hidden animate-slide-up pb-safe">
+          <div className="fixed bottom-0 left-0 right-0 bg-[#0c1219] border-t border-white/[0.12] rounded-t-2xl z-50 lg:hidden animate-slide-up pb-safe">
             <div className="p-4">
               {/* Handle */}
               <div className="w-10 h-1 bg-slate-600 rounded-full mx-auto mb-4" />

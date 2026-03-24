@@ -84,8 +84,8 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
 
   if (isLoading) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden animate-pulse">
-        <div className="px-4 py-3 border-b border-white/[0.06]">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden animate-pulse">
+        <div className="px-4 py-3 border-b border-white/[0.08]">
           <div className="h-6 w-32 bg-white/[0.05] rounded" />
         </div>
         <div className="p-3 space-y-2">
@@ -99,7 +99,7 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
 
   if (error || !data?.trades) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-6 text-center">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-6 text-center">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/25 to-blue-600/15 border border-blue-400/30 shadow-lg shadow-blue-500/10 flex items-center justify-center mx-auto mb-3">
           <ArrowLeftRight className="w-5 h-5 text-blue-400" strokeWidth={2} />
         </div>
@@ -111,7 +111,7 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
 
   if (trades.length === 0) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-6 text-center">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-6 text-center">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/25 to-blue-600/15 border border-blue-400/30 shadow-lg shadow-blue-500/10 flex items-center justify-center mx-auto mb-3">
           <ArrowLeftRight className="w-5 h-5 text-blue-400" strokeWidth={2} />
         </div>
@@ -122,9 +122,9 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
   }
 
   return (
-    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+    <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-white/[0.06]">
+      <div className="px-4 py-3 border-b border-white/[0.08]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/25 to-blue-600/15 border border-blue-400/30 shadow-lg shadow-blue-500/10 flex items-center justify-center">
@@ -260,7 +260,7 @@ export function RecentTrades({ leagueId, userRosterId, limit = 3 }: RecentTrades
 
               {/* Expanded details */}
               {isExpanded && teamA && teamB && (
-                <div className="mt-1.5 mx-1 p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
+                <div className="mt-1.5 mx-1 p-3 rounded-lg bg-white/[0.02] border border-white/[0.08]">
                   <div className="grid grid-cols-2 gap-3">
                     {/* Team A sends */}
                     <div>

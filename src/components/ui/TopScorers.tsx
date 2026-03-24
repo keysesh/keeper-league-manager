@@ -60,7 +60,7 @@ export function TopScorers({ className = "", condensed = false }: TopScorersProp
       className={`
         relative overflow-hidden rounded-2xl
         bg-gradient-to-br from-zinc-800/60 via-zinc-900/40 to-[#13111a]
-        border border-white/[0.06]
+        border border-white/[0.08]
         backdrop-blur-xl
         shadow-[0_0_30px_-5px_rgba(113,113,122,0.15)]
         ${className}

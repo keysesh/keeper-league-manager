@@ -87,7 +87,7 @@ export function QuickLinks({ leagueId, userRosterId }: QuickLinksProps) {
             group relative overflow-hidden rounded-xl p-3
             bg-gradient-to-br ${link.gradient}
             border border-white/[0.04]
-            hover:border-white/[0.1]
+            hover:border-white/[0.12]
             transition-all duration-300
             hover:scale-[1.02]
           `}

@@ -143,7 +143,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 
   if (isLoading) {
     return (
-      <div className="bg-[#0d1420] border border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-[#0c1219] border border-white/10 rounded-2xl overflow-hidden">
         <div className="p-5 border-b border-white/10">
           <div className="h-6 w-40 bg-white/5 rounded animate-pulse" />
         </div>
@@ -158,7 +158,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 
   if (!rankings && rankedTeams.length === 0) {
     return (
-      <div className="bg-[#0d1420] border border-white/10 rounded-2xl p-10 text-center">
+      <div className="bg-[#0c1219] border border-white/10 rounded-2xl p-10 text-center">
         <Zap className="w-10 h-10 text-slate-600 mx-auto mb-3" />
         <p className="text-sm font-medium text-slate-400">No rankings available</p>
       </div>
@@ -169,7 +169,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
     const displayRankings = condensed ? rankings.slice(0, 5) : rankings;
 
     return (
-      <div className="bg-[#0d1420] border border-white/10 rounded-2xl overflow-hidden">
+      <div className="bg-[#0c1219] border border-white/10 rounded-2xl overflow-hidden">
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -347,7 +347,7 @@ export function PowerRankings({ rosters, userRosterId, leagueId, useApi = false,
 
   // Fallback client-side rendering
   return (
-    <div className="bg-[#0d1420] border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-[#0c1219] border border-white/10 rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-purple-500/20 flex items-center justify-center">

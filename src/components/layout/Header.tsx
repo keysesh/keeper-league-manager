@@ -151,7 +151,7 @@ export function Header({ user }: HeaderProps) {
   return (
     <>
       <header
-        className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-[#080c14]/95 backdrop-blur-xl"
+        className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#06090f]/95 backdrop-blur-xl"
         role="banner"
       >
         <div className="flex h-14 items-center justify-between px-4 lg:px-6">
@@ -160,7 +160,7 @@ export function Header({ user }: HeaderProps) {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden flex items-center justify-center w-10 h-10 -ml-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a2435] transition-all"
+              className="lg:hidden flex items-center justify-center w-10 h-10 -ml-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#1c2840] transition-all"
               aria-label="Open menu"
             >
               <Menu className="w-5 h-5" />
@@ -185,7 +185,7 @@ export function Header({ user }: HeaderProps) {
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#1a2435] transition-colors"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[#1c2840] transition-colors"
               >
                 <UserAvatar src={user.image} name={displayName} size="sm" />
                 <span className="hidden sm:block text-sm text-slate-200 font-medium max-w-[100px] truncate">
@@ -206,8 +206,8 @@ export function Header({ user }: HeaderProps) {
                     className="fixed inset-0 z-40"
                     onClick={() => setUserMenuOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-56 bg-[#131a28] border border-white/[0.1] rounded-xl shadow-xl z-50 animate-scale-in overflow-hidden">
-                    <div className="p-3 border-b border-white/[0.06]">
+                  <div className="absolute right-0 mt-2 w-56 bg-[#141c2b] border border-white/[0.12] rounded-xl shadow-xl z-50 animate-scale-in overflow-hidden">
+                    <div className="p-3 border-b border-white/[0.08]">
                       <p className="text-sm font-medium text-white truncate">{displayName}</p>
                       <p className="text-xs text-slate-500">Keeper Manager</p>
                     </div>
@@ -215,7 +215,7 @@ export function Header({ user }: HeaderProps) {
                       <Link
                         href="/profile"
                         onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-[#1a2435] rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-[#1c2840] rounded-lg transition-colors"
                       >
                         <UserCircle className="w-4 h-4" />
                         My Profile
@@ -223,13 +223,13 @@ export function Header({ user }: HeaderProps) {
                       <Link
                         href="/leagues"
                         onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-[#1a2435] rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-[#1c2840] rounded-lg transition-colors"
                       >
                         <LayoutDashboard className="w-4 h-4" />
                         My Leagues
                       </Link>
                     </div>
-                    <div className="p-1 border-t border-white/[0.06]">
+                    <div className="p-1 border-t border-white/[0.08]">
                       <button
                         onClick={() => {
                           setUserMenuOpen(false);
@@ -259,13 +259,13 @@ export function Header({ user }: HeaderProps) {
           />
 
           {/* Slide-in Menu */}
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#080c14] border-r border-white/[0.06] overflow-y-auto animate-slide-down">
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#06090f] border-r border-white/[0.08] overflow-y-auto animate-slide-down">
             {/* Menu Header */}
-            <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between p-4 border-b border-white/[0.08]">
               <LogoMark size="sm" />
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center w-10 h-10 rounded-lg text-slate-400 hover:text-white hover:bg-[#1a2435] transition-all"
+                className="flex items-center justify-center w-10 h-10 rounded-lg text-slate-400 hover:text-white hover:bg-[#1c2840] transition-all"
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
@@ -273,7 +273,7 @@ export function Header({ user }: HeaderProps) {
             </div>
 
             {/* User Info */}
-            <div className="p-4 border-b border-white/[0.06] bg-[#0d1420]">
+            <div className="p-4 border-b border-white/[0.08] bg-[#0c1219]">
               <div className="flex items-center gap-3">
                 <UserAvatar src={user.image} name={displayName} size="md" />
                 <div className="flex-1 min-w-0">
@@ -285,11 +285,11 @@ export function Header({ user }: HeaderProps) {
 
             {/* Back to Leagues (when in league view) */}
             {isLeaguePage && (
-              <div className="p-3 border-b border-white/[0.06]">
+              <div className="p-3 border-b border-white/[0.08]">
                 <Link
                   href="/leagues"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-blue-400 hover:bg-[#1a2435] rounded-lg transition-all"
+                  className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-blue-400 hover:bg-[#1c2840] rounded-lg transition-all"
                 >
                   <LayoutDashboard className="w-5 h-5" />
                   <span className="font-medium">All Leagues</span>
@@ -317,8 +317,8 @@ export function Header({ user }: HeaderProps) {
                           className={cn(
                             "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 min-h-[44px]",
                             isActive
-                              ? "bg-[#243044] text-white border-l-2 border-blue-500 pl-[10px]"
-                              : "text-slate-400 hover:text-white hover:bg-[#1a2435] border-l-2 border-transparent pl-[10px]"
+                              ? "bg-[#253654] text-white border-l-2 border-blue-500 pl-[10px]"
+                              : "text-slate-400 hover:text-white hover:bg-[#1c2840] border-l-2 border-transparent pl-[10px]"
                           )}
                         >
                           <Icon
@@ -337,7 +337,7 @@ export function Header({ user }: HeaderProps) {
             </nav>
 
             {/* Sign Out */}
-            <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/[0.06] bg-[#080c14]">
+            <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/[0.08] bg-[#06090f]">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);

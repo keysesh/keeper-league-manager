@@ -96,8 +96,8 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
 
   if (isLoading) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-4 py-4 border-b border-white/[0.06]">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+        <div className="px-4 py-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-white/[0.05] animate-pulse" />
             <div className="space-y-2">
@@ -117,7 +117,7 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
 
   if (error || !data?.luckRatings) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-8 text-center">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-8 text-center">
         <div className="w-16 h-16 rounded-2xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mx-auto mb-4">
           <Sparkles className="w-8 h-8 text-slate-500" />
         </div>
@@ -169,8 +169,8 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
     : { items: luckRatings.map(r => ({ ...r })), hasMore: false };
 
   return (
-    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-      <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
+    <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+      <div className="px-4 sm:px-5 py-4 border-b border-white/[0.08]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/25 flex items-center justify-center">
@@ -243,15 +243,15 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
 
       {/* Stats summary - hide in condensed */}
       {!condensed && (
-        <div className="grid grid-cols-2 gap-3 p-4 border-b border-white/[0.06]">
-          <div className="bg-[#131a28] rounded-lg p-4 text-center border border-white/[0.04]">
+        <div className="grid grid-cols-2 gap-3 p-4 border-b border-white/[0.08]">
+          <div className="bg-[#141c2b] rounded-lg p-4 text-center border border-white/[0.04]">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center mx-auto mb-2">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
             </div>
             <p className="text-xs text-slate-500 uppercase tracking-wider">Luckiest</p>
             <p className="text-sm font-semibold text-white truncate mt-1">{leagueStats.luckiestTeam}</p>
           </div>
-          <div className="bg-[#131a28] rounded-lg p-4 text-center border border-white/[0.04]">
+          <div className="bg-[#141c2b] rounded-lg p-4 text-center border border-white/[0.04]">
             <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/25 flex items-center justify-center mx-auto mb-2">
               <TrendingDown className="w-4 h-4 text-rose-400" />
             </div>
@@ -285,7 +285,7 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
                 className={cn(
                   "transition-colors",
                   condensed ? "p-3 min-h-[56px]" : "p-4 min-h-[72px]",
-                  isUser ? "bg-blue-500/[0.08]" : "hover:bg-[#131a28]"
+                  isUser ? "bg-blue-500/[0.08]" : "hover:bg-[#141c2b]"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -376,7 +376,7 @@ export function LuckFactor({ leagueId, userRosterId, condensed = false, viewAllH
       {condensed && hasMore && viewAllHref && (
         <Link
           href={viewAllHref}
-          className="group flex items-center justify-center gap-1.5 py-3.5 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors hover:bg-[#131a28] border-t border-white/[0.06]"
+          className="group flex items-center justify-center gap-1.5 py-3.5 text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors hover:bg-[#141c2b] border-t border-white/[0.08]"
         >
           View All ({luckRatings.length})
           <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />

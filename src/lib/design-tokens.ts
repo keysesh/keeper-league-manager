@@ -9,20 +9,22 @@
 // ============================================
 
 export const colors = {
-  // Background colors - Deep Navy System
+  // Background colors - 4-Layer Depth System
   bg: {
-    app: "#080c14",              // Deepest - app shell
-    surface: "#0d1420",          // Cards, surfaces
-    elevated: "#131a28",         // Modals, dropdowns
-    interactive: "#1a2435",      // Hover states
-    selected: "#243044",         // Selected/active
+    app: "#06090f",              // Layer 0 — deepest, app canvas
+    surface: "#0c1219",          // Layer 1 — main cards, sections
+    elevated: "#141c2b",         // Layer 2 — modals, popovers, nested cards
+    interactive: "#1c2840",      // Layer 3 — hover/pressed states
+    selected: "#253654",         // Layer 4 — active/selected
+    inset: "#080d14",            // Recessed — sunken areas inside cards
+    cardNested: "#111822",       // Card-within-card depth
   },
 
-  // Border colors
+  // Border colors — increased contrast
   border: {
-    subtle: "rgba(255, 255, 255, 0.06)",
-    default: "rgba(255, 255, 255, 0.1)",
-    strong: "rgba(255, 255, 255, 0.15)",
+    subtle: "rgba(255, 255, 255, 0.08)",
+    default: "rgba(255, 255, 255, 0.12)",
+    strong: "rgba(255, 255, 255, 0.18)",
   },
 
   // Text hierarchy
@@ -56,6 +58,24 @@ export const colors = {
     te: "#f59e0b",               // Amber
     k: "#8b5cf6",                // Purple
     def: "#64748b",              // Slate
+  },
+
+  // Status colors — keeper management
+  status: {
+    keeper: "#3b82f6",
+    franchise: "#f59e0b",
+    traded: "#f97316",
+    available: "#64748b",
+    locked: "#a855f7",
+  },
+
+  // Performance colors — power rankings
+  performance: {
+    elite: "#fbbf24",
+    good: "#10b981",
+    average: "#3b82f6",
+    below: "#f97316",
+    poor: "#ef4444",
   },
 
   // Grade colors for power rankings
@@ -154,19 +174,20 @@ export const animation = {
 // ============================================
 
 export const card = {
-  base: "bg-[#0d1420] border border-white/[0.06] rounded-xl",
-  elevated: "bg-[#131a28] border border-white/[0.08] rounded-xl shadow-lg",
-  interactive: "bg-[#0d1420] border border-white/[0.06] rounded-xl hover:bg-[#131a28] hover:border-white/[0.1] transition-all duration-150 cursor-pointer",
-  gradient: "relative rounded-xl overflow-hidden border border-white/[0.1]",
-  feature: "relative bg-[#0d1420]/80 backdrop-blur-xl border border-white/[0.1] rounded-2xl",
+  base: "bg-[#0c1219] border border-white/[0.08] border-t-white/[0.12] rounded-xl",
+  elevated: "bg-[#141c2b] border border-white/[0.12] border-t-white/[0.18] rounded-xl shadow-lg",
+  interactive: "bg-[#0c1219] border border-white/[0.08] border-t-white/[0.12] rounded-xl hover:bg-[#141c2b] hover:border-white/[0.12] transition-all duration-150 cursor-pointer",
+  gradient: "relative rounded-xl overflow-hidden border border-white/[0.12]",
+  feature: "relative bg-[#0c1219]/85 backdrop-blur-xl border border-white/[0.12] border-t-white/[0.18] rounded-2xl",
+  nested: "bg-[#111822] border border-white/[0.08] rounded-lg",
   padding: {
     sm: "p-3",
     md: "p-4 sm:p-5",
     lg: "p-5 sm:p-6",
   },
-  header: "px-4 sm:px-5 py-4 border-b border-white/[0.06]",
+  header: "px-4 sm:px-5 py-4 border-b border-white/[0.08]",
   // Combined classes for common patterns
-  default: "bg-[#0d1420] border border-white/[0.06] rounded-xl p-4 sm:p-5",
+  default: "bg-[#0c1219] border border-white/[0.08] border-t-white/[0.12] rounded-xl p-4 sm:p-5",
 } as const;
 
 // ============================================
@@ -183,8 +204,8 @@ export const button = {
   },
   variants: {
     primary: "bg-blue-600 text-white hover:bg-blue-500 focus-visible:ring-blue-500/50 shadow-lg shadow-blue-500/25",
-    secondary: "bg-[#1a2435] text-slate-200 hover:bg-[#243044] focus-visible:ring-slate-500/50 border border-white/[0.06]",
-    ghost: "text-slate-400 hover:text-white hover:bg-[#1a2435] focus-visible:ring-slate-500/50",
+    secondary: "bg-[#1c2840] text-slate-200 hover:bg-[#253654] focus-visible:ring-slate-500/50 border border-white/[0.08]",
+    ghost: "text-slate-400 hover:text-white hover:bg-[#1c2840] focus-visible:ring-slate-500/50",
     danger: "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500/50",
     outline: "border border-blue-500/50 text-blue-400 hover:bg-blue-500/10 focus-visible:ring-blue-500/50",
     gradient: "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-500 hover:to-purple-500 shadow-lg",
@@ -196,7 +217,7 @@ export const button = {
 // ============================================
 
 export const input = {
-  base: "w-full bg-[#0d1420] border border-white/[0.1] rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all",
+  base: "w-full bg-[#0c1219] border border-white/[0.1] rounded-lg px-4 py-2.5 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all",
   error: "border-red-500/50 focus:ring-red-500/30 focus:border-red-500/50",
   sizes: {
     sm: "px-3 py-2 text-sm",
@@ -252,13 +273,13 @@ export const section = {
 export const nav = {
   item: {
     base: "flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 transition-all duration-150",
-    hover: "hover:text-slate-200 hover:bg-[#1a2435]",
-    active: "text-white bg-[#243044] border-l-2 border-blue-500",
+    hover: "hover:text-slate-200 hover:bg-[#1c2840]",
+    active: "text-white bg-[#253654] border-l-2 border-blue-500",
   },
   sectionHeader: "text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 pt-4 pb-2",
   // Mobile bottom nav
   bottomNav: {
-    container: "fixed bottom-0 inset-x-0 bg-[#0d1420] border-t border-white/[0.06] z-50",
+    container: "fixed bottom-0 inset-x-0 bg-[#0c1219] border-t border-white/[0.06] z-50",
     item: "flex flex-col items-center justify-center py-2 px-1 text-slate-500 transition-colors min-w-[64px]",
     itemActive: "text-blue-500",
     label: "text-[10px] mt-1",

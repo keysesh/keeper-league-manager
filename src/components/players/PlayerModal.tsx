@@ -241,7 +241,7 @@ export function PlayerModal({
             </div>
             <h3 className="text-sm font-semibold text-white">Keeper History</h3>
           </div>
-          <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
+          <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
             <div className="divide-y divide-white/[0.06]">
               {keeperHistory.map((entry, i) => (
                 <div key={i} className="flex items-center justify-between px-4 py-3 hover:bg-white/[0.02] transition-colors">
@@ -279,7 +279,7 @@ export function PlayerModal({
           </div>
           <div className="space-y-2">
             {tradeHistory.map((trade, i) => (
-              <div key={i} className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-all">
+              <div key={i} className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-4 hover:border-white/[0.12] transition-all">
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-xs font-medium text-slate-500 bg-white/[0.05] px-2 py-1 rounded-md">
                     {trade.date}

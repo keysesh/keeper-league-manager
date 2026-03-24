@@ -62,7 +62,7 @@ export function TeamTrophyCase({
   // Compact variant - smaller card for bento grid
   if (variant === "compact") {
     return (
-      <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl p-4", className)}>
+      <div className={cn("bg-[#0c1219] border border-white/[0.08] rounded-xl p-4", className)}>
         <div className="flex items-center gap-2 mb-3">
           <div className={cn(
             "w-6 h-6 rounded-md flex items-center justify-center",
@@ -111,8 +111,8 @@ export function TeamTrophyCase({
 
   // Full variant (default)
   return (
-    <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden", className)}>
-      <div className="px-4 sm:px-5 py-3 border-b border-white/[0.06]">
+    <div className={cn("bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden", className)}>
+      <div className="px-4 sm:px-5 py-3 border-b border-white/[0.08]">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className={cn(
             "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center",

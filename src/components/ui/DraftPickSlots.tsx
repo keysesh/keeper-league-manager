@@ -36,8 +36,8 @@ export function DraftPickSlots({ keepers, totalRounds = 8, season }: DraftPickSl
   const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
 
   return (
-    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+    <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.08]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center">
@@ -63,7 +63,7 @@ export function DraftPickSlots({ keepers, totalRounds = 8, season }: DraftPickSl
                   key={round}
                   className={cn(
                     "aspect-[3/4] rounded-lg border-2 border-dashed",
-                    "border-white/[0.1] bg-white/[0.02]",
+                    "border-white/[0.12] bg-white/[0.02]",
                     "flex flex-col items-center justify-center",
                     "text-slate-600 min-h-[90px]"
                   )}
@@ -129,7 +129,7 @@ export function DraftPickSlots({ keepers, totalRounds = 8, season }: DraftPickSl
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 pt-4 border-t border-white/[0.06]">
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mt-4 pt-4 border-t border-white/[0.08]">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30" />
             <span className="text-[10px] text-slate-500">Keeper</span>

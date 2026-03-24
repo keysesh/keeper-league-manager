@@ -86,8 +86,8 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
 
   if (isLoading) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden animate-pulse">
-        <div className="px-4 py-4 border-b border-white/[0.06]">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden animate-pulse">
+        <div className="px-4 py-4 border-b border-white/[0.08]">
           <div className="h-8 w-40 bg-white/[0.05] rounded" />
         </div>
         <div className="p-4 space-y-4">
@@ -101,7 +101,7 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
 
   if (error || !data?.championships) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-8 text-center">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-8 text-center">
         <Trophy className="w-12 h-12 text-slate-600 mx-auto mb-3" />
         <p className="text-base text-slate-400 font-medium">No championship data</p>
         <p className="text-sm text-slate-600 mt-1">Complete a season to see champions</p>
@@ -113,7 +113,7 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
 
   if (championships.length === 0) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-8 text-center">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-8 text-center">
         <Trophy className="w-12 h-12 text-slate-600 mx-auto mb-3" />
         <p className="text-base text-slate-400 font-medium">No champions yet</p>
         <p className="text-sm text-slate-600 mt-1">Crown your first champion!</p>
@@ -124,8 +124,8 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
   // Compact view for dashboard
   if (compact) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-4 sm:px-5 py-4 border-b border-white/[0.06]">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+        <div className="px-4 sm:px-5 py-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/25 to-yellow-500/15 border border-amber-400/30 shadow-lg shadow-amber-500/10 flex items-center justify-center">
               <Trophy className="w-5 h-5 text-amber-400" />
@@ -197,7 +197,7 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
         </div>
 
         {ownerStats.length > 0 && ownerStats[0].championships > 0 && (
-          <div className="p-4 border-t border-white/[0.06] bg-gradient-to-r from-amber-500/5 to-transparent">
+          <div className="p-4 border-t border-white/[0.08] bg-gradient-to-r from-amber-500/5 to-transparent">
             <div className="flex items-center gap-2 text-sm">
               <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
               <span className="text-slate-500">Dynasty:</span>
@@ -215,7 +215,7 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
     <div className="space-y-6">
       {/* Trophy Case Header */}
       <div className="bg-gradient-to-br from-[#0d1420] to-[#131a28] border border-white/[0.08] rounded-2xl overflow-hidden">
-        <div className="px-6 py-5 border-b border-white/[0.06] bg-gradient-to-r from-amber-500/10 via-transparent to-transparent">
+        <div className="px-6 py-5 border-b border-white/[0.08] bg-gradient-to-r from-amber-500/10 via-transparent to-transparent">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500/30 to-yellow-600/20 border border-amber-400/30 shadow-lg shadow-amber-500/20 flex items-center justify-center">
               <Trophy className="w-7 h-7 text-amber-400" />
@@ -316,8 +316,8 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
       </div>
 
       {/* Championship Timeline */}
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/[0.06]">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/25 to-yellow-500/15 border border-amber-400/30 shadow-lg shadow-amber-500/10 flex items-center justify-center">
               <Crown className="w-5 h-5 text-amber-400" />
@@ -386,8 +386,8 @@ export function ChampionshipHistory({ leagueId, userRosterId, compact = false }:
 
       {/* Hall of Fame */}
       {ownerStats.length > 0 && (
-        <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/[0.06]">
+        <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/[0.08]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/25 to-pink-500/15 border border-purple-400/30 shadow-lg shadow-purple-500/10 flex items-center justify-center">
                 <Star className="w-5 h-5 text-purple-400" />

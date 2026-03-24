@@ -97,7 +97,7 @@ export function TeamTradeHistory({
     const currentSeasonTrades = teamTrades.filter(t => t.season >= currentYear - 1).length;
 
     return (
-      <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl p-3", className)}>
+      <div className={cn("bg-[#0c1219] border border-white/[0.08] rounded-xl p-3", className)}>
         <div className="flex items-center gap-2 mb-2">
           <div className="w-5 h-5 rounded-md bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
             <TradeArrows className="w-3 h-3 text-blue-400" />
@@ -152,8 +152,8 @@ export function TeamTradeHistory({
   const hasMore = teamTrades.length > defaultLimit;
 
   return (
-    <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden", className)}>
-      <div className="px-3 sm:px-4 py-2.5 border-b border-white/[0.06]">
+    <div className={cn("bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden", className)}>
+      <div className="px-3 sm:px-4 py-2.5 border-b border-white/[0.08]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
@@ -167,7 +167,7 @@ export function TeamTradeHistory({
           {hasMore && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#131a28] hover:bg-[#1a2235] border border-white/[0.06] text-slate-400 hover:text-white text-[11px] font-medium transition-colors"
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#141c2b] hover:bg-[#1a2235] border border-white/[0.08] text-slate-400 hover:text-white text-[11px] font-medium transition-colors"
             >
               {expanded ? (
                 <>

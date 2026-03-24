@@ -24,36 +24,36 @@ const variantStyles: Record<StatVariant, {
   hoverGlow: string;
 }> = {
   record: {
-    gradient: "from-zinc-800/60 via-zinc-900/40 to-[#13111a]",
-    glow: "shadow-[0_0_30px_-5px_rgba(113,113,122,0.2)]",
+    gradient: "from-zinc-800/50 via-zinc-900/30 to-[#0c1219]",
+    glow: "shadow-[0_0_30px_-5px_rgba(113,113,122,0.15)]",
     accent: "text-zinc-100",
     iconBg: "bg-zinc-600/20",
     hoverGlow: "bg-zinc-500/10",
   },
   points: {
-    gradient: "from-emerald-900/30 via-emerald-950/20 to-[#13111a]",
+    gradient: "from-emerald-900/30 via-emerald-950/15 to-[#0c1219]",
     glow: "shadow-[0_0_30px_-5px_rgba(16,185,129,0.2)]",
     accent: "text-emerald-400",
     iconBg: "bg-emerald-500/15",
     hoverGlow: "bg-emerald-500/10",
   },
   keepers: {
-    gradient: "from-amber-900/30 via-amber-950/20 to-[#13111a]",
-    glow: "shadow-[0_0_30px_-5px_rgba(245,158,11,0.25)]",
+    gradient: "from-amber-900/25 via-amber-950/15 to-[#0c1219]",
+    glow: "shadow-[0_0_30px_-5px_rgba(245,158,11,0.2)]",
     accent: "text-amber-400",
     iconBg: "bg-amber-500/15",
     hoverGlow: "bg-amber-500/10",
   },
   synced: {
-    gradient: "from-purple-900/25 via-purple-950/15 to-[#13111a]",
-    glow: "shadow-[0_0_30px_-5px_rgba(168,85,247,0.2)]",
+    gradient: "from-purple-900/20 via-purple-950/10 to-[#0c1219]",
+    glow: "shadow-[0_0_30px_-5px_rgba(168,85,247,0.15)]",
     accent: "text-purple-400",
     iconBg: "bg-purple-500/15",
     hoverGlow: "bg-purple-500/10",
   },
   default: {
-    gradient: "from-zinc-800/50 via-zinc-900/30 to-[#13111a]",
-    glow: "shadow-[0_0_20px_-5px_rgba(113,113,122,0.15)]",
+    gradient: "from-zinc-800/40 via-zinc-900/20 to-[#0c1219]",
+    glow: "shadow-[0_0_20px_-5px_rgba(113,113,122,0.1)]",
     accent: "text-zinc-300",
     iconBg: "bg-zinc-600/20",
     hoverGlow: "bg-zinc-500/10",
@@ -74,52 +74,48 @@ export function StatCard({
   return (
     <div
       className={`
-        relative overflow-hidden rounded-2xl p-4
+        relative overflow-hidden rounded-2xl p-5
         bg-gradient-to-br ${styles.gradient}
-        border border-white/[0.06]
-        backdrop-blur-xl
+        border border-white/[0.08] border-t-white/[0.12]
         ${styles.glow}
-        hover:border-white/[0.12]
+        hover:border-white/[0.14]
         hover:scale-[1.02]
         transition-all duration-300 ease-out
         group
       `}
     >
-      {/* Glass overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/[0.02] pointer-events-none" />
-
       {/* Accent line at top */}
-      <div className={`absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent ${styles.accent.replace('text-', 'via-')}/20 to-transparent`} />
+      <div className={`absolute top-0 left-5 right-5 h-[1px] bg-gradient-to-r from-transparent ${styles.accent.replace('text-', 'via-')}/20 to-transparent`} />
 
       {/* Content */}
       <div className="relative z-10">
         {/* Header with icon */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-[0.08em]">
             {label}
           </span>
           {icon && (
-            <div className={`p-1.5 rounded-lg ${styles.iconBg} backdrop-blur-sm`}>
+            <div className={`p-2 rounded-lg ${styles.iconBg}`}>
               {icon}
             </div>
           )}
         </div>
 
-        {/* Main value */}
+        {/* Main value — dramatic size hierarchy */}
         <div className="flex items-end justify-between">
           <div>
-            <p className={`text-3xl font-bold tracking-tight ${styles.accent}`}>
+            <p className={`text-4xl sm:text-5xl font-extrabold tracking-tighter tabular-nums ${styles.accent}`}>
               {value}
             </p>
             {subValue && (
-              <p className="text-xs text-zinc-500 mt-1">{subValue}</p>
+              <p className="text-sm text-zinc-400 mt-1.5">{subValue}</p>
             )}
           </div>
 
           {/* Trend indicator */}
           {trend && (
             <div className={`
-              flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm
+              flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
               ${trend === "up" ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" : ""}
               ${trend === "down" ? "bg-red-500/15 text-red-400 border border-red-500/20" : ""}
               ${trend === "neutral" ? "bg-zinc-500/15 text-zinc-400 border border-zinc-500/20" : ""}

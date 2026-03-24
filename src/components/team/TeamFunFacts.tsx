@@ -19,8 +19,8 @@ export function TeamFunFacts({ facts }: TeamFunFactsProps) {
   if (facts.length === 0) return null;
 
   return (
-    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden">
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06]">
+    <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.08]">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
@@ -35,7 +35,7 @@ export function TeamFunFacts({ facts }: TeamFunFactsProps) {
             return (
               <div
                 key={index}
-                className="flex items-center gap-3 px-3 py-2.5 bg-[#131a28] rounded-lg border border-white/[0.04] hover:bg-[#1a2235] transition-colors"
+                className="flex items-center gap-3 px-3 py-2.5 bg-[#141c2b] rounded-lg border border-white/[0.04] hover:bg-[#1a2235] transition-colors"
               >
                 <div className="w-7 h-7 rounded-md bg-slate-500/10 border border-slate-500/20 flex items-center justify-center flex-shrink-0">
                   <Icon className="w-3.5 h-3.5 text-slate-400" />

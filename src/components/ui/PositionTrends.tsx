@@ -81,7 +81,7 @@ export function PositionTrends({ leagueId }: PositionTrendsProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4">
+      <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-4">
         <div className="flex items-center gap-3 mb-4">
           <Skeleton className="w-8 h-8 rounded-lg bg-white/[0.05]" />
           <Skeleton className="h-5 w-32 bg-white/[0.05]" />
@@ -110,7 +110,7 @@ export function PositionTrends({ leagueId }: PositionTrendsProps) {
   });
 
   return (
-    <div className="bg-[#0d1420] border border-white/[0.06] rounded-xl p-4">
+    <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-4">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 border border-emerald-500/25 flex items-center justify-center">
@@ -124,7 +124,7 @@ export function PositionTrends({ leagueId }: PositionTrendsProps) {
 
       {/* Horizontal Stacked Bar */}
       <div className="mb-4">
-        <div className="h-10 sm:h-12 rounded-lg overflow-hidden flex bg-[#131a28] border border-white/[0.04]">
+        <div className="h-10 sm:h-12 rounded-lg overflow-hidden flex bg-[#141c2b] border border-white/[0.04]">
           {positionData.map(({ position, color, percentage }) => {
             const isHovered = hoveredPosition === position;
             const isOtherHovered = hoveredPosition !== null && hoveredPosition !== position;

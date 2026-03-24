@@ -51,13 +51,30 @@ const activityIcons: Record<ActivityItem["type"], React.ReactNode> = {
 };
 
 const activityColors: Record<ActivityItem["type"], string> = {
-  KEEPER_ADDED: "border-l-emerald-500 bg-emerald-500/5",
-  KEEPER_REMOVED: "border-l-red-500 bg-red-500/5",
-  KEEPER_LOCKED: "border-l-amber-500 bg-amber-500/5",
-  TRADE: "border-l-blue-500 bg-blue-500/5",
-  SETTINGS_CHANGED: "border-l-purple-500 bg-purple-500/5",
-  SYNC: "border-l-gray-500 bg-gray-500/5",
+  KEEPER_ADDED: "border-l-emerald-500 bg-emerald-500/[0.04]",
+  KEEPER_REMOVED: "border-l-red-500 bg-red-500/[0.04]",
+  KEEPER_LOCKED: "border-l-amber-500 bg-amber-500/[0.04]",
+  TRADE: "border-l-blue-500 bg-blue-500/[0.04]",
+  SETTINGS_CHANGED: "border-l-purple-500 bg-purple-500/[0.04]",
+  SYNC: "border-l-gray-500 bg-gray-500/[0.03]",
 };
+
+const activityIconBg: Record<ActivityItem["type"], string> = {
+  KEEPER_ADDED: "bg-emerald-500/15",
+  KEEPER_REMOVED: "bg-red-500/15",
+  KEEPER_LOCKED: "bg-amber-500/15",
+  TRADE: "bg-blue-500/15",
+  SETTINGS_CHANGED: "bg-purple-500/15",
+  SYNC: "bg-gray-500/10",
+};
+
+function getDateKey(timestamp: string): string {
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 export default function ActivityPage() {
   const params = useParams();
@@ -164,7 +181,7 @@ export default function ActivityPage() {
               <Activity className="w-6 h-6 text-orange-400" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
                 Activity Feed
               </h1>
               <p className="text-gray-500 mt-0.5">Recent keeper and league activity</p>
@@ -216,16 +233,28 @@ export default function ActivityPage() {
         )}
       </div>
 
-      {/* Activity List */}
+      {/* Activity List with date separators */}
       <div className="space-y-3">
         {filteredActivities && filteredActivities.length > 0 ? (
-          filteredActivities.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              formatTimestamp={formatTimestamp}
-            />
-          ))
+          filteredActivities.map((activity, index) => {
+            const dateKey = getDateKey(activity.timestamp);
+            const prevDateKey = index > 0 ? getDateKey(filteredActivities[index - 1].timestamp) : null;
+            const showDateSeparator = dateKey !== prevDateKey;
+
+            return (
+              <div key={activity.id}>
+                {showDateSeparator && (
+                  <div className="activity-date-separator my-4">
+                    <span>{dateKey}</span>
+                  </div>
+                )}
+                <ActivityCard
+                  activity={activity}
+                  formatTimestamp={formatTimestamp}
+                />
+              </div>
+            );
+          })
         ) : (
           <div className="bg-gray-800/40 rounded-2xl p-8 text-center border border-gray-700/40">
             <Activity className="w-12 h-12 text-gray-600 mx-auto mb-4" />
@@ -280,12 +309,12 @@ function ActivityCard({
 
   return (
     <div
-      className={`bg-gray-800/40 rounded-xl border border-gray-700/40 border-l-4 ${
+      className={`bg-[#0c1219] rounded-xl border border-white/[0.08] border-l-4 ${
         activityColors[activity.type]
-      } p-4 transition-all hover:bg-gray-800/60`}
+      } p-4 transition-all hover:bg-[#141c2b]`}
     >
       <div className="flex items-start gap-4">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-900/50">
+        <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${activityIconBg[activity.type]}`}>
           {activityIcons[activity.type]}
         </div>
 

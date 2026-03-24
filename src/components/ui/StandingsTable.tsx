@@ -47,9 +47,9 @@ export const StandingsTable = memo(function StandingsTable({
   const maxPoints = useMemo(() => Math.max(...sorted.map((r) => r.pointsFor)), [sorted]);
 
   return (
-    <div className="rounded-xl overflow-hidden bg-[#0d1420] border border-white/[0.06]">
+    <div className="rounded-xl overflow-hidden bg-[#0c1219] border border-white/[0.08]">
       {/* Header */}
-      <div className="px-4 py-3.5 border-b border-white/[0.06] bg-[#080c14]/50">
+      <div className="px-4 py-3.5 border-b border-white/[0.08] bg-[#06090f]/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
@@ -78,7 +78,7 @@ export const StandingsTable = memo(function StandingsTable({
               className={cn(
                 "group relative flex items-center gap-3 px-4 py-3",
                 "transition-all duration-200 ease-out",
-                "hover:bg-[#131a28]",
+                "hover:bg-[#141c2b]",
                 roster.isUserRoster && "bg-blue-500/[0.06]"
               )}
             >
@@ -103,7 +103,7 @@ export const StandingsTable = memo(function StandingsTable({
                 "transition-all",
                 roster.isUserRoster
                   ? "bg-gradient-to-br from-blue-500/25 to-purple-500/20 ring-1 ring-blue-500/30"
-                  : "bg-[#131a28] ring-1 ring-white/[0.06]",
+                  : "bg-[#141c2b] ring-1 ring-white/[0.06]",
                 "group-hover:ring-white/[0.12]"
               )}>
                 {roster.owners?.[0]?.avatar ? (
@@ -193,7 +193,7 @@ export const StandingsTable = memo(function StandingsTable({
       </div>
 
       {/* Footer legend */}
-      <div className="px-4 py-2.5 border-t border-white/[0.04] bg-[#080c14]/50">
+      <div className="px-4 py-2.5 border-t border-white/[0.04] bg-[#06090f]/50">
         <div className="flex items-center justify-between text-[10px] text-slate-500">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">

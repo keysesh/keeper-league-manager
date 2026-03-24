@@ -53,7 +53,7 @@ export function TeamHistoricalStats({
 
   if (variant === "compact") {
     return (
-      <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl p-4", className)}>
+      <div className={cn("bg-[#0c1219] border border-white/[0.08] rounded-xl p-4", className)}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
@@ -91,11 +91,11 @@ export function TeamHistoricalStats({
 
           {/* Secondary stats row */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-[#131a28] rounded-lg py-2 px-3 text-center border border-white/[0.04]">
+            <div className="bg-[#141c2b] rounded-lg py-2 px-3 text-center border border-white/[0.04]">
               <div className="text-sm font-bold text-emerald-400 tabular-nums">{winRate}%</div>
               <div className="text-[9px] text-slate-500 uppercase">Win Rate</div>
             </div>
-            <div className="bg-[#131a28] rounded-lg py-2 px-3 text-center border border-white/[0.04]">
+            <div className="bg-[#141c2b] rounded-lg py-2 px-3 text-center border border-white/[0.04]">
               <div className="text-sm font-bold text-blue-400 tabular-nums">
                 {totalPoints >= 1000 ? `${(totalPoints / 1000).toFixed(1)}k` : totalPoints.toLocaleString()}
               </div>
@@ -109,8 +109,8 @@ export function TeamHistoricalStats({
 
   // Full variant (default)
   return (
-    <div className={cn("bg-[#0d1420] border border-white/[0.06] rounded-xl overflow-hidden", className)}>
-      <div className="px-4 sm:px-5 py-3 border-b border-white/[0.06]">
+    <div className={cn("bg-[#0c1219] border border-white/[0.08] rounded-xl overflow-hidden", className)}>
+      <div className="px-4 sm:px-5 py-3 border-b border-white/[0.08]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center">
@@ -138,7 +138,7 @@ export function TeamHistoricalStats({
         {/* Main stats - Large display */}
         <div className="grid grid-cols-3 gap-2 mb-3">
           {/* Record */}
-          <div className="bg-[#131a28] rounded-lg p-2.5 sm:p-3 text-center border border-white/[0.04]">
+          <div className="bg-[#141c2b] rounded-lg p-2.5 sm:p-3 text-center border border-white/[0.04]">
             <div className="text-lg sm:text-xl font-bold text-white tabular-nums">
               {allTimeRecord.wins}-{allTimeRecord.losses}
             </div>
@@ -148,7 +148,7 @@ export function TeamHistoricalStats({
           </div>
 
           {/* Win Rate */}
-          <div className="bg-[#131a28] rounded-lg p-2.5 sm:p-3 text-center border border-white/[0.04]">
+          <div className="bg-[#141c2b] rounded-lg p-2.5 sm:p-3 text-center border border-white/[0.04]">
             <div className="text-lg sm:text-xl font-bold text-emerald-400 tabular-nums">
               {winRate}%
             </div>
@@ -158,7 +158,7 @@ export function TeamHistoricalStats({
           </div>
 
           {/* Total Points */}
-          <div className="bg-[#131a28] rounded-lg p-2.5 sm:p-3 text-center border border-white/[0.04]">
+          <div className="bg-[#141c2b] rounded-lg p-2.5 sm:p-3 text-center border border-white/[0.04]">
             <div className="text-lg sm:text-xl font-bold text-blue-400 tabular-nums">
               {totalPoints >= 1000
                 ? `${(totalPoints / 1000).toFixed(1)}k`
@@ -173,18 +173,18 @@ export function TeamHistoricalStats({
         {/* Compact secondary stats */}
         <div className="grid grid-cols-3 gap-2 text-center">
           {bestSeason && (
-            <div className="px-2 py-1.5 bg-[#131a28] rounded-md border border-white/[0.04]">
+            <div className="px-2 py-1.5 bg-[#141c2b] rounded-md border border-white/[0.04]">
               <div className="text-xs font-medium text-amber-400">
                 {bestSeason.wins}-{bestSeason.losses}
               </div>
               <div className="text-[9px] text-slate-500">Best ({bestSeason.season})</div>
             </div>
           )}
-          <div className="px-2 py-1.5 bg-[#131a28] rounded-md border border-white/[0.04]">
+          <div className="px-2 py-1.5 bg-[#141c2b] rounded-md border border-white/[0.04]">
             <div className="text-xs font-medium text-white">{seasonsPlayed}</div>
             <div className="text-[9px] text-slate-500">Seasons</div>
           </div>
-          <div className="px-2 py-1.5 bg-[#131a28] rounded-md border border-white/[0.04]">
+          <div className="px-2 py-1.5 bg-[#141c2b] rounded-md border border-white/[0.04]">
             <div className="text-xs font-medium text-purple-400">
               {playoffAppearances}
               <span className="text-slate-500 ml-0.5 text-[9px]">({playoffRate}%)</span>
