@@ -134,6 +134,26 @@ interface DraftPicksData {
   }>;
 }
 
+interface CascadeKeeperResult {
+  playerId: string; // Sleeper ID
+  playerName: string;
+  finalCost: number;
+  baseCost: number;
+  cascaded: boolean;
+}
+
+interface CascadeData {
+  season: number;
+  draftRounds: number;
+  cascade: Array<{
+    rosterId: string;
+    rosterName: string | null;
+    results: CascadeKeeperResult[];
+    tradedAwayPicks: number[];
+    acquiredPicks: Array<{ round: number; fromRosterId: string }>;
+  }>;
+}
+
 // Types for recent trades endpoint
 interface TradedPlayer {
   playerId: string;
@@ -210,6 +230,14 @@ export default function TeamRosterPage() {
   const { data: draftPicksData } = useSWR<DraftPicksData>(
     `/api/leagues/${leagueId}/draft-picks`,
     fetcher
+  );
+
+  // Fetch live cascade data (same source as the main draft board)
+  // This ensures the mini draft board and main draft board always agree on finalCost
+  const { data: cascadeData } = useSWR<CascadeData>(
+    `/api/leagues/${leagueId}/keepers/cascade`,
+    fetcher,
+    { revalidateOnFocus: true }
   );
 
   // Fetch championship data for awards
@@ -585,20 +613,30 @@ export default function TeamRosterPage() {
         const thisRoster = draftPicksData.rosters.find(r => r.id === rosterId);
         if (!thisRoster?.sleeperId) return null;
 
-        // Prepare keepers data for DraftCapital
-        const keepersForCapital = currentKeepers.map(p => ({
-          id: p.existingKeeper?.id || p.player.id,
-          sleeperId: p.player.sleeperId,
-          player: {
-            fullName: p.player.fullName,
-            position: p.player.position,
-            team: p.player.team,
+        // Use live cascade results (same as main draft board) for finalCost
+        // Falls back to stored DB value if cascade hasn't loaded yet
+        const rosterCascade = cascadeData?.cascade.find(c => c.rosterId === rosterId);
+
+        const keepersForCapital = currentKeepers.map(p => {
+          // Match by Sleeper ID (cascade API returns Sleeper IDs)
+          const cascadeResult = rosterCascade?.results.find(
+            r => r.playerId === p.player.sleeperId
+          );
+
+          return {
+            id: p.existingKeeper?.id || p.player.id,
             sleeperId: p.player.sleeperId,
-          },
-          finalCost: p.existingKeeper?.finalCost || 1,
-          type: p.existingKeeper?.type || "REGULAR",
-          yearsKept: p.eligibility.consecutiveYears || 1,
-        }));
+            player: {
+              fullName: p.player.fullName,
+              position: p.player.position,
+              team: p.player.team,
+              sleeperId: p.player.sleeperId,
+            },
+            finalCost: cascadeResult?.finalCost ?? p.existingKeeper?.finalCost ?? 1,
+            type: p.existingKeeper?.type || "REGULAR",
+            yearsKept: p.eligibility.consecutiveYears || 1,
+          };
+        });
 
         // Calculate max rounds from actual draft picks (typically 16 for NFL leagues)
         const maxDraftRound = draftPicksData.picks.reduce((max, pick) => Math.max(max, pick.round), 0);
