@@ -42,12 +42,14 @@ export interface CascadeResult {
 // ============================================
 
 /**
- * FIXED: Calculate cascade/slot assignments for keepers
+ * Calculate cascade/slot assignments for keepers
  *
- * Key fixes:
+ * Key behavior:
  * 1. Properly handles traded picks - marks traded rounds as unavailable
  * 2. Respects draft pick ownership when assigning slots
- * 3. CASCADE DIRECTION: Goes UP toward BETTER rounds (lower numbers)
+ * 3. Supports MULTIPLE picks in the same round (via trades)
+ *    - If a roster owns 3x R7 picks, up to 3 keepers can sit at R7
+ * 4. CASCADE DIRECTION: Goes UP toward BETTER rounds (lower numbers)
  *    - Round 5 + Round 5 → Round 5 and Round 4
  *    - Round 8 + Round 8 + Round 8 → Round 8, Round 7, Round 6
  *    - This REWARDS teams for finding late-round value
@@ -81,7 +83,7 @@ export async function calculateCascade(
   const maxRounds = league.draftRounds || DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS;
   const minRound = DEFAULT_KEEPER_RULES.MINIMUM_ROUND; // Round 1
 
-  // FIXED: Build map of which picks each roster actually owns
+  // Build map of how many picks each roster owns per round (supports multi-pick rounds)
   const rosterOwnedPicks = await buildPickOwnershipMap(leagueId, season, league.tradedPicks, maxRounds);
 
   // Calculate base costs for all keepers
@@ -113,27 +115,30 @@ export async function calculateCascade(
     errors: [],
   };
 
-  // Track used slots per roster
-  const usedSlots = new Map<string, Set<number>>();
+  // Track used slot COUNTS per roster (round → number of times used)
+  // This allows multiple keepers in the same round when multiple picks are owned
+  const usedSlots = new Map<string, Map<number, number>>();
 
   // Process each keeper
   for (const keeper of sortedKeepers) {
     if (!usedSlots.has(keeper.rosterId)) {
-      usedSlots.set(keeper.rosterId, new Set());
+      usedSlots.set(keeper.rosterId, new Map());
     }
 
     const rosterUsedSlots = usedSlots.get(keeper.rosterId)!;
-    const ownedPicks = rosterOwnedPicks.get(keeper.rosterId) || new Set(
-      Array.from({ length: maxRounds }, (_, i) => i + 1)
-    );
+    const ownedPickCounts = rosterOwnedPicks.get(keeper.rosterId) || buildDefaultPickCounts(maxRounds);
 
     let finalCost = keeper.baseCost;
     let cascadeSteps = 0;
     const conflictsWith: string[] = [];
 
-    // Helper to check if a slot is available (owned and not used)
-    const isSlotAvailable = (round: number) =>
-      ownedPicks.has(round) && !rosterUsedSlots.has(round);
+    // Helper to check if a slot is available:
+    // owned pick count for this round > number already used
+    const isSlotAvailable = (round: number): boolean => {
+      const owned = ownedPickCounts.get(round) || 0;
+      const used = rosterUsedSlots.get(round) || 0;
+      return owned > used;
+    };
 
     // Helper to find which keeper is occupying a given round
     const findOccupyingKeeper = (round: number) =>
@@ -150,9 +155,10 @@ export async function calculateCascade(
       !isSlotAvailable(finalCost) &&
       finalCost > minRound
     ) {
-      if (!ownedPicks.has(finalCost)) {
+      const owned = ownedPickCounts.get(finalCost) || 0;
+      if (owned === 0) {
         conflictsWith.push(`Round ${finalCost} traded away`);
-      } else if (rosterUsedSlots.has(finalCost)) {
+      } else {
         const conflictingKeeper = findOccupyingKeeper(finalCost);
         if (conflictingKeeper) {
           conflictsWith.push(conflictingKeeper.playerName);
@@ -175,9 +181,10 @@ export async function calculateCascade(
         !isSlotAvailable(finalCost) &&
         finalCost <= maxRounds
       ) {
-        if (!ownedPicks.has(finalCost)) {
+        const owned = ownedPickCounts.get(finalCost) || 0;
+        if (owned === 0) {
           conflictsWith.push(`Round ${finalCost} traded away`);
-        } else if (rosterUsedSlots.has(finalCost)) {
+        } else {
           const conflictingKeeper = findOccupyingKeeper(finalCost);
           if (conflictingKeeper) {
             conflictsWith.push(conflictingKeeper.playerName);
@@ -204,8 +211,8 @@ export async function calculateCascade(
       }
     }
 
-    // Mark slot as used
-    rosterUsedSlots.add(finalCost);
+    // Mark slot as used (increment count)
+    rosterUsedSlots.set(finalCost, (rosterUsedSlots.get(finalCost) || 0) + 1);
 
     result.keepers.push({
       playerId: keeper.playerId,
@@ -238,10 +245,13 @@ export async function calculateCascade(
 }
 
 /**
- * FIXED: Build a map of which draft picks each roster actually owns
+ * Build a map of how many draft picks each roster owns per round.
  *
- * This accounts for traded picks - a roster may not own their original picks
- * and may own picks originally belonging to other rosters
+ * Returns Map<rosterId, Map<round, count>> to support teams owning
+ * multiple picks in the same round via trades.
+ *
+ * Example: If a roster owns their own R7 + traded for 2 more R7 picks,
+ * the map has round 7 → 3.
  */
 async function buildPickOwnershipMap(
   leagueId: string,
@@ -252,39 +262,51 @@ async function buildPickOwnershipMap(
     currentOwnerId: string;
   }>,
   maxRounds: number = DEFAULT_KEEPER_RULES.MAX_DRAFT_ROUNDS
-): Promise<Map<string, Set<number>>> {
+): Promise<Map<string, Map<number, number>>> {
   const rosters = await prisma.roster.findMany({
     where: { leagueId },
     select: { id: true, sleeperId: true },
   });
 
-  // Initialize: each roster owns all their original picks
-  const ownershipMap = new Map<string, Set<number>>();
+  // Initialize: each roster owns 1 pick per round
+  const ownershipMap = new Map<string, Map<number, number>>();
 
   for (const roster of rosters) {
-    const picks = new Set<number>();
+    const picks = new Map<number, number>();
     for (let round = 1; round <= maxRounds; round++) {
-      picks.add(round);
+      picks.set(round, 1);
     }
     ownershipMap.set(roster.id, picks);
   }
 
-  // Process traded picks
+  // Process traded picks: decrement original owner, increment current owner
   for (const trade of tradedPicks) {
-    // Find roster by sleeper ID
     const originalRoster = rosters.find((r) => r.sleeperId === trade.originalOwnerId);
     const currentRoster = rosters.find((r) => r.sleeperId === trade.currentOwnerId);
 
     if (originalRoster && currentRoster && originalRoster.id !== currentRoster.id) {
       // Remove pick from original owner
-      ownershipMap.get(originalRoster.id)?.delete(trade.round);
+      const origPicks = ownershipMap.get(originalRoster.id)!;
+      origPicks.set(trade.round, Math.max(0, (origPicks.get(trade.round) || 0) - 1));
 
       // Add pick to current owner
-      ownershipMap.get(currentRoster.id)?.add(trade.round);
+      const currPicks = ownershipMap.get(currentRoster.id)!;
+      currPicks.set(trade.round, (currPicks.get(trade.round) || 0) + 1);
     }
   }
 
   return ownershipMap;
+}
+
+/**
+ * Helper: build default pick counts (1 per round) for rosters not in the ownership map
+ */
+function buildDefaultPickCounts(maxRounds: number): Map<number, number> {
+  const picks = new Map<number, number>();
+  for (let round = 1; round <= maxRounds; round++) {
+    picks.set(round, 1);
+  }
+  return picks;
 }
 
 /**
@@ -325,7 +347,7 @@ export async function recalculateAndApplyCascade(
         rosterId: k.rosterId,
         playerName: k.player.fullName,
         type: k.type as "FRANCHISE" | "REGULAR",
-        baseCostOverride: (k as any).baseCostOverride ?? null,
+        baseCostOverride: k.baseCostOverride ?? null,
       }));
 
     if (keeperInputs.length === 0) {
@@ -494,7 +516,7 @@ export async function getDraftBoardWithKeepers(
       roster.teamMembers[0]?.user.displayName ||
       `Team ${roster.sleeperId}`;
 
-    const ownedPicks = ownershipMap.get(roster.id) || new Set<number>();
+    const ownedPickCounts = ownershipMap.get(roster.id) || new Map<number, number>();
 
     const slots = Array.from({ length: maxRounds }, (_, i) => {
       const round = i + 1;
@@ -514,7 +536,7 @@ export async function getDraftBoardWithKeepers(
       return {
         round,
         keeper: keeper || null,
-        isOwned: ownedPicks.has(round),
+        isOwned: (ownedPickCounts.get(round) || 0) > 0,
         tradedTo: newOwner?.teamName || undefined,
       };
     });

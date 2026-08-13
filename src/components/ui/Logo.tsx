@@ -28,84 +28,30 @@ export function Logo({ size = "md", className = "", showText = false }: LogoProp
           xmlns="http://www.w3.org/2000/svg"
           style={{ width: dimension, height: dimension }}
         >
-          {/* E Pluribus Unum - "Out of Many, One"
-              Converging lines design: Multiple elements from different directions
-              all meeting at a central point, symbolizing unity */}
-
-          {/* Background glow effect */}
-          <defs>
-            <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="white" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="white" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-
-          {/* Central glow */}
-          <circle cx="24" cy="24" r="8" fill="url(#centerGlow)" />
-
-          {/* Converging lines from 6 directions */}
-          {/* Top line */}
+          {/* Shield — "Keeper" / protection motif */}
           <path
-            d="M24 6 L24 18"
+            d="M24 4 L40 13 L40 26 C40 35 24 44 24 44 C24 44 8 35 8 26 L8 13 Z"
             stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.95"
-          />
-          {/* Top-right line */}
-          <path
-            d="M36.5 11.5 L28.2 19.8"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.9"
-          />
-          {/* Bottom-right line */}
-          <path
-            d="M36.5 36.5 L28.2 28.2"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.85"
-          />
-          {/* Bottom line */}
-          <path
-            d="M24 42 L24 30"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.9"
-          />
-          {/* Bottom-left line */}
-          <path
-            d="M11.5 36.5 L19.8 28.2"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.85"
-          />
-          {/* Top-left line */}
-          <path
-            d="M11.5 11.5 L19.8 19.8"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.9"
-          />
-
-          {/* Central unity point - star/diamond shape */}
-          <path
-            d="M24 18 L28 24 L24 30 L20 24 Z"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
             fill="white"
-            opacity="1"
+            fillOpacity="0.08"
           />
 
-          {/* Inner highlight for depth */}
+          {/* Crown inside shield top — franchise / royalty */}
           <path
-            d="M24 20 L26 24 L24 28 L22 24 Z"
-            fill="white"
-            opacity="0.6"
+            d="M16 19 L20 14 L24 18 L28 14 L32 19"
+            stroke="white"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
           />
+
+          {/* Roster lines — player list / management */}
+          <line x1="15" y1="25" x2="33" y2="25" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.85" />
+          <line x1="16.5" y1="30" x2="31.5" y2="30" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.55" />
+          <line x1="18.5" y1="35" x2="29.5" y2="35" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.35" />
         </svg>
       </div>
       {showText && (
@@ -126,7 +72,7 @@ export function LogoFull({ size = "md", className = "" }: Omit<LogoProps, "showT
   return <Logo size={size} className={className} showText={true} />;
 }
 
-// E Pluribus logo variant - Standalone component for login page
+// E Pluribus logo variant — Standalone component for login page
 export function EPluribusLogo({ size = "md" }: { size: "sm" | "md" | "lg" | "xl" }) {
   const sizes = { sm: 32, md: 48, lg: 64, xl: 80 };
   const dimension = sizes[size];
@@ -143,29 +89,30 @@ export function EPluribusLogo({ size = "md" }: { size: "sm" | "md" | "lg" | "xl"
           xmlns="http://www.w3.org/2000/svg"
           style={{ width: dimension, height: dimension }}
         >
-          {/* E Pluribus Unum - Converging lines to unity */}
+          {/* Shield — larger variant for login page */}
+          <path
+            d="M24 3 L41 12.5 L41 26.5 C41 36 24 45 24 45 C24 45 7 36 7 26.5 L7 12.5 Z"
+            stroke="white"
+            strokeWidth="2.8"
+            strokeLinejoin="round"
+            fill="white"
+            fillOpacity="0.1"
+          />
 
-          <defs>
-            <radialGradient id="centerGlowLarge" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="white" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="white" stopOpacity="0" />
-            </radialGradient>
-          </defs>
+          {/* Crown — bolder for large variant */}
+          <path
+            d="M15 19.5 L19.5 14 L24 18.5 L28.5 14 L33 19.5"
+            stroke="white"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
 
-          {/* Central glow */}
-          <circle cx="24" cy="24" r="10" fill="url(#centerGlowLarge)" />
-
-          {/* Converging lines from 6 directions */}
-          <path d="M24 4 L24 17" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.95" />
-          <path d="M38 10 L29 19" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.9" />
-          <path d="M38 38 L29 29" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
-          <path d="M24 44 L24 31" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.9" />
-          <path d="M10 38 L19 29" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />
-          <path d="M10 10 L19 19" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.9" />
-
-          {/* Central unity diamond */}
-          <path d="M24 17 L29 24 L24 31 L19 24 Z" fill="white" />
-          <path d="M24 19 L27 24 L24 29 L21 24 Z" fill="white" opacity="0.5" />
+          {/* Roster lines */}
+          <line x1="14.5" y1="25.5" x2="33.5" y2="25.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" opacity="0.85" />
+          <line x1="16" y1="30.5" x2="32" y2="30.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" opacity="0.6" />
+          <line x1="18" y1="35.5" x2="30" y2="35.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" opacity="0.38" />
         </svg>
       </div>
     </div>
