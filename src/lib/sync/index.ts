@@ -176,6 +176,37 @@ const handleSyncDrafts: SyncHandler = async (context, body) => {
  * Update Keepers - Recalculate keeper records from DB (5-15s)
  * Use case: Fix keeper eligibility/costs
  */
+/**
+ * Refresh-planning — the composite behind the "Refresh from Sleeper" button.
+ * One request, atomic freshness semantics (see syncService.refreshPlanning).
+ */
+const handleRefreshPlanning: SyncHandler = async (context, body) => {
+  const { leagueId } = body;
+
+  if (!leagueId || typeof leagueId !== "string") {
+    return createSyncError("leagueId is required for refresh-planning", 400);
+  }
+
+  try {
+    const result = await syncService.refreshPlanning(leagueId, context.userId);
+    return createSyncResponse({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "League not found") {
+        return createSyncError("League not found", 404);
+      }
+      if (error.message.includes("access")) {
+        return createSyncError(error.message, 403);
+      }
+    }
+    throw error;
+  }
+};
+
 const handleUpdateKeepers: SyncHandler = async (context, body) => {
   const { leagueId, includeHistory = true } = body;
 
@@ -252,6 +283,7 @@ const actionHandlers: Record<string, SyncHandler> = {
   "sync-history": handleSyncHistory,
   "sync-drafts": handleSyncDrafts,
   "update-keepers": handleUpdateKeepers,
+  "refresh-planning": handleRefreshPlanning,
   "sync-players": handleSyncPlayers,
 
   // ============================================

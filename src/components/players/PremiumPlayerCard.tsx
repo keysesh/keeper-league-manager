@@ -314,7 +314,15 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
             <div>
               <div className="text-[8px] sm:text-[9px] text-gray-500 uppercase">Cost</div>
               <div className="text-[10px] sm:text-[11px] font-semibold text-blue-400">
-                {isKeeper ? `R${existingKeeper.finalCost}` : costs?.regular ? `R${costs.regular.finalCost}` : "R1 (FT)"}
+                {/* FT cost uses the same formula as regular (no year limit) —
+                    never claim a hardcoded R1 */}
+                {isKeeper
+                  ? `R${existingKeeper.finalCost}`
+                  : costs?.regular
+                    ? `R${costs.regular.finalCost}`
+                    : costs?.franchise
+                      ? `R${costs.franchise.finalCost} (FT)`
+                      : "—"}
               </div>
             </div>
           </div>

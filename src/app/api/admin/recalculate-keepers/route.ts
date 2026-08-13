@@ -141,6 +141,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Admin-only: this recalculates keeper records across leagues.
+    // (Was the only /api/admin route missing this check.)
+    const adminUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isAdmin: true },
+    });
+
+    if (!adminUser?.isAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Apply rate limiting
     const rateLimit = await checkRateLimit(session.user.id, RATE_LIMITS.admin);
     if (!rateLimit.success) {

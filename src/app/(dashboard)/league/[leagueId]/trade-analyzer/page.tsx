@@ -8,7 +8,12 @@ import { PlayerAvatar } from "@/components/players/PlayerAvatar";
 import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import { AgeBadge } from "@/components/ui/AgeBadge";
-import { Share2, Save, FileText, Check, Copy, X, ArrowLeftRight } from "lucide-react";
+import { Share2, Save, FileText, Check, Copy, X, ArrowLeftRight, Plus, Scale } from "lucide-react";
+import { TradeAssetSheet } from "@/components/trade/TradeAssetSheet";
+import {
+  getKeeperPlanningSeason,
+  isCurrentlyAfterTradeDeadline,
+} from "@/lib/constants/keeper-rules";
 
 interface Player {
   id: string;
@@ -24,6 +29,7 @@ interface Roster {
   id: string;
   teamName: string | null;
   sleeperId: string;
+  isUserRoster?: boolean;
 }
 
 interface DraftPickOwnership {
@@ -170,7 +176,10 @@ export default function TradeAnalyzerPage() {
   const [draftPicks, setDraftPicks] = useState<DraftPickOwnership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const planningSeason = new Date().getFullYear() + (new Date().getMonth() >= 8 ? 1 : 0); // 2026 if Sept-Dec
+  const planningSeason = getKeeperPlanningSeason();
+  // Does a trade executed today reset years kept? Derived from real deadline
+  // math, not assumed — pre-deadline in-season trades preserve keeper value.
+  const tradeResetsKeeperValue = isCurrentlyAfterTradeDeadline();
 
   // Trade builder state
   const [team1, setTeam1] = useState<string>("");
@@ -186,6 +195,12 @@ export default function TradeAnalyzerPage() {
 
   // Schedule data for bye weeks
   const [byeWeeks, setByeWeeks] = useState<Record<string, number>>({});
+
+  // Player picker sheet (which side it's adding to)
+  const [assetSheetSide, setAssetSheetSide] = useState<"team1" | "team2" | null>(null);
+
+  // Verdict copy state
+  const [verdictCopied, setVerdictCopied] = useState(false);
 
   // Save/Share state
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -216,12 +231,21 @@ export default function TradeAnalyzerPage() {
       }
 
       // Build roster list
-      const rosterList = rostersData.rosters.map((r: { id: string; teamName: string | null; sleeperId: string }) => ({
-        id: r.id,
-        teamName: r.teamName,
-        sleeperId: r.sleeperId,
-      }));
+      const rosterList = rostersData.rosters.map(
+        (r: { id: string; teamName: string | null; sleeperId: string; isUserRoster?: boolean }) => ({
+          id: r.id,
+          teamName: r.teamName,
+          sleeperId: r.sleeperId,
+          isUserRoster: r.isUserRoster ?? false,
+        })
+      );
       setRosters(rosterList);
+
+      // Default side 1 to the viewer's own team — most trades start "my team vs…"
+      const mine = rosterList.find((r: Roster) => r.isUserRoster);
+      if (mine) {
+        setTeam1((prev) => prev || mine.id);
+      }
 
       // Build player map from the rosters response
       const playerMap = new Map<string, Player[]>();
@@ -487,22 +511,25 @@ export default function TradeAnalyzerPage() {
         </div>
       </div>
 
-      {/* Offseason Banner - Always show since we're past trade deadline */}
-      <div className="rounded-md p-4 border bg-amber-500/5 border-amber-500/20">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-amber-400 text-sm">!</span>
-          </div>
-          <div>
-            <p className="font-medium text-amber-400 text-sm">
-              Offseason Period - Years Kept Will Reset
-            </p>
-            <p className="text-gray-500 text-sm">
-              Any trade now until draft day will reset years kept to 0 for traded players. Draft round is always preserved.
-            </p>
+      {/* Deadline-rule banner — only rendered when the reset rule actually
+          applies to a trade made today (post-deadline / offseason). */}
+      {tradeResetsKeeperValue && (
+        <div className="rounded-md p-4 border bg-amber-500/5 border-amber-500/20">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-amber-400 text-sm">!</span>
+            </div>
+            <div>
+              <p className="font-medium text-amber-400 text-sm">
+                Past Trade Deadline - Years Kept Will Reset
+              </p>
+              <p className="text-gray-500 text-sm">
+                A trade made now (until draft day) resets years kept to 0 for traded players. Draft round is always preserved.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Team Selection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -553,42 +580,35 @@ export default function TradeAnalyzerPage() {
                     <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
                     Players
                   </h3>
-                  <div className="space-y-1 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
-                    {team1PlayerList.map((player) => (
-                      <label
-                        key={player.id}
-                        className={`flex items-center gap-2.5 p-2 rounded-md cursor-pointer transition-colors ${
-                          team1Players.includes(player.id)
-                            ? "bg-blue-500/10 border border-blue-500/30"
-                            : "bg-[#1a1a1a] border border-transparent hover:bg-[#222] hover:border-[#333]"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={team1Players.includes(player.id)}
-                          onChange={() => togglePlayer(player.id, "team1")}
-                          className="hidden"
-                        />
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                          team1Players.includes(player.id)
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'border-gray-600 bg-transparent'
-                        }`}>
-                          {team1Players.includes(player.id) && (
-                            <Check className="w-2.5 h-2.5 text-white" />
-                          )}
-                        </div>
-                        <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
-                        <PositionBadge position={player.position} size="xs" />
-                        <span className="text-white font-medium flex-1 text-sm truncate">{player.fullName}</span>
-                        {player.injuryStatus && player.injuryStatus !== "Active" && (
-                          <span className="text-red-400 text-[10px] font-medium px-1.5 py-0.5 bg-red-500/10 rounded">
-                            {player.injuryStatus.slice(0, 3).toUpperCase()}
-                          </span>
-                        )}
-                        <span className="text-gray-500 text-xs">{player.team || 'FA'}</span>
-                      </label>
-                    ))}
+                  {/* Selected players as chips — picking happens in a sheet (no nested scrolling) */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {team1Players.map((playerId) => {
+                      const player = team1PlayerList.find((p) => p.id === playerId);
+                      if (!player) return null;
+                      return (
+                        <span
+                          key={playerId}
+                          className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-1 bg-blue-500/10 border border-blue-500/25 rounded-lg text-sm text-white"
+                        >
+                          <PositionBadge position={player.position} size="xs" />
+                          <span className="font-medium">{player.fullName}</span>
+                          <button
+                            onClick={() => togglePlayer(playerId, "team1")}
+                            className="flex items-center justify-center w-6 h-6 rounded text-gray-500 hover:text-red-400 transition-colors"
+                            aria-label={`Remove ${player.fullName}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                    <button
+                      onClick={() => setAssetSheetSide("team1")}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] bg-[#1a1a1a] hover:bg-[#222] border border-dashed border-[#3a3a3a] hover:border-blue-500/40 rounded-lg text-sm text-gray-400 hover:text-blue-400 font-medium transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add players
+                    </button>
                   </div>
                 </div>
 
@@ -697,42 +717,35 @@ export default function TradeAnalyzerPage() {
                     <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
                     Players
                   </h3>
-                  <div className="space-y-1 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
-                    {team2PlayerList.map((player) => (
-                      <label
-                        key={player.id}
-                        className={`flex items-center gap-2.5 p-2 rounded-md cursor-pointer transition-colors ${
-                          team2Players.includes(player.id)
-                            ? "bg-blue-500/10 border border-blue-500/30"
-                            : "bg-[#1a1a1a] border border-transparent hover:bg-[#222] hover:border-[#333]"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={team2Players.includes(player.id)}
-                          onChange={() => togglePlayer(player.id, "team2")}
-                          className="hidden"
-                        />
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                          team2Players.includes(player.id)
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'border-gray-600 bg-transparent'
-                        }`}>
-                          {team2Players.includes(player.id) && (
-                            <Check className="w-2.5 h-2.5 text-white" />
-                          )}
-                        </div>
-                        <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="sm" />
-                        <PositionBadge position={player.position} size="xs" />
-                        <span className="text-white font-medium flex-1 text-sm truncate">{player.fullName}</span>
-                        {player.injuryStatus && player.injuryStatus !== "Active" && (
-                          <span className="text-red-400 text-[10px] font-medium px-1.5 py-0.5 bg-red-500/10 rounded">
-                            {player.injuryStatus.slice(0, 3).toUpperCase()}
-                          </span>
-                        )}
-                        <span className="text-gray-500 text-xs">{player.team || 'FA'}</span>
-                      </label>
-                    ))}
+                  {/* Selected players as chips — picking happens in a sheet (no nested scrolling) */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {team2Players.map((playerId) => {
+                      const player = team2PlayerList.find((p) => p.id === playerId);
+                      if (!player) return null;
+                      return (
+                        <span
+                          key={playerId}
+                          className="inline-flex items-center gap-1.5 pl-1.5 pr-1 py-1 bg-blue-500/10 border border-blue-500/25 rounded-lg text-sm text-white"
+                        >
+                          <PositionBadge position={player.position} size="xs" />
+                          <span className="font-medium">{player.fullName}</span>
+                          <button
+                            onClick={() => togglePlayer(playerId, "team2")}
+                            className="flex items-center justify-center w-6 h-6 rounded text-gray-500 hover:text-red-400 transition-colors"
+                            aria-label={`Remove ${player.fullName}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                    <button
+                      onClick={() => setAssetSheetSide("team2")}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] bg-[#1a1a1a] hover:bg-[#222] border border-dashed border-[#3a3a3a] hover:border-blue-500/40 rounded-lg text-sm text-gray-400 hover:text-blue-400 font-medium transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add players
+                    </button>
                   </div>
                 </div>
 
@@ -937,6 +950,128 @@ export default function TradeAnalyzerPage() {
       {/* Analysis Results */}
       {analysis && analysis.success && (
         <>
+          {/* VERDICT FIRST — the answer, before the detail */}
+          {(() => {
+            const totalGiven =
+              analysis.team1.totalValueGiven + analysis.team2.totalValueGiven;
+            const ratio = totalGiven > 0 ? Math.abs(analysis.team1.netValue) / totalGiven : 0;
+            const favored =
+              analysis.team1.netValue > 0
+                ? analysis.team1
+                : analysis.team2.netValue > 0
+                  ? analysis.team2
+                  : null;
+            const verdictText =
+              ratio < 0.05 || !favored
+                ? "Even trade"
+                : ratio < 0.15
+                  ? `Slightly favors ${favored.rosterName}`
+                  : `Favors ${favored.rosterName}`;
+            const verdictTone =
+              ratio < 0.05 || !favored ? "even" : ratio < 0.15 ? "slight" : "strong";
+
+            const copyVerdict = async () => {
+              const lines = [
+                `Trade analysis (${planningSeason}):`,
+                `${analysis.team1.rosterName} sends: ${[
+                  ...analysis.team1.tradingAway.map((p) => p.playerName),
+                  ...analysis.team1.picksGiven.map((p) => `R${p.round} pick`),
+                ].join(", ") || "nothing"}`,
+                `${analysis.team2.rosterName} sends: ${[
+                  ...analysis.team2.tradingAway.map((p) => p.playerName),
+                  ...analysis.team2.picksGiven.map((p) => `R${p.round} pick`),
+                ].join(", ") || "nothing"}`,
+                `Verdict: ${verdictText}`,
+                `Keeper slots: ${analysis.team1.rosterName} ${analysis.team1.keeperSlotsBefore}→${analysis.team1.keeperSlotsAfter}/${analysis.team1.keeperSlotsMax}, ${analysis.team2.rosterName} ${analysis.team2.keeperSlotsBefore}→${analysis.team2.keeperSlotsAfter}/${analysis.team2.keeperSlotsMax}`,
+              ];
+              try {
+                await navigator.clipboard.writeText(lines.join("\n"));
+                setVerdictCopied(true);
+                setTimeout(() => setVerdictCopied(false), 2000);
+              } catch {
+                // Clipboard unavailable
+              }
+            };
+
+            return (
+              <div
+                className={`rounded-lg border p-4 sm:p-5 ${
+                  verdictTone === "even"
+                    ? "bg-emerald-500/5 border-emerald-500/25"
+                    : verdictTone === "slight"
+                      ? "bg-blue-500/5 border-blue-500/25"
+                      : "bg-amber-500/5 border-amber-500/25"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0 ${
+                      verdictTone === "even"
+                        ? "bg-emerald-500/10 text-emerald-400"
+                        : verdictTone === "slight"
+                          ? "bg-blue-500/10 text-blue-400"
+                          : "bg-amber-500/10 text-amber-400"
+                    }`}
+                  >
+                    <Scale className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-lg font-bold ${
+                        verdictTone === "even"
+                          ? "text-emerald-400"
+                          : verdictTone === "slight"
+                            ? "text-blue-400"
+                            : "text-amber-400"
+                      }`}
+                    >
+                      {verdictText}
+                    </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-400">
+                      <span>
+                        {analysis.team1.rosterName}:{" "}
+                        <span className={analysis.team1.netValue >= 0 ? "text-emerald-400" : "text-red-400"}>
+                          {analysis.team1.netValue >= 0 ? "+" : ""}
+                          {analysis.team1.netValue.toFixed(0)} value
+                        </span>
+                        {" · keepers "}
+                        {analysis.team1.keeperSlotsBefore}→{analysis.team1.keeperSlotsAfter}
+                      </span>
+                      <span>
+                        {analysis.team2.rosterName}:{" "}
+                        <span className={analysis.team2.netValue >= 0 ? "text-emerald-400" : "text-red-400"}>
+                          {analysis.team2.netValue >= 0 ? "+" : ""}
+                          {analysis.team2.netValue.toFixed(0)} value
+                        </span>
+                        {" · keepers "}
+                        {analysis.team2.keeperSlotsBefore}→{analysis.team2.keeperSlotsAfter}
+                      </span>
+                    </div>
+                    {analysis.summary.facts.length > 0 && (
+                      <ul className="mt-2 space-y-0.5">
+                        {analysis.summary.facts.slice(0, 4).map((fact, i) => (
+                          <li key={i} className="text-sm text-gray-500">
+                            • {fact.description}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="mt-2 text-xs text-gray-600">
+                      To execute this trade, send it in Sleeper — this analysis is decision support.
+                    </p>
+                  </div>
+                  <button
+                    onClick={copyVerdict}
+                    className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] rounded-md text-xs text-gray-300 hover:text-white font-medium transition-colors flex-shrink-0"
+                  >
+                    {verdictCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {verdictCopied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Player Cards - Side by Side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Team 1 Card */}
@@ -1056,6 +1191,20 @@ export default function TradeAnalyzerPage() {
         </>
       )}
 
+      {/* Player picker sheet — search + position filters, no nested scrolling.
+          Keyed by side so each open starts with fresh search/filter state
+          (otherwise a search from one team's sheet hides the other's players). */}
+      <TradeAssetSheet
+        key={assetSheetSide ?? "closed"}
+        isOpen={assetSheetSide !== null}
+        onClose={() => setAssetSheetSide(null)}
+        teamName={
+          (assetSheetSide === "team1" ? team1Roster?.teamName : team2Roster?.teamName) || "Team"
+        }
+        players={assetSheetSide === "team1" ? team1PlayerList : team2PlayerList}
+        selectedIds={assetSheetSide === "team1" ? team1Players : team2Players}
+        onToggle={(playerId) => togglePlayer(playerId, assetSheetSide === "team1" ? "team1" : "team2")}
+      />
     </div>
   );
 }

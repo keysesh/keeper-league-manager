@@ -6,6 +6,7 @@ import {
   isOffseason,
   isDraftSeason,
   isTradeAfterDeadline,
+  isCurrentlyAfterTradeDeadline,
 } from "./keeper-rules";
 
 describe("DEFAULT_KEEPER_RULES", () => {
@@ -170,5 +171,35 @@ describe("isTradeAfterDeadline", () => {
     // Trade on November 10 2024 for 2024 season (before deadline ~Nov 16)
     const tradeDate = new Date("2024-11-10");
     expect(isTradeAfterDeadline(tradeDate, 2024)).toBe(false);
+  });
+});
+
+describe("isCurrentlyAfterTradeDeadline", () => {
+  it("returns false in October (in-season, before deadline)", () => {
+    expect(isCurrentlyAfterTradeDeadline(new Date("2026-10-15"))).toBe(false);
+  });
+
+  it("returns true in December (in-season, after deadline)", () => {
+    expect(isCurrentlyAfterTradeDeadline(new Date("2026-12-10"))).toBe(true);
+  });
+
+  it("returns true in January (offseason vs previous season)", () => {
+    expect(isCurrentlyAfterTradeDeadline(new Date("2027-01-15"))).toBe(true);
+  });
+
+  it("returns true in March (offseason)", () => {
+    expect(isCurrentlyAfterTradeDeadline(new Date("2027-03-20"))).toBe(true);
+  });
+
+  it("returns true in August (offseason, pre-draft)", () => {
+    expect(isCurrentlyAfterTradeDeadline(new Date("2026-08-13"))).toBe(true);
+  });
+
+  it("returns false in early September (new season, pre-deadline)", () => {
+    expect(isCurrentlyAfterTradeDeadline(new Date("2026-09-20"))).toBe(false);
+  });
+
+  it("returns false in early November right before the deadline", () => {
+    expect(isCurrentlyAfterTradeDeadline(new Date("2026-11-01"))).toBe(false);
   });
 });

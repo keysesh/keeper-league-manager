@@ -192,7 +192,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                               ))}
                               {partyA.picksGiven.map((pick, i) => (
                                 <div key={i} className="inline-flex text-[10px] text-slate-400 px-1.5 py-0.5 rounded bg-white/[0.04]">
-                                  '{String(pick.season).slice(-2)} R{pick.round}
+                                  &apos;{String(pick.season).slice(-2)} R{pick.round}
                                 </div>
                               ))}
                               {partyA.playersGiven.length === 0 && partyA.picksGiven.length === 0 && (
@@ -221,7 +221,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                               ))}
                               {partyB.picksGiven.map((pick, i) => (
                                 <div key={i} className="inline-flex text-[10px] text-slate-400 px-1.5 py-0.5 rounded bg-white/[0.04]">
-                                  '{String(pick.season).slice(-2)} R{pick.round}
+                                  &apos;{String(pick.season).slice(-2)} R{pick.round}
                                 </div>
                               ))}
                               {partyB.playersGiven.length === 0 && partyB.picksGiven.length === 0 && (
@@ -274,7 +274,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                                     ))}
                                     {party.picksGiven.map((pick, i) => (
                                       <span key={i} className="text-[9px] text-red-300/70 px-1 py-0.5 rounded bg-red-500/10">
-                                        '{String(pick.season).slice(-2)} R{pick.round}
+                                        &apos;{String(pick.season).slice(-2)} R{pick.round}
                                       </span>
                                     ))}
                                   </>
@@ -291,7 +291,7 @@ export function TradeHistory({ trades, highlightRosterId }: TradeHistoryProps) {
                                     ))}
                                     {party.picksReceived.map((pick, i) => (
                                       <span key={i} className="text-[9px] text-emerald-300/70 px-1 py-0.5 rounded bg-emerald-500/10">
-                                        '{String(pick.season).slice(-2)} R{pick.round}
+                                        &apos;{String(pick.season).slice(-2)} R{pick.round}
                                       </span>
                                     ))}
                                   </>

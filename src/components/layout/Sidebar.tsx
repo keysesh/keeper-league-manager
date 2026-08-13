@@ -2,39 +2,25 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import {
-  LayoutDashboard,
-  LayoutGrid,
-  ArrowLeftRight,
-  Users,
-  Settings,
-  type LucideIcon,
-  Home,
-  ChevronLeft,
-  Shield,
-  UserCircle,
-  Activity,
-  FileText,
-  Bookmark,
-} from "lucide-react";
+import { ChevronLeft, Shield } from "lucide-react";
 import { cn } from "@/lib/design-tokens";
-
-interface NavItem {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-  badge?: number;
-}
-
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
+import {
+  getLeagueTabs,
+  getLeagueSecondary,
+  getDashboardNav,
+  isNavItemActive,
+  type NavItem,
+  type NavSection,
+} from "@/lib/navigation";
 
 interface SidebarProps {
   isAdmin?: boolean;
 }
 
+/**
+ * Desktop sidebar — renders the same IA as the mobile bottom bar
+ * (lib/navigation.ts), so names, icons and destinations cannot drift.
+ */
 export function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
   const params = useParams();
@@ -42,86 +28,27 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
   const isLeaguePage = pathname.includes("/league/") && leagueId;
 
-  // Dashboard navigation (when not in a league)
-  const dashboardSections: NavSection[] = [
-    {
-      title: "Overview",
-      items: [
-        { name: "My Leagues", href: "/leagues", icon: LayoutDashboard },
-        { name: "My Profile", href: "/profile", icon: UserCircle },
-      ],
-    },
-    ...(isAdmin
-      ? [
-          {
-            title: "Admin",
-            items: [{ name: "Admin Panel", href: "/admin", icon: Shield }],
-          },
-        ]
-      : []),
-  ];
-
-  // League navigation (when inside a league)
-  const leagueSections: NavSection[] = leagueId
+  const sections: NavSection[] = isLeaguePage
     ? [
-        {
-          title: "Overview",
-          items: [{ name: "Dashboard", href: `/league/${leagueId}`, icon: Home }],
-        },
-        {
-          title: "My Team",
-          items: [
-            { name: "Roster", href: `/league/${leagueId}/my-team`, icon: UserCircle },
-            { name: "Keepers", href: `/league/${leagueId}/my-team#keepers`, icon: Bookmark },
-            { name: "Draft Board", href: `/league/${leagueId}/draft-board`, icon: LayoutGrid },
-          ],
-        },
-        {
-          title: "League",
-          items: [
-            { name: "All Teams", href: `/league/${leagueId}/team`, icon: Users },
-          ],
-        },
-        {
-          title: "Activity",
-          items: [
-            { name: "Trade Center", href: `/league/${leagueId}/trade-analyzer`, icon: ArrowLeftRight },
-            { name: "Trade Proposals", href: `/league/${leagueId}/trade-proposals`, icon: FileText },
-            { name: "Recent Activity", href: `/league/${leagueId}/activity`, icon: Activity },
-          ],
-        },
-        {
-          title: "Settings",
-          items: [
-            { name: "League Settings", href: `/league/${leagueId}/settings`, icon: Settings },
-            ...(isAdmin ? [{ name: "Admin Panel", href: "/admin", icon: Shield }] : []),
-          ],
-        },
+        { title: "Plan", items: getLeagueTabs(leagueId!) },
+        { title: "League", items: getLeagueSecondary(leagueId!) },
+        ...(isAdmin
+          ? [
+              {
+                title: "Admin",
+                items: [
+                  {
+                    name: "Admin Panel",
+                    href: "/admin",
+                    icon: Shield,
+                    activePrefixes: ["/admin"],
+                  } as NavItem,
+                ],
+              },
+            ]
+          : []),
       ]
-    : [];
-
-  const sections = isLeaguePage ? leagueSections : dashboardSections;
-
-  const isActiveLink = (href: string) => {
-    if (pathname === href) return true;
-
-    // Handle hash links
-    if (href.includes("#")) {
-      const basePath = href.split("#")[0];
-      return pathname === basePath;
-    }
-
-    // Check if pathname starts with href
-    if (href !== "/" && pathname.startsWith(href)) {
-      // Special case: /team route should only match exact
-      if (href.endsWith("/team")) {
-        return pathname === href || pathname === href + "/";
-      }
-      return true;
-    }
-
-    return false;
-  };
+    : getDashboardNav(isAdmin);
 
   return (
     <aside
@@ -154,7 +81,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
             {/* Section Items */}
             <div className="space-y-0.5">
               {section.items.map((item) => {
-                const isActive = isActiveLink(item.href);
+                const isActive = isNavItemActive(item, pathname);
                 const Icon = item.icon;
 
                 return (
@@ -180,11 +107,6 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
                       )}
                     />
                     <span className="flex-1 truncate">{item.name}</span>
-                    {item.badge && item.badge > 0 && (
-                      <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[10px] font-semibold rounded-full">
-                        {item.badge}
-                      </span>
-                    )}
                   </Link>
                 );
               })}

@@ -3,9 +3,22 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { getKeeperPlanningSeason, getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
+import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getKeeperDeadlineStatus } from "@/lib/keeper/deadline";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 import { recalculateAndApplyCascade } from "@/lib/keeper/cascade";
+
+/** Human message for a locked keeper window */
+function lockMessage(lockReason: string | null): string {
+  switch (lockReason) {
+    case "draft_started":
+      return "The draft has started — keeper changes are closed.";
+    case "draft_complete":
+      return "The draft is complete — keeper changes are closed.";
+    default:
+      return "The keeper deadline has passed.";
+  }
+}
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -163,10 +176,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check keeper deadline - only commissioners can bypass
-    const deadlineInfo = getKeeperDeadlineInfo();
-    if (!deadlineInfo.isActive) {
-      // Check if user is commissioner
+    // Check keeper deadline (league-configured, or draft-start fallback) —
+    // only commissioners can bypass
+    const deadlineStatus = await getKeeperDeadlineStatus(leagueId);
+    if (deadlineStatus.locked) {
       const league = await prisma.league.findUnique({
         where: { id: leagueId },
         select: { commissionerId: true },
@@ -175,8 +188,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (league?.commissionerId !== session.user.id) {
         return NextResponse.json(
           {
-            error: "Keeper deadline has passed",
-            message: deadlineInfo.message,
+            error: "Keeper changes are closed",
+            message: lockMessage(deadlineStatus.lockReason),
             deadlinePassed: true
           },
           { status: 403 }
@@ -358,10 +371,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check keeper deadline - only commissioners can bypass
-    const deadlineInfo = getKeeperDeadlineInfo();
-    if (!deadlineInfo.isActive) {
-      // Check if user is commissioner
+    // Check keeper deadline (league-configured, or draft-start fallback) —
+    // only commissioners can bypass
+    const deadlineStatus = await getKeeperDeadlineStatus(leagueId);
+    if (deadlineStatus.locked) {
       const league = await prisma.league.findUnique({
         where: { id: leagueId },
         select: { commissionerId: true },
@@ -370,8 +383,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       if (league?.commissionerId !== session.user.id) {
         return NextResponse.json(
           {
-            error: "Keeper deadline has passed",
-            message: deadlineInfo.message,
+            error: "Keeper changes are closed",
+            message: lockMessage(deadlineStatus.lockReason),
             deadlinePassed: true
           },
           { status: 403 }

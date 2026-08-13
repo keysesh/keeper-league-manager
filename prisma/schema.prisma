@@ -425,6 +425,14 @@ enum AcquisitionType {
 // DRAFT PLANS (SIMULATION MODE)
 // ============================================
 
+// DORMANT / LEGACY (retained intentionally, Aug 2026):
+// The draft-plans API and UI were removed — no runtime code reads or writes
+// these two models. They are retained because production row counts could
+// not be inspected from the development environment, and dropping tables
+// that may hold user-created plans requires operator confirmation.
+// To remove later: verify `SELECT count(*) FROM draft_plans` is 0 (or the
+// data is unwanted), then delete both models + the relations on League/
+// Roster/Player and run a migration.
 model DraftPlan {
   id        String   @id @default(cuid())
   leagueId  String   @map("league_id")

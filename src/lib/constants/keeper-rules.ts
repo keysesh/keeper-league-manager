@@ -116,43 +116,10 @@ export function isDraftSeason(): boolean {
   return month >= 7 && month <= 8;
 }
 
-/**
- * Get the keeper deadline description and date
- *
- * Keeper planning is available:
- * - January-August: Planning for current/upcoming draft
- * - September-December: Season in progress, keepers locked
- */
-export function getKeeperDeadlineInfo(): {
-  isActive: boolean;
-  message: string;
-  deadline: Date | null;
-  deadlineLabel: string | null;
-} {
-  const now = new Date();
-  const month = now.getMonth();
-  const year = now.getFullYear();
-  const planningSeason = getKeeperPlanningSeason();
-
-  // January-August: Keeper selections are open for planning
-  if (month <= 7) {
-    // Keeper deadline is typically August 31st before the season starts
-    const deadline = new Date(year, 7, 31, 23, 59, 59); // August 31st
-    return {
-      isActive: true,
-      message: `${planningSeason} Keeper selections are open`,
-      deadline,
-      deadlineLabel: "August 31st",
-    };
-  }
-  // September-December: Season in progress, keepers locked for current season
-  return {
-    isActive: false,
-    message: `${planningSeason - 1} Season in progress - keepers locked`,
-    deadline: null,
-    deadlineLabel: null,
-  };
-}
+// NOTE: the old getKeeperDeadlineInfo() (hardcoded Aug 31 + Sept-Dec lock)
+// was removed — keeper deadline state now comes from real league data via
+// lib/keeper/deadline.ts (league-configured deadline, or Sleeper draft
+// start as a clearly-labeled fallback).
 
 /**
  * Check if a trade date falls after the trade deadline for a given season
@@ -230,4 +197,30 @@ export function isTradeAfterDeadline(
   // Trade year is before season year - historical trade
   // This shouldn't normally happen, but preserve value
   return false;
+}
+
+/**
+ * Would a trade executed RIGHT NOW reset keeper value (years kept)?
+ *
+ * The season whose trade deadline governs a trade made today:
+ * - Sept-Dec: the season currently being played (this calendar year)
+ * - Jan-Aug: the season just played (previous calendar year) — any trade
+ *   in that window is an offseason trade relative to the last deadline,
+ *   so keeper value resets for the new owner.
+ *
+ * Examples:
+ * - Oct 2026  → evaluates vs 2026 deadline (mid-Nov) → false (preserved)
+ * - Dec 2026  → evaluates vs 2026 deadline           → true  (reset)
+ * - Mar 2027  → evaluates vs 2026 season             → true  (offseason reset)
+ * - Aug 2027  → evaluates vs 2026 season             → true  (still offseason)
+ * - Sept 2027 → evaluates vs 2027 deadline           → false (new season, pre-deadline)
+ */
+export function isCurrentlyAfterTradeDeadline(
+  now: Date = new Date(),
+  deadlineWeek: number = DEFAULT_KEEPER_RULES.TRADE_DEADLINE_WEEK
+): boolean {
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  const governingSeason = month >= 8 ? year : year - 1;
+  return isTradeAfterDeadline(now, governingSeason, deadlineWeek);
 }

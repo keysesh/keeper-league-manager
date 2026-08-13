@@ -5,7 +5,6 @@ import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronRight, Lock, AlertTriangle, Trophy, Users, Target, Zap } from "lucide-react";
-import { KeeperDeadlineCountdown } from "@/components/KeeperDeadlineCountdown";
 import { SyncButton } from "@/components/SyncButton";
 
 export default async function LeaguesPage() {
@@ -59,9 +58,10 @@ export default async function LeaguesPage() {
       : 0,
   ]);
 
-  // Auto-redirect to league if user only has one league (single-league optimization)
+  // Auto-redirect to league if user only has one league (single-league optimization).
+  // Lands on My Keepers — the planning workspace is the default league experience.
   if (leagues.length === 1) {
-    redirect(`/league/${leagues[0].id}`);
+    redirect(`/league/${leagues[0].id}/keepers`);
   }
 
   return (
@@ -79,9 +79,8 @@ export default async function LeaguesPage() {
             </span>
           </div>
         </div>
-        <div className="self-start sm:self-auto">
-          <KeeperDeadlineCountdown />
-        </div>
+        {/* League-specific deadline info lives inside each league (real data),
+            not here — a global countdown can't be truthful across leagues. */}
       </div>
 
       {/* Pending Actions Alert */}

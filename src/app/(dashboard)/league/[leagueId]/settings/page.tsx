@@ -52,6 +52,17 @@ interface SettingsData {
     draftRounds: number;
     totalRosters: number;
   };
+  /** Commissioner-defined league keeper deadline (ISO), null when unset */
+  keeperDeadline: string | null;
+}
+
+/** ISO string → value for <input type="datetime-local"> (local time) */
+function isoToLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export default function SettingsPage() {
@@ -74,6 +85,9 @@ export default function SettingsPage() {
     costReductionPerYear: 1,
   });
 
+  // League keeper deadline — datetime-local input value ("" = not set)
+  const [deadlineInput, setDeadlineInput] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [lockingKeepers, setLockingKeepers] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -82,16 +96,20 @@ export default function SettingsPage() {
     if (data?.keeperSettings) {
       setFormData(data.keeperSettings);
     }
+    if (data) {
+      setDeadlineInput(isoToLocalInput(data.keeperDeadline));
+    }
   }, [data]);
 
   useEffect(() => {
     if (data?.keeperSettings) {
-      const changed = Object.keys(formData).some(
-        (key) => formData[key as keyof typeof formData] !== data.keeperSettings[key as keyof typeof data.keeperSettings]
-      );
+      const changed =
+        Object.keys(formData).some(
+          (key) => formData[key as keyof typeof formData] !== data.keeperSettings[key as keyof typeof data.keeperSettings]
+        ) || deadlineInput !== isoToLocalInput(data.keeperDeadline);
       setHasChanges(changed);
     }
-  }, [formData, data]);
+  }, [formData, data, deadlineInput]);
 
   const handleChange = (field: keyof typeof formData, value: number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -111,7 +129,10 @@ export default function SettingsPage() {
       const res = await fetch(`/api/leagues/${leagueId}/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keeperSettings: formData }),
+        body: JSON.stringify({
+          keeperSettings: formData,
+          keeperDeadline: deadlineInput ? new Date(deadlineInput).toISOString() : null,
+        }),
       });
 
       if (!res.ok) {
@@ -319,6 +340,46 @@ export default function SettingsPage() {
             suffix="per year"
             disabled={!data.isCommissioner}
           />
+
+          {/* League keeper deadline — a commissioner rule, distinct from the
+              Sleeper draft date (used only as a labeled fallback when unset) */}
+          <div className="md:col-span-2">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-md bg-[#222222] border border-[#333333] text-blue-400 flex-shrink-0">
+                <Clock size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-medium">Keeper Deadline</p>
+                <p className="text-gray-500 text-sm mb-2">
+                  When keeper selections lock for your league. Leave empty to fall
+                  back to the Sleeper draft start time.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="datetime-local"
+                    value={deadlineInput}
+                    onChange={(e) => setDeadlineInput(e.target.value)}
+                    disabled={!data.isCommissioner}
+                    className="px-3 py-2 min-h-[44px] bg-[#0a0a0a] border border-[#2a2a2a] rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 [color-scheme:dark]"
+                  />
+                  {deadlineInput && data.isCommissioner && (
+                    <button
+                      type="button"
+                      onClick={() => setDeadlineInput("")}
+                      className="px-3 py-2 min-h-[44px] text-sm text-gray-400 hover:text-white rounded-md hover:bg-[#222222] transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  {!deadlineInput && (
+                    <span className="text-xs text-gray-600">
+                      Not set — using Sleeper draft start as the deadline
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Validation Warning */}

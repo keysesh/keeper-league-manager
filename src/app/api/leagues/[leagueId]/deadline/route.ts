@@ -1,0 +1,67 @@
+/**
+ * GET /api/leagues/[leagueId]/deadline
+ *
+ * Keeper deadline status + data freshness for a league.
+ * One lightweight endpoint powering the deadline banner, countdown,
+ * draft-board lock chip and the "Updated from Sleeper" stamp.
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
+import { getKeeperDeadlineStatus } from "@/lib/keeper/deadline";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ leagueId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { leagueId } = await params;
+
+    // League members only
+    const membership = await prisma.roster.findFirst({
+      where: {
+        leagueId,
+        teamMembers: { some: { userId: session.user.id } },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      return NextResponse.json(
+        { error: "You don't have access to this league" },
+        { status: 403 }
+      );
+    }
+
+    const [status, league] = await Promise.all([
+      getKeeperDeadlineStatus(leagueId),
+      prisma.league.findUnique({
+        where: { id: leagueId },
+        select: { lastSyncedAt: true },
+      }),
+    ]);
+
+    if (!league) {
+      return NextResponse.json({ error: "League not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      ...status,
+      lastSyncedAt: league.lastSyncedAt?.toISOString() ?? null,
+    });
+  } catch (error) {
+    logger.error("Error fetching deadline status", error);
+    return NextResponse.json(
+      { error: "Failed to fetch deadline status" },
+      { status: 500 }
+    );
+  }
+}

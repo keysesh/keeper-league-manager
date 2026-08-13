@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
+import useSWR from "swr";
 import Link from "next/link";
 import {
   LayoutGrid,
@@ -11,7 +12,6 @@ import {
   Lock,
   Unlock,
   Download,
-  RefreshCw,
   AlertTriangle,
   ChevronDown,
   FlaskConical,
@@ -29,7 +29,8 @@ import { PlayerAvatar, TeamLogo } from "@/components/players/PlayerAvatar";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
-import { getKeeperDeadlineInfo } from "@/lib/constants/keeper-rules";
+import { RefreshFromSleeper } from "@/components/ui/RefreshFromSleeper";
+import { TeamRoundsView } from "@/components/draft/TeamRoundsView";
 import {
   exportKeepersToCSV,
   exportDraftBoardToCSV,
@@ -129,13 +130,10 @@ export default function DraftBoardPage() {
   const [data, setData] = useState<DraftBoardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "team">("grid");
   const [filterPosition, setFilterPosition] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -145,9 +143,10 @@ export default function DraftBoardPage() {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      // Default to list view on mobile for better UX
+      // The desktop grid doesn't work on a phone (it becomes 16 independent
+      // horizontal scrollers) — default mobile to the team-first view.
       if (mobile && viewMode === "grid") {
-        setViewMode("list");
+        setViewMode("team");
       }
     };
     checkMobile();
@@ -155,59 +154,22 @@ export default function DraftBoardPage() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const deadlineInfo = getKeeperDeadlineInfo();
+  // Keeper lock state from real league data (league deadline / draft status)
+  const { data: deadlineStatus } = useSWR<{ locked: boolean; deadline: string | null }>(
+    `/api/leagues/${leagueId}/deadline`,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
+  );
 
-  const syncData = async () => {
-    setIsSyncing(true);
-    setSyncMessage(null);
-    try {
-      const syncRes = await fetch("/api/sleeper/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "quick", leagueId }),
-      });
+  // Viewer's roster — the team-first view defaults to it
+  const { data: rostersData } = useSWR<{ rosters: Array<{ id: string; isUserRoster: boolean }> }>(
+    `/api/leagues/${leagueId}/rosters`,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
+  );
+  const userRosterId = rostersData?.rosters?.find((r) => r.isUserRoster)?.id;
 
-      if (!syncRes.ok) {
-        const err = await syncRes.json();
-        throw new Error(err.error || "Failed to sync league");
-      }
-
-      const populateRes = await fetch("/api/sleeper/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "populate-keepers", leagueId }),
-      });
-
-      if (!populateRes.ok) {
-        const err = await populateRes.json();
-        throw new Error(err.error || "Failed to populate keepers");
-      }
-
-      const recalcRes = await fetch("/api/sleeper/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "recalculate-keeper-years", leagueId }),
-      });
-
-      if (!recalcRes.ok) {
-        const err = await recalcRes.json();
-        throw new Error(err.error || "Failed to recalculate years");
-      }
-
-      const result = await recalcRes.json();
-      setSyncMessage(`Synced! ${result.data?.totalUpdated || 0} keepers updated`);
-
-      await fetchData();
-    } catch (err) {
-      setSyncMessage(err instanceof Error ? err.message : "Sync failed");
-    } finally {
-      setIsSyncing(false);
-      setTimeout(() => setSyncMessage(null), 3000);
-    }
-  };
-
-  const fetchData = useCallback(async (showLoading = true) => {
-    if (showLoading) setIsRefreshing(true);
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`/api/leagues/${leagueId}/keepers/cascade`);
       if (!res.ok) throw new Error("Failed to fetch draft board");
@@ -219,20 +181,34 @@ export default function DraftBoardPage() {
       setError("Failed to load draft board");
     } finally {
       setLoading(false);
-      setIsRefreshing(false);
     }
   }, [leagueId]);
 
   useEffect(() => {
     fetchData();
+
+    // Poll only while the tab is visible — a backgrounded tab spends
+    // battery/data for updates nobody sees.
     pollIntervalRef.current = setInterval(() => {
-      fetchData(false);
+      if (document.visibilityState === "visible") {
+        fetchData();
+      }
     }, 30000);
+
+    // Refresh immediately when the user returns to the tab so they never
+    // look at data that went stale while it was hidden.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchData();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [fetchData]);
 
@@ -379,43 +355,59 @@ export default function DraftBoardPage() {
               <span className="px-3 py-1 rounded-md bg-[#222222] border border-[#2a2a2a] text-blue-400 text-sm font-semibold">
                 {data.season} Season
               </span>
-              <div
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-md text-sm font-medium border ${
-                  deadlineInfo.isActive
-                    ? "bg-[#222222] border-blue-500/30 text-blue-400"
-                    : "bg-[#222222] border-red-500/30 text-red-400"
-                }`}
-              >
-                {deadlineInfo.isActive ? (
-                  <>
-                    <Unlock size={14} />
-                    Keepers Open
-                  </>
-                ) : (
-                  <>
-                    <Lock size={14} />
-                    Keepers Locked
-                  </>
-                )}
-              </div>
+              {deadlineStatus && (
+                <div
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-md text-sm font-medium border ${
+                    !deadlineStatus.locked
+                      ? "bg-[#222222] border-blue-500/30 text-blue-400"
+                      : "bg-[#222222] border-red-500/30 text-red-400"
+                  }`}
+                >
+                  {!deadlineStatus.locked ? (
+                    <>
+                      <Unlock size={14} />
+                      Keepers Open
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={14} />
+                      Keepers Locked
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Controls - responsive layout */}
           <div className="flex flex-wrap gap-2">
-            {/* View mode toggle */}
+            {/* View mode toggle — team-first on mobile, grid on desktop */}
             <div className="flex rounded-md overflow-hidden border border-[#2a2a2a]">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 text-sm font-medium transition-all ${
-                  viewMode === "grid"
-                    ? "bg-blue-500/20 text-blue-400"
-                    : "bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222222]"
-                }`}
-              >
-                <LayoutGrid size={16} />
-                <span className="hidden md:inline">Grid</span>
-              </button>
+              {isMobile ? (
+                <button
+                  onClick={() => setViewMode("team")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-all ${
+                    viewMode === "team"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : "bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222222]"
+                  }`}
+                >
+                  <Star size={16} />
+                  My Team
+                </button>
+              ) : (
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 text-sm font-medium transition-all ${
+                    viewMode === "grid"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : "bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222222]"
+                  }`}
+                >
+                  <LayoutGrid size={16} />
+                  <span className="hidden md:inline">Grid</span>
+                </button>
+              )}
               <button
                 onClick={() => setViewMode("list")}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 text-sm font-medium transition-all ${
@@ -425,7 +417,9 @@ export default function DraftBoardPage() {
                 }`}
               >
                 <List size={16} />
-                <span className="hidden md:inline">Teams</span>
+                <span className={isMobile ? "" : "hidden md:inline"}>
+                  {isMobile ? "All Teams" : "Teams"}
+                </span>
               </button>
             </div>
 
@@ -438,25 +432,12 @@ export default function DraftBoardPage() {
               <span className="hidden md:inline">Simulate</span>
             </Link>
 
-            <button
-              onClick={syncData}
-              disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-md bg-[#1a1a1a] border border-blue-500/30 text-blue-400 hover:bg-[#222222] text-sm font-medium transition-colors disabled:opacity-50"
-              title="Sync keepers from Sleeper"
-            >
-              <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
-              <span className="hidden md:inline">{isSyncing ? "Syncing..." : "Sync"}</span>
-            </button>
-
-            {/* Secondary actions - hidden on small mobile */}
-            <button
-              onClick={() => fetchData()}
-              disabled={isRefreshing}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-white hover:bg-[#222222] text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-              <span className="hidden md:inline">Refresh</span>
-            </button>
+            {/* One freshness control — full Sleeper refresh + timestamp */}
+            <RefreshFromSleeper
+              leagueId={leagueId}
+              compact
+              onRefreshed={() => fetchData()}
+            />
 
             <div className="relative group">
               <button className="inline-flex items-center gap-1.5 px-3 py-2 md:px-4 md:py-2.5 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-white hover:bg-[#222222] text-sm font-medium transition-colors">
@@ -497,17 +478,6 @@ export default function DraftBoardPage() {
             </div>
           </div>
         </div>
-
-        {/* Sync Message */}
-        {syncMessage && (
-          <div className={`px-4 py-2 rounded-md text-sm font-medium border ${
-            syncMessage.includes("failed") || syncMessage.includes("Failed")
-              ? "bg-red-500/10 border-red-500/30 text-red-400"
-              : "bg-blue-500/10 border-blue-500/30 text-blue-400"
-          }`}>
-            {syncMessage}
-          </div>
-        )}
 
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -570,58 +540,17 @@ export default function DraftBoardPage() {
         </div>
       </div>
 
-      {viewMode === "grid" ? (
-        /* Grid View - Desktop: table, Mobile: stacked rounds with horizontal scroll */
-        isMobile ? (
-          /* Mobile Grid View - Stacked rounds with horizontal scrolling */
-          <div className="space-y-4">
-            {data.draftBoard.map((row) => (
-              <div key={row.round} className="rounded-md border border-[#2a2a2a] bg-[#0d0d0d] overflow-hidden">
-                {/* Round Header */}
-                <div className="flex items-center gap-3 px-4 py-3 bg-[#1a1a1a] border-b border-[#2a2a2a]">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-md bg-[#222222] border border-[#333333] text-blue-400 font-bold text-sm">
-                    {row.round}
-                  </span>
-                  <span className="text-gray-300 text-sm font-medium">Round {row.round}</span>
-                  <span className="ml-auto text-gray-500 text-xs">
-                    {row.slots.filter(s => s.status === "keeper").length} keepers
-                  </span>
-                </div>
-                {/* Horizontal scrolling picks with snap */}
-                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent snap-x snap-mandatory">
-                  <div className="flex gap-2 p-3 min-w-max">
-                    {row.slots.map((slot, slotIndex) => {
-                      const columnColor = getTeamColor(slotIndex);
-                      const keeper = slot.keeper;
-                      const shouldShow = !filterPosition || (keeper?.position === filterPosition);
-                      const teamName = slot.rosterName || `Team ${slotIndex + 1}`;
-
-                      return (
-                        <div key={slot.rosterId} className="flex flex-col gap-1.5 w-24 sm:w-28 flex-shrink-0 snap-start">
-                          {/* Team name chip */}
-                          <div className={`text-center text-[9px] font-semibold ${columnColor.accent} truncate px-0.5`}>
-                            {teamName}
-                          </div>
-                          <MobileDraftCell
-                            slot={shouldShow ? slot : { ...slot, status: slot.status === "keeper" ? "available" : slot.status, keeper: undefined }}
-                            columnColor={columnColor}
-                            teamInfoMap={teamInfoMap}
-                            teamNameToInfo={teamNameToInfo}
-                            onPlayerClick={setSelectedPlayerId}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* Scroll hint */}
-                <div className="flex justify-center pb-2">
-                  <span className="text-[9px] text-gray-600">← Swipe to see all teams →</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
+      {viewMode === "team" ? (
+        /* Team-first view — one team's rounds, vertically (mobile default) */
+        <TeamRoundsView
+          cascade={data.cascade}
+          draftBoard={data.draftBoard}
+          draftRounds={data.draftRounds}
+          userRosterId={userRosterId}
+          onPlayerClick={setSelectedPlayerId}
+        />
+      ) : viewMode === "grid" ? (
+        (
           /* Desktop Grid View - Traditional table */
           <div className="rounded-md overflow-hidden border border-[#2a2a2a] bg-[#0d0d0d]">
             <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
@@ -1085,137 +1014,5 @@ function DraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerCli
   // Regular empty cell
   return (
     <div className="h-[88px] rounded-md bg-[#111111] border border-[#1a1a1a]" />
-  );
-}
-
-// Mobile-optimized draft cell - more compact, touch-friendly
-function MobileDraftCell({ slot, columnColor, teamInfoMap, teamNameToInfo, onPlayerClick }: DraftCellProps) {
-  // Traded pick - show the NEW owner who will be drafting in this slot
-  if (slot.status === "traded" && slot.tradedTo) {
-    let newOwnerInfo = teamNameToInfo.get(slot.tradedTo) || teamInfoMap.get(slot.tradedTo);
-    if (!newOwnerInfo) {
-      for (const [name, info] of teamNameToInfo) {
-        if (name.includes(slot.tradedTo) || slot.tradedTo.includes(name)) {
-          newOwnerInfo = info;
-          break;
-        }
-      }
-    }
-    const ownerColor = newOwnerInfo?.color || columnColor;
-    const ownerName = newOwnerInfo?.name || slot.tradedTo;
-
-    return (
-      <div className={`h-[64px] rounded-md border-2 border-dashed relative overflow-hidden ${ownerColor.border}`}
-           style={{ backgroundColor: 'rgba(20, 20, 20, 0.9)' }}>
-        <div className={`absolute left-0 top-0 bottom-0 w-1 ${ownerColor.bg}`} />
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pl-1">
-          <div className={`w-2 h-2 rounded-full ${ownerColor.bg}`} />
-          <span className={`${ownerColor.accent} text-[9px] font-bold truncate max-w-[90%] text-center`}>
-            {ownerName?.split(' ')[0]}
-          </span>
-          <span className="text-[7px] text-gray-500">picks</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Keeper cell - compact mobile design with TEAM colors
-  if (slot.status === "keeper" && slot.keeper) {
-    const isFranchise = slot.keeper.keeperType === "FRANCHISE";
-    const yearsKept = slot.keeper.yearsKept || 1;
-    const isOnTradedSlot = !!slot.keeperOwner;
-
-    // Get keeper owner's team info
-    let keeperOwnerInfo: { color: ReturnType<typeof getTeamColor>; name: string } | undefined;
-    if (isOnTradedSlot && slot.keeperOwner) {
-      keeperOwnerInfo = teamNameToInfo.get(slot.keeperOwner) || teamInfoMap.get(slot.keeperOwner);
-      if (!keeperOwnerInfo) {
-        for (const [name, info] of teamNameToInfo) {
-          if (name.includes(slot.keeperOwner) || slot.keeperOwner.includes(name)) {
-            keeperOwnerInfo = info;
-            break;
-          }
-        }
-      }
-    }
-
-    // Use keeper owner's color if on traded slot, otherwise use the column's team color
-    const teamColor = isOnTradedSlot && keeperOwnerInfo?.color ? keeperOwnerInfo.color : columnColor;
-    const ownerName = keeperOwnerInfo?.name || slot.keeperOwner;
-
-    // Get last name for compact display
-    const nameParts = slot.keeper.playerName.split(" ");
-    const lastName = nameParts.slice(1).join(" ") || nameParts[0] || "";
-
-    return (
-      <div
-        onClick={() => slot.keeper && onPlayerClick?.(slot.keeper.playerId)}
-        className={`
-          h-[64px] rounded-md relative overflow-hidden cursor-pointer active:scale-95 transition-transform
-          ${teamColor.bgMuted} border ${teamColor.border}
-        `}
-      >
-        {/* Team color stripe */}
-        <div className={`absolute left-0 top-0 bottom-0 w-1 ${teamColor.bg}`} />
-
-        {/* Badges row - top right corner */}
-        <div className="absolute top-1 right-1 flex items-center gap-0.5">
-          {isFranchise && (
-            <Star size={10} className="text-amber-400 fill-amber-400" />
-          )}
-          <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
-            yearsKept >= 3 ? "bg-red-500/30 text-red-200" :
-            yearsKept === 2 ? "bg-yellow-500/30 text-yellow-200" :
-            "bg-[#222222] text-gray-300"
-          }`}>
-            {isFranchise ? "FT" : `Y${yearsKept}`}
-          </span>
-        </div>
-
-        {/* Content - stacked vertically for narrow cells */}
-        <div className="flex flex-col items-center justify-center h-full pt-3 pb-1 px-1">
-          {/* Avatar */}
-          <div className={`rounded overflow-hidden ring-1 ${teamColor.ring}`}>
-            <PlayerAvatar
-              sleeperId={slot.keeper.playerId}
-              name={slot.keeper.playerName}
-              size="sm"
-            />
-          </div>
-
-          {/* Info */}
-          <div className="flex items-center gap-1 mt-1">
-            <PositionBadge position={slot.keeper.position} size="xs" variant="minimal" />
-          </div>
-          {isOnTradedSlot && ownerName ? (
-            <span className={`text-[7px] font-semibold ${teamColor.accent}`}>
-              {ownerName?.split(' ')[0]}
-            </span>
-          ) : (
-            <span className="text-[9px] font-bold text-white truncate leading-tight max-w-full text-center">
-              {lastName}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Empty cell - show prominently if acquired via trade
-  const isAcquiredEmpty = !!slot.acquiredFrom;
-
-  if (isAcquiredEmpty) {
-    return (
-      <div className="h-[64px] rounded-md border border-dashed border-gray-600 relative overflow-hidden bg-[#0f0f0f]">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[7px] text-gray-500">via trade</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Regular empty cell
-  return (
-    <div className="h-[64px] rounded-md bg-[#111111] border border-[#1a1a1a]" />
   );
 }

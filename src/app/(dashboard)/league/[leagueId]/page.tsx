@@ -207,7 +207,7 @@ export default function LeaguePage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-slate-400">Keeper Selection</span>
                 <Link
-                  href={`/league/${leagueId}/team/${userRoster.id}`}
+                  href={`/league/${leagueId}/keepers`}
                   className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
                 >
                   Manage <ArrowRight size={14} />
@@ -245,7 +245,7 @@ export default function LeaguePage() {
                 <h2 className="font-semibold text-white">Your {league.season} Keepers</h2>
               </div>
               <Link
-                href={`/league/${leagueId}/team/${userRoster.id}`}
+                href={`/league/${leagueId}/keepers`}
                 className="text-sm text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors"
               >
                 Manage <ChevronRight size={16} />
@@ -297,7 +297,7 @@ export default function LeaguePage() {
               {Array.from({ length: Math.min(maxKeepers - userRoster.currentKeepers.length, 2) }).map((_, i) => (
                 <Link
                   key={`empty-${i}`}
-                  href={`/league/${leagueId}/team/${userRoster.id}`}
+                  href={`/league/${leagueId}/keepers`}
                   className="rounded-xl p-3 border-2 border-dashed border-white/[0.12] hover:border-blue-500/50 flex flex-col items-center justify-center text-slate-600 hover:text-blue-400 transition-all min-h-[120px] hover:bg-blue-500/5"
                 >
                   <div className="w-10 h-10 rounded-lg border-2 border-dashed border-current flex items-center justify-center mb-2">
@@ -333,22 +333,10 @@ export default function LeaguePage() {
             limit={3}
           />
 
-          {/* QUICK ACTIONS - moved here for better hierarchy */}
+          {/* QUICK ACTIONS — secondary league destinations only.
+              (Draft Board and Trades are primary tabs now; repeating them
+              here would duplicate the bottom bar.) */}
           <div className="grid grid-cols-2 gap-3 h-fit">
-            <QuickActionCard
-              href={`/league/${leagueId}/draft-board`}
-              icon={<Target className="w-5 h-5" />}
-              label="Draft Board"
-              description="View keeper costs"
-              gradient="primary"
-            />
-            <QuickActionCard
-              href={`/league/${leagueId}/trade-analyzer`}
-              icon={<Zap className="w-5 h-5" />}
-              label="Trade Center"
-              description="Evaluate trades"
-              gradient="warm"
-            />
             <QuickActionCard
               href={`/league/${leagueId}/team`}
               icon={<Trophy className="w-5 h-5" />}
@@ -362,6 +350,20 @@ export default function LeaguePage() {
               label="Activity"
               description="League activity"
               gradient="cool"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/trade-proposals`}
+              icon={<Zap className="w-5 h-5" />}
+              label="Trade Proposals"
+              description="Saved & shared trades"
+              gradient="warm"
+            />
+            <QuickActionCard
+              href={`/league/${leagueId}/settings`}
+              icon={<Target className="w-5 h-5" />}
+              label="Settings"
+              description="League rules"
+              gradient="primary"
             />
           </div>
         </div>

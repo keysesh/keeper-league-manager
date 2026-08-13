@@ -4,6 +4,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 
+// Every admin route is session-gated and reads live data — static
+// prerendering them at build time is both meaningless (they redirect
+// without a session) and breaks builds in environments without runtime
+// services. Render the whole segment on request.
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {

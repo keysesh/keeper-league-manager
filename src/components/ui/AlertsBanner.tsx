@@ -30,6 +30,9 @@ export function AlertsBanner({ leagueId }: AlertsBannerProps) {
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
+  // Hydration-gated localStorage read (same convention as DeadlineBanner) —
+  // initial client state must match SSR output, then adopt the stored value.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setMounted(true);
     // Check if banner was dismissed today
@@ -38,6 +41,7 @@ export function AlertsBanner({ leagueId }: AlertsBannerProps) {
       setDismissed(true);
     }
   }, [leagueId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleDismiss = () => {
     setDismissed(true);

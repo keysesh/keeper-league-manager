@@ -333,6 +333,78 @@ export class SyncService {
   }
 
   /**
+   * Refresh for planning — the one action behind the user-facing
+   * "Refresh from Sleeper" control.
+   *
+   * Runs every stage the planning surfaces depend on, in one request:
+   * 1. rosters/users (quick sync)
+   * 2. traded picks
+   * 3. current-season draft + picks (keeper placements → round-trip verification)
+   * 4. populate keepers from is_keeper draft data
+   * 5. recalculate keeper years/costs
+   *
+   * Atomic timestamp semantics: lastSyncedAt is only allowed to advance if
+   * EVERY stage succeeds. Inner sync functions stamp it as a side effect, so
+   * on any failure the pre-run value is restored — a partially refreshed
+   * league is never presented as freshly updated.
+   *
+   * Duration: 5-15s
+   */
+  async refreshPlanning(
+    leagueId: string,
+    userId?: string
+  ): Promise<{ success: boolean; message: string }> {
+    if (userId && !(await verifyLeagueAccess(leagueId, userId))) {
+      throw new Error("You don't have access to this league");
+    }
+
+    const league = await getLeagueOrError(leagueId);
+    const before = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { lastSyncedAt: true },
+    });
+
+    logger.info("Starting planning refresh", { leagueId, leagueName: league.name });
+
+    try {
+      // 1-2. Rosters, users, traded picks
+      await quickSyncLeague(leagueId);
+      await syncTradedPicks(leagueId);
+
+      // 3. Current-season draft board (keeper placements)
+      await syncLeague(league.sleeperId, {
+        skipTransactions: true,
+        skipDrafts: false,
+      });
+
+      // 4-5. Keeper population + recalculation for this league
+      await populateKeepersFromDraftPicks(leagueId);
+      await recalculateKeeperYears(leagueId);
+
+      // All stages succeeded — NOW the data is genuinely fresh
+      await prisma.league.update({
+        where: { id: leagueId },
+        data: { lastSyncedAt: new Date() },
+      });
+
+      return { success: true, message: "Refreshed from Sleeper" };
+    } catch (error) {
+      // Roll the freshness stamp back so stale keeper state is never
+      // presented as current (inner stages may have advanced it).
+      await prisma.league
+        .update({
+          where: { id: leagueId },
+          data: { lastSyncedAt: before?.lastSyncedAt ?? null },
+        })
+        .catch(() => {
+          // Rollback best-effort — original error is what matters
+        });
+      logger.error("Planning refresh failed", error, { leagueId });
+      throw error;
+    }
+  }
+
+  /**
    * Sync - Fast sync for regular use
    *
    * Sleeper API calls:

@@ -61,6 +61,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Already computed by the access check — lets clients default to the
+    // viewer's own team without fetching the heavy league payload
+    const userRosterIds = new Set(
+      league.rosters.filter((r) => r.teamMembers.length > 0).map((r) => r.id)
+    );
+
     // Fetch rosters with keepers
     const rosters = await prisma.roster.findMany({
       where: { leagueId },
@@ -145,6 +151,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         id: roster.id,
         sleeperId: roster.sleeperId,
         teamName: roster.teamName,
+        isUserRoster: userRosterIds.has(roster.id),
         wins: roster.wins,
         losses: roster.losses,
         ties: roster.ties,

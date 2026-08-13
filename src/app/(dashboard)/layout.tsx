@@ -8,6 +8,10 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { logger } from "@/lib/logger";
 
+// Dashboard routes are session-gated (redirect to /login without one) —
+// a static build-time snapshot of them is meaningless. Render on request.
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/providers/AuthProvider";
@@ -22,6 +22,16 @@ const geistMono = Geist_Mono({
   preload: true,
   fallback: ["Menlo", "Monaco", "Consolas", "monospace"],
 });
+
+// viewport-fit=cover is required for env(safe-area-inset-*) to resolve to
+// non-zero values on notched iPhones — without it the bottom nav sits under
+// the home indicator (MobileNav relies on safe-area-inset-bottom).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#06090f",
+};
 
 export const metadata: Metadata = {
   title: "Keeper League Manager",

@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { canManageLeague } from "@/lib/permissions";
+import { parseLeagueKeeperDeadline } from "@/lib/keeper/deadline";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 interface RouteParams {
@@ -20,6 +22,16 @@ const keeperSettingsSchema = z.object({
   minimumRound: z.number().min(1).max(5).optional(),
   costReductionPerYear: z.number().min(0).max(3).optional(),
 });
+
+// League-level keeper deadline: ISO datetime string, or null to clear.
+// Stored in League.settings (JSON) — this is the commissioner-defined rule,
+// distinct from the Sleeper draft start used as a labeled fallback.
+const keeperDeadlineSchema = z.union([
+  z.string().refine((v) => !isNaN(new Date(v).getTime()), {
+    message: "Invalid datetime",
+  }),
+  z.null(),
+]);
 
 
 /**
@@ -103,6 +115,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         draftRounds: league.draftRounds,
         totalRosters: league.totalRosters,
       },
+      // Commissioner-defined keeper deadline (null when unset — the UI falls
+      // back to the Sleeper draft start via /deadline, clearly labeled)
+      keeperDeadline: parseLeagueKeeperDeadline(league.settings)?.toISOString() ?? null,
     });
   } catch (error) {
     logger.error("Error fetching settings", error);
@@ -200,6 +215,49 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           entity: "KeeperSettings",
           entityId: leagueId,
           newValue: settings,
+        },
+      });
+    }
+
+    // League keeper deadline (commissioner-defined rule, stored in League.settings JSON)
+    if ("keeperDeadline" in body) {
+      const deadlineResult = keeperDeadlineSchema.safeParse(body.keeperDeadline);
+      if (!deadlineResult.success) {
+        return NextResponse.json(
+          { error: "Invalid keeper deadline", details: deadlineResult.error.issues },
+          { status: 400 }
+        );
+      }
+
+      const league = await prisma.league.findUnique({
+        where: { id: leagueId },
+        select: { settings: true },
+      });
+
+      const currentSettings =
+        league?.settings && typeof league.settings === "object" && !Array.isArray(league.settings)
+          ? (league.settings as Record<string, unknown>)
+          : {};
+
+      const nextSettings = { ...currentSettings };
+      if (deadlineResult.data === null) {
+        delete nextSettings.keeperDeadline;
+      } else {
+        nextSettings.keeperDeadline = new Date(deadlineResult.data).toISOString();
+      }
+
+      await prisma.league.update({
+        where: { id: leagueId },
+        data: { settings: nextSettings as Prisma.InputJsonValue },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: "UPDATE_KEEPER_DEADLINE",
+          entity: "League",
+          entityId: leagueId,
+          newValue: { keeperDeadline: deadlineResult.data },
         },
       });
     }

@@ -346,6 +346,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // League members only — this endpoint recalculates and persists keeper
+    // costs for the whole league.
+    const membership = await prisma.roster.findFirst({
+      where: {
+        leagueId,
+        teamMembers: { some: { userId: session.user.id } },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      return NextResponse.json(
+        { error: "You don't have access to this league" },
+        { status: 403 }
+      );
+    }
+
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
       include: { keeperSettings: true },

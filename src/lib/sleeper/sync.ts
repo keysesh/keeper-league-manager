@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma, AcquisitionType, DispositionType } from "@prisma/client";
 import { SleeperClient } from "./client";
 import { SleeperLeague } from "./types";
 import {
@@ -2013,7 +2013,7 @@ async function upsertAcquisition(data: {
     await prisma.playerAcquisition.update({
       where: { id: existing.id },
       data: {
-        acquisitionType: data.acquisitionType as any,
+        acquisitionType: data.acquisitionType as AcquisitionType,
         acquisitionDate: data.acquisitionDate,
         originalDraftRound: data.originalDraftRound ?? undefined,
         originalDraftSeason: data.originalDraftSeason ?? undefined,
@@ -2033,7 +2033,7 @@ async function upsertAcquisition(data: {
         ownerSleeperId: data.ownerSleeperId,
         leagueId: data.leagueId,
         season: data.season,
-        acquisitionType: data.acquisitionType as any,
+        acquisitionType: data.acquisitionType as AcquisitionType,
         acquisitionDate: data.acquisitionDate,
         originalDraftRound: data.originalDraftRound,
         originalDraftSeason: data.originalDraftSeason,
@@ -2071,7 +2071,7 @@ async function closeAcquisition(
     await prisma.playerAcquisition.update({
       where: { id: open.id },
       data: {
-        dispositionType: dispositionType as any,
+        dispositionType: dispositionType as DispositionType,
         dispositionDate,
       },
     });

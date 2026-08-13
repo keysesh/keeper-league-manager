@@ -16,7 +16,7 @@ import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_KEEPER_RULES,
   getCurrentSeason,
-  isTradeAfterDeadline,
+  isCurrentlyAfterTradeDeadline,
 } from "@/lib/constants/keeper-rules";
 import {
   PlayerTradeValue,
@@ -137,8 +137,9 @@ export async function analyzeTradeComprehensive(
   const season = getCurrentSeason();
   const allPlayerIds = [...team1PlayerIds, ...team2PlayerIds];
 
-  // Determine trade deadline status
-  const isAfterDeadline = isTradeAfterDeadline(tradeDate, tradeDate.getMonth() >= 8 ? tradeDate.getFullYear() : tradeDate.getFullYear() - 1);
+  // Determine trade deadline status (shared governing-season logic —
+  // identical to what the trade analyzer banner uses client-side)
+  const isAfterDeadline = isCurrentlyAfterTradeDeadline(tradeDate);
 
   // ========================================
   // BATCH QUERY 1: League + Settings + Both Rosters

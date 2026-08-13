@@ -46,8 +46,8 @@ export function Breadcrumbs({ items: explicitItems, leagueName, teamName, classN
       // Determine current page
       const pathAfterLeague = pathname.replace(`/league/${leagueId}`, "");
 
-      if (pathAfterLeague.startsWith("/my-team")) {
-        breadcrumbs.push({ label: "My Team", href: `/league/${leagueId}/my-team`, current: true });
+      if (pathAfterLeague.startsWith("/keepers") || pathAfterLeague.startsWith("/my-team")) {
+        breadcrumbs.push({ label: "My Keepers", href: `/league/${leagueId}/keepers`, current: true });
       } else if (pathAfterLeague.startsWith("/draft-board")) {
         breadcrumbs.push({ label: "Draft Board", href: `/league/${leagueId}/draft-board`, current: true });
       } else if (pathAfterLeague.startsWith("/trade-analyzer")) {

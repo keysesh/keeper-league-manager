@@ -104,9 +104,9 @@ export default function OnboardingPage() {
         body: JSON.stringify({ action: "complete" }),
       });
 
-      // Navigate to selected league or dashboard
+      // Navigate to selected league (My Keepers workspace) or dashboard
       if (selectedLeague) {
-        router.push(`/league/${selectedLeague}`);
+        router.push(`/league/${selectedLeague}/keepers`);
       } else {
         router.push("/");
       }
