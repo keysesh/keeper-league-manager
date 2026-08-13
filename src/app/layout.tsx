@@ -42,6 +42,15 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  // iOS reads these meta tags (not the manifest) to decide whether a
+  // Home-Screen install runs standalone. "black" keeps a solid status bar —
+  // no content-under-status-bar surprises. Users must re-add the icon to the
+  // Home Screen for this to take effect on an existing install.
+  appleWebApp: {
+    capable: true,
+    title: "Keeper",
+    statusBarStyle: "black",
+  },
 };
 
 export default function RootLayout({

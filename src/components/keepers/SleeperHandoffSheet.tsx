@@ -239,10 +239,17 @@ export function SleeperHandoffSheet({
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
+            {/* Same-context navigation on purpose: a new-tab target spawned a
+                browser tab/window on every tap (two taps = two Sleeper tabs)
+                and, in the installed Home-Screen app, punted the user out to
+                Safari. A plain anchor keeps one browsing context — standalone
+                mode shows Sleeper in the in-app view with a Done button back
+                to Keeper, Safari returns via Back. Sleeper's universal links
+                don't cover /leagues/* on iOS, so no navigation style can
+                force the native app open there. */}
             <a
               href={`https://sleeper.com/leagues/${sleeperLeagueId}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              rel="noreferrer"
               className="flex items-center justify-center gap-2 min-h-[48px] rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold transition-colors"
             >
               <ExternalLink size={16} />
@@ -256,7 +263,9 @@ export function SleeperHandoffSheet({
               {copied ? "Copied!" : "Copy list for league chat"}
             </button>
             <p className="text-[11px] text-slate-600 text-center">
-              Opens sleeper.com in your browser — on Android it may open the Sleeper app.
+              Opens your league on sleeper.com — use Done or Back to return
+              here. On Android this may open the Sleeper app; iPhone doesn&apos;t
+              support jumping straight into it.
             </p>
           </div>
         </>
