@@ -118,11 +118,13 @@ function LinkSleeperContent() {
         return;
       }
 
-      // Account created, sign in
+      // Account created server-side (register-with-discord already set the
+      // email + Discord link) — sign in with the LOGIN flow. Passing
+      // isRegistration here made authorize() reject with USERNAME_CLAIMED,
+      // because the account it had just created now legitimately exists.
       const signInResult = await signIn("credentials", {
         username,
         email,
-        isRegistration: "true",
         redirect: false,
       });
 
