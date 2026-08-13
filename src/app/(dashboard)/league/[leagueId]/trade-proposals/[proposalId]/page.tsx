@@ -3,66 +3,112 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ThumbsUp, ThumbsDown, MessageCircle, Clock, User, Copy, Check, Trash2, ArrowLeftRight } from "lucide-react";
-import { PositionBadge } from "@/components/ui/PositionBadge";
+import { Ticket } from "lucide-react";
+import {
+  EditorialScreen,
+  EditorialHeader,
+  EditorialCard,
+  SectionLabel,
+  Footnote,
+  rowHairline,
+} from "@/components/editorial";
+import { Headshot } from "@/components/editorial/Headshot";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { cn, editorialPositionColor } from "@/lib/design-tokens";
+import { isCurrentlyAfterTradeDeadline } from "@/lib/constants/keeper-rules";
 
-interface TradeProposal {
+/**
+ * Draft trade — editorial review of a proposal (design handoff Aug 2026).
+ *
+ * NOTE: this page previously rendered against a `team1`/`team2` response
+ * shape the API has never returned (every load crashed into the league
+ * error boundary). It is now wired to the real contract:
+ * parties[] with per-party sending/receiving assets, APPROVE/VETO/ABSTAIN
+ * votes, and userContext for what the viewer may do.
+ */
+
+interface Asset {
   id: string;
-  title: string;
-  status: string;
-  team1: {
-    rosterId: string;
-    rosterName: string;
-    players: string[];
-    playerDetails: Array<{ id: string; name: string; position: string }>;
-    picks: Array<{ season: number; round: number }>;
-  };
-  team2: {
-    rosterId: string;
-    rosterName: string;
-    players: string[];
-    playerDetails: Array<{ id: string; name: string; position: string }>;
-    picks: Array<{ season: number; round: number }>;
-  };
-  analysis?: {
-    fairnessScore: number;
-    team1NetValue: number;
-    team2NetValue: number;
-  };
-  votes: {
-    approve: Array<{ userId: string; userName: string; timestamp: string }>;
-    reject: Array<{ userId: string; userName: string; timestamp: string }>;
-    comments: Array<{ userId: string; userName: string; comment: string; timestamp: string }>;
-  };
-  notes?: string;
-  createdAt: string;
-  createdBy: {
+  type: "PLAYER" | "DRAFT_PICK";
+  player: {
     id: string;
-    name: string;
-    avatar?: string;
+    sleeperId: string;
+    fullName: string;
+    position: string | null;
+    team: string | null;
+  } | null;
+  pickSeason: number | null;
+  pickRound: number | null;
+  fromRoster: { id: string; teamName: string | null } | null;
+}
+
+interface Party {
+  rosterId: string;
+  teamName: string | null;
+  status: string;
+  assets: { sending: Asset[]; receiving: Asset[] };
+}
+
+interface ProposalResponse {
+  proposal: {
+    id: string;
+    title: string;
+    notes: string | null;
+    status: string;
+    createdAt: string;
+    parties: Party[];
+    votes: {
+      approve: number;
+      veto: number;
+      abstain: number;
+      vetoThreshold: number;
+      isVetoed: boolean;
+      details: Array<{
+        rosterId: string;
+        teamName: string | null;
+        vote: "APPROVE" | "VETO" | "ABSTAIN";
+        comment: string | null;
+      }>;
+    };
+  };
+  userContext: {
+    rosterId: string | null;
+    isProposer: boolean;
+    isParty: boolean;
+    canRespond: boolean;
+    canVote: boolean;
+    canCancel: boolean;
+    userVote?: string;
   };
 }
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "awaiting response",
+  ACCEPTED: "accepted",
+  REJECTED: "declined",
+  VETOED: "vetoed",
+  EXPIRED: "expired",
+  CANCELLED: "cancelled",
+};
 
 export default function TradeProposalDetailPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
   const proposalId = params.proposalId as string;
 
-  const [proposal, setProposal] = useState<TradeProposal | null>(null);
+  const [data, setData] = useState<ProposalResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [voting, setVoting] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState("");
   const [copied, setCopied] = useState(false);
-  const [userVote, setUserVote] = useState<"approve" | "reject" | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const fetchProposal = useCallback(async () => {
     try {
       const res = await fetch(`/api/leagues/${leagueId}/trade-proposals/${proposalId}`);
       if (!res.ok) throw new Error("Failed to fetch proposal");
-      const data = await res.json();
-      setProposal(data.proposal);
+      setData(await res.json());
+      setError("");
     } catch {
       setError("Failed to load trade proposal");
     } finally {
@@ -74,419 +120,291 @@ export default function TradeProposalDetailPage() {
     fetchProposal();
   }, [fetchProposal]);
 
-  const submitVote = async (vote: "approve" | "reject") => {
-    setVoting(true);
+  const act = async (init: { query?: string; body: Record<string, unknown> } | "delete") => {
+    setBusy(true);
     try {
-      const res = await fetch(`/api/leagues/${leagueId}/trade-proposals/${proposalId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vote, comment: comment || undefined }),
-      });
-
-      if (!res.ok) throw new Error("Failed to vote");
-
-      const data = await res.json();
-      setUserVote(data.votes.userVote);
+      const res =
+        init === "delete"
+          ? await fetch(`/api/leagues/${leagueId}/trade-proposals/${proposalId}`, {
+              method: "DELETE",
+            })
+          : await fetch(
+              `/api/leagues/${leagueId}/trade-proposals/${proposalId}${init.query || ""}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(init.body),
+              }
+            );
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "Action failed");
+      }
       setComment("");
-      await fetchProposal(); // Refresh to get updated votes
-    } catch {
-      setError("Failed to submit vote");
+      await fetchProposal();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Action failed");
     } finally {
-      setVoting(false);
-    }
-  };
-
-  const deleteProposal = async () => {
-    if (!confirm("Are you sure you want to close this proposal?")) return;
-
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/leagues/${leagueId}/trade-proposals/${proposalId}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("Failed to delete");
-
-      // Redirect back to list
-      window.location.href = `/league/${leagueId}/trade-proposals`;
-    } catch {
-      setError("Failed to close proposal");
-      setDeleting(false);
+      setBusy(false);
     }
   };
 
   const copyShareLink = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-800 rounded w-48 mb-4"></div>
-          <div className="h-4 bg-gray-800 rounded w-64 mb-8"></div>
-          <div className="card-premium rounded-2xl p-6 mb-4">
-            <div className="h-6 bg-gray-800 rounded w-1/3 mb-4"></div>
-            <div className="h-4 bg-gray-800 rounded w-full mb-2"></div>
-            <div className="h-4 bg-gray-800 rounded w-2/3"></div>
-          </div>
+      <EditorialScreen>
+        <div className="px-5 pt-2 space-y-4">
+          <Skeleton className="h-10 w-40 rounded-md" />
+          <Skeleton className="h-56 w-full rounded-md" />
         </div>
-      </div>
+      </EditorialScreen>
     );
   }
 
-  if (error || !proposal) {
+  if (error && !data) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-          <p className="text-red-400 font-medium">{error || "Proposal not found"}</p>
+      <EditorialScreen>
+        <EditorialHeader title="Draft trade" />
+        <div className="px-5 py-4 border-t border-[rgba(214,255,232,.10)]">
+          <p className="text-[13px] text-[#d4674a]">{error}</p>
           <Link
             href={`/league/${leagueId}/trade-proposals`}
-            className="text-amber-400 hover:text-amber-300 mt-4 inline-block"
+            className="mt-3 inline-block text-[13px] font-medium text-[#a8ac9d] underline underline-offset-4"
           >
-            &larr; Back to proposals
+            Back to proposals
           </Link>
         </div>
-      </div>
+      </EditorialScreen>
     );
   }
+  if (!data) return null;
 
-  const isActive = proposal.status !== "closed";
-  const totalVotes = (proposal.votes?.approve?.length || 0) + (proposal.votes?.reject?.length || 0);
-  const approvalPercentage = totalVotes > 0
-    ? Math.round((proposal.votes?.approve?.length || 0) / totalVotes * 100)
-    : 0;
+  const { proposal, userContext } = data;
+  const myParty = userContext.rosterId
+    ? proposal.parties.find((p) => p.rosterId === userContext.rosterId)
+    : undefined;
+  const otherParties = proposal.parties.filter((p) => p !== myParty);
+  const statusLabel = STATUS_LABEL[proposal.status] || proposal.status.toLowerCase();
+  const hasPlayers = proposal.parties.some((p) =>
+    [...p.assets.sending, ...p.assets.receiving].some((a) => a.type === "PLAYER")
+  );
+  const resetsYears = hasPlayers && isCurrentlyAfterTradeDeadline();
+
+  const assetRows = (assets: Asset[]) => (
+    <>
+      {assets.map((a) =>
+        a.type === "PLAYER" && a.player ? (
+          <div key={a.id} className={cn("flex items-center gap-3 px-5 py-3", rowHairline)}>
+            <Headshot sleeperId={a.player.sleeperId} size={36} alt={a.player.fullName} />
+            <span className="flex-1 min-w-0">
+              <span className="block text-[14px] leading-[1.2] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                {a.player.fullName}
+              </span>
+              <span className="block text-[11.5px] leading-none text-[#93a08f] mt-1.5">
+                <span style={{ color: editorialPositionColor(a.player.position) }}>
+                  {a.player.position}
+                </span>
+                {" · "}
+                {a.player.team || "FA"}
+                {resetsYears ? " · resets to 0 yrs" : ""}
+              </span>
+            </span>
+          </div>
+        ) : (
+          <div key={a.id} className={cn("flex items-center gap-3 px-5 py-3", rowHairline)}>
+            <span className="w-9 flex justify-center shrink-0 text-[#93a08f]">
+              <Ticket size={17} strokeWidth={1.7} />
+            </span>
+            <span className="flex-1 text-[13px] leading-[1.5] text-[#a8ac9d]">
+              {a.type === "DRAFT_PICK"
+                ? `${a.pickSeason} round ${a.pickRound}`
+                : "player no longer rostered"}
+            </span>
+          </div>
+        )
+      )}
+      {assets.length === 0 && (
+        <div className={cn("px-5 py-3 text-[13px] text-[#93a08f]", rowHairline)}>Nothing</div>
+      )}
+    </>
+  );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <Link
-          href={`/league/${leagueId}/trade-proposals`}
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-amber-400 text-sm mb-4 transition-colors"
-        >
-          <span>&larr;</span>
-          <span>Back to Proposals</span>
-        </Link>
+    <EditorialScreen>
+      <EditorialHeader
+        title="Draft trade"
+        sub={
+          myParty && otherParties.length > 0
+            ? `with ${otherParties.map((p) => p.teamName || "a team").join(", ")} · ${statusLabel}`
+            : `${proposal.parties.map((p) => p.teamName || "a team").join(" ↔ ")} · ${statusLabel}`
+        }
+      />
 
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-extrabold text-white tracking-tight">
-                {proposal.title}
-              </h1>
-              {proposal.status === "closed" ? (
-                <span className="px-3 py-1 bg-gray-700 text-gray-400 rounded-full text-xs font-medium">
-                  Closed
-                </span>
-              ) : (
-                <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
-                  Active
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                {proposal.createdBy?.name || "Unknown"}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {formatDate(proposal.createdAt)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={copyShareLink}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 hover:bg-gray-700 border border-gray-700 rounded-xl text-white font-medium transition-colors"
-            >
-              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-              {copied ? "Copied!" : "Share"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Fairness Score */}
-      {proposal.analysis && (
-        <div className="card-premium rounded-2xl p-6">
-          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <ArrowLeftRight className="w-5 h-5 text-amber-400" />
-            Trade Analysis
-          </h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-              <p className="text-gray-400 text-sm mb-1">{proposal.team1.rosterName}</p>
-              <p className={`text-2xl font-bold ${
-                proposal.analysis.team1NetValue >= 0 ? "text-green-400" : "text-red-400"
-              }`}>
-                {proposal.analysis.team1NetValue >= 0 ? "+" : ""}{proposal.analysis.team1NetValue}
-              </p>
-            </div>
-            <div className="text-center p-4 bg-gray-800/50 border border-gray-700 rounded-xl">
-              <p className="text-gray-400 text-sm mb-1">Fairness</p>
-              <p className={`text-2xl font-bold ${
-                proposal.analysis.fairnessScore >= 40
-                  ? "text-green-400"
-                  : proposal.analysis.fairnessScore >= 30
-                  ? "text-amber-400"
-                  : "text-red-400"
-              }`}>
-                {proposal.analysis.fairnessScore}%
-              </p>
-            </div>
-            <div className="text-center p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-              <p className="text-gray-400 text-sm mb-1">{proposal.team2.rosterName}</p>
-              <p className={`text-2xl font-bold ${
-                proposal.analysis.team2NetValue >= 0 ? "text-green-400" : "text-red-400"
-              }`}>
-                {proposal.analysis.team2NetValue >= 0 ? "+" : ""}{proposal.analysis.team2NetValue}
-              </p>
-            </div>
-          </div>
-        </div>
+      {resetsYears && (
+        <EditorialCard className="mb-5 !border-[rgba(201,146,47,.3)] !py-3.5">
+          <span className="block text-[12.5px] leading-[1.45] font-medium text-[#c9922f]">
+            Years kept reset after the deadline
+          </span>
+          <span className="block text-xs leading-[1.6] text-[#a8ac9d] mt-[7px]">
+            Traded players restart at zero years kept with their new team. Keeper
+            rounds are unchanged.
+          </span>
+        </EditorialCard>
       )}
 
-      {/* Trade Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Team 1 */}
-        <div className="card-premium rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-            {proposal.team1.rosterName} sends
-          </h3>
-          <div className="space-y-3">
-            {proposal.team1.playerDetails?.map((player) => (
-              <div
-                key={player.id}
-                className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-xl"
-              >
-                <PositionBadge position={player.position} size="xs" />
-                <span className="text-white font-medium">{player.name}</span>
-              </div>
-            ))}
-            {proposal.team1.picks?.map((pick, i) => (
-              <div
-                key={i}
-                className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 font-medium"
-              >
-                {pick.season} Round {pick.round} Pick
-              </div>
-            ))}
-            {(proposal.team1.playerDetails?.length || 0) === 0 && (proposal.team1.picks?.length || 0) === 0 && (
-              <p className="text-gray-500">Nothing selected</p>
-            )}
+      {myParty ? (
+        <>
+          <SectionLabel label="YOU GIVE" />
+          {assetRows(myParty.assets.sending)}
+          <SectionLabel label="YOU GET" className="pt-5" />
+          {assetRows(myParty.assets.receiving)}
+        </>
+      ) : (
+        proposal.parties.map((party, i) => (
+          <div key={party.rosterId}>
+            <SectionLabel
+              label={`${(party.teamName || "TEAM").toUpperCase()} SENDS`}
+              className={i > 0 ? "pt-5" : undefined}
+            />
+            {assetRows(party.assets.sending)}
           </div>
-        </div>
+        ))
+      )}
 
-        {/* Team 2 */}
-        <div className="card-premium rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-green-400 mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-400"></span>
-            {proposal.team2.rosterName} sends
-          </h3>
-          <div className="space-y-3">
-            {proposal.team2.playerDetails?.map((player) => (
-              <div
-                key={player.id}
-                className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-xl"
-              >
-                <PositionBadge position={player.position} size="xs" />
-                <span className="text-white font-medium">{player.name}</span>
-              </div>
-            ))}
-            {proposal.team2.picks?.map((pick, i) => (
-              <div
-                key={i}
-                className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 font-medium"
-              >
-                {pick.season} Round {pick.round} Pick
-              </div>
-            ))}
-            {(proposal.team2.playerDetails?.length || 0) === 0 && (proposal.team2.picks?.length || 0) === 0 && (
-              <p className="text-gray-500">Nothing selected</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Notes */}
       {proposal.notes && (
-        <div className="card-premium rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-3">Notes</h3>
-          <p className="text-gray-400">{proposal.notes}</p>
+        <div className="px-5 pt-4 text-[12.5px] leading-[1.6] text-[#a8ac9d]">
+          {proposal.notes}
         </div>
       )}
 
-      {/* Voting Section */}
-      {isActive && (
-        <div className="card-premium rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4">Cast Your Vote</h3>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Comment (optional)
-            </label>
+      {(userContext.canRespond || userContext.canVote) && (
+        <div className="px-4 pt-5 pb-1 grid gap-3">
+          {userContext.canVote && (
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Add your thoughts on this trade..."
+              placeholder="Add a comment with your vote (optional)"
               rows={2}
-              className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
-              maxLength={200}
+              maxLength={500}
+              className="w-full px-3.5 py-3 bg-[#131b17] border border-[rgba(214,255,232,.10)] rounded-lg text-[13px] text-[#eee7da] placeholder-[#93a08f] focus:outline-none focus:border-[rgba(214,255,232,.16)] resize-none"
             />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => submitVote("approve")}
-              disabled={voting}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                userVote === "approve"
-                  ? "bg-green-500 text-white"
-                  : "bg-green-500/20 hover:bg-green-500/30 text-green-400"
-              }`}
-            >
-              <ThumbsUp className="w-5 h-5" />
-              Approve
-            </button>
-            <button
-              onClick={() => submitVote("reject")}
-              disabled={voting}
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                userVote === "reject"
-                  ? "bg-red-500 text-white"
-                  : "bg-red-500/20 hover:bg-red-500/30 text-red-400"
-              }`}
-            >
-              <ThumbsDown className="w-5 h-5" />
-              Reject
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Voting Results */}
-      <div className="card-premium rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4">Voting Results</h3>
-
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="text-green-400 font-medium">
-              {proposal.votes?.approve?.length || 0} Approve
-            </span>
-            <span className="text-red-400 font-medium">
-              {proposal.votes?.reject?.length || 0} Reject
-            </span>
-          </div>
-          <div className="h-4 bg-gray-700 rounded-full overflow-hidden flex">
-            {totalVotes > 0 ? (
-              <>
-                <div
-                  className="h-full bg-green-500"
-                  style={{ width: `${approvalPercentage}%` }}
-                />
-                <div
-                  className="h-full bg-red-500"
-                  style={{ width: `${100 - approvalPercentage}%` }}
-                />
-              </>
-            ) : (
-              <div className="h-full w-full bg-gray-600" />
-            )}
-          </div>
-          <p className="text-center text-gray-500 text-sm mt-2">
-            {totalVotes} total vote{totalVotes !== 1 ? "s" : ""}
-          </p>
-        </div>
-
-        {/* Voter Lists */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-            <h4 className="text-green-400 font-medium mb-3 flex items-center gap-2">
-              <ThumbsUp className="w-4 h-4" />
-              Approved
-            </h4>
-            {proposal.votes?.approve?.length > 0 ? (
-              <ul className="space-y-2">
-                {proposal.votes.approve.map((vote, i) => (
-                  <li key={i} className="text-white text-sm">{vote.userName}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500 text-sm">No votes yet</p>
-            )}
-          </div>
-
-          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-            <h4 className="text-red-400 font-medium mb-3 flex items-center gap-2">
-              <ThumbsDown className="w-4 h-4" />
-              Rejected
-            </h4>
-            {proposal.votes?.reject?.length > 0 ? (
-              <ul className="space-y-2">
-                {proposal.votes.reject.map((vote, i) => (
-                  <li key={i} className="text-white text-sm">{vote.userName}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500 text-sm">No votes yet</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Comments */}
-      {proposal.votes?.comments?.length > 0 && (
-        <div className="card-premium rounded-2xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-gray-400" />
-            Comments ({proposal.votes.comments.length})
-          </h3>
-          <div className="space-y-4">
-            {proposal.votes.comments.map((c, i) => (
-              <div key={i} className="p-4 bg-gray-800/30 rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{c.userName}</span>
-                  <span className="text-gray-500 text-xs">{formatDate(c.timestamp)}</span>
-                </div>
-                <p className="text-gray-400">{c.comment}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Delete (Creator Only) */}
-      {isActive && (
-        <div className="flex justify-end">
+          )}
           <button
-            onClick={deleteProposal}
-            disabled={deleting}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 font-medium transition-colors"
+            onClick={() =>
+              userContext.canRespond
+                ? act({ body: { action: "accept" } })
+                : act({
+                    query: "?action=vote",
+                    body: { vote: "APPROVE", comment: comment || undefined },
+                  })
+            }
+            disabled={busy}
+            className="w-full text-center text-sm font-medium p-[15px] min-h-[44px] rounded-lg bg-[#a8401f] hover:bg-[#bd4a26] active:bg-[#8f3517] text-[#fdf6e8] transition-colors disabled:opacity-50"
           >
-            <Trash2 className="w-4 h-4" />
-            {deleting ? "Closing..." : "Close Proposal"}
+            {userContext.canRespond ? "Accept trade" : "Approve"}
+          </button>
+          <button
+            onClick={() =>
+              userContext.canRespond
+                ? act({ body: { action: "reject" } })
+                : act({
+                    query: "?action=vote",
+                    body: { vote: "VETO", comment: comment || undefined },
+                  })
+            }
+            disabled={busy}
+            className="w-full text-center text-sm font-medium p-[15px] min-h-[44px] rounded-lg border border-[rgba(214,255,232,.16)] text-[#a8ac9d] hover:bg-[rgba(214,255,232,.05)] transition-colors disabled:opacity-50"
+          >
+            {userContext.canRespond ? "Decline" : "Veto"}
           </button>
         </div>
       )}
-    </div>
+
+      {error && (
+        <p className="px-5 pt-3 text-[12.5px] text-[#d4674a]">{error}</p>
+      )}
+
+      <div className="px-4 pb-1 grid">
+        <button
+          onClick={copyShareLink}
+          className="w-full text-center text-[13px] font-medium min-h-[44px] text-[#93a08f]"
+        >
+          {copied ? "Link copied" : "Copy share link"}
+        </button>
+      </div>
+
+      <SectionLabel label="PARTIES" className="pt-3" />
+      {proposal.parties.map((p) => (
+        <div
+          key={p.rosterId}
+          className={cn("flex items-center justify-between px-5 py-3", rowHairline)}
+        >
+          <span className="text-[13.5px] leading-none font-medium">
+            {p.teamName || "Team"}
+            {p.rosterId === userContext.rosterId && (
+              <span className="font-plex-mono text-[10px] font-medium text-[#d4674a] ml-[7px]">
+                you
+              </span>
+            )}
+          </span>
+          <span className="font-plex-mono text-xs text-[#93a08f]">
+            {p.status.toLowerCase()}
+          </span>
+        </div>
+      ))}
+
+      {(proposal.votes.approve > 0 ||
+        proposal.votes.veto > 0 ||
+        proposal.votes.details.length > 0) && (
+        <>
+          <SectionLabel
+            label="LEAGUE VOTES"
+            right={`${proposal.votes.approve}–${proposal.votes.veto}${
+              proposal.votes.isVetoed ? " · vetoed" : ""
+            }`}
+            className="pt-5"
+          />
+          {proposal.votes.details.map((v, i) => (
+            <div key={i} className={cn("px-5 py-3", rowHairline)}>
+              <div className="flex items-center justify-between">
+                <span className="text-[13.5px] leading-none font-medium">
+                  {v.teamName || "Team"}
+                </span>
+                <span className="font-plex-mono text-xs text-[#93a08f]">
+                  {v.vote.toLowerCase()}
+                </span>
+              </div>
+              {v.comment && (
+                <p className="text-[12.5px] leading-[1.6] text-[#a8ac9d] mt-1.5">{v.comment}</p>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {userContext.canCancel && (
+        <div className="px-4 pt-4">
+          <button
+            onClick={() => {
+              if (confirm("Cancel this proposal?")) act("delete");
+            }}
+            disabled={busy}
+            className="w-full text-center text-[13px] font-medium min-h-[44px] text-[#d4674a] disabled:opacity-50"
+          >
+            Cancel proposal
+          </button>
+        </div>
+      )}
+
+      <Footnote>
+        Trades execute in Sleeper — proposals here gather the league&apos;s read
+        before anyone commits.
+      </Footnote>
+    </EditorialScreen>
   );
 }

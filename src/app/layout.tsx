@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -21,6 +21,23 @@ const geistMono = Geist_Mono({
   display: "swap",
   preload: true,
   fallback: ["Menlo", "Monaco", "Consolas", "monospace"],
+});
+
+// Editorial theme faces (the five league screens)
+const plexSans = IBM_Plex_Sans({
+  weight: ["400", "500", "600"],
+  variable: "--font-ibm-plex",
+  subsets: ["latin"],
+  display: "swap",
+  fallback: ["system-ui", "-apple-system", "sans-serif"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  weight: ["400", "500"],
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  display: "swap",
+  fallback: ["Menlo", "Monaco", "monospace"],
 });
 
 // viewport-fit=cover is required for env(safe-area-inset-*) to resolve to
@@ -61,7 +78,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geist.variable} ${geistMono.variable} font-sans antialiased text-zinc-100`}
+        className={`${geist.variable} ${geistMono.variable} ${plexSans.variable} ${plexMono.variable} font-sans antialiased text-zinc-100`}
       >
         <AuthProvider>
           <QueryProvider>

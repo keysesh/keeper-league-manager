@@ -114,6 +114,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             player: {
               select: {
                 id: true,
+                sleeperId: true,
                 fullName: true,
                 position: true,
                 team: true,

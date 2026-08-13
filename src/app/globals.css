@@ -179,6 +179,30 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist);
   --font-mono: var(--font-mono);
+  /* Editorial theme faces (IBM Plex, loaded in the root layout) */
+  --font-plex: var(--font-ibm-plex), system-ui, sans-serif;
+  --font-plex-mono: var(--font-ibm-plex-mono), monospace;
+}
+
+/* ============================================
+   EDITORIAL THEME — the five league screens
+   (design handoff Aug 2026). Warm pine-ink
+   surfaces, cream text, single brick accent,
+   hairline lists. Values are final — see
+   design handoff README before changing.
+   ============================================ */
+
+.editorial {
+  font-family: var(--font-ibm-plex), system-ui, sans-serif;
+  background: #0b120f;
+  color: #eee7da;
+}
+
+/* The one piece of brand flourish — appears at the top of every screen */
+.editorial-rule {
+  height: 1px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, rgba(199, 80, 47, 0.55), rgba(199, 80, 47, 0) 62%);
 }
 
 /* ============================================

@@ -2,78 +2,51 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import {
-  Activity,
-  ArrowLeftRight,
-  Settings as SettingsIcon,
-  Lock,
-  RefreshCw,
-  UserPlus,
-  UserMinus,
-  Clock,
-  ChevronDown,
-  Trophy,
-} from "lucide-react";
-import { PositionBadge } from "@/components/ui/PositionBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { BackLink } from "@/components/ui/BackLink";
+import {
+  EditorialScreen,
+  EditorialHeader,
+  Hairline,
+  Footnote,
+  rowHairline,
+} from "@/components/editorial";
+import { cn } from "@/lib/design-tokens";
 
 interface ActivityItem {
   id: string;
-  type: "KEEPER_ADDED" | "KEEPER_REMOVED" | "KEEPER_LOCKED" | "TRADE" | "SETTINGS_CHANGED" | "SYNC";
+  type: string;
   description: string;
   timestamp: string;
-  actor: {
-    id: string;
-    name: string;
-    avatar: string | null;
-  } | null;
-  metadata: Record<string, unknown>;
+  actor: { id: string; name: string; avatar: string | null } | null;
 }
 
 interface ActivityData {
   activities: ActivityItem[];
-  pagination: {
-    limit: number;
-    offset: number;
-    hasMore: boolean;
-  };
+  pagination: { limit: number; offset: number; hasMore: boolean };
   lastSyncedAt: string | null;
 }
 
-const activityIcons: Record<ActivityItem["type"], React.ReactNode> = {
-  KEEPER_ADDED: <UserPlus size={16} className="text-emerald-400" />,
-  KEEPER_REMOVED: <UserMinus size={16} className="text-red-400" />,
-  KEEPER_LOCKED: <Lock size={16} className="text-amber-400" />,
-  TRADE: <ArrowLeftRight size={16} className="text-blue-400" />,
-  SETTINGS_CHANGED: <SettingsIcon size={16} className="text-purple-400" />,
-  SYNC: <RefreshCw size={16} className="text-gray-400" />,
-};
+const WINDOW_DAYS = 30;
 
-const activityColors: Record<ActivityItem["type"], string> = {
-  KEEPER_ADDED: "border-l-emerald-500 bg-emerald-500/[0.04]",
-  KEEPER_REMOVED: "border-l-red-500 bg-red-500/[0.04]",
-  KEEPER_LOCKED: "border-l-amber-500 bg-amber-500/[0.04]",
-  TRADE: "border-l-blue-500 bg-blue-500/[0.04]",
-  SETTINGS_CHANGED: "border-l-purple-500 bg-purple-500/[0.04]",
-  SYNC: "border-l-gray-500 bg-gray-500/[0.03]",
-};
+/** "TODAY" / "AUG 12" style group label. */
+function dayLabel(ts: string): string {
+  const date = new Date(ts);
+  const now = new Date();
+  const sameDay = date.toDateString() === now.toDateString();
+  if (sameDay) return "TODAY";
+  return date
+    .toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    .toUpperCase();
+}
 
-const activityIconBg: Record<ActivityItem["type"], string> = {
-  KEEPER_ADDED: "bg-emerald-500/15",
-  KEEPER_REMOVED: "bg-red-500/15",
-  KEEPER_LOCKED: "bg-amber-500/15",
-  TRADE: "bg-blue-500/15",
-  SETTINGS_CHANGED: "bg-purple-500/15",
-  SYNC: "bg-gray-500/10",
-};
-
-function getDateKey(timestamp: string): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+/** "5:08p" / "11:20a" style timestamp. */
+function clockLabel(ts: string): string {
+  const date = new Date(ts);
+  let h = date.getHours();
+  const suffix = h >= 12 ? "p" : "a";
+  h = h % 12 || 12;
+  const m = date.getMinutes().toString().padStart(2, "0");
+  return `${h}:${m}${suffix}`;
 }
 
 export default function ActivityPage() {
@@ -83,300 +56,135 @@ export default function ActivityPage() {
   const [data, setData] = useState<ActivityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filterType, setFilterType] = useState<ActivityItem["type"] | "ALL">("ALL");
-  const [showLoadMore, setShowLoadMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchData = useCallback(async (offset = 0, append = false) => {
-    if (!append) setIsRefreshing(true);
-    try {
-      const res = await fetch(`/api/leagues/${leagueId}/activity?limit=50&offset=${offset}`);
-      if (!res.ok) throw new Error("Failed to fetch activity");
-      const result: ActivityData = await res.json();
-
-      if (append && data) {
-        setData({
-          ...result,
-          activities: [...data.activities, ...result.activities],
-        });
-      } else {
-        setData(result);
+  const fetchData = useCallback(
+    async (offset = 0, append = false) => {
+      if (append) setLoadingMore(true);
+      try {
+        const res = await fetch(
+          `/api/leagues/${leagueId}/activity?limit=50&offset=${offset}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch activity");
+        const result: ActivityData = await res.json();
+        setData((prev) =>
+          append && prev
+            ? { ...result, activities: [...prev.activities, ...result.activities] }
+            : result
+        );
+        setError("");
+      } catch {
+        setError("Failed to load activity");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-      setShowLoadMore(result.pagination.hasMore);
-      setError("");
-    } catch {
-      setError("Failed to load activity");
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [leagueId, data]);
+    },
+    [leagueId]
+  );
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leagueId]);
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  const filteredActivities = data?.activities.filter(
-    (a) => filterType === "ALL" || a.type === filterType
-  );
+  }, [fetchData]);
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 p-4">
-        <div>
-          <Skeleton className="h-4 w-24 mb-2" />
-          <Skeleton className="h-10 w-48 mb-2" />
+      <EditorialScreen>
+        <div className="px-5 pt-2 space-y-4">
+          <Skeleton className="h-10 w-40 rounded-md" />
+          <Skeleton className="h-52 w-full rounded-md" />
         </div>
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-xl" />
-          ))}
-        </div>
-      </div>
+      </EditorialScreen>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="max-w-4xl mx-auto p-4">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-          <p className="text-red-400 font-medium">{error || "Failed to load"}</p>
+      <EditorialScreen>
+        <EditorialHeader title="Activity" sub={`last ${WINDOW_DAYS} days`} />
+        <Hairline top />
+        <div className="px-5 py-4">
+          <p className="text-[13px] text-[#d4674a]">{error || "Failed to load"}</p>
           <button
             onClick={() => fetchData()}
-            className="mt-4 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium"
+            className="mt-3 text-[13px] font-medium text-[#a8ac9d] underline underline-offset-4"
           >
-            Try Again
+            Try again
           </button>
         </div>
-      </div>
+      </EditorialScreen>
     );
   }
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 p-4 md:p-6">
-      {/* Premium Icon Gradient Definitions */}
-      
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-        <div>
-          <BackLink href={`/league/${leagueId}`} label="Back to League" />
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 ring-1 ring-orange-500/20 flex items-center justify-center">
-              <Activity className="w-6 h-6 text-orange-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                Activity Feed
-              </h1>
-              <p className="text-gray-500 mt-0.5">Recent keeper and league activity</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => fetchData()}
-            disabled={isRefreshing}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600 text-sm font-medium transition-all disabled:opacity-50"
-          >
-            <RefreshCw
-              size={16}
-              strokeWidth={2}
-              className={isRefreshing ? "animate-spin" : ""}
-            />
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Filter */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-gray-500 text-sm">Filter:</span>
-        {(["ALL", "KEEPER_ADDED", "KEEPER_REMOVED", "TRADE", "SETTINGS_CHANGED"] as const).map(
-          (type) => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filterType === type
-                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/40"
-                  : "bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50"
-              }`}
-            >
-              {type === "ALL"
-                ? "All"
-                : type === "KEEPER_ADDED"
-                ? "Keepers Added"
-                : type === "KEEPER_REMOVED"
-                ? "Keepers Removed"
-                : type === "TRADE"
-                ? "Trades"
-                : "Settings"}
-            </button>
-          )
-        )}
-      </div>
-
-      {/* Activity List with date separators */}
-      <div className="space-y-3">
-        {filteredActivities && filteredActivities.length > 0 ? (
-          filteredActivities.map((activity, index) => {
-            const dateKey = getDateKey(activity.timestamp);
-            const prevDateKey = index > 0 ? getDateKey(filteredActivities[index - 1].timestamp) : null;
-            const showDateSeparator = dateKey !== prevDateKey;
-
-            return (
-              <div key={activity.id}>
-                {showDateSeparator && (
-                  <div className="activity-date-separator my-4">
-                    <span>{dateKey}</span>
-                  </div>
-                )}
-                <ActivityCard
-                  activity={activity}
-                  formatTimestamp={formatTimestamp}
-                />
-              </div>
-            );
-          })
-        ) : (
-          <div className="bg-gray-800/40 rounded-2xl p-8 text-center border border-gray-700/40">
-            <Activity className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium">No activity yet</p>
-            <p className="text-gray-500 text-sm mt-1">
-              Activity will appear here as keepers are added and changes are made
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Load More */}
-      {showLoadMore && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => fetchData(data.activities.length, true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-800/50 text-gray-400 hover:text-white border border-gray-700/50 hover:border-gray-600 text-sm font-medium transition-all"
-          >
-            <ChevronDown size={16} />
-            Load More
-          </button>
-        </div>
-      )}
-
-      {/* Last Sync Info */}
-      {data.lastSyncedAt && (
-        <div className="flex items-center justify-center gap-2 text-gray-500 text-xs">
-          <Clock size={12} />
-          <span>
-            Last synced:{" "}
-            {new Date(data.lastSyncedAt).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
-          </span>
-        </div>
-      )}
-    </div>
+  const cutoff = Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const recent = data.activities.filter(
+    (a) => new Date(a.timestamp).getTime() >= cutoff
   );
-}
 
-function ActivityCard({
-  activity,
-  formatTimestamp,
-}: {
-  activity: ActivityItem;
-  formatTimestamp: (ts: string) => string;
-}) {
-  const metadata = activity.metadata;
+  // Group consecutive entries by day
+  const groups: Array<{ label: string; items: ActivityItem[] }> = [];
+  for (const item of recent) {
+    const label = dayLabel(item.timestamp);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(item);
+    else groups.push({ label, items: [item] });
+  }
 
   return (
-    <div
-      className={`bg-[#0c1219] rounded-xl border border-white/[0.08] border-l-4 ${
-        activityColors[activity.type]
-      } p-4 transition-all hover:bg-[#141c2b]`}
-    >
-      <div className="flex items-start gap-4">
-        <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${activityIconBg[activity.type]}`}>
-          {activityIcons[activity.type]}
-        </div>
+    <EditorialScreen>
+      <EditorialHeader title="Activity" sub={`last ${WINDOW_DAYS} days`} />
 
-        <div className="flex-1 min-w-0">
-          <p className="text-white font-medium">{activity.description}</p>
+      {groups.length === 0 && (
+        <>
+          <Hairline top />
+          <div className="px-5 py-6 text-[13px] leading-[1.55] text-[#93a08f]">
+            Nothing in the last {WINDOW_DAYS} days. Keeper declarations, trades
+            and settings changes will appear here.
+          </div>
+        </>
+      )}
 
-          {/* Metadata details */}
-          {activity.type === "KEEPER_ADDED" && Boolean(metadata.playerName) && (
-            <div className="flex items-center gap-2 mt-2">
-              <PositionBadge position={String(metadata.position || "")} size="xs" />
-              <span className="text-gray-400 text-sm">
-                {String(metadata.playerName)}
-              </span>
-              <span className="text-gray-500 text-sm">
-                {String(metadata.team || "FA")}
-              </span>
-              {Boolean(metadata.cost) && (
-                <span className="text-purple-400 text-sm font-medium">
-                  Round {Number(metadata.cost)}
-                </span>
-              )}
-              {metadata.keeperType === "FRANCHISE" && (
-                <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded">
-                  FT
-                </span>
-              )}
-            </div>
-          )}
-
-          {activity.type === "TRADE" && Array.isArray(metadata.players) && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {(metadata.players as Array<{ playerName: string }>).map(
-                (player, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 bg-blue-500/10 text-blue-400 text-xs rounded"
-                  >
-                    {player.playerName}
-                  </span>
-                )
-              )}
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 mt-2">
-            {activity.actor && (
-              <span className="text-gray-500 text-xs">
-                by {activity.actor.name}
-              </span>
+      {groups.map((group, gi) => (
+        <div key={`${group.label}-${gi}`}>
+          <div
+            className={cn(
+              "px-5 pb-2 text-[11px] leading-none font-medium text-[#93a08f] tracking-[0.06em]",
+              gi > 0 && "pt-5"
             )}
-            <span className="text-gray-600 text-xs">
-              {formatTimestamp(activity.timestamp)}
-            </span>
+          >
+            {group.label}
           </div>
+          <Hairline top />
+          {group.items.map((item) => (
+            <div key={item.id} className={cn("flex gap-3.5 px-5 py-[13px]", rowHairline)}>
+              <span className="w-11 shrink-0 font-plex-mono text-[11px] leading-[1.5] text-[#93a08f]">
+                {clockLabel(item.timestamp)}
+              </span>
+              <span className="text-[13px] leading-[1.55] text-[#ded7c8]">
+                {item.actor && !item.description.startsWith(item.actor.name) && (
+                  <b className="font-medium text-[#eee7da]">{item.actor.name} </b>
+                )}
+                {item.description}
+              </span>
+            </div>
+          ))}
         </div>
+      ))}
 
-        {activity.type === "KEEPER_ADDED" && (
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10">
-            <Trophy size={16} />
-          </div>
-        )}
-      </div>
-    </div>
+      {data.pagination.hasMore && (
+        <button
+          onClick={() => fetchData(data.activities.length, true)}
+          disabled={loadingMore}
+          className={cn(
+            "w-full text-left px-5 py-3 min-h-[44px] text-[13px] font-medium text-[#a8ac9d] disabled:opacity-50",
+            rowHairline
+          )}
+        >
+          {loadingMore ? "Loading…" : "Load older activity"}
+        </button>
+      )}
+
+      <Footnote>Showing the most recent league activity.</Footnote>
+    </EditorialScreen>
   );
 }

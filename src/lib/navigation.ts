@@ -13,10 +13,9 @@
  */
 
 import {
-  Crown,
-  LayoutGrid,
+  List,
+  Hash,
   ArrowLeftRight,
-  Trophy,
   Users,
   Settings,
   Activity,
@@ -46,16 +45,18 @@ export interface NavSection {
 export function getLeagueTabs(leagueId: string): NavItem[] {
   const base = `/league/${leagueId}`;
   return [
+    // Editorial tab-bar icon set (design handoff Aug 2026):
+    // list / hash / arrow-left-right / users
     {
-      name: "My Keepers",
+      name: "Keepers",
       href: `${base}/keepers`,
-      icon: Crown,
+      icon: List,
       activePrefixes: [`${base}/keepers`, `${base}/my-team`],
     },
     {
       name: "Board",
       href: `${base}/draft-board`,
-      icon: LayoutGrid,
+      icon: Hash,
       activePrefixes: [`${base}/draft-board`, `${base}/simulation`],
     },
     {
@@ -67,7 +68,7 @@ export function getLeagueTabs(leagueId: string): NavItem[] {
     {
       name: "League",
       href: base,
-      icon: Trophy,
+      icon: Users,
       activePrefixes: [base],
       // Everything under the league that belongs to another tab
       excludePrefixes: [

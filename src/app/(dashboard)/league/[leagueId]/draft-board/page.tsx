@@ -32,6 +32,12 @@ import { BackLink } from "@/components/ui/BackLink";
 import { RefreshFromSleeper } from "@/components/ui/RefreshFromSleeper";
 import { TeamRoundsView } from "@/components/draft/TeamRoundsView";
 import {
+  EditorialScreen,
+  EditorialHeader,
+  Footnote,
+} from "@/components/editorial";
+import { MyPicksList } from "@/components/editorial/MyPicksList";
+import {
   exportKeepersToCSV,
   exportDraftBoardToCSV,
   printDraftBoard,
@@ -131,6 +137,8 @@ export default function DraftBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list" | "team">("grid");
+  // Editorial mobile screen tabs (Sandbox is a navigation, not a tab)
+  const [boardTab, setBoardTab] = useState<"mine" | "league">("mine");
   const [filterPosition, setFilterPosition] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
@@ -341,8 +349,87 @@ export default function DraftBoardPage() {
 
   const rosters = data.draftBoard[0]?.slots || [];
 
+  // Untouched tail rounds for the editorial footnote ("Rounds 13–16 unchanged")
+  const myCascade = userRosterId ? data.cascade.find((t) => t.rosterId === userRosterId) : undefined;
+  let firstUnchangedRound = data.draftRounds + 1;
+  if (myCascade) {
+    for (let r = data.draftRounds; r >= 1; r--) {
+      const touched =
+        myCascade.results.some((k) => k.finalCost === r) ||
+        myCascade.tradedAwayPicks.includes(r) ||
+        myCascade.acquiredPicks.some((p) => p.round === r);
+      if (touched) break;
+      firstUnchangedRound = r;
+    }
+  }
+
   return (
-    <div className="max-w-full mx-auto space-y-6 p-4 md:p-6">
+    <>
+      {/* ============ MOBILE: editorial Board screen (design handoff Aug 2026) ============ */}
+      <EditorialScreen className="lg:hidden">
+        <EditorialHeader title="Draft board" sub={`${data.season} · your picks`} />
+
+        {/* Segmented text tabs — underline, not pills */}
+        <div className="flex gap-[18px] px-5 pb-0 text-[12.5px] leading-none font-medium">
+          {(["mine", "league"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setBoardTab(tab)}
+              className={
+                boardTab === tab
+                  ? "text-[#eee7da] border-b-[1.5px] border-[#a8401f] pb-[9px]"
+                  : "text-[#93a08f] pb-[9px] border-b-[1.5px] border-transparent"
+              }
+            >
+              {tab === "mine" ? "Mine" : "League"}
+            </button>
+          ))}
+          <Link
+            href={`/league/${leagueId}/simulation`}
+            className="text-[#93a08f] pb-[9px] border-b-[1.5px] border-transparent"
+          >
+            Sandbox
+          </Link>
+        </div>
+        <div className="pt-3.5" />
+
+        {boardTab === "mine" && userRosterId && myCascade ? (
+          <>
+            <MyPicksList
+              cascade={data.cascade}
+              draftBoard={data.draftBoard}
+              draftRounds={data.draftRounds}
+              rosterId={userRosterId}
+              onPlayerClick={setSelectedPlayerId}
+            />
+            <Footnote>
+              {firstUnchangedRound <= data.draftRounds
+                ? `Rounds ${firstUnchangedRound}–${data.draftRounds} unchanged. `
+                : ""}
+              {data.summary.tradedPicks} pick{data.summary.tradedPicks === 1 ? " has" : "s have"}{" "}
+              moved league-wide this offseason.
+            </Footnote>
+          </>
+        ) : boardTab === "mine" ? (
+          <div className="px-5 py-4 text-[12.5px] leading-[1.6] text-[#93a08f] border-t border-[rgba(214,255,232,.10)]">
+            You don&apos;t manage a roster in this league — the League view shows
+            every team&apos;s board.
+          </div>
+        ) : (
+          <div className="px-4 pb-4">
+            <TeamRoundsView
+              cascade={filteredCascade || data.cascade}
+              draftBoard={data.draftBoard}
+              draftRounds={data.draftRounds}
+              userRosterId={userRosterId}
+              onPlayerClick={setSelectedPlayerId}
+            />
+          </div>
+        )}
+      </EditorialScreen>
+
+      {/* ============ DESKTOP: existing rich board ============ */}
+      <div className="hidden lg:block max-w-full mx-auto space-y-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col gap-6">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
@@ -755,13 +842,15 @@ export default function DraftBoardPage() {
         </div>
       </div>
 
-      {/* Keeper History Modal */}
+      </div>
+
+      {/* Keeper History Modal — shared by the mobile and desktop views */}
       <KeeperHistoryModal
         playerId={selectedPlayerId || ""}
         isOpen={!!selectedPlayerId}
         onClose={() => setSelectedPlayerId(null)}
       />
-    </div>
+    </>
   );
 }
 

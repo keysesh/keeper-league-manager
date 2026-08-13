@@ -28,6 +28,16 @@ export function Breadcrumbs({ items: explicitItems, leagueName, teamName, classN
   const leagueId = params?.leagueId as string | undefined;
   const rosterId = params?.rosterId as string | undefined;
 
+  // The editorial league screens (design handoff Aug 2026) carry their own
+  // title/sub-line header — breadcrumbs above them would double the header.
+  const isEditorialScreen =
+    !!leagueId &&
+    (pathname === `/league/${leagueId}` ||
+      [`/keepers`, `/my-team`, `/draft-board`, `/activity`].some((p) =>
+        pathname.startsWith(`/league/${leagueId}${p}`)
+      ) ||
+      /^\/league\/[^/]+\/trade-proposals\/[^/]+$/.test(pathname));
+
   const items = useMemo(() => {
     if (explicitItems) return explicitItems;
 
@@ -82,6 +92,9 @@ export function Breadcrumbs({ items: explicitItems, leagueName, teamName, classN
 
   // Don't show breadcrumbs if we only have home
   if (items.length <= 1) return null;
+
+  // After all hooks: editorial screens render without breadcrumbs
+  if (isEditorialScreen && !explicitItems) return null;
 
   return (
     <nav aria-label="Breadcrumb" className={`mb-4 ${className}`}>

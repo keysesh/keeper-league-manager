@@ -68,7 +68,9 @@ export default async function KeepersPage({
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-4">
+      {/* Desktop-only header — the mobile editorial screen carries its own
+          title block (design handoff Aug 2026) */}
+      <div className="hidden lg:block mb-4">
         <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">My Keepers</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           {roster.teamName || "Your team"} — plan, compare and finalize your keeper selections

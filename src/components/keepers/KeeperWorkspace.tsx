@@ -10,12 +10,22 @@ import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { DraftCapital } from "@/components/ui/DraftCapital";
 import { RefreshFromSleeper } from "@/components/ui/RefreshFromSleeper";
 import {
+  EditorialScreen,
+  EditorialHeader,
+  EditorialCard,
+  SectionLabel,
+  Footnote,
+  rowHairline,
+} from "@/components/editorial";
+import { PlayerListRow } from "@/components/editorial/PlayerListRow";
+import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
+import { cn } from "@/lib/design-tokens";
+import {
   diffPlanSnapshots,
   type PlanChange,
   type PlanSnapshot,
   type StoredPlanSnapshot,
 } from "@/lib/keeper/plan-diff";
-import { KeeperRow } from "./KeeperRow";
 import { PlanningTray } from "./PlanningTray";
 import { PlayerDetailSheet } from "./PlayerDetailSheet";
 import {
@@ -35,6 +45,84 @@ const fetcher = (url: string) =>
     if (!res.ok) throw new Error("Failed to fetch");
     return res.json();
   });
+
+// ---------- Editorial screen copy helpers (mobile Keepers screen) ----------
+
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven"];
+const numberWord = (n: number) => NUMBER_WORDS[n] ?? String(n);
+
+function agoLabel(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function lockLabel(
+  d?: { source: "league" | "draft" | "none"; deadline: string | null } | null
+): string {
+  if (!d || !d.deadline || d.source === "none") return "no deadline";
+  const date = new Date(d.deadline).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+  // A draft-derived date is a fallback, not a commissioner rule — label it so
+  return d.source === "draft" ? `draft ${date}` : `locks ${date}`;
+}
+
+function summaryCopy(
+  current: { franchise: number; regular: number },
+  limits: { maxFranchiseTags: number; maxRegularKeepers: number }
+): string {
+  const parts: string[] = [];
+  if (current.franchise > 0 && current.franchise >= limits.maxFranchiseTags) {
+    parts.push(
+      limits.maxFranchiseTags === 1
+        ? "The tag is used, so its round holds."
+        : "Both tags are used, so their rounds hold."
+    );
+  } else if (current.franchise > 0) {
+    parts.push(
+      `${numberWord(current.franchise)} of ${numberWord(limits.maxFranchiseTags)} tags used — tagged rounds hold.`
+    );
+  } else {
+    parts.push(`No franchise tags used yet — ${numberWord(limits.maxFranchiseTags)} available.`);
+  }
+  if (current.regular > 0) {
+    parts.push(
+      `The ${numberWord(current.regular)} regular ${
+        current.regular === 1 ? "keeper moves" : "keepers each move"
+      } up a round, and none can be kept past a second year.`
+    );
+  } else {
+    parts.push("Regular keepers move up a round each year they're kept, to a two-year max.");
+  }
+  return parts.join(" ");
+}
+
+function statusLabel(p: EligiblePlayer): string {
+  if (p.eligibility.acquisitionType === "WAIVER" && !p.eligibility.originalDraft) {
+    return "waiver add";
+  }
+  const n = p.eligibility.yearsKept;
+  if (n === 0) return "first year";
+  return `kept ${n} yr${n > 1 ? "s" : ""}`;
+}
+
+/**
+ * What this keeper would cost NEXT season if kept again: tags hold their
+ * round; regular keepers move up one (floor round 1) but max out at
+ * REGULAR_KEEPER_MAX_YEARS — past that the honest answer is a dash, even
+ * though a number would look tidier.
+ */
+function nextYearCost(isTag: boolean, liveCost: number, yearsKept: number): string {
+  if (isTag) return `R${liveCost}`;
+  const nextYearTotal = yearsKept + 2; // this season's keep + next season's
+  if (nextYearTotal > DEFAULT_KEEPER_RULES.REGULAR_KEEPER_MAX_YEARS) return "—";
+  return `R${Math.max(liveCost - DEFAULT_KEEPER_RULES.COST_REDUCTION_PER_YEAR, DEFAULT_KEEPER_RULES.MINIMUM_ROUND)}`;
+}
 
 interface KeeperWorkspaceProps {
   leagueId: string;
@@ -98,6 +186,16 @@ export function KeeperWorkspace({
     fetcher,
     { revalidateOnFocus: true, dedupingInterval: 60000 }
   );
+
+  // Lock date + sync freshness for the editorial header/summary
+  const { data: deadlineData } = useSWR<{
+    source: "league" | "draft" | "none";
+    deadline: string | null;
+    lastSyncedAt: string | null;
+  }>(`/api/leagues/${leagueId}/deadline`, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 300000,
+  });
 
   const rosterCascade = cascadeData?.cascade.find((c) => c.rosterId === rosterId);
 
@@ -363,10 +461,11 @@ export function KeeperWorkspace({
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Changes since the user's last planning visit */}
+    <div className="lg:space-y-6">
+      {/* Changes since the user's last planning visit (desktop banner; the
+          mobile editorial screen renders its own card version) */}
       {planChanges.length > 0 && (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-950/25 px-4 py-3">
+        <div className="hidden lg:block rounded-xl border border-amber-500/25 bg-amber-950/25 px-4 py-3">
           <div className="flex items-start gap-3">
             <TrendingUp className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
@@ -392,8 +491,9 @@ export function KeeperWorkspace({
         </div>
       )}
 
-      {/* ============ STICKY PLANNING TRAY (all viewports) ============ */}
-      <div className="sticky top-14 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 py-2.5 bg-[#06090f]/95 backdrop-blur-lg border-b border-white/[0.08] lg:border lg:rounded-xl lg:bg-[#0c1219] lg:p-4">
+      {/* ============ STICKY PLANNING TRAY (desktop) ============
+          On mobile the editorial summary block carries the slot counts. */}
+      <div className="hidden lg:block sticky top-14 z-30 py-2.5 border lg:rounded-xl bg-[#0c1219] lg:p-4 border-white/[0.08]">
         <div className="flex items-start justify-between gap-3">
           <PlanningTray data={data} cascadeResults={rosterCascade?.results} className="flex-1 min-w-0" />
           <RefreshFromSleeper
@@ -409,96 +509,172 @@ export function KeeperWorkspace({
         </div>
       </div>
 
-      {/* ============ MOBILE: compact rows ============ */}
-      <div className="lg:hidden space-y-5">
-        {/* Current keepers */}
-        <section>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-white mb-2">
-            <Star size={14} className="text-amber-400" />
-            Your Keepers
-            <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[11px] font-bold tabular-nums">
-              {currentKeepers.length}
-            </span>
-          </h2>
-          {currentKeepers.length > 0 ? (
-            <div className="space-y-1.5">
-              {currentKeepers.map((p) => {
-                const cascadeResult = rosterCascade?.results.find(
-                  (r) => r.playerId === p.player.sleeperId
-                );
-                return (
-                  <KeeperRow
-                    key={p.player.id}
-                    entry={p}
-                    liveCost={cascadeResult?.finalCost}
-                    cascaded={cascadeResult?.cascaded ?? false}
-                    onClick={() => setSheetPlayerId(p.player.id)}
-                  />
-                );
-              })}
+      {/* ============ MOBILE: editorial screen (design handoff Aug 2026) ============ */}
+      <EditorialScreen className="lg:hidden">
+        <EditorialHeader
+          title="Keepers"
+          sub={`${data.season}${
+            deadlineData?.lastSyncedAt ? ` · synced ${agoLabel(deadlineData.lastSyncedAt)}` : ""
+          }`}
+          right={
+            <RefreshFromSleeper
+              leagueId={leagueId}
+              compact
+              className="flex-shrink-0 -mr-1"
+              onRefreshed={() => {
+                mutate();
+                mutateCascade();
+                mutateVerification();
+              }}
+            />
+          }
+        />
+
+        {/* Changes since the user's last planning visit — editorial card */}
+        {planChanges.length > 0 && (
+          <EditorialCard className="mb-4 !border-[rgba(201,146,47,.3)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block text-[12.5px] leading-[1.45] font-medium text-[#c9922f]">
+                  Since you last planned
+                </span>
+                <ul className="mt-[7px] space-y-1">
+                  {planChanges.map((c, i) => (
+                    <li key={i} className="text-xs leading-[1.6] text-[#a8ac9d]">
+                      {c.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                onClick={() => setPlanChanges([])}
+                className="flex items-center justify-center w-8 h-8 -mr-1 shrink-0 text-[#93a08f]"
+                aria-label="Dismiss"
+              >
+                <X size={15} />
+              </button>
             </div>
-          ) : (
-            <p className="text-sm text-slate-500 py-3 text-center bg-[#0c1219] border border-white/[0.08] rounded-lg">
-              No keepers selected yet — pick from the list below
-            </p>
+          </EditorialCard>
+        )}
+
+        {/* Summary block — slot usage, lock date, what the rules do next year */}
+        <EditorialCard className="mb-[22px]">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[13.5px] leading-none font-medium">
+              {data.currentKeepers.regular} regular · {data.currentKeepers.franchise}{" "}
+              {data.currentKeepers.franchise === 1 ? "tag" : "tags"}
+            </span>
+            <span className="font-plex-mono text-xs leading-none font-medium text-[#c9922f] whitespace-nowrap">
+              {lockLabel(deadlineData)}
+            </span>
+          </div>
+          <div className="text-[12.5px] leading-[1.6] text-[#a8ac9d] mt-[9px]">
+            {summaryCopy(data.currentKeepers, data.limits)}
+          </div>
+        </EditorialCard>
+
+        <div className="tabular-nums">
+          <SectionLabel label="ROSTER" right={`COST · ${data.season + 1}`} />
+          {currentKeepers.length === 0 && (
+            <div className={cn("px-5 py-4 text-[12.5px] leading-[1.6] text-[#93a08f]", rowHairline)}>
+              No keepers selected yet — pick from the eligible list below.
+            </div>
           )}
+          {currentKeepers.map((p) => {
+            const live =
+              rosterCascade?.results.find((r) => r.playerId === p.player.sleeperId)?.finalCost ??
+              p.existingKeeper?.finalCost ??
+              1;
+            const isTag = p.existingKeeper?.type === "FRANCHISE";
+            const next = nextYearCost(isTag, live, p.eligibility.yearsKept);
+            return (
+              <PlayerListRow
+                key={p.player.id}
+                sleeperId={p.player.sleeperId}
+                name={p.player.fullName}
+                position={p.player.position}
+                meta={` · ${p.player.team || "FA"}${isTag ? " · tag" : ""} · ${statusLabel(p)}`}
+                onClick={() => setSheetPlayerId(p.player.id)}
+                right={
+                  <span className="flex items-baseline gap-[9px] font-plex-mono text-[13px] leading-none font-medium">
+                    <span className={isTag ? "text-[#c9922f]" : undefined}>R{live}</span>
+                    <span className={isTag ? "text-[#93a08f]" : "text-[#a8ac9d]"}>{next}</span>
+                  </span>
+                }
+              />
+            );
+          })}
 
           {/* Sleeper handoff — the plan's exit into Sleeper */}
           {currentKeepers.length > 0 && (
-            <button
-              onClick={() => setShowHandoff(true)}
-              className="w-full flex items-center justify-center gap-2 mt-2 min-h-[48px] rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-bold transition-colors"
-            >
-              <Send size={15} />
-              Set these in Sleeper
-            </button>
-          )}
-        </section>
-
-        {/* Eligible players */}
-        <section>
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-white mb-2">
-            <Users size={14} className="text-blue-400" />
-            Eligible Players
-            <span className="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 text-[11px] font-bold tabular-nums">
-              {eligiblePlayers.length}
-            </span>
-            <span className="ml-auto text-[11px] font-normal text-slate-500">sorted by cost</span>
-          </h2>
-          {eligiblePlayers.length > 0 ? (
-            <div className="space-y-1.5">
-              {eligiblePlayers.map((p) => (
-                <KeeperRow
-                  key={p.player.id}
-                  entry={p}
-                  onClick={() => setSheetPlayerId(p.player.id)}
-                />
-              ))}
+            <div className="px-4 pt-4">
+              <button
+                onClick={() => setShowHandoff(true)}
+                className="w-full flex items-center justify-center gap-2 min-h-[48px] p-[15px] rounded-lg bg-[#a8401f] hover:bg-[#bd4a26] active:bg-[#8f3517] text-[#fdf6e8] text-sm font-medium transition-colors"
+              >
+                <Send size={15} />
+                Set these in Sleeper
+              </button>
             </div>
-          ) : (
-            <p className="text-sm text-slate-500 py-3 text-center">No eligible players available</p>
           )}
-        </section>
 
-        {/* Ineligible — collapsed one-liners */}
-        {ineligiblePlayers.length > 0 && (
-          <details className="group">
-            <summary className="flex items-center gap-2 cursor-pointer text-slate-500 hover:text-slate-300 py-2 min-h-[44px] text-xs font-semibold uppercase tracking-wider">
-              Ineligible Players ({ineligiblePlayers.length})
-              <span className="text-slate-600 group-open:hidden font-normal normal-case">Tap to expand</span>
-            </summary>
-            <div className="space-y-1.5 mt-1">
+          <SectionLabel label="ELIGIBLE" right="COST" className="pt-[22px]" />
+          {eligiblePlayers.length === 0 && (
+            <div className={cn("px-5 py-4 text-[12.5px] leading-[1.6] text-[#93a08f]", rowHairline)}>
+              No eligible players available.
+            </div>
+          )}
+          {eligiblePlayers.map((p) => {
+            const cost = p.costs.regular?.finalCost ?? p.costs.franchise?.finalCost;
+            return (
+              <PlayerListRow
+                key={p.player.id}
+                sleeperId={p.player.sleeperId}
+                name={p.player.fullName}
+                position={p.player.position}
+                meta={` · ${p.player.team || "FA"} · ${statusLabel(p)}`}
+                onClick={() => setSheetPlayerId(p.player.id)}
+                right={
+                  <span className="font-plex-mono text-[13px] leading-none font-medium">
+                    {cost ? `R${cost}` : "—"}
+                  </span>
+                }
+              />
+            );
+          })}
+
+          {/* Ineligible — collapsed */}
+          {ineligiblePlayers.length > 0 && (
+            <details>
+              <summary
+                className={cn(
+                  "px-5 py-3 min-h-[44px] flex items-center cursor-pointer text-[11px] leading-none font-medium text-[#93a08f] tracking-[0.06em] list-none",
+                  rowHairline
+                )}
+              >
+                INELIGIBLE ({ineligiblePlayers.length})
+              </summary>
               {ineligiblePlayers.map((p) => (
-                <KeeperRow
+                <PlayerListRow
                   key={p.player.id}
-                  entry={p}
+                  sleeperId={p.player.sleeperId}
+                  name={p.player.fullName}
+                  position={p.player.position}
+                  meta={` · ${p.player.team || "FA"} · ${p.eligibility.reason || "ineligible"}`}
                   onClick={() => setSheetPlayerId(p.player.id)}
+                  dimmed
                 />
               ))}
-            </div>
-          </details>
-        )}
-      </div>
+            </details>
+          )}
+        </div>
+
+        <Footnote>
+          Tags hold their round indefinitely — {data.limits.maxFranchiseTags} per team. Waiver adds
+          without a draft slot cost round {DEFAULT_KEEPER_RULES.UNDRAFTED_ROUND}. Sixteen rounds
+          total.
+        </Footnote>
+      </EditorialScreen>
 
       {/* ============ DESKTOP: rich card grid ============ */}
       <div className="hidden lg:block space-y-6">
