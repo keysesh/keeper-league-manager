@@ -17,7 +17,7 @@ import {
   DEFAULT_DRAFT_ROUNDS,
   MAX_HISTORICAL_SEASONS,
 } from "@/lib/constants";
-import { isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
+import { isTradeAfterDeadline, getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
 import { getLeagueChain } from "@/lib/services/league-chain";
 
 const sleeper = new SleeperClient();
@@ -1163,6 +1163,101 @@ export async function quickSyncLeague(leagueId: string): Promise<{
 // ============================================
 
 /**
+ * Carry keeper PLANS forward across a season rollover.
+ *
+ * Sleeper creates a brand-new league (and app League row) each season, but
+ * members plan next season's keepers in the app before that new league
+ * exists — those Keeper rows hang off the PREVIOUS League row's rosters.
+ * Without carryover, opening the new league shows empty plans.
+ *
+ * Roster numbering is stable across Sleeper renewals (verified: same
+ * roster_id → same owner), so plans are copied to the new league's roster
+ * with the same sleeperId. Idempotent and conservative: a roster that
+ * already has ANY keepers for the planning season is never touched, so
+ * plans started fresh on the new league are preserved.
+ */
+export async function carryOverKeeperPlans(
+  leagueId: string
+): Promise<{ carried: number }> {
+  const planningSeason = getKeeperPlanningSeason();
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { id: true, previousLeagueId: true },
+  });
+  if (!league?.previousLeagueId) return { carried: 0 };
+
+  // previousLeagueId stores the previous SLEEPER league id
+  const prevLeague = await prisma.league.findFirst({
+    where: { sleeperId: league.previousLeagueId },
+    select: { id: true },
+  });
+  if (!prevLeague) return { carried: 0 };
+
+  const [newRosters, prevRosters] = await Promise.all([
+    prisma.roster.findMany({
+      where: { leagueId },
+      select: {
+        id: true,
+        sleeperId: true,
+        _count: { select: { keepers: { where: { season: planningSeason } } } },
+      },
+    }),
+    prisma.roster.findMany({
+      where: { leagueId: prevLeague.id },
+      select: {
+        id: true,
+        sleeperId: true,
+        keepers: { where: { season: planningSeason } },
+      },
+    }),
+  ]);
+
+  const prevBySleeperId = new Map(prevRosters.map((r) => [r.sleeperId, r]));
+  let carried = 0;
+
+  for (const roster of newRosters) {
+    // Never overwrite plans already made on the new league
+    if (roster._count.keepers > 0) continue;
+
+    const prev = prevBySleeperId.get(roster.sleeperId);
+    if (!prev || prev.keepers.length === 0) continue;
+
+    await prisma.keeper.createMany({
+      data: prev.keepers.map((k) => ({
+        rosterId: roster.id,
+        playerId: k.playerId,
+        season: k.season,
+        type: k.type,
+        baseCost: k.baseCost,
+        finalCost: k.finalCost,
+        yearsKept: k.yearsKept,
+        acquisitionType: k.acquisitionType,
+        acquisitionDate: k.acquisitionDate,
+        originalDraftRound: k.originalDraftRound,
+        baseCostOverride: k.baseCostOverride,
+        acquisitionId: k.acquisitionId,
+        isLocked: k.isLocked,
+        notes: k.notes,
+      })),
+      skipDuplicates: true,
+    });
+    carried += prev.keepers.length;
+  }
+
+  if (carried > 0) {
+    logger.info("Carried keeper plans across season rollover", {
+      leagueId,
+      fromLeagueId: prevLeague.id,
+      season: planningSeason,
+      carried,
+    });
+  }
+
+  return { carried };
+}
+
+/**
  * Sync a league and all its historical seasons by following the previous_league_id chain
  */
 export async function syncLeagueWithHistory(
@@ -1237,6 +1332,23 @@ export async function syncLeagueWithHistory(
 
   // Filter successful syncs
   const successfulSyncs = syncResults.filter(r => r.success);
+
+  // Season rollover continuity: bring keeper plans forward onto the newest
+  // league row (no-op unless a new season's league just appeared)
+  const newest = successfulSyncs.reduce(
+    (a, b) => (b.season > (a?.season ?? -1) ? b : a),
+    successfulSyncs[0]
+  );
+  if (newest?.leagueId) {
+    try {
+      await carryOverKeeperPlans(newest.leagueId);
+    } catch (err) {
+      logger.warn("Keeper plan carryover failed", {
+        leagueId: newest.leagueId,
+        error: err instanceof Error ? err.message : err,
+      });
+    }
+  }
 
   logger.info("Historical sync complete", {
     requested: leagueChain.length,

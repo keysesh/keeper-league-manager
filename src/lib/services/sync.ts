@@ -20,6 +20,7 @@ import {
   populateKeepersFromDraftPicks,
   recalculateKeeperYears,
   syncAcquisitionChain,
+  carryOverKeeperPlans,
 } from "@/lib/sleeper/sync";
 import { getLeagueChain } from "./league-chain";
 import { logger } from "@/lib/logger";
@@ -377,7 +378,11 @@ export class SyncService {
         skipDrafts: false,
       });
 
-      // 4-5. Keeper population + recalculation for this league
+      // 4. Season-rollover continuity: plans made on the previous season's
+      // league row follow the rosters onto this one (no-op otherwise)
+      await carryOverKeeperPlans(leagueId);
+
+      // 5-6. Keeper population + recalculation for this league
       await populateKeepersFromDraftPicks(leagueId);
       await recalculateKeeperYears(leagueId);
 

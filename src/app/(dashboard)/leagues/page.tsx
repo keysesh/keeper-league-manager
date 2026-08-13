@@ -58,10 +58,18 @@ export default async function LeaguesPage() {
       : 0,
   ]);
 
+  // Hide superseded seasons: when the new Sleeper season's league exists,
+  // its previousLeagueId points at last season's sleeperId — don't show both
+  // cards for what is one league. (History stays reachable inside the league.)
+  const supersededSleeperIds = new Set(
+    leagues.map((l) => l.previousLeagueId).filter(Boolean)
+  );
+  const activeLeagues = leagues.filter((l) => !supersededSleeperIds.has(l.sleeperId));
+
   // Auto-redirect to league if user only has one league (single-league optimization).
   // Lands on My Keepers — the planning workspace is the default league experience.
-  if (leagues.length === 1) {
-    redirect(`/league/${leagues[0].id}/keepers`);
+  if (activeLeagues.length === 1) {
+    redirect(`/league/${activeLeagues[0].id}/keepers`);
   }
 
   return (
@@ -93,7 +101,7 @@ export default async function LeaguesPage() {
             </p>
           </div>
           <Link
-            href={leagues[0] ? `/league/${leagues[0].id}/trade-proposals` : "#"}
+            href={activeLeagues[0] ? `/league/${activeLeagues[0].id}/trade-proposals` : "#"}
             className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 active:text-amber-200 font-medium flex-shrink-0 px-2 py-1 rounded-md hover:bg-amber-500/10"
           >
             View
@@ -107,7 +115,7 @@ export default async function LeaguesPage() {
           Your Leagues
         </h2>
 
-        {leagues.length === 0 ? (
+        {activeLeagues.length === 0 ? (
           <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-8 sm:p-12 text-center">
             <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-md bg-[#222222] border border-[#333333] flex items-center justify-center mx-auto mb-3 sm:mb-4">
               <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
@@ -117,7 +125,7 @@ export default async function LeaguesPage() {
           </div>
         ) : (
           <div className="grid gap-2.5 sm:gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {leagues.map((league) => (
+            {activeLeagues.map((league) => (
               <Link
                 key={league.id}
                 href={`/league/${league.id}`}
@@ -180,17 +188,17 @@ export default async function LeaguesPage() {
       </div>
 
       {/* Quick Actions */}
-      {leagues.length > 0 && (
+      {activeLeagues.length > 0 && (
         <div>
           <h2 className="text-[10px] sm:text-xs font-semibold text-gray-500 mb-3 sm:mb-4 uppercase tracking-[0.15em] sm:tracking-[0.2em]">
             Quick Actions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             <SyncButton />
-            {leagues[0] && (
+            {activeLeagues[0] && (
               <>
                 <Link
-                  href={`/league/${leagues[0].id}/draft-board`}
+                  href={`/league/${activeLeagues[0].id}/draft-board`}
                   className="group flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 md:px-5 py-3 sm:py-3.5 md:py-4 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#333333] hover:bg-[#222222] transition-all duration-200 active:scale-[0.98]"
                 >
                   <span className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#222222] border border-[#333333] flex-shrink-0">
@@ -202,7 +210,7 @@ export default async function LeaguesPage() {
                   </div>
                 </Link>
                 <Link
-                  href={`/league/${leagues[0].id}/trade-analyzer`}
+                  href={`/league/${activeLeagues[0].id}/trade-analyzer`}
                   className="group flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 md:px-5 py-3 sm:py-3.5 md:py-4 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#333333] hover:bg-[#222222] transition-all duration-200 active:scale-[0.98]"
                 >
                   <span className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-md bg-[#222222] border border-[#333333] flex-shrink-0">
