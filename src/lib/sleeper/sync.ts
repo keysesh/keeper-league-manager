@@ -992,7 +992,7 @@ export async function syncUserLeaguesFast(
 // ============================================
 
 // Only sync leagues matching this name pattern
-const TARGET_LEAGUE_NAME = "E Pluribus";
+export const TARGET_LEAGUE_NAME = "E Pluribus";
 
 /**
  * Perform a full sync for a user's E Pluribus league

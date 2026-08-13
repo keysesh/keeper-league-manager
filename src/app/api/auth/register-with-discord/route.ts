@@ -6,8 +6,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { SleeperClient } from "@/lib/sleeper/client";
-import { syncUserLeagues } from "@/lib/sleeper/sync";
+import { ensureLeagueMembership, MembershipResult } from "@/lib/sleeper/membership";
 import { logger } from "@/lib/logger";
+
+// Registration awaits a bounded league sync (one league, no history crawl) so
+// the new member's roster is linked before they land in the app. Give it room
+// beyond the default function timeout.
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
@@ -99,17 +104,28 @@ export async function POST(request: NextRequest) {
       discordId,
     });
 
-    // Auto-sync user's leagues in the background (don't block registration)
-    // This links them to their rosters/teams immediately after signup
-    syncUserLeagues(user.id).catch((err) => {
-      logger.error("Failed to auto-sync leagues after registration", err, {
+    // Resolve league membership BEFORE responding. A fire-and-forget promise
+    // here is unreliable on serverless (the function can be frozen as soon as
+    // the response returns), which stranded new members on an empty dashboard
+    // until the next cron. The account is already created — a sync failure
+    // must not fail registration, only be reported truthfully so the client
+    // (and the dashboard's recovery flow) can retry.
+    let membership: MembershipResult | null = null;
+    let membershipError = false;
+    try {
+      membership = await ensureLeagueMembership(user.id);
+    } catch (err) {
+      membershipError = true;
+      logger.error("Failed to resolve league membership after registration", err, {
         userId: user.id,
       });
-    });
+    }
 
     return NextResponse.json({
       success: true,
       message: "Account created and Discord linked successfully",
+      membership,
+      membershipError,
     });
   } catch (error) {
     logger.error("Failed to register with Discord", error);

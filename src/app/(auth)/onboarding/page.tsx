@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { logger } from "@/lib/logger";
+import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
 interface League {
   id: string;
@@ -56,13 +57,24 @@ export default function OnboardingPage() {
 
   const fetchLeagues = async () => {
     try {
-      const res = await fetch("/api/leagues");
-      if (res.ok) {
-        const data = await res.json();
-        setLeagues(data);
-        if (data.length === 1) {
-          setSelectedLeague(data[0].id);
+      // Current season first; during the offseason a member may only be
+      // linked to last season's league until the Sleeper renewal fills in.
+      const current = getCurrentSeason();
+      let data: League[] = [];
+      for (const season of [current, current - 1]) {
+        const res = await fetch(`/api/leagues?season=${season}`);
+        if (res.ok) {
+          // The route returns { leagues, sleeperLeagues }, not a bare array —
+          // the wizard silently showed "No Leagues Found" until this was
+          // unwrapped (latent for as long as the wizard itself was unreachable).
+          const payload = await res.json();
+          data = Array.isArray(payload) ? payload : payload?.leagues ?? [];
+          if (data.length > 0) break;
         }
+      }
+      setLeagues(data);
+      if (data.length === 1) {
+        setSelectedLeague(data[0].id);
       }
     } catch (error) {
       logger.error("Failed to fetch leagues", error);
@@ -74,10 +86,12 @@ export default function OnboardingPage() {
     setSyncError("");
 
     try {
+      // Bounded membership sync — links this user's roster and refreshes only
+      // their current league (not the multi-season history crawl).
       const res = await fetch("/api/sleeper/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "user-leagues" }),
+        body: JSON.stringify({ action: "membership" }),
       });
 
       if (res.ok) {

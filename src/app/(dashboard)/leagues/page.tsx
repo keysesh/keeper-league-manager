@@ -6,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronRight, Lock, AlertTriangle, Trophy, Users, Target, Zap } from "lucide-react";
 import { SyncButton } from "@/components/SyncButton";
+import { MembershipRecovery } from "@/components/leagues/MembershipRecovery";
 
 export default async function LeaguesPage() {
   const session = await getServerSession(authOptions);
@@ -116,13 +117,9 @@ export default async function LeaguesPage() {
         </h2>
 
         {activeLeagues.length === 0 ? (
-          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-md p-8 sm:p-12 text-center">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-md bg-[#222222] border border-[#333333] flex items-center justify-center mx-auto mb-3 sm:mb-4">
-              <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-gray-500" />
-            </div>
-            <p className="text-gray-400 font-medium text-sm sm:text-base">No leagues found</p>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">Join a league on Sleeper to get started</p>
-          </div>
+          // An empty dashboard usually means the TeamMember link just hasn't
+          // been created yet — resolve it now instead of showing a dead end.
+          <MembershipRecovery />
         ) : (
           <div className="grid gap-2.5 sm:gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {activeLeagues.map((league) => (

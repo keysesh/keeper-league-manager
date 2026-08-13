@@ -1,7 +1,26 @@
 import { prisma } from "@/lib/prisma";
 import { syncLeague, syncUserLeagues, quickSyncLeague, syncLeagueWithHistory, populateKeepersFromDraftPicks } from "@/lib/sleeper/sync";
+import { ensureLeagueMembership } from "@/lib/sleeper/membership";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 import { SyncContext, createSyncResponse, createSyncError } from "../types";
+
+/**
+ * Bounded membership resolution for the current user — links them to their
+ * roster and fast-syncs only their current E Pluribus league. This is what
+ * registration, onboarding, and the dashboard's empty-state recovery use;
+ * it must stay cheap enough to run inline (no full-history crawl).
+ */
+export async function handleEnsureMembership(context: SyncContext) {
+  const result = await ensureLeagueMembership(context.userId);
+  return createSyncResponse({
+    success: true,
+    message:
+      result.status === "linked"
+        ? `Linked to ${result.leagueName} (${result.season})`
+        : "No current E Pluribus league membership found on Sleeper",
+    data: result,
+  });
+}
 
 /**
  * Sync a specific league by Sleeper ID

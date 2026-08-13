@@ -8,6 +8,7 @@ import {
   handleUserLeaguesSync,
   handleQuickSync,
   handleFullSync,
+  handleEnsureMembership,
 } from "./handlers/league";
 
 // Keeper management handlers
@@ -285,6 +286,7 @@ const actionHandlers: Record<string, SyncHandler> = {
   "update-keepers": handleUpdateKeepers,
   "refresh-planning": handleRefreshPlanning,
   "sync-players": handleSyncPlayers,
+  membership: handleEnsureMembership,
 
   // ============================================
   // LEGACY ACTIONS (backward compatible)
