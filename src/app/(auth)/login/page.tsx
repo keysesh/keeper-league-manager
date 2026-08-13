@@ -13,6 +13,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   OAuthCreateAccount: "Could not create your account. Please try again.",
   OAuthSignin: "Error signing in with Discord. Please try again.",
   SessionRequired: "Please sign in to continue.",
+  SessionExpired: "Your session is no longer valid. Please sign in again.",
   CredentialsSignin: "Invalid credentials. Please try again.",
   default: "An unexpected error occurred. Please try again.",
 };

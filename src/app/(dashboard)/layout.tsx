@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { logger } from "@/lib/logger";
+import { resolveDashboardGate } from "@/lib/auth/dashboard-gate";
 
 // Dashboard routes are session-gated (redirect to /login without one) —
 // a static build-time snapshot of them is meaningless. Render on request.
@@ -23,32 +24,50 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // Check if user has completed onboarding and if they're an admin
-  let isAdmin = false;
+  // Confirm the session still corresponds to a real user, and whether they
+  // need onboarding. IMPORTANT: redirect() throws Next's control-flow error,
+  // so it must be called OUTSIDE this try/catch — a previous version called
+  // it inside and the catch silently swallowed every redirect, which both
+  // disabled the onboarding wizard and let stale tokens for deleted users
+  // render an empty "logged in" app.
+  let gateUser:
+    | { onboardingComplete: boolean; isAdmin: boolean; teamMembershipCount: number }
+    | null
+    | undefined;
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { onboardingComplete: true, isAdmin: true },
+      select: {
+        onboardingComplete: true,
+        isAdmin: true,
+        _count: { select: { teamMemberships: true } },
+      },
     });
-
-    if (user && !user.onboardingComplete) {
-      redirect("/onboarding");
-    }
-    isAdmin = user?.isAdmin ?? false;
+    gateUser = user
+      ? {
+          onboardingComplete: user.onboardingComplete,
+          isAdmin: user.isAdmin,
+          teamMembershipCount: user._count.teamMemberships,
+        }
+      : null;
   } catch (error) {
-    // Column may not exist yet - skip onboarding check for existing users
-    logger.warn("onboardingComplete field not available - skipping onboarding check", { error: String(error) });
-    // Still try to get isAdmin separately
-    try {
-      const adminCheck = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { isAdmin: true },
-      });
-      isAdmin = adminCheck?.isAdmin ?? false;
-    } catch {
-      // Ignore - isAdmin stays false
-    }
+    // DB hiccup — fail open (render without admin nav) rather than lock the
+    // whole app; `undefined` tells the gate this was an error, not a missing
+    // user.
+    logger.warn("Dashboard user lookup failed - rendering with defaults", {
+      error: String(error),
+    });
+    gateUser = undefined;
   }
+
+  const gate = resolveDashboardGate(gateUser);
+  if (gate.action === "stale-session") {
+    redirect("/api/auth/stale-session");
+  }
+  if (gate.action === "onboarding") {
+    redirect("/onboarding");
+  }
+  const isAdmin = gate.isAdmin;
 
   return (
     <div className="min-h-screen bg-[#06090f]">

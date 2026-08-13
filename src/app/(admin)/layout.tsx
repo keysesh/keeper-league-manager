@@ -26,7 +26,13 @@ export default async function AdminLayout({
     select: { isAdmin: true },
   });
 
-  if (!user?.isAdmin) {
+  if (!user) {
+    // Session token for a user that no longer exists — clear it instead of
+    // bouncing a ghost session around the app.
+    redirect("/api/auth/stale-session");
+  }
+
+  if (!user.isAdmin) {
     redirect("/");
   }
 
