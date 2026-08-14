@@ -13,10 +13,10 @@
  */
 
 import {
-  List,
-  Hash,
-  ArrowLeftRight,
   Users,
+  LayoutGrid,
+  Repeat,
+  Trophy,
   Settings,
   Activity,
   FileText,
@@ -45,30 +45,30 @@ export interface NavSection {
 export function getLeagueTabs(leagueId: string): NavItem[] {
   const base = `/league/${leagueId}`;
   return [
-    // Editorial tab-bar icon set (design handoff Aug 2026):
-    // list / hash / arrow-left-right / users
+    // Five-tab league IA (value-screens handoff): Keepers · Board · Trades ·
+    // League · Activity
     {
       name: "Keepers",
       href: `${base}/keepers`,
-      icon: List,
+      icon: Users,
       activePrefixes: [`${base}/keepers`, `${base}/my-team`],
     },
     {
       name: "Board",
       href: `${base}/draft-board`,
-      icon: Hash,
+      icon: LayoutGrid,
       activePrefixes: [`${base}/draft-board`, `${base}/simulation`],
     },
     {
       name: "Trades",
       href: `${base}/trade-analyzer`,
-      icon: ArrowLeftRight,
+      icon: Repeat,
       activePrefixes: [`${base}/trade-analyzer`, `${base}/trade-proposals`],
     },
     {
       name: "League",
       href: base,
-      icon: Users,
+      icon: Trophy,
       activePrefixes: [base],
       // Everything under the league that belongs to another tab
       excludePrefixes: [
@@ -78,7 +78,14 @@ export function getLeagueTabs(leagueId: string): NavItem[] {
         `${base}/simulation`,
         `${base}/trade-analyzer`,
         `${base}/trade-proposals`,
+        `${base}/activity`,
       ],
+    },
+    {
+      name: "Activity",
+      href: `${base}/activity`,
+      icon: Activity,
+      activePrefixes: [`${base}/activity`],
     },
   ];
 }
@@ -98,12 +105,6 @@ export function getLeagueSecondary(leagueId: string): NavItem[] {
       href: `${base}/trade-proposals`,
       icon: FileText,
       activePrefixes: [`${base}/trade-proposals`],
-    },
-    {
-      name: "Activity",
-      href: `${base}/activity`,
-      icon: Activity,
-      activePrefixes: [`${base}/activity`],
     },
     {
       name: "Settings",

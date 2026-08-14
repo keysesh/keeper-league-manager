@@ -3,16 +3,35 @@
 import { LEAGUE_CONFIG, getDraftPickValue } from "@/lib/constants/league-config";
 import { InfoModal } from "./InfoModal";
 
+export type PickStatus = "KEEPER" | "TRADED" | "OPEN";
+
 interface DraftPickValueChartProps {
   highlightRound?: number;
   compact?: boolean;
+  /** Ownership state per round — adds the STATUS column when provided. */
+  statuses?: Record<number, PickStatus>;
 }
+
+const STATUS_STYLES: Record<PickStatus, string> = {
+  KEEPER: "text-amber-400",
+  TRADED: "text-orange-400",
+  OPEN: "text-slate-500",
+};
+
+// Hex pairs behind each tier class, for the traded-row hatch fill
+const TIER_HEX: Record<string, [string, string]> = {
+  "bg-yellow-500": ["#eab308", "#a16207"],
+  "bg-emerald-500": ["#10b981", "#047857"],
+  "bg-blue-500": ["#3b82f6", "#1d4ed8"],
+  "bg-amber-500": ["#f59e0b", "#b45309"],
+  "bg-gray-500": ["#6b7280", "#374151"],
+};
 
 /**
  * Visual chart showing draft pick values by round
  * Useful for understanding keeper cost trade-offs
  */
-export function DraftPickValueChart({ highlightRound, compact = false }: DraftPickValueChartProps) {
+export function DraftPickValueChart({ highlightRound, compact = false, statuses }: DraftPickValueChartProps) {
   const rounds = Object.keys(LEAGUE_CONFIG.draftPickValues).map(Number).sort((a, b) => a - b);
   const maxValue = Math.max(...Object.values(LEAGUE_CONFIG.draftPickValues));
 
@@ -47,10 +66,10 @@ export function DraftPickValueChart({ highlightRound, compact = false }: DraftPi
   }
 
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <div className="bg-[#0c1219] border border-white/[0.08] border-t-white/[0.12] rounded-xl px-[15px] py-3.5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-white text-sm">Draft Pick Value Chart</h3>
+          <h3 className="font-semibold text-white text-[12.5px]">Draft pick value</h3>
           <InfoModal
             title="Draft Pick Values"
             description={
@@ -106,7 +125,9 @@ export function DraftPickValueChart({ highlightRound, compact = false }: DraftPi
             iconSize={14}
           />
         </div>
-        <span className="text-[10px] text-gray-500">E Pluribus Dynasty</span>
+        <span className="font-mono text-[10px] font-medium text-slate-600">
+          {statuses ? "VALUE · STATUS" : "VALUE"}
+        </span>
       </div>
 
       {/* Value bars */}
@@ -131,33 +152,62 @@ export function DraftPickValueChart({ highlightRound, compact = false }: DraftPi
             round <= 10 ? "Depth" :
             "Lottery";
 
+          const status = statuses?.[round];
+          const [tierHex, tierDark] = TIER_HEX[tierColor] ?? ["#6b7280", "#374151"];
+          const isTraded = status === "TRADED";
+
           return (
             <div
               key={round}
-              className={`flex items-center gap-2 p-1.5 rounded transition-colors ${
-                isHighlighted ? "bg-blue-500/10 ring-1 ring-blue-500/30" : ""
-              }`}
+              className={`flex items-center gap-2 rounded transition-colors ${
+                isHighlighted ? "bg-blue-500/10 ring-1 ring-blue-500/30 p-1.5" : ""
+              } ${isTraded ? "opacity-55" : ""}`}
             >
-              <span className={`w-8 text-xs font-medium ${isHighlighted ? "text-blue-400" : "text-gray-400"}`}>
+              <span
+                className={`w-[22px] font-mono text-[10.5px] font-medium ${
+                  isHighlighted ? "text-blue-400" : "text-slate-400"
+                }`}
+              >
                 R{round}
               </span>
-              <div className="flex-1 h-4 bg-[#2a2a2a] rounded-full overflow-hidden">
+              <div className="flex-1 h-3.5 bg-[#080d14] rounded-[7px] overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${tierColor}`}
-                  style={{ width: `${width}%` }}
+                  className={`h-full rounded-[7px] transition-all ${isTraded ? "" : tierColor}`}
+                  style={{
+                    width: `${width}%`,
+                    ...(isTraded
+                      ? {
+                          background: `repeating-linear-gradient(135deg, ${tierHex} 0 3px, ${tierDark} 3px 6px)`,
+                        }
+                      : {}),
+                  }}
                 />
               </div>
-              <span className={`w-8 text-xs font-bold text-right ${isHighlighted ? "text-blue-400" : "text-white"}`}>
+              <span
+                className={`w-[22px] font-mono text-[10.5px] font-semibold text-right ${
+                  isHighlighted ? "text-blue-400" : "text-slate-50"
+                }`}
+              >
                 {value}
               </span>
-              <span className="w-16 text-[9px] text-gray-500 text-right">{tierLabel}</span>
+              {statuses ? (
+                <span
+                  className={`w-[46px] font-mono text-[8.5px] font-semibold tracking-[0.05em] text-right ${
+                    STATUS_STYLES[status ?? "OPEN"]
+                  }`}
+                >
+                  {status ?? "OPEN"}
+                </span>
+              ) : (
+                <span className="w-16 text-[9px] text-slate-500 text-right">{tierLabel}</span>
+              )}
             </div>
           );
         })}
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-[#2a2a2a] text-[9px] text-gray-500">
+      <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-white/[0.06] text-[9.5px] font-medium text-slate-400">
         <div className="flex items-center gap-1">
           <span className="w-2 h-2 rounded bg-yellow-500"></span>
           <span>Elite (R1)</span>
@@ -177,8 +227,8 @@ export function DraftPickValueChart({ highlightRound, compact = false }: DraftPi
       </div>
 
       {/* Keeper cost note */}
-      <div className="mt-3 p-2 bg-[#222] rounded text-[10px] text-gray-400">
-        <strong className="text-gray-300">Keeper Cost Tip:</strong> Lower round = higher value.
+      <div className="mt-3 p-2.5 bg-[#111822] rounded-md text-[10px] leading-[1.45] text-slate-400">
+        <strong className="text-slate-300">Keeper cost tip:</strong> lower round = higher value.
         A R3 keeper saves you a premium pick. Undrafted players cost R{LEAGUE_CONFIG.keeperRules.undraftedRound}.
       </div>
     </div>

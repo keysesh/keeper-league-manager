@@ -3,17 +3,28 @@
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
-import { Skeleton } from "@/components/ui/Skeleton";
+import dynamic from "next/dynamic";
 import {
-  EditorialScreen,
-  EditorialHeader,
+  ChevronRight,
+  Users as UsersIcon,
+  FileText,
+  Settings,
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { WidgetSkeleton } from "@/components/ui/WidgetSkeleton";
+import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
+import { AlertsBanner } from "@/components/ui/AlertsBanner";
+import {
+  ScreenHeader,
   SectionLabel,
-  Footnote,
-  rowHairline,
-} from "@/components/editorial";
-import { Headshot } from "@/components/editorial/Headshot";
-import { cn } from "@/lib/design-tokens";
+  listCard,
+  MeterRow,
+} from "@/components/league-screens";
+
+const PowerRankings = dynamic(
+  () => import("@/components/ui/PowerRankings").then((mod) => ({ default: mod.PowerRankings })),
+  { loading: () => <WidgetSkeleton rows={6} />, ssr: false }
+);
 
 const fetcher = (url: string) =>
   fetch(url).then((res) => {
@@ -21,51 +32,30 @@ const fetcher = (url: string) =>
     return res.json();
   });
 
-interface Roster {
-  id: string;
-  teamName: string | null;
-  wins: number;
-  losses: number;
-  ties: number;
-  pointsFor: number;
-  isUserRoster: boolean;
-  keeperCount: number;
-}
-
 interface League {
   id: string;
   name: string;
   season: number;
-  status: string;
   totalRosters: number;
-  lastSyncedAt: string | null;
-  rosters: Roster[];
+  rosters: Array<{ id: string; isUserRoster: boolean }>;
 }
 
-interface ScoringLeader {
-  playerId: string;
-  sleeperId: string;
-  fullName: string;
-  position: string | null;
-  team: string | null;
-  pointsPerGame: number | null;
-  ownerTeamName: string | null;
-  rosterId: string;
+interface Economics {
+  pressure: {
+    teamCount: number;
+    teamsLocked: number;
+    maxKeepers: number;
+    slotsFilledPct: number;
+    tagsUsedPct: number;
+    earlyRoundsGonePct: number;
+  };
 }
 
-// The league's first Sleeper season — drives the "sixth season" style
-// sub-line. 2023 is where the synced history chain starts.
-const FIRST_SLEEPER_SEASON = 2023;
-const ORDINALS = [
-  "first", "second", "third", "fourth", "fifth", "sixth", "seventh",
-  "eighth", "ninth", "tenth",
-];
-
-function seasonOrdinal(season: number): string {
-  const n = season - FIRST_SLEEPER_SEASON + 1;
-  return ORDINALS[n - 1] || `${n}th`;
-}
-
+/**
+ * League — power rankings plus league-wide keeper pressure
+ * (value-screens handoff). The ranking cards are PowerRankings.tsx in
+ * condensed API mode, not a rebuild.
+ */
 export default function LeaguePage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -75,144 +65,112 @@ export default function LeaguePage() {
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
-  const { data: leaders } = useSWR<{ leaders: ScoringLeader[] }>(
-    `/api/leagues/${leagueId}/scoring-leaders?limit=3`,
+  const { data: economics } = useSWR<Economics>(
+    `/api/leagues/${leagueId}/keeper-economics`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
 
   if (isLoading) {
     return (
-      <EditorialScreen>
-        <div className="px-5 pt-2 space-y-4">
-          <Skeleton className="h-10 w-2/3 rounded-md" />
-          <Skeleton className="h-64 w-full rounded-md" />
-        </div>
-      </EditorialScreen>
+      <div className="max-w-6xl space-y-4">
+        <Skeleton className="h-12 w-56 rounded-lg" />
+        <Skeleton className="h-80 w-full rounded-2xl" />
+      </div>
     );
   }
 
   if (error || !league) {
     return (
-      <EditorialScreen>
-        <div className="px-5 pt-2">
-          <p className="text-[13px] text-[#d4674a]">League not found.</p>
+      <div className="max-w-6xl">
+        <div className="bg-[#0c1219] border border-rose-500/20 rounded-xl p-6">
+          <p className="text-rose-400 font-medium">League not found</p>
         </div>
-      </EditorialScreen>
+      </div>
     );
   }
 
-  const sorted = [...league.rosters].sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    return b.pointsFor - a.pointsFor;
-  });
-
-  const preSeason = sorted.every((r) => r.wins === 0 && r.losses === 0);
+  const userRosterId = league.rosters?.find((r) => r.isUserRoster)?.id;
+  const pressure = economics?.pressure;
 
   return (
-    <EditorialScreen>
-      <EditorialHeader
-        title={league.name}
-        sub={`${league.totalRosters} teams · ${seasonOrdinal(league.season)} season`}
+    <div className="max-w-6xl space-y-4">
+      <ScreenHeader
+        title="League"
+        subtitle={`${league.name} · ${league.totalRosters} teams`}
       />
 
-      <div className="tabular-nums">
-        <SectionLabel label="STANDINGS" right="W–L · KEPT" />
-        {sorted.map((roster, i) => (
-          <Link
-            key={roster.id}
-            href={`/league/${leagueId}/team/${roster.id}`}
-            className={cn(
-              "flex items-center gap-3 px-5 py-3",
-              rowHairline,
-              // The user's own row is marked three ways (wash, inset bar,
-              // accent rank + "you") — never by tint alone.
-              roster.isUserRoster &&
-                "bg-[rgba(199,80,47,.07)] shadow-[inset_2px_0_0_#a8401f]"
-            )}
-          >
-            <span
-              className={cn(
-                "w-4 shrink-0 font-plex-mono text-xs font-medium leading-none",
-                roster.isUserRoster ? "text-[#d4674a]" : "text-[#93a08f]"
-              )}
+      <DeadlineBanner leagueId={leagueId} />
+      <AlertsBanner leagueId={leagueId} />
+
+      {/* Power rankings — the component's own condensed API mode */}
+      <PowerRankings
+        leagueId={leagueId}
+        userRosterId={userRosterId}
+        useApi={true}
+        condensed={true}
+        viewAllHref={`/league/${leagueId}/team`}
+      />
+
+      {/* League keeper pressure */}
+      {pressure && (
+        <div className="bg-[#0c1219] border border-white/[0.08] border-t-white/[0.12] rounded-xl px-[15px] py-3.5">
+          <p className="text-xs leading-normal text-slate-300">
+            {pressure.teamsLocked} of {pressure.teamCount} teams have locked all{" "}
+            {pressure.maxKeepers} slots.{" "}
+            {pressure.earlyRoundsGonePct >= 50
+              ? "Early-round capital is getting scarce."
+              : "Early-round capital is still available."}
+          </p>
+          <div className="space-y-[11px] mt-3.5">
+            <MeterRow
+              label="Slots filled"
+              percent={pressure.slotsFilledPct}
+              gradient="linear-gradient(90deg, #2563eb, #60a5fa)"
+              value={`${pressure.slotsFilledPct}%`}
+            />
+            <MeterRow
+              label="Tags used"
+              percent={pressure.tagsUsedPct}
+              gradient="linear-gradient(90deg, #d97706, #fbbf24)"
+              value={`${pressure.tagsUsedPct}%`}
+            />
+            <MeterRow
+              label="R1–R3 gone"
+              percent={pressure.earlyRoundsGonePct}
+              gradient="linear-gradient(90deg, #7c3aed, #a78bfa)"
+              value={`${pressure.earlyRoundsGonePct}%`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Secondary destinations */}
+      <div>
+        <SectionLabel label="More" />
+        <div className={listCard}>
+          {[
+            { label: "All teams", meta: "Every roster in the league", href: `/league/${leagueId}/team`, icon: UsersIcon },
+            { label: "Trade proposals", meta: "Saved and shared trades", href: `/league/${leagueId}/trade-proposals`, icon: FileText },
+            { label: "Settings", meta: "League rules and keepers", href: `/league/${leagueId}/settings`, icon: Settings },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-3 px-[13px] py-3 min-h-[44px] hover:bg-[#111822] transition-colors duration-150"
             >
-              {i + 1}
-            </span>
-            <span className="flex-1 min-w-0 flex items-baseline gap-[7px]">
-              <span className="text-[13.5px] leading-none font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                {roster.teamName || "—"}
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/20 text-blue-400 shrink-0">
+                <item.icon size={15} />
               </span>
-              {roster.isUserRoster && (
-                <span className="font-plex-mono text-[10px] leading-none font-medium text-[#d4674a] shrink-0">
-                  you
-                </span>
-              )}
-            </span>
-            <span className="font-plex-mono text-[13px] leading-none font-medium">
-              {roster.wins}–{roster.losses}
-            </span>
-            <span className="w-6 shrink-0 text-right font-plex-mono text-[12.5px] leading-none text-[#93a08f]">
-              {roster.keeperCount}
-            </span>
-          </Link>
-        ))}
-
-        {leaders && leaders.leaders.length > 0 && (
-          <>
-            <SectionLabel label="SCORING LEADERS" right="PPG" className="pt-[22px]" />
-            {leaders.leaders.map((p) => (
-              <Link
-                key={p.playerId}
-                href={`/league/${leagueId}/player/${p.playerId}`}
-                className={cn("flex items-center gap-3 px-5 py-[11px]", rowHairline)}
-              >
-                <Headshot sleeperId={p.sleeperId} size={32} alt={p.fullName} />
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[13.5px] leading-[1.2] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                    {p.fullName}
-                  </span>
-                  <span className="block text-[11px] leading-none text-[#93a08f] mt-1.5">
-                    {p.team || "FA"} · {p.ownerTeamName || "unowned"}
-                  </span>
-                </span>
-                <span className="font-plex-mono text-[13.5px] leading-none font-medium">
-                  {p.pointsPerGame?.toFixed(1)}
-                </span>
-              </Link>
-            ))}
-          </>
-        )}
-
-        {/* Secondary league destinations — not part of the five designed
-            screens, but the League tab is the only route to them. Same row
-            language, no card chrome. */}
-        <SectionLabel label="MORE" className="pt-[22px]" />
-        {[
-          { label: "Activity", href: `/league/${leagueId}/activity` },
-          { label: "All teams", href: `/league/${leagueId}/team` },
-          { label: "Trade proposals", href: `/league/${leagueId}/trade-proposals` },
-          { label: "Settings", href: `/league/${leagueId}/settings` },
-        ].map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex items-center justify-between px-5 py-3 min-h-[44px]",
-              rowHairline
-            )}
-          >
-            <span className="text-[13.5px] leading-none font-medium">{item.label}</span>
-            <ChevronRight size={14} strokeWidth={1.9} className="text-[#93a08f]" />
-          </Link>
-        ))}
+              <span className="flex-1 min-w-0">
+                <span className="block text-[13px] font-medium text-slate-50">{item.label}</span>
+                <span className="block text-[11px] text-slate-500 mt-0.5">{item.meta}</span>
+              </span>
+              <ChevronRight size={15} className="text-slate-600 shrink-0" />
+            </Link>
+          ))}
+        </div>
       </div>
-
-      <Footnote>
-        {preSeason
-          ? "Pre-season — records begin in week 1. Kept counts show declared keepers."
-          : "Standings update as Sleeper scores post."}
-      </Footnote>
-    </EditorialScreen>
+    </div>
   );
 }

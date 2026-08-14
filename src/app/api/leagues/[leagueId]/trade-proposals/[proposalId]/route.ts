@@ -6,6 +6,9 @@ import { z } from "zod";
 import { notifyTradeStatusChanged } from "@/lib/notifications";
 import { VoteType } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { estimateMarketRounds } from "@/lib/keeper/market";
+import { getDraftPickValue } from "@/lib/constants/league-config";
+import { getCurrentSeason } from "@/lib/constants/keeper-rules";
 
 interface RouteParams {
   params: Promise<{ leagueId: string; proposalId: string }>;
@@ -187,6 +190,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       };
     }
 
+    // Estimated value per asset, on the draft-pick-points scale the value
+    // screens use everywhere: picks via calculateDraftPickValue (future
+    // seasons discounted), players via their estimated market round (VOR
+    // from last-season scoring — an estimate, and labeled as one in the UI).
+    const league = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { totalRosters: true, draftRounds: true },
+    });
+    const marketMap = await estimateMarketRounds(
+      league?.totalRosters ?? 10,
+      league?.draftRounds ?? 16
+    );
+    const assetValue = (asset: (typeof proposal.assets)[number]): number | null => {
+      if (asset.assetType === "DRAFT_PICK" && asset.pickRound) {
+        // Same scale as the pick-value chart and badges (league-config),
+        // discounted 15%/season for future picks
+        const yearsOut = Math.max(
+          0,
+          (asset.pickSeason ?? getCurrentSeason()) - getCurrentSeason()
+        );
+        return Math.round(getDraftPickValue(asset.pickRound) * Math.pow(0.85, yearsOut));
+      }
+      if (asset.playerId) {
+        const market = marketMap.get(asset.playerId);
+        return market !== undefined ? getDraftPickValue(market) : null;
+      }
+      return null;
+    };
+    const marketRoundOf = (asset: (typeof proposal.assets)[number]): number | null =>
+      asset.playerId ? (marketMap.get(asset.playerId) ?? null) : null;
+
     return NextResponse.json({
       proposal: {
         id: proposal.id,
@@ -210,7 +244,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           status: party.status,
           respondedAt: party.respondedAt?.toISOString(),
           owner: party.roster.teamMembers[0]?.user,
-          assets: assetsByParty[party.rosterId],
+          assets: {
+            // `type` normalizes the DB's `assetType` for the client
+            sending: assetsByParty[party.rosterId].sending.map((a) => ({
+              ...a,
+              type: a.assetType,
+              estimatedValue: assetValue(a),
+              marketRound: marketRoundOf(a),
+            })),
+            receiving: assetsByParty[party.rosterId].receiving.map((a) => ({
+              ...a,
+              type: a.assetType,
+              estimatedValue: assetValue(a),
+              marketRound: marketRoundOf(a),
+            })),
+          },
         })),
         votes: {
           approve: proposal.votes.filter((v) => v.vote === "APPROVE").length,

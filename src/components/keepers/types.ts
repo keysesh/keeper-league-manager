@@ -82,6 +82,13 @@ export interface RosterData {
     regular: boolean;
     any: boolean;
   };
+  /** Estimated market round per player id (VOR from last-season scoring —
+   *  an estimate, absent for players outside the draftable pool). */
+  marketRounds?: Record<string, number>;
+  keeperRules?: {
+    regularKeeperMaxYears: number;
+    undraftedRound: number;
+  };
 }
 
 export interface CascadeKeeperResult {

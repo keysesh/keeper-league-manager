@@ -6,6 +6,7 @@ import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { KeeperType } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { estimateMarketRounds } from "@/lib/keeper/market";
 import {
   batchComputeKeeperCosts,
   computeKeeperEligibility,
@@ -236,10 +237,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return (a.player.fullName || "").localeCompare(b.player.fullName || "");
     });
 
+    // Estimated market round per rostered player (VOR from last season's
+    // scoring — the league has no ADP/ECR feed; surfaces must label it as
+    // an estimate). Keyed by player id; players outside the draftable pool
+    // are absent.
+    const leagueShape = await prisma.league.findUnique({
+      where: { id: leagueId },
+      select: { totalRosters: true, draftRounds: true },
+    });
+    const marketMap = await estimateMarketRounds(
+      leagueShape?.totalRosters ?? 10,
+      leagueShape?.draftRounds ?? 16
+    );
+    const marketRounds: Record<string, number> = {};
+    for (const rp of roster.rosterPlayers) {
+      const round = marketMap.get(rp.playerId);
+      if (round) marketRounds[rp.playerId] = round;
+    }
+
     const response = NextResponse.json({
       rosterId,
       season,
       players: eligiblePlayers,
+      marketRounds,
       currentKeepers: {
         franchise: franchiseCount,
         regular: regularCount,
