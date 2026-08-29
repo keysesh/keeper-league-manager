@@ -168,13 +168,29 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
-    // Discord OAuth provider
+    // Discord OAuth provider.
+    //
+    // `identify` ONLY — deliberately not `identify email`. Requesting the
+    // `email` scope makes Discord enforce its verified-account gate on the
+    // consent screen: users whose Discord account has no verified email or
+    // phone are hard-blocked with "You need a verified email or phone number
+    // to perform this action" and never reach our callback. Phone-only Discord
+    // accounts are blocked the same way even though they are verified.
+    //
+    // We never read the Discord email. Identity is `discordId` (see the signIn
+    // and jwt callbacks below), and the account email is typed by the user in
+    // the /link-sleeper form, not sourced from Discord. So the scope bought us
+    // nothing and cost us logins.
+    //
+    // The explicit `scope` param is required: next-auth's DiscordProvider
+    // DEFAULTS to `identify+email` (node_modules/next-auth/providers/discord.js),
+    // so dropping this block would silently reintroduce the bug.
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
       authorization: {
         params: {
-          scope: "identify email",
+          scope: "identify",
         },
       },
     }),
