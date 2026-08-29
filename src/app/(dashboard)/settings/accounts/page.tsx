@@ -256,7 +256,7 @@ export default function AccountsSettingsPage() {
         </ul>
 
         <a
-          href="https://discord.com/oauth2/authorize"
+          href="https://discord.com/developers/docs/topics/oauth2"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 mt-4 text-sm text-blue-400 hover:text-blue-300"
