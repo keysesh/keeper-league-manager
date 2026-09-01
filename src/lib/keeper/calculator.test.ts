@@ -33,6 +33,10 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
+
+/** Prior keeper seasons in the shape cost.ts selects (season + roster.sleeperId). */
+const keeps = (ownerSleeperId: string, ...seasons: number[]) =>
+  seasons.map((season) => ({ season, roster: { sleeperId: ownerSleeperId } }));
 import {
   calculateKeeperEligibility,
   calculateBaseCost,
@@ -43,8 +47,9 @@ import {
 describe("Keeper Calculator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default mock for keeper count - returns 0 (new keeper)
+    // Default: no prior keeper seasons (new keeper)
     vi.mocked(prisma.keeper.count).mockResolvedValue(0);
+    vi.mocked(prisma.keeper.findMany).mockResolvedValue([] as never);
   });
 
   afterEach(() => {
@@ -90,6 +95,7 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 3,
         originalDraftSeason: 2025,
         isPreDeadline: null,
@@ -136,6 +142,7 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2023-08-15"),
+        season: 2023,
         originalDraftRound: 5,
         originalDraftSeason: 2023,
         isPreDeadline: null,
@@ -143,7 +150,10 @@ describe("Keeper Calculator", () => {
       } as any);
 
       // Player kept 2 times before (2024, 2025) → yearsKept = 3 > maxYears(2)
-      vi.mocked(prisma.keeper.count).mockResolvedValue(2);
+      // Kept in 2024 and 2025 by this owner, after the 2023 draft
+      vi.mocked(prisma.keeper.findMany).mockResolvedValue(
+        keeps("sleeper-roster-1", 2024, 2025) as never
+      );
 
       const result = await calculateKeeperEligibility(
         "player-1",
@@ -172,6 +182,7 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 3,
         originalDraftSeason: 2025,
         isPreDeadline: null,
@@ -207,14 +218,17 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2024-08-15"),
+        season: 2024,
         originalDraftRound: 5,
         originalDraftSeason: 2024,
         isPreDeadline: null,
         baseCostOverride: null,
       } as any);
 
-      // Player was kept 1 time before (in 2025)
-      vi.mocked(prisma.keeper.count).mockResolvedValue(1);
+      // Player was kept 1 time before (in 2025), after the 2024 draft
+      vi.mocked(prisma.keeper.findMany).mockResolvedValue(
+        keeps("sleeper-roster-1", 2025) as never
+      );
 
       const cost = await calculateBaseCost(
         "player-1",
@@ -245,6 +259,7 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.WAIVER,
         acquisitionDate: new Date("2025-10-01"),
+        season: 2025,
         originalDraftRound: null,
         originalDraftSeason: null,
         isPreDeadline: null,
@@ -279,14 +294,17 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2022-08-15"),
+        season: 2022,
         originalDraftRound: 2,
         originalDraftSeason: 2022,
         isPreDeadline: null,
         baseCostOverride: null,
       } as any);
 
-      // Player was kept 3 times before (in 2023, 2024, 2025)
-      vi.mocked(prisma.keeper.count).mockResolvedValue(3);
+      // Player was kept 3 times before (2023, 2024, 2025), after the 2022 draft
+      vi.mocked(prisma.keeper.findMany).mockResolvedValue(
+        keeps("sleeper-roster-1", 2023, 2024, 2025) as never
+      );
 
       const cost = await calculateBaseCost(
         "player-1",
@@ -316,7 +334,8 @@ describe("Keeper Calculator", () => {
         playerId: "player-1",
         ownerSleeperId: "sleeper-roster-2",
         acquisitionType: AcquisitionType.TRADE,
-        acquisitionDate: new Date("2025-12-15"), // December = post-deadline
+        acquisitionDate: new Date("2025-12-15"),
+        season: 2025, // December = post-deadline
         originalDraftRound: 5,
         originalDraftSeason: 2023,
         isPreDeadline: false, // Post-deadline trade
@@ -324,7 +343,10 @@ describe("Keeper Calculator", () => {
       } as any);
 
       // Post-deadline resets keeper years — no keeper records for new owner after trade
-      vi.mocked(prisma.keeper.count).mockResolvedValue(0);
+      // The previous owner's keeps must NOT transfer across a post-deadline trade
+      vi.mocked(prisma.keeper.findMany).mockResolvedValue(
+        keeps("sleeper-roster-1", 2024, 2025) as never
+      );
 
       const cost = await calculateBaseCost(
         "player-1",
@@ -354,15 +376,18 @@ describe("Keeper Calculator", () => {
         playerId: "player-1",
         ownerSleeperId: "sleeper-roster-2",
         acquisitionType: AcquisitionType.TRADE,
-        acquisitionDate: new Date("2025-10-15"), // October = pre-deadline
+        acquisitionDate: new Date("2025-10-15"),
+        season: 2025, // October = pre-deadline
         originalDraftRound: 5,
         originalDraftSeason: 2023,
         isPreDeadline: true, // Pre-deadline trade
         baseCostOverride: null,
       } as any);
 
-      // Player was kept 2 times before (2024, 2025) - carries over for pre-deadline trade
-      vi.mocked(prisma.keeper.count).mockResolvedValue(2);
+      // Kept twice under the PREVIOUS owner; a pre-deadline trade carries them over
+      vi.mocked(prisma.keeper.findMany).mockResolvedValue(
+        keeps("sleeper-roster-1", 2024, 2025) as never
+      );
 
       const cost = await calculateBaseCost(
         "player-1",
@@ -404,6 +429,7 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 4,
         originalDraftSeason: 2025,
         isPreDeadline: null,
@@ -445,6 +471,7 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2024-08-15"),
+        season: 2024,
         originalDraftRound: 2,
         originalDraftSeason: 2024,
         isPreDeadline: null,
@@ -482,8 +509,11 @@ describe("Keeper Calculator", () => {
           id: "keeper-1",
           playerId: "player-1",
           rosterId: "roster-1",
+          season: 2026,
           type: "REGULAR",
           player: { sleeperId: "sleeper-player-1", fullName: "Player 1" },
+          // cost.ts reads prior keeper seasons off the same model
+          roster: { sleeperId: "sleeper-roster-1" },
         },
       ] as any);
 
@@ -500,6 +530,7 @@ describe("Keeper Calculator", () => {
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.DRAFTED,
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 3,
         originalDraftSeason: 2025,
         isPreDeadline: null,

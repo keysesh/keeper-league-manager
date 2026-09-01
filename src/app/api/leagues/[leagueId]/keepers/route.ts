@@ -7,6 +7,7 @@ import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { getKeeperDeadlineStatus } from "@/lib/keeper/deadline";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 import { recalculateAndApplyCascade } from "@/lib/keeper/cascade";
+import { computeKeeperCost } from "@/lib/keeper/cost";
 
 /** Human message for a locked keeper window */
 function lockMessage(lockReason: string | null): string {
@@ -167,7 +168,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const { rosterId, playerId, type, notes, baseCost, finalCost, yearsKept } = body;
+    const { rosterId, playerId, type, notes } = body;
 
     if (!rosterId || !playerId || !type) {
       return NextResponse.json(
@@ -281,12 +282,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Use client-provided cost data (calculated in eligible-keepers route)
-    // This avoids expensive recalculation
+    // Cost comes from the engine, never from the client. A franchise tag does
+    // NOT change the price: it only lets an owner keep a player past the
+    // regular year limit, and the years keep counting. The old hardcoded
+    // "franchise costs round 1" wrote a price nothing else in the app agreed
+    // with, which is why saved tags read 1/8 and 1/10.
     const keeperType = type === "FRANCHISE" ? KeeperType.FRANCHISE : KeeperType.REGULAR;
-    const effectiveBaseCost = keeperType === KeeperType.FRANCHISE ? 1 : (baseCost ?? settings.undraftedRound);
-    const effectiveFinalCost = keeperType === KeeperType.FRANCHISE ? 1 : (finalCost ?? effectiveBaseCost);
-    const effectiveYearsKept = yearsKept ?? 1;
+    const engineCost = await computeKeeperCost(
+      playerId,
+      rosterWithData.sleeperId,
+      season,
+      settings
+    );
+    const effectiveBaseCost = engineCost.effectiveCost;
+    const effectiveFinalCost = engineCost.effectiveCost;
+    const effectiveYearsKept = engineCost.yearsKept;
 
     // Create keeper with provided or default values
     const keeper = await prisma.keeper.create({

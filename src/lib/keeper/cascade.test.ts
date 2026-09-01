@@ -42,8 +42,9 @@ import {
 describe("Cascade Calculator", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default mock for keeper count - returns 0 (new keeper)
+    // Default: no prior keeper seasons (new keeper)
     vi.mocked(prisma.keeper.count).mockResolvedValue(0);
+    vi.mocked(prisma.keeper.findMany).mockResolvedValue([] as never);
   });
 
   afterEach(() => {
@@ -278,9 +279,12 @@ describe("Cascade Calculator", () => {
           id: "keeper-1",
           playerId: "player-1",
           rosterId: "roster-1",
+          season: 2026,
           finalCost: 5,
           type: "REGULAR",
           player: { fullName: "Player One" },
+          // cost.ts reads prior keeper seasons off the same model
+          roster: { sleeperId: "sleeper-roster-1" },
         },
       ] as any);
 

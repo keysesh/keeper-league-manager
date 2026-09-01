@@ -132,18 +132,18 @@ export async function batchComputeKeeperCosts(
     }
   }
 
-  // Batch fetch keeper year counts
-  const keeperCounts = await prisma.keeper.groupBy({
-    by: ["playerId"],
-    where: {
-      playerId: { in: playerIds },
-      season: { lt: targetSeason },
-    },
-    _count: { id: true },
+  // Batch fetch prior keeper seasons in one query; countKeeperYearsFrom applies
+  // the reset rule in memory, so this path matches computeKeeperCost exactly.
+  const priorKeeperRows = await prisma.keeper.findMany({
+    where: { playerId: { in: playerIds }, season: { lt: targetSeason } },
+    select: { playerId: true, season: true, roster: { select: { sleeperId: true } } },
   });
-  const keeperCountMap = new Map<string, number>();
-  for (const kc of keeperCounts) {
-    keeperCountMap.set(kc.playerId, kc._count.id);
+  const priorByPlayer = new Map<string, PriorKeeperSeason[]>();
+  for (const row of priorKeeperRows) {
+    const entry = { season: row.season, ownerSleeperId: row.roster.sleeperId };
+    const list = priorByPlayer.get(row.playerId);
+    if (list) list.push(entry);
+    else priorByPlayer.set(row.playerId, [entry]);
   }
 
   // Compute costs for each player
@@ -165,26 +165,13 @@ export async function batchComputeKeeperCosts(
     }
 
     // For post-deadline trades, only count keeper years AFTER the trade
-    let pastKeeperCount = keeperCountMap.get(playerId) || 0;
-    const isPostDeadline =
-      acq.acquisitionType === AcquisitionType.TRADE &&
-      acq.isPreDeadline === false;
-
-    if (isPostDeadline && acq.acquisitionDate) {
-      const tradeSeason = getSeasonFromDate(acq.acquisitionDate);
-      // Recount: only keeper records after the trade season, scoped to current owner
-      // Post-deadline trades reset keeper years — only count this owner's records
-      const postTradeCount = await prisma.keeper.count({
-        where: {
-          playerId,
-          season: { gte: tradeSeason + 1, lt: targetSeason },
-          roster: { sleeperId: ownerSleeperId },
-        },
-      });
-      pastKeeperCount = postTradeCount;
-    }
-
-    const yearsKept = pastKeeperCount + 1;
+    const yearsKept =
+      countKeeperYearsFrom(
+        priorByPlayer.get(playerId) ?? [],
+        acq,
+        ownerSleeperId,
+        targetSeason
+      ) + 1;
 
     results.set(
       playerId,
@@ -255,35 +242,66 @@ function getSeasonFromDate(date: Date): number {
  * Count how many times a player has been kept before the target season.
  * For post-deadline trades, only counts keeper records AFTER the trade.
  */
+/** A season in which some owner kept this player, as the year count needs it. */
+export interface PriorKeeperSeason {
+  season: number;
+  ownerSleeperId: string;
+}
+
+/**
+ * How many seasons has this owner already kept the player, for cost purposes?
+ *
+ * League rule: a keeper's clock restarts whenever the player goes back into the
+ * pool and is re-acquired, by draft pick or by waiver/free agency. Only a trade
+ * carries the contract, and its accumulated years, across owners.
+ *
+ * Before 2026-09-01 every pre-deadline acquisition inherited EVERY prior
+ * owner's keeper years, so drafting a player a stranger had once kept silently
+ * cost a round more: DeVonta Smith was priced R3 instead of R5, Nico Collins
+ * R13 instead of R14.
+ *
+ * Pure, so the single-player and batch paths cannot drift apart.
+ */
+export function countKeeperYearsFrom(
+  priorSeasons: PriorKeeperSeason[],
+  acquisition: { acquisitionType: AcquisitionType; isPreDeadline: boolean | null; season: number },
+  ownerSleeperId: string,
+  targetSeason: number
+): number {
+  // A pre-deadline trade transfers the keeper contract intact, years included.
+  if (
+    acquisition.acquisitionType === AcquisitionType.TRADE &&
+    acquisition.isPreDeadline !== false
+  ) {
+    return priorSeasons.filter((k) => k.season < targetSeason).length;
+  }
+
+  // Everything else restarts the clock at the acquisition: a post-deadline
+  // trade, a draft pick, a waiver claim, a free-agent add.
+  return priorSeasons.filter(
+    (k) =>
+      k.ownerSleeperId === ownerSleeperId &&
+      k.season > acquisition.season &&
+      k.season < targetSeason
+  ).length;
+}
+
 async function countKeeperYears(
   playerId: string,
   ownerSleeperId: string,
   targetSeason: number,
-  acquisition: { acquisitionType: AcquisitionType; isPreDeadline: boolean | null; acquisitionDate: Date }
+  acquisition: { acquisitionType: AcquisitionType; isPreDeadline: boolean | null; season: number }
 ): Promise<number> {
-  const isPostDeadline =
-    acquisition.acquisitionType === AcquisitionType.TRADE &&
-    acquisition.isPreDeadline === false;
-
-  if (isPostDeadline) {
-    const tradeSeason = getSeasonFromDate(acquisition.acquisitionDate);
-    // Post-deadline trades reset keeper years — only count this owner's records
-    return prisma.keeper.count({
-      where: {
-        playerId,
-        season: { gte: tradeSeason + 1, lt: targetSeason },
-        roster: { sleeperId: ownerSleeperId },
-      },
-    });
-  }
-
-  // Pre-deadline: count ALL keeper records (inherits years from previous owners)
-  return prisma.keeper.count({
-    where: {
-      playerId,
-      season: { lt: targetSeason },
-    },
+  const rows = await prisma.keeper.findMany({
+    where: { playerId, season: { lt: targetSeason } },
+    select: { season: true, roster: { select: { sleeperId: true } } },
   });
+  return countKeeperYearsFrom(
+    rows.map((r) => ({ season: r.season, ownerSleeperId: r.roster.sleeperId })),
+    acquisition,
+    ownerSleeperId,
+    targetSeason
+  );
 }
 
 /**
