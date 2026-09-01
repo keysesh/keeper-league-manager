@@ -8,7 +8,7 @@ import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 
 export interface KeeperCostResult {
   baseCost: number; // Original draft round (or R8 for undrafted)
-  effectiveCost: number; // After years-kept reduction: max(1, baseCost - (yearsKept - 1))
+  effectiveCost: number; // What he costs THIS draft: max(1, baseCost - seasons held)
   yearsKept: number; // Display value (1-indexed): how many times kept including this one
   originalDraftRound: number | null;
   originalDraftSeason: number | null;
@@ -69,7 +69,8 @@ export async function computeKeeperCost(
       { acquisitionType: AcquisitionType.WAIVER, originalDraftRound: null, originalDraftSeason: null, isPreDeadline: null, baseCostOverride: null },
       1,
       undraftedRound,
-      minRound
+      minRound,
+      0
     );
   }
 
@@ -92,7 +93,8 @@ export async function computeKeeperCost(
     },
     yearsKept,
     undraftedRound,
-    minRound
+    minRound,
+    Math.max(0, targetSeason - acquisition.season)
   );
 }
 
@@ -158,7 +160,8 @@ export async function batchComputeKeeperCosts(
           { acquisitionType: AcquisitionType.WAIVER, originalDraftRound: null, originalDraftSeason: null, isPreDeadline: null, baseCostOverride: null },
           1,
           undraftedRound,
-          minRound
+          minRound,
+          0
         )
       );
       continue;
@@ -185,7 +188,8 @@ export async function batchComputeKeeperCosts(
         },
         yearsKept,
         undraftedRound,
-        minRound
+        minRound,
+        Math.max(0, targetSeason - acq.season)
       )
     );
   }
@@ -311,14 +315,20 @@ function buildCostResult(
   acq: AcquisitionRecord,
   yearsKept: number,
   undraftedRound: number,
-  minRound: number
+  minRound: number,
+  /**
+   * Seasons elapsed since this owner acquired the player. THIS is what moves
+   * the price, not the number of prior keeps: a player drafted in round 14 in
+   * 2025 costs a 13th to keep for the 2026 draft, his first time kept.
+   * Verified against the commissioner's own 2026 keeper slots in Sleeper
+   * (Skattebo R9->8, Hurts R13->12, Irving R14->13, McBride R15->14,
+   * Marks R16->15, Javonte traded in R10->9, Chase Brown R7->6).
+   */
+  seasonsHeld: number
 ): KeeperCostResult {
   // Commissioner override takes priority
   if (acq.baseCostOverride != null) {
-    const effectiveCost = Math.max(
-      minRound,
-      acq.baseCostOverride - (yearsKept - 1)
-    );
+    const effectiveCost = Math.max(minRound, acq.baseCostOverride - seasonsHeld);
     return {
       baseCost: acq.baseCostOverride,
       effectiveCost,
@@ -329,7 +339,7 @@ function buildCostResult(
       isPostDeadlineTrade:
         acq.acquisitionType === AcquisitionType.TRADE &&
         acq.isPreDeadline === false,
-      costBreakdown: `R${acq.baseCostOverride} (override) - ${yearsKept - 1}yr = R${effectiveCost}`,
+      costBreakdown: `R${acq.baseCostOverride} (override) - ${seasonsHeld}yr = R${effectiveCost}`,
     };
   }
 
@@ -351,7 +361,7 @@ function buildCostResult(
     costSource = `Waiver/FA R${undraftedRound}`;
   }
 
-  const yearsImprovement = yearsKept - 1;
+  const yearsImprovement = seasonsHeld;
   const effectiveCost = Math.max(minRound, startingCost - yearsImprovement);
 
   let costBreakdown: string;

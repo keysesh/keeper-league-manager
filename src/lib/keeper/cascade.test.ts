@@ -81,6 +81,7 @@ describe("Cascade Calculator", () => {
         ownerSleeperId: "owner-1",
         acquisitionType: "DRAFTED",
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 5,
         originalDraftSeason: 2025,
         isPreDeadline: null,
@@ -131,6 +132,7 @@ describe("Cascade Calculator", () => {
         ownerSleeperId: "owner-1",
         acquisitionType: "DRAFTED",
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 5,
         originalDraftSeason: 2025,
         isPreDeadline: null,
@@ -192,6 +194,7 @@ describe("Cascade Calculator", () => {
         ownerSleeperId: "owner-1",
         acquisitionType: "WAIVER",
         acquisitionDate: new Date("2025-10-01"),
+        season: 2025,
         originalDraftRound: null,
         originalDraftSeason: null,
         isPreDeadline: null,
@@ -236,14 +239,16 @@ describe("Cascade Calculator", () => {
         leagueId: "league-1",
       } as any);
 
-      // Mock acquisition record — drafted R5 (cost.ts reads from PlayerAcquisition)
+      // Drafted R6 in 2025 and held one season, so the 2026 base cost is R5 —
+      // the round this roster traded away, which forces a cascade.
       vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
         id: "acq-1",
         playerId: "player-1",
         ownerSleeperId: "owner-1",
         acquisitionType: "DRAFTED",
         acquisitionDate: new Date("2025-08-15"),
-        originalDraftRound: 5,
+        season: 2025,
+        originalDraftRound: 6,
         originalDraftSeason: 2025,
         isPreDeadline: null,
         baseCostOverride: null,
@@ -311,6 +316,7 @@ describe("Cascade Calculator", () => {
         ownerSleeperId: "owner-1",
         acquisitionType: "DRAFTED",
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 5,
         originalDraftSeason: 2025,
         isPreDeadline: null,
@@ -370,6 +376,7 @@ describe("Cascade Calculator", () => {
         ownerSleeperId: "owner-1",
         acquisitionType: "DRAFTED",
         acquisitionDate: new Date("2025-08-15"),
+        season: 2025,
         originalDraftRound: 3,
         originalDraftSeason: 2025,
         isPreDeadline: null,

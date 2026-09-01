@@ -168,7 +168,7 @@ describe("Keeper Calculator", () => {
   });
 
   describe("calculateBaseCost", () => {
-    it("returns draft round for drafted players in year 1", async () => {
+    it("charges one round earlier than the draft round in the first keeper season", async () => {
       vi.mocked(prisma.roster.findUnique).mockResolvedValue({
         id: "roster-1",
         sleeperId: "sleeper-roster-1",
@@ -201,10 +201,13 @@ describe("Keeper Calculator", () => {
       );
 
       // Year 1: baseCost = draftRound (3), yearsOnRoster = 0, effectiveCost = 3 - 0 = 3
-      expect(cost).toBe(3);
+      // Drafted R3 in 2025, kept for the 2026 draft: one season held, so R2.
+      // The old rule charged the full R3 until the SECOND keep, a round
+      // cheaper than the commissioner's own Sleeper keeper slots.
+      expect(cost).toBe(2);
     });
 
-    it("improves cost by 1 round for each year after year 1", async () => {
+    it("improves cost by 1 round for each season held", async () => {
       vi.mocked(prisma.roster.findUnique).mockResolvedValue({
         id: "roster-1",
         sleeperId: "sleeper-roster-1",
@@ -242,10 +245,11 @@ describe("Keeper Calculator", () => {
       );
 
       // Year 2: baseCost = 5, totalKeeperYears = 1, effectiveCost = 5 - 1 = 4
-      expect(cost).toBe(4);
+      // Drafted R5 in 2024, kept for the 2026 draft: two seasons held = R3.
+      expect(cost).toBe(3);
     });
 
-    it("returns undrafted round for waiver pickups", async () => {
+    it("starts waiver pickups at the undrafted round, less seasons held", async () => {
       vi.mocked(prisma.roster.findUnique).mockResolvedValue({
         id: "roster-1",
         sleeperId: "sleeper-roster-1",
@@ -277,7 +281,8 @@ describe("Keeper Calculator", () => {
         } as any
       );
 
-      expect(cost).toBe(8);
+      // Undrafted R8, claimed in 2025, kept for 2026: one season held = R7.
+      expect(cost).toBe(7);
     });
 
     it("respects minimum round floor", async () => {
@@ -360,10 +365,12 @@ describe("Keeper Calculator", () => {
       );
 
       // Post-deadline trade = cost resets: baseCost = 5, keeperYears = 0, cost = 5
-      expect(cost).toBe(5);
+      // A post-deadline trade restarts the clock at the trade; one season
+      // then elapses before the 2026 draft, so R5 becomes R4.
+      expect(cost).toBe(4);
     });
 
-    it("continues cost reduction for pre-deadline (in-season) trades", async () => {
+    it("inherits the round through a pre-deadline trade, clock running from the trade", async () => {
       vi.mocked(prisma.roster.findUnique).mockResolvedValue({
         id: "roster-2",
         sleeperId: "sleeper-roster-2",
@@ -401,7 +408,9 @@ describe("Keeper Calculator", () => {
       );
 
       // Pre-deadline trade = cost continues: baseCost = 5, keeperYears = 2, cost = 3
-      expect(cost).toBe(3);
+      // The inherited round (R5) carries across a pre-deadline trade, but
+      // the escalation clock runs from the acquisition: one season held = R4.
+      expect(cost).toBe(4);
     });
   });
 
@@ -444,8 +453,9 @@ describe("Keeper Calculator", () => {
         KeeperType.REGULAR
       );
 
-      expect(result.baseCost).toBe(4);
-      expect(result.finalCost).toBe(4);
+      // Drafted R5 in 2024, kept for the 2026 draft: two seasons held.
+      expect(result.baseCost).toBe(3);
+      expect(result.finalCost).toBe(3);
     });
 
     it("calculates cost for franchise tag", async () => {
