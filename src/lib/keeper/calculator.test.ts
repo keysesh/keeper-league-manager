@@ -370,7 +370,7 @@ describe("Keeper Calculator", () => {
       expect(cost).toBe(4);
     });
 
-    it("inherits the round through a pre-deadline trade, clock running from the trade", async () => {
+    it("carries both the round and the escalation clock through a pre-deadline trade", async () => {
       vi.mocked(prisma.roster.findUnique).mockResolvedValue({
         id: "roster-2",
         sleeperId: "sleeper-roster-2",
@@ -408,9 +408,9 @@ describe("Keeper Calculator", () => {
       );
 
       // Pre-deadline trade = cost continues: baseCost = 5, keeperYears = 2, cost = 3
-      // The inherited round (R5) carries across a pre-deadline trade, but
-      // the escalation clock runs from the acquisition: one season held = R4.
-      expect(cost).toBe(4);
+      // A pre-deadline trade carries the contract whole: the R5 round AND the
+      // clock, which started at the 2023 draft. Three seasons on, that is R2.
+      expect(cost).toBe(2);
     });
   });
 

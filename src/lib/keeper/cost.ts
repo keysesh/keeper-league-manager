@@ -94,7 +94,7 @@ export async function computeKeeperCost(
     yearsKept,
     undraftedRound,
     minRound,
-    Math.max(0, targetSeason - acquisition.season)
+    Math.max(0, targetSeason - keeperClockSeason(acquisition))
   );
 }
 
@@ -189,7 +189,7 @@ export async function batchComputeKeeperCosts(
         yearsKept,
         undraftedRound,
         minRound,
-        Math.max(0, targetSeason - acq.season)
+        Math.max(0, targetSeason - keeperClockSeason(acq))
       )
     );
   }
@@ -246,6 +246,38 @@ function getSeasonFromDate(date: Date): number {
  * Count how many times a player has been kept before the target season.
  * For post-deadline trades, only counts keeper records AFTER the trade.
  */
+/**
+ * Which season does a keeper's price clock start from?
+ *
+ * The escalation runs from when the player last entered the league through a
+ * draft, and a TRADE carries that clock with the contract: George Pickens was
+ * drafted in round 6 in 2023, traded away and traded back in August 2024, and
+ * still cost a round 4 in 2025 (6 minus the two seasons since 2023). Restarting
+ * at the trade would have made him a 5, and would let anyone wipe out an
+ * expensive keeper's accumulated cost simply by trading for him.
+ *
+ * A waiver or free-agent claim is different: the player cleared back into the
+ * pool, so the clock restarts at the claim.
+ */
+export function keeperClockSeason(acq: {
+  acquisitionType: AcquisitionType;
+  season: number;
+  originalDraftSeason: number | null;
+  isPreDeadline: boolean | null;
+}): number {
+  // A post-deadline trade already resets the keeper YEAR count, so it resets
+  // the price clock too: it is treated as a fresh acquisition.
+  const postDeadlineTrade =
+    acq.acquisitionType === AcquisitionType.TRADE && acq.isPreDeadline === false;
+  const carriesTheClock =
+    !postDeadlineTrade &&
+    (acq.acquisitionType === AcquisitionType.DRAFTED ||
+      acq.acquisitionType === AcquisitionType.TRADE);
+  return carriesTheClock && acq.originalDraftSeason != null
+    ? Math.min(acq.originalDraftSeason, acq.season)
+    : acq.season;
+}
+
 /** A season in which some owner kept this player, as the year count needs it. */
 export interface PriorKeeperSeason {
   season: number;

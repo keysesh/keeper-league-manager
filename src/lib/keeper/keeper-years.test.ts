@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { AcquisitionType } from "@prisma/client";
-import { countKeeperYearsFrom } from "./cost";
+import { countKeeperYearsFrom, keeperClockSeason } from "./cost";
 
 const KETSESH = "1000541309863559168";
 const RYANRUS = "1000542619040026624";
@@ -92,5 +92,42 @@ describe("countKeeperYearsFrom", () => {
   it("no prior rows means year one", () => {
     // Jaylen Waddle: drafted R2 in 2025, never kept. 2026 is his first keep.
     expect(countKeeperYearsFrom([], drafted(2025), KETSESH, 2026)).toBe(0);
+  });
+});
+
+describe("keeperClockSeason", () => {
+  const clock = (
+    t: AcquisitionType,
+    season: number,
+    originalDraftSeason: number | null,
+    isPreDeadline: boolean | null = true
+  ) => keeperClockSeason({ acquisitionType: t, season, originalDraftSeason, isPreDeadline });
+
+  it("REGRESSION: a trade carries the clock from the original draft (George Pickens)", () => {
+    // Drafted R6 in 2023, traded away, traded back in Aug 2024. His 2025 cost
+    // was a 4, which only works if the trade did not restart him.
+    expect(clock(AcquisitionType.TRADE, 2024, 2023)).toBe(2023);
+  });
+
+  it("a draft starts its own clock", () => {
+    expect(clock(AcquisitionType.DRAFTED, 2025, 2025)).toBe(2025);
+  });
+
+  it("a waiver or free-agent claim restarts the clock, even with an inherited round", () => {
+    expect(clock(AcquisitionType.WAIVER, 2025, 2024)).toBe(2025);
+    expect(clock(AcquisitionType.FREE_AGENT, 2025, 2023)).toBe(2025);
+  });
+
+  it("falls back to the acquisition season when no original draft is known", () => {
+    expect(clock(AcquisitionType.DRAFTED, 2025, null)).toBe(2025);
+    expect(clock(AcquisitionType.TRADE, 2026, null)).toBe(2026);
+  });
+
+  it("a post-deadline trade restarts the clock, like it restarts the year count", () => {
+    expect(clock(AcquisitionType.TRADE, 2025, 2023, false)).toBe(2025);
+  });
+
+  it("never starts the clock after the acquisition itself", () => {
+    expect(clock(AcquisitionType.TRADE, 2024, 2026)).toBe(2024);
   });
 });
