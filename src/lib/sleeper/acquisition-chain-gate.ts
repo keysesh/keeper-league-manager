@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { getLeagueChain } from "@/lib/services/league-chain";
-import { syncAcquisitionChain } from "./sync";
+import { syncAcquisitionChain, ACQUISITION_REPLAY_VERSION } from "./sync";
 
 export const ACQUISITION_CHAIN_AUDIT_ACTION = "ACQUISITION_CHAIN_REBUILT";
 
@@ -33,6 +33,7 @@ export async function acquisitionChainFingerprint(leagueIds: string[]): Promise<
     }),
   ]);
   return [
+    `replay:${ACQUISITION_REPLAY_VERSION}`,
     `leagues:${leagueIds.length}`,
     `drafts:${drafts}`,
     `picks:${picks}`,

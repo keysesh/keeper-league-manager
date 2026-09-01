@@ -17,7 +17,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/services/league-chain", () => ({ getLeagueChain: mocks.getLeagueChain }));
-vi.mock("./sync", () => ({ syncAcquisitionChain: mocks.syncAcquisitionChain }));
+vi.mock("./sync", () => ({ syncAcquisitionChain: mocks.syncAcquisitionChain, ACQUISITION_REPLAY_VERSION: 3 }));
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -48,7 +48,7 @@ beforeEach(() => {
 describe("acquisitionChainFingerprint", () => {
   it("summarises every input the chain is derived from, scoped to the league chain", async () => {
     const fp = await acquisitionChainFingerprint(["l-2026", "l-2025"]);
-    expect(fp).toBe("leagues:2|drafts:7|picks:651|tx:2210|corr:3|lastTx:2026-08-29T15:00:00.000Z");
+    expect(fp).toBe("replay:3|leagues:2|drafts:7|picks:651|tx:2210|corr:3|lastTx:2026-08-29T15:00:00.000Z");
     expect(prisma.draftPick.count).toHaveBeenCalledWith({
       where: { draft: { leagueId: { in: ["l-2026", "l-2025"] } } },
     });

@@ -1817,6 +1817,13 @@ export async function recalculateKeeperYears(
 export const STALE_ACQUISITION_MIN_CAP = 50;
 export const STALE_ACQUISITION_MAX_FRACTION = 0.25;
 
+/**
+ * Bump when replayAcquisitionEvents changes what it derives from the same
+ * inputs. It is part of the change-gate fingerprint, so a logic change forces
+ * one rebuild instead of waiting for the next transaction.
+ */
+export const ACQUISITION_REPLAY_VERSION = 3;
+
 /** One row of the derived PlayerAcquisition table, as the replay wants it. */
 export interface AcquisitionTarget {
   playerId: string;
@@ -1990,6 +1997,12 @@ export function replayAcquisitionEvents(input: {
       // Skip ERROR and ABORTED drafts entirely
       if (correction?.role === "ERROR" || correction?.role === "ABORTED") continue;
 
+      // A CORRECT_ROUNDS draft has the right rounds but wrong roster
+      // assignments (2023's snake draft). It feeds correctRoundsByPlayer only;
+      // ownership comes from its CORRECT_OWNERS sibling. Using it for
+      // ownership left ~120 players with a ghost open row for the wrong owner.
+      if (correction?.role === "CORRECT_ROUNDS") continue;
+
       // For CORRECT_OWNERS draft: use this for ownership, get round from CORRECT_ROUNDS
       // For CLEAN draft: use as-is
       // Keeper slots (isKeeper=true) are cascade-adjusted, not original drafts
@@ -2038,15 +2051,23 @@ export function replayAcquisitionEvents(input: {
         }
       }
 
-      // If player already has an open acquisition with the SAME owner, this is a
-      // correction pick (e.g., 2024 re-draft after error). Don't create a new one.
-      if (existing && existing.ownerSleeperId === pick.roster.sleeperId) {
+      // In a commissioner-reconstructed draft (CORRECT_OWNERS) a non-keeper pick
+      // by the player's current holder is the keeper representation, not a new
+      // acquisition. In a clean Sleeper draft the keeper flag is reliable, so a
+      // same-owner pick is a genuine re-draft (the player was released at the
+      // roster reset and taken again): the pick is the new acquisition.
+      if (
+        existing &&
+        existing.ownerSleeperId === pick.roster.sleeperId &&
+        correction?.role === "CORRECT_OWNERS"
+      ) {
         continue;
       }
 
-      // Close previous acquisition if exists
+      // Close previous acquisition if exists — at the draft's real start, so a
+      // row acquired earlier the same August is never closed before it began.
       if (existing) {
-        close(pick.playerId, existing.ownerSleeperId, DispositionType.SEASON_END, new Date(`${season}-08-01`));
+        close(pick.playerId, existing.ownerSleeperId, DispositionType.SEASON_END, new Date(event.at + 1));
       }
 
       emit({

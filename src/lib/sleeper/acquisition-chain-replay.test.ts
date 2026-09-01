@@ -63,6 +63,7 @@ const fixtures = vi.hoisted(() => ({
   draftPicks: [] as unknown[],
   transactions: [] as unknown[],
   rosters: [] as Array<{ id: string; sleeperId: string }>,
+  corrections: [] as Array<{ draftSleeperId: string; role: string }>,
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -75,7 +76,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(async ({ where }: { where: { sleeperId: string } }) =>
         fixtures.leagues.find((x) => x.sleeperId === where.sleeperId) ?? null),
     },
-    draftCorrection: { findMany: vi.fn(async () => []) },
+    draftCorrection: { findMany: vi.fn(async () => fixtures.corrections) },
     draftPick: { findMany: vi.fn(async () => fixtures.draftPicks) },
     transactionPlayer: { findMany: vi.fn(async () => fixtures.transactions) },
     roster: { findMany: vi.fn(async () => fixtures.rosters) },
@@ -108,6 +109,13 @@ function pick(season: number, owner: string, playerId: string, round: number, is
     draft: { season, sleeperId: d.sleeperId, leagueId: d.leagueId, startTime: d.startTime },
     roster: { sleeperId: owner },
   };
+}
+
+function pickInDraft(
+  draft: { season: number; sleeperId: string; leagueId: string; startTime: Date },
+  owner: string, playerId: string, round: number, isKeeper = false
+) {
+  return { playerId, round, isKeeper, draft, roster: { sleeperId: owner } };
 }
 
 function tx(type: "TRADE" | "FREE_AGENT" | "WAIVER", when: string, playerId: string, from: string | null, to: string | null) {
@@ -149,6 +157,7 @@ beforeEach(() => {
   fixtures.rosters = rosterRows();
   fixtures.draftPicks = [];
   fixtures.transactions = [];
+  fixtures.corrections = [];
 });
 
 describe("syncAcquisitionChain — chronological replay", () => {
@@ -170,8 +179,8 @@ describe("syncAcquisitionChain — chronological replay", () => {
       { season: 2023, owner: A, type: "DRAFTED", round: 1, disposition: "TRADED", dispositionDate: "2024-08-14", date: "2023-08-15" },
       { season: 2024, owner: B, type: "TRADE", round: 1, disposition: "TRADED", dispositionDate: "2024-10-03", date: "2024-08-14" },
       { season: 2024, owner: C, type: "TRADE", round: 1, disposition: "DROPPED", dispositionDate: "2024-12-20", date: "2024-10-03" },
-      // Post-deadline pickup: no inherited round; closed when K drafts him next August
-      { season: 2024, owner: C, type: "FREE_AGENT", round: null, disposition: "SEASON_END", dispositionDate: "2025-08-01", date: "2024-12-20" },
+      // Post-deadline pickup: no inherited round; closed at the start of the draft where K takes him
+      { season: 2024, owner: C, type: "FREE_AGENT", round: null, disposition: "SEASON_END", dispositionDate: "2025-08-16", date: "2024-12-20" },
       { season: 2025, owner: K, type: "DRAFTED", round: 2, disposition: null, dispositionDate: null, date: "2025-08-15" },
     ]);
     // The invariant the old order violated on 153 production rows
@@ -293,6 +302,62 @@ describe("syncAcquisitionChain — chronological replay", () => {
     expect(db.playerAcquisition.createMany).not.toHaveBeenCalled();
     expect(db.playerAcquisition.update).not.toHaveBeenCalled();
     expect(db.playerAcquisition.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("clean draft: traded in before the draft, then drafted by the same owner = a fresh draft acquisition", async () => {
+    // Nico Collins / Trey McBride: BlckMessiah acquired them by trade on Aug 11 2025,
+    // then took them again in the clean Aug 16 draft (the roster reset released them).
+    fixtures.draftPicks = [pick(2024, A, "nico", 10), pick(2025, B, "nico", 14)];
+    fixtures.transactions = [tx("TRADE", "2025-08-11T12:00:00Z", "nico", A, B)];
+    fixtures.corrections = [{ draftSleeperId: "d25", role: "CLEAN" }];
+
+    await syncAcquisitionChain("L2026");
+
+    expect(rowsFor("nico")).toEqual([
+      { season: 2024, owner: A, type: "DRAFTED", round: 10, disposition: "TRADED", dispositionDate: "2025-08-11", date: "2024-08-15" },
+      { season: 2025, owner: B, type: "TRADE", round: 10, disposition: "SEASON_END", dispositionDate: "2025-08-16", date: "2025-08-11" },
+      { season: 2025, owner: B, type: "DRAFTED", round: 14, disposition: null, dispositionDate: null, date: "2025-08-15" },
+    ]);
+    for (const r of db.rows) {
+      if (r.dispositionDate) expect(r.dispositionDate.getTime()).toBeGreaterThanOrEqual(r.acquisitionDate.getTime());
+    }
+  });
+
+  it("reconstructed draft (CORRECT_OWNERS): a same-owner non-keeper pick is the keeper representation, not a new row", async () => {
+    // 2024: Waddle traded to RyanRus on Aug 14, then listed as RyanRus's R1 pick in the
+    // commissioner-rebuilt Aug 30 draft. That pick IS the keeper, not a re-draft.
+    fixtures.draftPicks = [pick(2023, A, "waddle", 1), pick(2024, B, "waddle", 1)];
+    fixtures.transactions = [tx("TRADE", "2024-08-14T16:54:00Z", "waddle", A, B)];
+    fixtures.corrections = [{ draftSleeperId: "d24", role: "CORRECT_OWNERS" }];
+
+    await syncAcquisitionChain("L2026");
+
+    expect(rowsFor("waddle")).toEqual([
+      { season: 2023, owner: A, type: "DRAFTED", round: 1, disposition: "TRADED", dispositionDate: "2024-08-14", date: "2023-08-15" },
+      { season: 2024, owner: B, type: "TRADE", round: 1, disposition: null, dispositionDate: null, date: "2024-08-14" },
+    ]);
+  });
+
+  it("CORRECT_ROUNDS drafts supply rounds only, never ownership", async () => {
+    // 2023 had a snake draft with correct rounds but wrong roster assignments, then a
+    // linear re-draft with correct owners. Ownership must come from the second only.
+    const roundsDraft = { season: 2023, sleeperId: "d23-rounds", leagueId: "L2023", startTime: new Date("2023-08-24T21:25:00Z") };
+    const ownersDraft = { season: 2023, sleeperId: "d23-owners", leagueId: "L2023", startTime: new Date("2023-08-28T00:00:00Z") };
+    fixtures.draftPicks = [
+      pickInDraft(roundsDraft, B, "lamb", 8),          // wrong owner, right round
+      pickInDraft(ownersDraft, A, "lamb", 3, true),    // right owner, keeper slot (cascade-adjusted round)
+    ];
+    fixtures.corrections = [
+      { draftSleeperId: "d23-rounds", role: "CORRECT_ROUNDS" },
+      { draftSleeperId: "d23-owners", role: "CORRECT_OWNERS" },
+    ];
+
+    await syncAcquisitionChain("L2026");
+
+    expect(rowsFor("lamb")).toEqual([
+      { season: 2023, owner: A, type: "DRAFTED", round: 8, disposition: null, dispositionDate: null, date: "2023-08-01" },
+    ]);
+    expect(db.rows.some((r) => r.ownerSleeperId === B)).toBe(false);
   });
 
   it("SAFETY: refuses a mass prune that would only happen if the source data failed to load", async () => {
