@@ -28,26 +28,7 @@ type Row = Record<string, unknown> & {
 const db = vi.hoisted(() => {
   const rows: Row[] = [];
   let seq = 0;
-  const KEY = "playerId_ownerSleeperId_season_acquisitionDate";
-  const sameKey = (r: Row, k: Record<string, unknown>) =>
-    r.playerId === k.playerId &&
-    r.ownerSleeperId === k.ownerSleeperId &&
-    r.season === k.season &&
-    r.acquisitionDate.getTime() === (k.acquisitionDate as Date).getTime();
-  const matches = (r: Row, where: Record<string, unknown>): boolean =>
-    Object.entries(where).every(([field, cond]) => {
-      const v = r[field];
-      if (cond === null) return v === null;
-      if (cond instanceof Date) return v instanceof Date && v.getTime() === cond.getTime();
-      if (typeof cond === "object" && cond !== null) {
-        const c = cond as Record<string, unknown>;
-        if ("in" in c) return (c.in as unknown[]).includes(v);
-        if ("lt" in c) return (v as Date).getTime() < (c.lt as Date).getTime();
-        if ("gte" in c) return (v as Date).getTime() >= (c.gte as Date).getTime();
-        if ("not" in c) return v !== c.not;
-      }
-      return v === cond;
-    });
+  const idIn = (where: Record<string, unknown>) => (where.id as { in: string[] }).in;
   return {
     rows,
     reset() { rows.length = 0; seq = 0; },
@@ -56,32 +37,20 @@ const db = vi.hoisted(() => {
       rows.push({ id: `seed-${++seq}`, dispositionType: null, dispositionDate: null, baseCostOverride: null, createdAt: old, updatedAt: old, ...r } as Row);
     },
     playerAcquisition: {
-      upsert: vi.fn(async ({ where, update, create }: { where: Record<string, Record<string, unknown>>; update: Record<string, unknown>; create: Record<string, unknown> }) => {
-        const k = where[KEY];
+      findMany: vi.fn(async ({ where }: { where: { leagueId: { in: string[] } } }) =>
+        rows.filter((r) => where.leagueId.in.includes(r.leagueId))),
+      createMany: vi.fn(async ({ data }: { data: Array<Record<string, unknown>> }) => {
         const now = new Date();
-        const existing = rows.find((r) => sameKey(r, k));
-        if (existing) {
-          for (const [f, v] of Object.entries(update)) if (v !== undefined) (existing as Record<string, unknown>)[f] = v;
-          existing.updatedAt = now;
-          return existing;
-        }
-        const row = { id: `row-${++seq}`, dispositionType: null, dispositionDate: null, baseCostOverride: null, createdAt: now, updatedAt: now, ...create } as Row;
-        rows.push(row);
-        return row;
-      }),
-      findFirst: vi.fn(async ({ where, orderBy }: { where: Record<string, unknown>; orderBy?: { acquisitionDate: "asc" | "desc" } }) => {
-        const hits = rows.filter((r) => matches(r, where));
-        if (orderBy?.acquisitionDate === "desc") hits.sort((a, b) => b.acquisitionDate.getTime() - a.acquisitionDate.getTime());
-        return hits[0] ?? null;
+        for (const d of data) rows.push({ id: `row-${++seq}`, baseCostOverride: null, createdAt: now, updatedAt: now, ...d } as Row);
+        return { count: data.length };
       }),
       update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
         const row = rows.find((r) => r.id === where.id)!;
         Object.assign(row, data, { updatedAt: new Date() });
         return row;
       }),
-      count: vi.fn(async ({ where }: { where: Record<string, unknown> }) => rows.filter((r) => matches(r, where)).length),
       deleteMany: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {
-        const doomed = rows.filter((r) => matches(r, where));
+        const doomed = rows.filter((r) => idIn(where).includes(r.id));
         for (const d of doomed) rows.splice(rows.indexOf(d), 1);
         return { count: doomed.length };
       }),
@@ -119,7 +88,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { logger } from "@/lib/logger";
-import { syncAcquisitionChain, STALE_ACQUISITION_MIN_CAP } from "./sync";
+import { syncAcquisitionChain, STALE_ACQUISITION_MIN_CAP, acquisitionKey } from "./sync";
 
 // Owners (sleeper ids) and their roster ids per season
 const A = "owner-A", B = "owner-B", C = "owner-C", K = "owner-K";
@@ -254,6 +223,12 @@ describe("syncAcquisitionChain — chronological replay", () => {
     ]);
   });
 
+  it("keys rows on the full unique tuple, including acquisitionDate", () => {
+    const a = acquisitionKey({ playerId: "p", ownerSleeperId: "o", season: 2024, acquisitionDate: new Date("2024-12-18T10:00:00Z") });
+    const b = acquisitionKey({ playerId: "p", ownerSleeperId: "o", season: 2024, acquisitionDate: new Date("2024-12-18T13:00:00Z") });
+    expect(a).not.toBe(b);
+  });
+
   it("prunes rows an earlier run left behind, but never a commissioner override", async () => {
     fixtures.draftPicks = [pick(2025, A, "javonte", 10), pick(2026, B, "javonte", 9, true)];
     fixtures.transactions = [tx("TRADE", "2025-09-30T15:00:00Z", "javonte", A, B)];
@@ -279,9 +254,45 @@ describe("syncAcquisitionChain — chronological replay", () => {
     await syncAcquisitionChain("L2026");
 
     const row = db.rows.find((r) => r.playerId === "waddle")!;
+    expect(row.id).toBe("seed-1"); // updated in place, not re-created
     expect(row.dispositionType).toBeNull();
     expect(row.dispositionDate).toBeNull();
     expect(db.rows.filter((r) => r.playerId === "waddle")).toHaveLength(1);
+    expect(db.playerAcquisition.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("an owner who acquires the same player twice in a season gets two rows (the old upsert collided here)", async () => {
+    fixtures.transactions = [
+      tx("WAIVER", "2024-12-18T10:00:00Z", "penix", null, A),
+      tx("FREE_AGENT", "2024-12-18T12:00:00Z", "penix", A, null),
+      tx("FREE_AGENT", "2024-12-18T13:00:00Z", "penix", null, A),
+    ];
+
+    await syncAcquisitionChain("L2026");
+
+    expect(rowsFor("penix")).toEqual([
+      { season: 2024, owner: A, type: "WAIVER", round: null, disposition: "DROPPED", dispositionDate: "2024-12-18", date: "2024-12-18" },
+      { season: 2024, owner: A, type: "FREE_AGENT", round: null, disposition: null, dispositionDate: null, date: "2024-12-18" },
+    ]);
+  });
+
+  it("is idempotent: a second run with the same inputs writes nothing", async () => {
+    fixtures.draftPicks = [pick(2023, A, "waddle", 1), pick(2025, K, "waddle", 2), pick(2026, B, "javonte", 9, true), pick(2025, A, "javonte", 10)];
+    fixtures.transactions = [
+      tx("TRADE", "2024-08-14T16:54:00Z", "waddle", A, B),
+      tx("TRADE", "2025-09-30T15:00:00Z", "javonte", A, B),
+    ];
+
+    const first = await syncAcquisitionChain("L2026");
+    expect(first.created).toBeGreaterThan(0);
+    vi.clearAllMocks();
+
+    const second = await syncAcquisitionChain("L2026");
+
+    expect(second).toEqual({ created: 0, updated: 0, deleted: 0 });
+    expect(db.playerAcquisition.createMany).not.toHaveBeenCalled();
+    expect(db.playerAcquisition.update).not.toHaveBeenCalled();
+    expect(db.playerAcquisition.deleteMany).not.toHaveBeenCalled();
   });
 
   it("SAFETY: refuses a mass prune that would only happen if the source data failed to load", async () => {

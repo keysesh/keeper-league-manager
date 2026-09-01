@@ -1817,6 +1817,385 @@ export async function recalculateKeeperYears(
 export const STALE_ACQUISITION_MIN_CAP = 50;
 export const STALE_ACQUISITION_MAX_FRACTION = 0.25;
 
+/** One row of the derived PlayerAcquisition table, as the replay wants it. */
+export interface AcquisitionTarget {
+  playerId: string;
+  ownerSleeperId: string;
+  leagueId: string;
+  season: number;
+  acquisitionType: AcquisitionType;
+  acquisitionDate: Date;
+  originalDraftRound: number | null;
+  originalDraftSeason: number | null;
+  originalDrafterSleeperId: string | null;
+  fromOwnerSleeperId: string | null;
+  isPreDeadline: boolean | null;
+  sleeperTransactionId: string | null;
+  sleeperDraftId: string | null;
+  notes: string | null;
+  dispositionType: DispositionType | null;
+  dispositionDate: Date | null;
+}
+
+export interface ReplayDraftPick {
+  playerId: string | null;
+  round: number;
+  isKeeper: boolean;
+  draft: { season: number; sleeperId: string; leagueId: string; startTime: Date | null };
+  roster: { sleeperId: string } | null;
+}
+
+export interface ReplayTransactionPlayer {
+  playerId: string | null;
+  fromRosterId: string | null;
+  toRosterId: string | null;
+  transaction: { type: string; createdAt: Date; sleeperId: string; leagueId: string };
+}
+
+/** The table's unique key: (player, owner, season, acquisitionDate). */
+export function acquisitionKey(
+  r: Pick<AcquisitionTarget, "playerId" | "ownerSleeperId" | "season" | "acquisitionDate">
+): string {
+  return `${r.playerId}|${r.ownerSleeperId}|${r.season}|${r.acquisitionDate.getTime()}`;
+}
+
+/**
+ * Pure replay of a league chain's draft picks and transactions into the set
+ * of PlayerAcquisition rows that should exist. No I/O: the caller loads the
+ * inputs and persists the result as a diff (see syncAcquisitionChain).
+ *
+ * Events are replayed in the order they actually happened. The old two-phase
+ * order (every season's draft picks, THEN every transaction) left the
+ * in-memory holder at the newest drafter while older trades were replayed:
+ * 2025 draft rows were closed as "traded" on 2024 dates (153 rows in
+ * production), and keeper slots created placeholder rows for owners who had
+ * really acquired the player by trade, which then shadowed the real
+ * acquisition in the cost engine ("latest acquisition by date").
+ *
+ * Draft events sit just before their draft's real start time (keeper slots
+ * first, then picks), so a trade made in the weeks before the draft — the norm
+ * in this league — is applied before the keeper slot naming the new owner.
+ * Stored acquisitionDate values (Aug 1 keeper slot, Aug 15 pick) are
+ * unchanged; only the replay order uses the real timestamps.
+ */
+export function replayAcquisitionEvents(input: {
+  draftPicks: ReplayDraftPick[];
+  transactions: ReplayTransactionPlayer[];
+  rosterToSleeper: Map<string, string>;
+  correctionsByDraft: Map<string, { role: string }>;
+}): { targets: Map<string, AcquisitionTarget>; emitted: number; closed: number } {
+  const { draftPicks, transactions, rosterToSleeper, correctionsByDraft } = input;
+
+  // Build round lookup from CORRECT_ROUNDS drafts
+  const correctRoundsByPlayer = new Map<string, { round: number; season: number }>();
+  for (const pick of draftPicks) {
+    const correction = correctionsByDraft.get(pick.draft.sleeperId);
+    if (correction?.role === "CORRECT_ROUNDS" && !pick.isKeeper && pick.playerId) {
+      if (!correctRoundsByPlayer.has(pick.playerId)) {
+        correctRoundsByPlayer.set(pick.playerId, {
+          round: pick.round,
+          season: pick.draft.season,
+        });
+      }
+    }
+  }
+
+  const targets = new Map<string, AcquisitionTarget>();
+  const byPlayerOwner = new Map<string, AcquisitionTarget[]>();
+  let emitted = 0;
+  let closed = 0;
+
+  type EmitInput = Pick<
+    AcquisitionTarget,
+    "playerId" | "ownerSleeperId" | "leagueId" | "season" | "acquisitionType" | "acquisitionDate"
+  > &
+    Partial<Omit<AcquisitionTarget, "dispositionType" | "dispositionDate">>;
+
+  // A row starts open; a later event in the same replay may close it.
+  const emit = (data: EmitInput): void => {
+    const row: AcquisitionTarget = {
+      originalDraftRound: null,
+      originalDraftSeason: null,
+      originalDrafterSleeperId: null,
+      fromOwnerSleeperId: null,
+      isPreDeadline: null,
+      sleeperTransactionId: null,
+      sleeperDraftId: null,
+      notes: null,
+      ...data,
+      dispositionType: null,
+      dispositionDate: null,
+    };
+    const key = acquisitionKey(row);
+    const prev = targets.get(key);
+    if (prev) {
+      Object.assign(prev, row);
+      return;
+    }
+    targets.set(key, row);
+    const po = `${row.playerId}|${row.ownerSleeperId}`;
+    const list = byPlayerOwner.get(po);
+    if (list) list.push(row);
+    else byPlayerOwner.set(po, [row]);
+    emitted++;
+  };
+
+  // Close the latest still-open row for this player+owner.
+  const close = (
+    playerId: string,
+    ownerSleeperId: string,
+    dispositionType: DispositionType,
+    dispositionDate: Date
+  ): void => {
+    const open = (byPlayerOwner.get(`${playerId}|${ownerSleeperId}`) ?? [])
+      .filter((r) => r.dispositionType === null)
+      .sort((a, b) => b.acquisitionDate.getTime() - a.acquisitionDate.getTime())[0];
+    if (open) {
+      open.dispositionType = dispositionType;
+      open.dispositionDate = dispositionDate;
+      closed++;
+    }
+  };
+
+  // Track current state per player
+  const currentAcq = new Map<
+    string,
+    { ownerSleeperId: string; originalDraftRound: number | null; originalDraftSeason: number | null }
+  >();
+
+  type ChainEvent =
+    | { kind: "draft"; at: number; pick: ReplayDraftPick }
+    | { kind: "tx"; at: number; tp: ReplayTransactionPlayer };
+
+  const events: ChainEvent[] = [];
+  for (const pick of draftPicks) {
+    const draftStart =
+      pick.draft.startTime?.getTime() ?? new Date(`${pick.draft.season}-08-15`).getTime();
+    events.push({ kind: "draft", at: draftStart - (pick.isKeeper ? 2 : 1), pick });
+  }
+  for (const tp of transactions) {
+    events.push({ kind: "tx", at: tp.transaction.createdAt.getTime(), tp });
+  }
+  // Array.prototype.sort is stable: same-instant events keep their fetch order
+  events.sort((a, b) => a.at - b.at);
+
+  for (const event of events) {
+    if (event.kind === "draft") {
+      const { pick } = event;
+      const season = pick.draft.season;
+      if (!pick.playerId || !pick.roster?.sleeperId) continue;
+
+      const correction = correctionsByDraft.get(pick.draft.sleeperId);
+
+      // Skip ERROR and ABORTED drafts entirely
+      if (correction?.role === "ERROR" || correction?.role === "ABORTED") continue;
+
+      // For CORRECT_OWNERS draft: use this for ownership, get round from CORRECT_ROUNDS
+      // For CLEAN draft: use as-is
+      // Keeper slots (isKeeper=true) are cascade-adjusted, not original drafts
+      if (pick.isKeeper) {
+        // Keeper slot — ensure the player has an acquisition record for this owner
+        const existing = currentAcq.get(pick.playerId);
+        if (!existing || existing.ownerSleeperId !== pick.roster.sleeperId) {
+          // Keeper from a prior season or different owner — create if needed
+          const roundInfo = correctRoundsByPlayer.get(pick.playerId);
+          const trueRound = roundInfo?.round ?? null;
+
+          emit({
+            playerId: pick.playerId,
+            ownerSleeperId: pick.roster.sleeperId,
+            leagueId: pick.draft.leagueId,
+            season,
+            acquisitionType: AcquisitionType.DRAFTED,
+            acquisitionDate: new Date(`${season}-08-01`),
+            originalDraftRound: trueRound,
+            originalDraftSeason: trueRound ? (roundInfo?.season ?? season) : null,
+            originalDrafterSleeperId: trueRound ? pick.roster.sleeperId : null,
+            sleeperDraftId: pick.draft.sleeperId,
+            notes: trueRound ? null : "Keeper — original round not in synced data",
+          });
+
+          currentAcq.set(pick.playerId, {
+            ownerSleeperId: pick.roster.sleeperId,
+            originalDraftRound: trueRound,
+            originalDraftSeason: trueRound ? (roundInfo?.season ?? season) : null,
+          });
+        }
+        continue;
+      }
+
+      // Non-keeper pick = actual draft
+      const existing = currentAcq.get(pick.playerId);
+
+      // Determine the true round
+      let trueRound = pick.round;
+      if (correction?.role === "CORRECT_OWNERS") {
+        // This draft has correct owners but possibly cascade-adjusted rounds
+        // Use the CORRECT_ROUNDS round if available
+        const roundInfo = correctRoundsByPlayer.get(pick.playerId);
+        if (roundInfo) {
+          trueRound = roundInfo.round;
+        }
+      }
+
+      // If player already has an open acquisition with the SAME owner, this is a
+      // correction pick (e.g., 2024 re-draft after error). Don't create a new one.
+      if (existing && existing.ownerSleeperId === pick.roster.sleeperId) {
+        continue;
+      }
+
+      // Close previous acquisition if exists
+      if (existing) {
+        close(pick.playerId, existing.ownerSleeperId, DispositionType.SEASON_END, new Date(`${season}-08-01`));
+      }
+
+      emit({
+        playerId: pick.playerId,
+        ownerSleeperId: pick.roster.sleeperId,
+        leagueId: pick.draft.leagueId,
+        season,
+        acquisitionType: AcquisitionType.DRAFTED,
+        acquisitionDate: new Date(`${season}-08-15`),
+        originalDraftRound: trueRound,
+        originalDraftSeason: season,
+        originalDrafterSleeperId: pick.roster.sleeperId,
+        sleeperDraftId: pick.draft.sleeperId,
+      });
+
+      currentAcq.set(pick.playerId, {
+        ownerSleeperId: pick.roster.sleeperId,
+        originalDraftRound: trueRound,
+        originalDraftSeason: season,
+      });
+      continue;
+    }
+
+    const { tp } = event;
+    if (!tp.playerId) continue;
+
+    const txDate = tp.transaction.createdAt;
+    const txSeason = getSeasonFromDate(txDate);
+    const txType = tp.transaction.type;
+    const fromSleeper = tp.fromRosterId ? rosterToSleeper.get(tp.fromRosterId) : null;
+    const toSleeper = tp.toRosterId ? rosterToSleeper.get(tp.toRosterId) : null;
+
+    if (txType === "TRADE" && toSleeper && fromSleeper) {
+      const existing = currentAcq.get(tp.playerId);
+      const postDeadline = isTradeAfterDeadline(txDate, txSeason);
+
+      // Close old acquisition
+      if (existing) {
+        close(tp.playerId, existing.ownerSleeperId, DispositionType.TRADED, txDate);
+      }
+
+      // Inherit original draft info
+      const inheritedRound = existing?.originalDraftRound ?? null;
+      const inheritedSeason = existing?.originalDraftSeason ?? null;
+
+      emit({
+        playerId: tp.playerId,
+        ownerSleeperId: toSleeper,
+        leagueId: tp.transaction.leagueId,
+        season: txSeason,
+        acquisitionType: AcquisitionType.TRADE,
+        acquisitionDate: txDate,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+        originalDrafterSleeperId: existing?.ownerSleeperId ?? null,
+        fromOwnerSleeperId: fromSleeper,
+        isPreDeadline: !postDeadline,
+        sleeperTransactionId: tp.transaction.sleeperId,
+      });
+
+      currentAcq.set(tp.playerId, {
+        ownerSleeperId: toSleeper,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+      });
+    } else if ((txType === "WAIVER" || txType === "FREE_AGENT") && toSleeper) {
+      const existing = currentAcq.get(tp.playerId);
+      const postDeadline = isTradeAfterDeadline(txDate, txSeason);
+
+      if (fromSleeper && existing) {
+        close(tp.playerId, existing.ownerSleeperId, DispositionType.DROPPED, txDate);
+      }
+
+      // Before deadline: inherit from previous owner
+      let inheritedRound: number | null = null;
+      let inheritedSeason: number | null = null;
+      if (existing && !postDeadline) {
+        inheritedRound = existing.originalDraftRound;
+        inheritedSeason = existing.originalDraftSeason;
+      }
+
+      emit({
+        playerId: tp.playerId,
+        ownerSleeperId: toSleeper,
+        leagueId: tp.transaction.leagueId,
+        season: txSeason,
+        acquisitionType: txType === "WAIVER" ? AcquisitionType.WAIVER : AcquisitionType.FREE_AGENT,
+        acquisitionDate: txDate,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+        fromOwnerSleeperId: fromSleeper ?? null,
+        isPreDeadline: !postDeadline,
+        sleeperTransactionId: tp.transaction.sleeperId,
+      });
+
+      currentAcq.set(tp.playerId, {
+        ownerSleeperId: toSleeper,
+        originalDraftRound: inheritedRound,
+        originalDraftSeason: inheritedSeason,
+      });
+    } else if (fromSleeper && !toSleeper) {
+      // Pure drop
+      const existing = currentAcq.get(tp.playerId);
+      if (existing) {
+        close(tp.playerId, existing.ownerSleeperId, DispositionType.DROPPED, txDate);
+        currentAcq.delete(tp.playerId);
+      }
+    }
+  }
+
+  return { targets, emitted, closed };
+}
+
+const COMPARED_FIELDS = [
+  "leagueId",
+  "acquisitionType",
+  "originalDraftRound",
+  "originalDraftSeason",
+  "originalDrafterSleeperId",
+  "fromOwnerSleeperId",
+  "isPreDeadline",
+  "sleeperTransactionId",
+  "sleeperDraftId",
+  "notes",
+  "dispositionType",
+  "dispositionDate",
+] as const;
+
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a instanceof Date || b instanceof Date) {
+    return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
+  }
+  return a === b;
+}
+
+/** Does the stored row differ from what the replay wants (ignoring baseCostOverride)? */
+export function acquisitionRowDiffers(
+  stored: Record<(typeof COMPARED_FIELDS)[number], unknown>,
+  target: AcquisitionTarget
+): boolean {
+  return COMPARED_FIELDS.some((f) => !sameValue(stored[f], target[f]));
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 export async function syncAcquisitionChain(
   leagueId: string
 ): Promise<{ created: number; updated: number; deleted: number }> {
@@ -1897,394 +2276,98 @@ export async function syncAcquisitionChain(
   });
   const rosterToSleeper = new Map(rosterLookup.map((r) => [r.id, r.sleeperId]));
 
-  // Build round lookup from CORRECT_ROUNDS drafts
-  const correctRoundsByPlayer = new Map<string, { round: number; season: number }>();
-  for (const pick of draftPicks) {
-    const correction = correctionsByDraft.get(pick.draft.sleeperId);
-    if (correction?.role === "CORRECT_ROUNDS" && !pick.isKeeper && pick.playerId) {
-      if (!correctRoundsByPlayer.has(pick.playerId)) {
-        correctRoundsByPlayer.set(pick.playerId, {
-          round: pick.round,
-          season: pick.draft.season,
-        });
-      }
-    }
+  const { targets, emitted, closed } = replayAcquisitionEvents({
+    draftPicks,
+    transactions,
+    rosterToSleeper,
+    correctionsByDraft,
+  });
+
+  // Persist as a diff against what is stored. The chain is ~1,600 rows; the
+  // previous row-by-row upsert/close (~3,800 sequential queries, ~57ms each
+  // from Vercel to the DB) took 218s and then timed out the 300s cron. One
+  // load, one bulk create, updates only where something changed, one delete.
+  // On a steady-state run that is a handful of queries.
+  const existing = await prisma.playerAcquisition.findMany({
+    where: { leagueId: { in: allLeagueIds } },
+  });
+  const existingByKey = new Map(existing.map((r) => [acquisitionKey(r), r]));
+
+  const toCreate: AcquisitionTarget[] = [];
+  const toUpdate: Array<{ id: string; data: AcquisitionTarget }> = [];
+  for (const [key, target] of targets) {
+    const current = existingByKey.get(key);
+    if (!current) toCreate.push(target);
+    else if (acquisitionRowDiffers(current, target)) toUpdate.push({ id: current.id, data: target });
   }
 
-  // Track current state per player
-  const currentAcq = new Map<
-    string,
-    { ownerSleeperId: string; originalDraftRound: number | null; originalDraftSeason: number | null }
-  >();
-
-  let created = 0;
-  let updated = 0;
-  const runStartedAt = new Date();
-
-  // Replay events in the order they actually happened.
-  //
-  // The old two-phase order (every season's draft picks, THEN every
-  // transaction) left the in-memory holder at the newest drafter while older
-  // trades were replayed: 2025 draft rows were closed as "traded" on 2024
-  // dates (153 rows in production), and keeper slots created placeholder rows
-  // for owners who really acquired the player by trade, which then shadowed
-  // the real acquisition in the cost engine.
-  //
-  // Draft events sit just before their draft's real start time (keeper slots
-  // first, then picks), so a trade made in the weeks before the draft — the
-  // norm in this league — is applied before the keeper slot naming the new
-  // owner. Stored acquisitionDate values (Aug 1 keeper slot, Aug 15 pick) are
-  // unchanged; only the replay order uses the real timestamps.
-  type DraftPickRow = (typeof draftPicks)[number];
-  type TxRow = (typeof transactions)[number];
-  type ChainEvent =
-    | { kind: "draft"; at: number; pick: DraftPickRow }
-    | { kind: "tx"; at: number; tp: TxRow };
-
-  const events: ChainEvent[] = [];
-  for (const pick of draftPicks) {
-    const draftStart =
-      pick.draft.startTime?.getTime() ?? new Date(`${pick.draft.season}-08-15`).getTime();
-    events.push({ kind: "draft", at: draftStart - (pick.isKeeper ? 2 : 1), pick });
-  }
-  for (const tp of transactions) {
-    events.push({ kind: "tx", at: tp.transaction.createdAt.getTime(), tp });
-  }
-  // Array.prototype.sort is stable: same-instant events keep their fetch order
-  events.sort((a, b) => a.at - b.at);
-
-  for (const event of events) {
-    if (event.kind === "draft") {
-      const { pick } = event;
-      const season = pick.draft.season;
-      if (!pick.playerId || !pick.roster?.sleeperId) continue;
-
-      const correction = correctionsByDraft.get(pick.draft.sleeperId);
-
-      // Skip ERROR and ABORTED drafts entirely
-      if (correction?.role === "ERROR" || correction?.role === "ABORTED") continue;
-
-      // For CORRECT_OWNERS draft: use this for ownership, get round from CORRECT_ROUNDS
-      // For CLEAN draft: use as-is
-      // Skip keeper slots (isKeeper=true) — those are cascade-adjusted, not original drafts
-      if (pick.isKeeper) {
-        // Keeper slot — ensure the player has an acquisition record for this owner
-        const existing = currentAcq.get(pick.playerId);
-        if (!existing || existing.ownerSleeperId !== pick.roster.sleeperId) {
-          // Keeper from a prior season or different owner — create if needed
-          const roundInfo = correctRoundsByPlayer.get(pick.playerId);
-          const trueRound = roundInfo?.round ?? null;
-
-          await upsertAcquisition({
-            playerId: pick.playerId,
-            ownerSleeperId: pick.roster.sleeperId,
-            leagueId: pick.draft.leagueId,
-            season,
-            acquisitionType: "DRAFTED",
-            acquisitionDate: new Date(`${season}-08-01`),
-            originalDraftRound: trueRound,
-            originalDraftSeason: trueRound ? (roundInfo?.season ?? season) : null,
-            originalDrafterSleeperId: trueRound ? pick.roster.sleeperId : null,
-            sleeperDraftId: pick.draft.sleeperId,
-            notes: trueRound ? null : "Keeper — original round not in synced data",
-          });
-
-          currentAcq.set(pick.playerId, {
-            ownerSleeperId: pick.roster.sleeperId,
-            originalDraftRound: trueRound,
-            originalDraftSeason: trueRound ? (roundInfo?.season ?? season) : null,
-          });
-          created++;
-        }
-        continue;
-      }
-
-      // Non-keeper pick = actual draft
-      const existing = currentAcq.get(pick.playerId);
-
-      // Determine the true round
-      let trueRound = pick.round;
-      if (correction?.role === "CORRECT_OWNERS") {
-        // This draft has correct owners but possibly cascade-adjusted rounds
-        // Use the CORRECT_ROUNDS round if available
-        const roundInfo = correctRoundsByPlayer.get(pick.playerId);
-        if (roundInfo) {
-          trueRound = roundInfo.round;
-        }
-      }
-
-      // If player already has an open acquisition with the SAME owner, this is a
-      // correction pick (e.g., 2024 re-draft after error). Don't create a new one.
-      if (existing && existing.ownerSleeperId === pick.roster.sleeperId) {
-        continue;
-      }
-
-      // Close previous acquisition if exists
-      if (existing) {
-        await closeAcquisition(pick.playerId, existing.ownerSleeperId, "SEASON_END", new Date(`${season}-08-01`), runStartedAt);
-        updated++;
-      }
-
-      await upsertAcquisition({
-        playerId: pick.playerId,
-        ownerSleeperId: pick.roster.sleeperId,
-        leagueId: pick.draft.leagueId,
-        season,
-        acquisitionType: "DRAFTED",
-        acquisitionDate: new Date(`${season}-08-15`),
-        originalDraftRound: trueRound,
-        originalDraftSeason: season,
-        originalDrafterSleeperId: pick.roster.sleeperId,
-        sleeperDraftId: pick.draft.sleeperId,
-      });
-
-      currentAcq.set(pick.playerId, {
-        ownerSleeperId: pick.roster.sleeperId,
-        originalDraftRound: trueRound,
-        originalDraftSeason: season,
-      });
-      created++;
-      continue;
-    }
-
-    const { tp } = event;
-    if (!tp.playerId) continue;
-
-    const txDate = tp.transaction.createdAt;
-    const txSeason = getSeasonFromDate(txDate);
-    const txType = tp.transaction.type;
-    const fromSleeper = tp.fromRosterId ? rosterToSleeper.get(tp.fromRosterId) : null;
-    const toSleeper = tp.toRosterId ? rosterToSleeper.get(tp.toRosterId) : null;
-
-    if (txType === "TRADE" && toSleeper && fromSleeper) {
-      const existing = currentAcq.get(tp.playerId);
-      const postDeadline = isTradeAfterDeadline(txDate, txSeason);
-
-      // Close old acquisition
-      if (existing) {
-        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "TRADED", txDate, runStartedAt);
-        updated++;
-      }
-
-      // Inherit original draft info
-      const inheritedRound = existing?.originalDraftRound ?? null;
-      const inheritedSeason = existing?.originalDraftSeason ?? null;
-
-      await upsertAcquisition({
-        playerId: tp.playerId,
-        ownerSleeperId: toSleeper,
-        leagueId: tp.transaction.leagueId,
-        season: txSeason,
-        acquisitionType: "TRADE",
-        acquisitionDate: txDate,
-        originalDraftRound: inheritedRound,
-        originalDraftSeason: inheritedSeason,
-        originalDrafterSleeperId: existing?.ownerSleeperId ?? null,
-        fromOwnerSleeperId: fromSleeper,
-        isPreDeadline: !postDeadline,
-        sleeperTransactionId: tp.transaction.sleeperId,
-      });
-
-      currentAcq.set(tp.playerId, {
-        ownerSleeperId: toSleeper,
-        originalDraftRound: inheritedRound,
-        originalDraftSeason: inheritedSeason,
-      });
-      created++;
-
-    } else if ((txType === "WAIVER" || txType === "FREE_AGENT") && toSleeper) {
-      const existing = currentAcq.get(tp.playerId);
-      const postDeadline = isTradeAfterDeadline(txDate, txSeason);
-
-      if (fromSleeper && existing) {
-        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate, runStartedAt);
-        updated++;
-      }
-
-      // Before deadline: inherit from previous owner
-      let inheritedRound: number | null = null;
-      let inheritedSeason: number | null = null;
-      if (existing && !postDeadline) {
-        inheritedRound = existing.originalDraftRound;
-        inheritedSeason = existing.originalDraftSeason;
-      }
-
-      await upsertAcquisition({
-        playerId: tp.playerId,
-        ownerSleeperId: toSleeper,
-        leagueId: tp.transaction.leagueId,
-        season: txSeason,
-        acquisitionType: txType === "WAIVER" ? "WAIVER" : "FREE_AGENT",
-        acquisitionDate: txDate,
-        originalDraftRound: inheritedRound,
-        originalDraftSeason: inheritedSeason,
-        fromOwnerSleeperId: fromSleeper ?? undefined,
-        isPreDeadline: !postDeadline,
-        sleeperTransactionId: tp.transaction.sleeperId,
-      });
-
-      currentAcq.set(tp.playerId, {
-        ownerSleeperId: toSleeper,
-        originalDraftRound: inheritedRound,
-        originalDraftSeason: inheritedSeason,
-      });
-      created++;
-
-    } else if (fromSleeper && !toSleeper) {
-      // Pure drop
-      const existing = currentAcq.get(tp.playerId);
-      if (existing) {
-        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate, runStartedAt);
-        currentAcq.delete(tp.playerId);
-        updated++;
-      }
-    }
-  }
-
-  // Rows this replay did not write are leftovers from earlier (partial or
+  // Rows the replay did not produce are leftovers from earlier (partial or
   // mis-ordered) runs — e.g. keeper-slot placeholders for an owner who really
-  // acquired the player by trade. The cost engine reads "latest acquisition by
-  // date", so a stale row silently wins. Derived data is safe to drop;
+  // acquired the player by trade. The cost engine reads "latest acquisition
+  // by date", so a stale row silently wins. Derived data is safe to drop;
   // commissioner overrides (baseCostOverride) are never removed. A safety cap
   // refuses a mass delete that would only make sense if the source data
   // (drafts/transactions) failed to load.
-  const staleWhere = {
-    leagueId: { in: allLeagueIds },
-    updatedAt: { lt: runStartedAt },
-    baseCostOverride: null,
-  };
-  const [chainRowCount, staleCount] = await Promise.all([
-    prisma.playerAcquisition.count({ where: { leagueId: { in: allLeagueIds } } }),
-    prisma.playerAcquisition.count({ where: staleWhere }),
-  ]);
+  const stale = existing.filter(
+    (r) => !targets.has(acquisitionKey(r)) && r.baseCostOverride == null
+  );
+
+  for (const batch of chunk(toCreate, 500)) {
+    await prisma.playerAcquisition.createMany({ data: batch, skipDuplicates: true });
+  }
+  for (const batch of chunk(toUpdate, 10)) {
+    await Promise.all(
+      batch.map(({ id, data }) =>
+        prisma.playerAcquisition.update({
+          where: { id },
+          data: {
+            leagueId: data.leagueId,
+            acquisitionType: data.acquisitionType,
+            originalDraftRound: data.originalDraftRound,
+            originalDraftSeason: data.originalDraftSeason,
+            originalDrafterSleeperId: data.originalDrafterSleeperId,
+            fromOwnerSleeperId: data.fromOwnerSleeperId,
+            isPreDeadline: data.isPreDeadline,
+            sleeperTransactionId: data.sleeperTransactionId,
+            sleeperDraftId: data.sleeperDraftId,
+            notes: data.notes,
+            dispositionType: data.dispositionType,
+            dispositionDate: data.dispositionDate,
+            // baseCostOverride is PRESERVED — never overwritten by sync
+          },
+        })
+      )
+    );
+  }
+
   const staleCap = Math.max(
     STALE_ACQUISITION_MIN_CAP,
-    Math.floor(chainRowCount * STALE_ACQUISITION_MAX_FRACTION)
+    Math.floor(existing.length * STALE_ACQUISITION_MAX_FRACTION)
   );
   let deleted = 0;
-  if (staleCount > staleCap) {
+  if (stale.length > staleCap) {
     logger.error("Refusing to prune stale acquisition rows: count exceeds safety cap", undefined, {
       leagueId,
-      staleCount,
-      chainRowCount,
+      staleCount: stale.length,
+      chainRowCount: existing.length,
       staleCap,
     });
-  } else if (staleCount > 0) {
-    const result = await prisma.playerAcquisition.deleteMany({ where: staleWhere });
+  } else if (stale.length > 0) {
+    const result = await prisma.playerAcquisition.deleteMany({
+      where: { id: { in: stale.map((r) => r.id) } },
+    });
     deleted = result.count;
     logger.info("Pruned stale acquisition rows", { leagueId, deleted });
   }
 
-  logger.info("Acquisition chain sync complete", { created, updated, deleted });
-  return { created, updated, deleted };
-}
-
-/**
- * Upsert a PlayerAcquisition record on its real unique key
- * (playerId, ownerSleeperId, season, acquisitionDate).
- *
- * An owner can acquire the same player more than once in a season (draft →
- * drop → waiver claim, trade away → trade back). Each is its own row with its
- * own date. Looking the row up by (player, owner, season) alone and rewriting
- * its date — what this used to do — collided with the sibling row on every
- * re-run once both existed, and the whole chain rebuild aborted.
- *
- * baseCostOverride is never touched here (it is a commissioner edit). The
- * disposition fields are reset on every upsert and re-derived by the replay.
- *
- * Exported for tests only.
- */
-export async function upsertAcquisition(data: {
-  playerId: string;
-  ownerSleeperId: string;
-  leagueId: string;
-  season: number;
-  acquisitionType: string;
-  acquisitionDate: Date;
-  originalDraftRound?: number | null;
-  originalDraftSeason?: number | null;
-  originalDrafterSleeperId?: string | null;
-  fromOwnerSleeperId?: string | null;
-  isPreDeadline?: boolean | null;
-  sleeperTransactionId?: string | null;
-  sleeperDraftId?: string | null;
-  notes?: string | null;
-}): Promise<void> {
-  await prisma.playerAcquisition.upsert({
-    where: {
-      playerId_ownerSleeperId_season_acquisitionDate: {
-        playerId: data.playerId,
-        ownerSleeperId: data.ownerSleeperId,
-        season: data.season,
-        acquisitionDate: data.acquisitionDate,
-      },
-    },
-    update: {
-      leagueId: data.leagueId,
-      acquisitionType: data.acquisitionType as AcquisitionType,
-      originalDraftRound: data.originalDraftRound ?? undefined,
-      originalDraftSeason: data.originalDraftSeason ?? undefined,
-      originalDrafterSleeperId: data.originalDrafterSleeperId ?? undefined,
-      fromOwnerSleeperId: data.fromOwnerSleeperId ?? undefined,
-      isPreDeadline: data.isPreDeadline ?? undefined,
-      sleeperTransactionId: data.sleeperTransactionId ?? undefined,
-      sleeperDraftId: data.sleeperDraftId ?? undefined,
-      notes: data.notes ?? undefined,
-      // Dispositions are recomputed by the chronological replay: a row starts
-      // open and is closed later in the same run if a later event closes it.
-      dispositionType: null,
-      dispositionDate: null,
-      // baseCostOverride is PRESERVED — never overwritten by sync
-    },
-    create: {
-      playerId: data.playerId,
-      ownerSleeperId: data.ownerSleeperId,
-      leagueId: data.leagueId,
-      season: data.season,
-      acquisitionType: data.acquisitionType as AcquisitionType,
-      acquisitionDate: data.acquisitionDate,
-      originalDraftRound: data.originalDraftRound,
-      originalDraftSeason: data.originalDraftSeason,
-      originalDrafterSleeperId: data.originalDrafterSleeperId,
-      fromOwnerSleeperId: data.fromOwnerSleeperId,
-      isPreDeadline: data.isPreDeadline,
-      sleeperTransactionId: data.sleeperTransactionId,
-      sleeperDraftId: data.sleeperDraftId,
-      notes: data.notes,
-    },
+  logger.info("Acquisition chain sync complete", {
+    leagueId,
+    targets: targets.size,
+    emitted,
+    closed,
+    created: toCreate.length,
+    updated: toUpdate.length,
+    deleted,
   });
-}
-
-/**
- * Close a PlayerAcquisition record (set disposition).
- */
-async function closeAcquisition(
-  playerId: string,
-  ownerSleeperId: string,
-  dispositionType: string,
-  dispositionDate: Date,
-  touchedSince: Date
-): Promise<void> {
-  // Only rows this replay has already written are candidates. Dispositions are
-  // recomputed from scratch each run, and a leftover row from an earlier run
-  // must not absorb the close meant for the real acquisition.
-  const open = await prisma.playerAcquisition.findFirst({
-    where: {
-      playerId,
-      ownerSleeperId,
-      dispositionType: null,
-      updatedAt: { gte: touchedSince },
-    },
-    orderBy: { acquisitionDate: "desc" },
-  });
-
-  if (open) {
-    await prisma.playerAcquisition.update({
-      where: { id: open.id },
-      data: {
-        dispositionType: dispositionType as DispositionType,
-        dispositionDate,
-      },
-    });
-  }
+  return { created: toCreate.length, updated: toUpdate.length, deleted };
 }
