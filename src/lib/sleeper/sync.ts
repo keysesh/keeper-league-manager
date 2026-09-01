@@ -2109,11 +2109,21 @@ export async function syncAcquisitionChain(
 }
 
 /**
- * Upsert a PlayerAcquisition record.
- * Uses (playerId, ownerSleeperId, season, acquisitionDate) as the unique key.
- * Preserves baseCostOverride if it exists.
+ * Upsert a PlayerAcquisition record on its real unique key
+ * (playerId, ownerSleeperId, season, acquisitionDate).
+ *
+ * An owner can acquire the same player more than once in a season (draft →
+ * drop → waiver claim, trade away → trade back). Each is its own row with its
+ * own date. Looking the row up by (player, owner, season) alone and rewriting
+ * its date — what this used to do — collided with the sibling row on every
+ * re-run once both existed, and the whole chain rebuild aborted.
+ *
+ * baseCostOverride and the disposition fields are never touched here: the
+ * override is a commissioner edit, and dispositions are set by closeAcquisition.
+ *
+ * Exported for tests only.
  */
-async function upsertAcquisition(data: {
+export async function upsertAcquisition(data: {
   playerId: string;
   ownerSleeperId: string;
   leagueId: string;
@@ -2129,53 +2139,45 @@ async function upsertAcquisition(data: {
   sleeperDraftId?: string | null;
   notes?: string | null;
 }): Promise<void> {
-  // Check for existing record to preserve baseCostOverride
-  const existing = await prisma.playerAcquisition.findFirst({
+  await prisma.playerAcquisition.upsert({
     where: {
-      playerId: data.playerId,
-      ownerSleeperId: data.ownerSleeperId,
-      season: data.season,
-    },
-    select: { id: true, baseCostOverride: true },
-  });
-
-  if (existing) {
-    await prisma.playerAcquisition.update({
-      where: { id: existing.id },
-      data: {
-        acquisitionType: data.acquisitionType as AcquisitionType,
-        acquisitionDate: data.acquisitionDate,
-        originalDraftRound: data.originalDraftRound ?? undefined,
-        originalDraftSeason: data.originalDraftSeason ?? undefined,
-        originalDrafterSleeperId: data.originalDrafterSleeperId ?? undefined,
-        fromOwnerSleeperId: data.fromOwnerSleeperId ?? undefined,
-        isPreDeadline: data.isPreDeadline ?? undefined,
-        sleeperTransactionId: data.sleeperTransactionId ?? undefined,
-        sleeperDraftId: data.sleeperDraftId ?? undefined,
-        notes: data.notes ?? undefined,
-        // baseCostOverride is PRESERVED — never overwritten by sync
-      },
-    });
-  } else {
-    await prisma.playerAcquisition.create({
-      data: {
+      playerId_ownerSleeperId_season_acquisitionDate: {
         playerId: data.playerId,
         ownerSleeperId: data.ownerSleeperId,
-        leagueId: data.leagueId,
         season: data.season,
-        acquisitionType: data.acquisitionType as AcquisitionType,
         acquisitionDate: data.acquisitionDate,
-        originalDraftRound: data.originalDraftRound,
-        originalDraftSeason: data.originalDraftSeason,
-        originalDrafterSleeperId: data.originalDrafterSleeperId,
-        fromOwnerSleeperId: data.fromOwnerSleeperId,
-        isPreDeadline: data.isPreDeadline,
-        sleeperTransactionId: data.sleeperTransactionId,
-        sleeperDraftId: data.sleeperDraftId,
-        notes: data.notes,
       },
-    });
-  }
+    },
+    update: {
+      leagueId: data.leagueId,
+      acquisitionType: data.acquisitionType as AcquisitionType,
+      originalDraftRound: data.originalDraftRound ?? undefined,
+      originalDraftSeason: data.originalDraftSeason ?? undefined,
+      originalDrafterSleeperId: data.originalDrafterSleeperId ?? undefined,
+      fromOwnerSleeperId: data.fromOwnerSleeperId ?? undefined,
+      isPreDeadline: data.isPreDeadline ?? undefined,
+      sleeperTransactionId: data.sleeperTransactionId ?? undefined,
+      sleeperDraftId: data.sleeperDraftId ?? undefined,
+      notes: data.notes ?? undefined,
+      // baseCostOverride is PRESERVED — never overwritten by sync
+    },
+    create: {
+      playerId: data.playerId,
+      ownerSleeperId: data.ownerSleeperId,
+      leagueId: data.leagueId,
+      season: data.season,
+      acquisitionType: data.acquisitionType as AcquisitionType,
+      acquisitionDate: data.acquisitionDate,
+      originalDraftRound: data.originalDraftRound,
+      originalDraftSeason: data.originalDraftSeason,
+      originalDrafterSleeperId: data.originalDrafterSleeperId,
+      fromOwnerSleeperId: data.fromOwnerSleeperId,
+      isPreDeadline: data.isPreDeadline,
+      sleeperTransactionId: data.sleeperTransactionId,
+      sleeperDraftId: data.sleeperDraftId,
+      notes: data.notes,
+    },
+  });
 }
 
 /**
