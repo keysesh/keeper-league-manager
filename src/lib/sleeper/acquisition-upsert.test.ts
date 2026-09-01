@@ -52,14 +52,15 @@ describe("upsertAcquisition", () => {
     expect(prisma.playerAcquisition.update).not.toHaveBeenCalled();
   });
 
-  it("never overwrites baseCostOverride or dispositions on an existing row", async () => {
+  it("never overwrites baseCostOverride, and re-opens the row for the replay to close", async () => {
     await upsertAcquisition({ ...BASE, notes: "re-claimed" });
 
     const { update, create } = upsert.mock.calls[0][0];
-    for (const forbidden of ["baseCostOverride", "dispositionType", "dispositionDate"]) {
-      expect(update).not.toHaveProperty(forbidden);
-      expect(create).not.toHaveProperty(forbidden);
-    }
+    expect(update).not.toHaveProperty("baseCostOverride");
+    expect(create).not.toHaveProperty("baseCostOverride");
+    // Dispositions are derived by the chronological replay, never carried over
+    expect(update).toMatchObject({ dispositionType: null, dispositionDate: null });
+    expect(create).not.toHaveProperty("dispositionType");
     expect(update).toMatchObject({ acquisitionType: "WAIVER", notes: "re-claimed", leagueId: "league-2024" });
   });
 

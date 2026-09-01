@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => {
   process.env.CRON_SECRET = "cron-test-secret";
   return {
     syncLeague: vi.fn(),
-    syncAcquisitionChain: vi.fn(),
+    rebuildAcquisitionChainIfChanged: vi.fn(),
     syncUserLeagues: vi.fn(),
   };
 });
@@ -20,8 +20,11 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/sleeper/sync", () => ({
   syncLeague: mocks.syncLeague,
-  syncAcquisitionChain: mocks.syncAcquisitionChain,
   syncUserLeagues: mocks.syncUserLeagues,
+}));
+
+vi.mock("@/lib/sleeper/acquisition-chain-gate", () => ({
+  rebuildAcquisitionChainIfChanged: mocks.rebuildAcquisitionChainIfChanged,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -53,7 +56,9 @@ beforeEach(() => {
   mockFn(prisma.league.findMany).mockResolvedValue(LEAGUES);
   mockFn(prisma.user.findMany).mockResolvedValue([]);
   mocks.syncLeague.mockResolvedValue({ league: {}, rosters: 12, players: 200, draftPicks: 0 });
-  mocks.syncAcquisitionChain.mockResolvedValue({ created: 3, updated: 1 });
+  mocks.rebuildAcquisitionChainIfChanged.mockResolvedValue({
+    leagueId: "l-2026", fingerprint: "fp-1", skipped: false, created: 3, updated: 1, deleted: 0,
+  });
 });
 
 afterEach(() => {
@@ -88,19 +93,31 @@ describe("GET /api/cron/sync", () => {
     expect(mocks.syncLeague).toHaveBeenCalledTimes(3);
   });
 
-  it("rebuilds the acquisition chain once, from the live league", async () => {
+  it("rebuilds the acquisition chain once, from the live league, through the change gate", async () => {
     const res = await GET(makeRequest("Bearer cron-test-secret"));
     const body = await res.json();
 
-    expect(mocks.syncAcquisitionChain).toHaveBeenCalledTimes(1);
-    expect(mocks.syncAcquisitionChain).toHaveBeenCalledWith("l-2026");
-    expect(body.acquisitionChain).toMatchObject({ leagueId: "l-2026", created: 3, updated: 1 });
+    expect(mocks.rebuildAcquisitionChainIfChanged).toHaveBeenCalledTimes(1);
+    expect(mocks.rebuildAcquisitionChainIfChanged).toHaveBeenCalledWith("l-2026");
+    expect(body.acquisitionChain).toMatchObject({
+      leagueId: "l-2026", skipped: false, created: 3, updated: 1, deleted: 0,
+    });
     expect(body.leaguesSynced).toBe(3);
     expect(body.errors).toEqual([]);
   });
 
+  it("reports a skipped rebuild when nothing the chain depends on changed", async () => {
+    mocks.rebuildAcquisitionChainIfChanged.mockResolvedValue({ leagueId: "l-2026", fingerprint: "fp-1", skipped: true });
+
+    const res = await GET(makeRequest("Bearer cron-test-secret"));
+    const body = await res.json();
+
+    expect(body.acquisitionChain).toMatchObject({ leagueId: "l-2026", skipped: true });
+    expect(body.errors).toEqual([]);
+  });
+
   it("reports a chain rebuild failure without failing the whole run", async () => {
-    mocks.syncAcquisitionChain.mockRejectedValue(new Error("chain exploded"));
+    mocks.rebuildAcquisitionChainIfChanged.mockRejectedValue(new Error("chain exploded"));
 
     const res = await GET(makeRequest("Bearer cron-test-secret"));
     const body = await res.json();
@@ -116,7 +133,7 @@ describe("GET /api/cron/sync", () => {
     const res = await GET(makeRequest("Bearer cron-test-secret"));
     const body = await res.json();
 
-    expect(mocks.syncAcquisitionChain).not.toHaveBeenCalled();
+    expect(mocks.rebuildAcquisitionChainIfChanged).not.toHaveBeenCalled();
     expect(body.acquisitionChain).toBeNull();
   });
 });

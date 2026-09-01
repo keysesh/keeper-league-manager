@@ -1809,9 +1809,17 @@ export async function recalculateKeeperYears(
  * For new transactions (incremental sync), it creates new acquisition records
  * and closes old ones as ownership changes.
  */
+/**
+ * Never prune more stale rows than this without a human looking first: a
+ * larger count means the source data (drafts/transactions) probably failed to
+ * load, not that the rows are wrong.
+ */
+export const STALE_ACQUISITION_MIN_CAP = 50;
+export const STALE_ACQUISITION_MAX_FRACTION = 0.25;
+
 export async function syncAcquisitionChain(
   leagueId: string
-): Promise<{ created: number; updated: number }> {
+): Promise<{ created: number; updated: number; deleted: number }> {
   logger.info("Syncing acquisition chain", { leagueId });
 
   const league = await prisma.league.findUnique({
@@ -1853,7 +1861,7 @@ export async function syncAcquisitionChain(
       playerId: { not: null },
     },
     include: {
-      draft: { select: { season: true, sleeperId: true, leagueId: true } },
+      draft: { select: { season: true, sleeperId: true, leagueId: true, startTime: true } },
       roster: { select: { sleeperId: true } },
     },
     orderBy: { draft: { season: "asc" } },
@@ -1911,14 +1919,44 @@ export async function syncAcquisitionChain(
 
   let created = 0;
   let updated = 0;
+  const runStartedAt = new Date();
 
-  // PHASE 1: Process draft picks by season
-  const seasons = [...new Set(draftPicks.map((p) => p.draft.season))].sort();
+  // Replay events in the order they actually happened.
+  //
+  // The old two-phase order (every season's draft picks, THEN every
+  // transaction) left the in-memory holder at the newest drafter while older
+  // trades were replayed: 2025 draft rows were closed as "traded" on 2024
+  // dates (153 rows in production), and keeper slots created placeholder rows
+  // for owners who really acquired the player by trade, which then shadowed
+  // the real acquisition in the cost engine.
+  //
+  // Draft events sit just before their draft's real start time (keeper slots
+  // first, then picks), so a trade made in the weeks before the draft — the
+  // norm in this league — is applied before the keeper slot naming the new
+  // owner. Stored acquisitionDate values (Aug 1 keeper slot, Aug 15 pick) are
+  // unchanged; only the replay order uses the real timestamps.
+  type DraftPickRow = (typeof draftPicks)[number];
+  type TxRow = (typeof transactions)[number];
+  type ChainEvent =
+    | { kind: "draft"; at: number; pick: DraftPickRow }
+    | { kind: "tx"; at: number; tp: TxRow };
 
-  for (const season of seasons) {
-    const seasonPicks = draftPicks.filter((p) => p.draft.season === season);
+  const events: ChainEvent[] = [];
+  for (const pick of draftPicks) {
+    const draftStart =
+      pick.draft.startTime?.getTime() ?? new Date(`${pick.draft.season}-08-15`).getTime();
+    events.push({ kind: "draft", at: draftStart - (pick.isKeeper ? 2 : 1), pick });
+  }
+  for (const tp of transactions) {
+    events.push({ kind: "tx", at: tp.transaction.createdAt.getTime(), tp });
+  }
+  // Array.prototype.sort is stable: same-instant events keep their fetch order
+  events.sort((a, b) => a.at - b.at);
 
-    for (const pick of seasonPicks) {
+  for (const event of events) {
+    if (event.kind === "draft") {
+      const { pick } = event;
+      const season = pick.draft.season;
       if (!pick.playerId || !pick.roster?.sleeperId) continue;
 
       const correction = correctionsByDraft.get(pick.draft.sleeperId);
@@ -1983,7 +2021,7 @@ export async function syncAcquisitionChain(
 
       // Close previous acquisition if exists
       if (existing) {
-        await closeAcquisition(pick.playerId, existing.ownerSleeperId, "SEASON_END", new Date(`${season}-08-01`));
+        await closeAcquisition(pick.playerId, existing.ownerSleeperId, "SEASON_END", new Date(`${season}-08-01`), runStartedAt);
         updated++;
       }
 
@@ -2006,11 +2044,10 @@ export async function syncAcquisitionChain(
         originalDraftSeason: season,
       });
       created++;
+      continue;
     }
-  }
 
-  // PHASE 2: Process transactions chronologically
-  for (const tp of transactions) {
+    const { tp } = event;
     if (!tp.playerId) continue;
 
     const txDate = tp.transaction.createdAt;
@@ -2025,7 +2062,7 @@ export async function syncAcquisitionChain(
 
       // Close old acquisition
       if (existing) {
-        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "TRADED", txDate);
+        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "TRADED", txDate, runStartedAt);
         updated++;
       }
 
@@ -2060,7 +2097,7 @@ export async function syncAcquisitionChain(
       const postDeadline = isTradeAfterDeadline(txDate, txSeason);
 
       if (fromSleeper && existing) {
-        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate);
+        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate, runStartedAt);
         updated++;
       }
 
@@ -2097,15 +2134,49 @@ export async function syncAcquisitionChain(
       // Pure drop
       const existing = currentAcq.get(tp.playerId);
       if (existing) {
-        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate);
+        await closeAcquisition(tp.playerId, existing.ownerSleeperId, "DROPPED", txDate, runStartedAt);
         currentAcq.delete(tp.playerId);
         updated++;
       }
     }
   }
 
-  logger.info("Acquisition chain sync complete", { created, updated });
-  return { created, updated };
+  // Rows this replay did not write are leftovers from earlier (partial or
+  // mis-ordered) runs — e.g. keeper-slot placeholders for an owner who really
+  // acquired the player by trade. The cost engine reads "latest acquisition by
+  // date", so a stale row silently wins. Derived data is safe to drop;
+  // commissioner overrides (baseCostOverride) are never removed. A safety cap
+  // refuses a mass delete that would only make sense if the source data
+  // (drafts/transactions) failed to load.
+  const staleWhere = {
+    leagueId: { in: allLeagueIds },
+    updatedAt: { lt: runStartedAt },
+    baseCostOverride: null,
+  };
+  const [chainRowCount, staleCount] = await Promise.all([
+    prisma.playerAcquisition.count({ where: { leagueId: { in: allLeagueIds } } }),
+    prisma.playerAcquisition.count({ where: staleWhere }),
+  ]);
+  const staleCap = Math.max(
+    STALE_ACQUISITION_MIN_CAP,
+    Math.floor(chainRowCount * STALE_ACQUISITION_MAX_FRACTION)
+  );
+  let deleted = 0;
+  if (staleCount > staleCap) {
+    logger.error("Refusing to prune stale acquisition rows: count exceeds safety cap", undefined, {
+      leagueId,
+      staleCount,
+      chainRowCount,
+      staleCap,
+    });
+  } else if (staleCount > 0) {
+    const result = await prisma.playerAcquisition.deleteMany({ where: staleWhere });
+    deleted = result.count;
+    logger.info("Pruned stale acquisition rows", { leagueId, deleted });
+  }
+
+  logger.info("Acquisition chain sync complete", { created, updated, deleted });
+  return { created, updated, deleted };
 }
 
 /**
@@ -2118,8 +2189,8 @@ export async function syncAcquisitionChain(
  * its date — what this used to do — collided with the sibling row on every
  * re-run once both existed, and the whole chain rebuild aborted.
  *
- * baseCostOverride and the disposition fields are never touched here: the
- * override is a commissioner edit, and dispositions are set by closeAcquisition.
+ * baseCostOverride is never touched here (it is a commissioner edit). The
+ * disposition fields are reset on every upsert and re-derived by the replay.
  *
  * Exported for tests only.
  */
@@ -2159,6 +2230,10 @@ export async function upsertAcquisition(data: {
       sleeperTransactionId: data.sleeperTransactionId ?? undefined,
       sleeperDraftId: data.sleeperDraftId ?? undefined,
       notes: data.notes ?? undefined,
+      // Dispositions are recomputed by the chronological replay: a row starts
+      // open and is closed later in the same run if a later event closes it.
+      dispositionType: null,
+      dispositionDate: null,
       // baseCostOverride is PRESERVED — never overwritten by sync
     },
     create: {
@@ -2187,14 +2262,18 @@ async function closeAcquisition(
   playerId: string,
   ownerSleeperId: string,
   dispositionType: string,
-  dispositionDate: Date
+  dispositionDate: Date,
+  touchedSince: Date
 ): Promise<void> {
-  // Find the open record for this player+owner
+  // Only rows this replay has already written are candidates. Dispositions are
+  // recomputed from scratch each run, and a leftover row from an earlier run
+  // must not absorb the close meant for the real acquisition.
   const open = await prisma.playerAcquisition.findFirst({
     where: {
       playerId,
       ownerSleeperId,
       dispositionType: null,
+      updatedAt: { gte: touchedSince },
     },
     orderBy: { acquisitionDate: "desc" },
   });

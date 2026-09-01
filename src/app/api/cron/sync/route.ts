@@ -8,7 +8,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { syncLeague, syncAcquisitionChain } from "@/lib/sleeper/sync";
+import { syncLeague } from "@/lib/sleeper/sync";
+import { rebuildAcquisitionChainIfChanged, type ChainRebuildResult } from "@/lib/sleeper/acquisition-chain-gate";
 import { logger } from "@/lib/logger";
 
 // Vercel Cron sends this header to authenticate
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     const results = {
       leaguesSynced: 0,
       transactionsSynced: 0,
-      acquisitionChain: null as null | { leagueId: string; created: number; updated: number; ms: number },
+      acquisitionChain: null as null | (ChainRebuildResult & { ms: number }),
       errors: [] as string[],
     };
 
@@ -81,14 +82,16 @@ export async function GET(request: NextRequest) {
 
     // Trades and pickups only change keeper COSTS once the acquisition chain
     // is rebuilt (it is what the cost engine reads). It walks the whole league
-    // chain, so run it once, from the newest league that is still live.
+    // chain, so run it once, from the newest league that is still live — and
+    // only when a draft pick, transaction, or correction actually changed: a
+    // full rebuild costs ~220s of the 300s budget.
     const liveLeague = leagues.find((l) => l.status !== "COMPLETE");
     if (liveLeague) {
       const startedAt = Date.now();
       try {
-        const chain = await syncAcquisitionChain(liveLeague.id);
-        results.acquisitionChain = { leagueId: liveLeague.id, ...chain, ms: Date.now() - startedAt };
-        logger.info("Rebuilt acquisition chain via cron", results.acquisitionChain);
+        const chain = await rebuildAcquisitionChainIfChanged(liveLeague.id);
+        results.acquisitionChain = { ...chain, ms: Date.now() - startedAt };
+        logger.info(chain.skipped ? "Acquisition chain unchanged, rebuild skipped" : "Rebuilt acquisition chain via cron", { ...results.acquisitionChain });
       } catch (err) {
         const errorMsg = `Failed to rebuild acquisition chain for ${liveLeague.name}: ${err instanceof Error ? err.message : err}`;
         results.errors.push(errorMsg);
