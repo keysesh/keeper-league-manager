@@ -55,13 +55,16 @@ export async function GET(request: NextRequest) {
     // Sync each league's rosters and transactions
     for (const league of leagues) {
       try {
-        // A COMPLETE season's transaction log is frozen on Sleeper — re-pulling
-        // ~400 transactions per historical league every run cost minutes of the
-        // 5-minute budget for nothing. Rosters/members still sync (cheap).
+        // A COMPLETE season's transaction log and drafts are frozen on Sleeper —
+        // re-pulling ~400 transactions per historical league every run cost
+        // minutes of the 5-minute budget for nothing. Rosters/members still
+        // sync (cheap). The live league syncs everything: trades change keeper
+        // costs, and its draft row (start time + status) is what the keeper
+        // deadline and planning season are derived from.
         const frozen = league.status === "COMPLETE";
         await syncLeague(league.sleeperId, {
-          skipTransactions: frozen, // Live leagues: include transactions to catch trades
-          skipDrafts: true, // Skip drafts for speed (they don't change often)
+          skipTransactions: frozen,
+          skipDrafts: frozen,
         });
         results.leaguesSynced++;
 
