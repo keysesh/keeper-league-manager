@@ -17,7 +17,9 @@ import {
   DEFAULT_DRAFT_ROUNDS,
   MAX_HISTORICAL_SEASONS,
 } from "@/lib/constants";
-import { isTradeAfterDeadline, getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
+import { resolvePlanningSeason } from "@/lib/keeper/planning-season";
+import { pruneKeepersForDepartedPlayers } from "./keeper-prune";
 import { getLeagueChain } from "@/lib/services/league-chain";
 
 const sleeper = new SleeperClient();
@@ -175,6 +177,7 @@ export async function syncLeague(
   // Sync rosters
   let rosterCount = 0;
   let playerCount = 0;
+  let prunedKeepers = 0;
 
   for (const roster of rosters) {
     const user = userMap.get(roster.owner_id);
@@ -250,6 +253,22 @@ export async function syncLeague(
         }
       });
       playerCount += rosterPlayerData.length;
+
+      // Keeper plans for players who left this roster (trade, drop) are void —
+      // they would otherwise keep counting against the owner's limits.
+      try {
+        const { removed } = await pruneKeepersForDepartedPlayers({
+          rosterId: dbRoster.id,
+          league: { season: league.season, status: league.status },
+          currentPlayerIds: rosterPlayerData.map((d) => d.playerId),
+        });
+        prunedKeepers += removed;
+      } catch (err) {
+        logger.warn("Failed to prune keeper plans for departed players", {
+          rosterId: dbRoster.id,
+          error: err instanceof Error ? err.message : err,
+        });
+      }
     }
   }
 
@@ -326,7 +345,7 @@ export async function syncLeague(
     }
   }
 
-  logger.info("League sync complete", { leagueName: league.name });
+  logger.info("League sync complete", { leagueName: league.name, prunedKeepers });
   return {
     league: { id: league.id, name: league.name },
     rosters: rosterCount,
@@ -1179,13 +1198,12 @@ export async function quickSyncLeague(leagueId: string): Promise<{
 export async function carryOverKeeperPlans(
   leagueId: string
 ): Promise<{ carried: number }> {
-  const planningSeason = getKeeperPlanningSeason();
-
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
-    select: { id: true, previousLeagueId: true },
+    select: { id: true, previousLeagueId: true, season: true, status: true },
   });
   if (!league?.previousLeagueId) return { carried: 0 };
+  const planningSeason = resolvePlanningSeason(league);
 
   // previousLeagueId stores the previous SLEEPER league id
   const prevLeague = await prisma.league.findFirst({

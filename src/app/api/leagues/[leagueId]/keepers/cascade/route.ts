@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { calculateCascade } from "@/lib/keeper/cascade";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 
 interface RouteParams {
   params: Promise<{ leagueId: string }>;
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { searchParams } = new URL(request.url);
-    const season = parseInt(searchParams.get("season") || String(getKeeperPlanningSeason()));
+    const season = parseInt(searchParams.get("season") || String(await getPlanningSeasonForLeague(leagueId)));
 
     // Get league with settings
     const league = await prisma.league.findUnique({
@@ -375,7 +375,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const season = getKeeperPlanningSeason();
+    const season = await getPlanningSeasonForLeague(leagueId);
 
     // Get all keepers for this season
     const keepers = await prisma.keeper.findMany({

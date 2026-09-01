@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canManageLeague } from "@/lib/permissions";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const currentYear = getKeeperPlanningSeason();
+    const currentYear = await getPlanningSeasonForLeague(leagueId);
 
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
@@ -158,6 +158,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       name: league.name,
       season: league.season,
       status: league.status,
+      planningSeason: currentYear,
       totalRosters: league.totalRosters,
       draftRounds: league.draftRounds,
       lastSyncedAt: league.lastSyncedAt,

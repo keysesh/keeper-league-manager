@@ -176,7 +176,8 @@ export default function TradeAnalyzerPage() {
   const [draftPicks, setDraftPicks] = useState<DraftPickOwnership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const planningSeason = getKeeperPlanningSeason();
+  // Seeded from the calendar rule; replaced by the league-derived season once rosters load
+  const [planningSeason, setPlanningSeason] = useState<number>(() => getKeeperPlanningSeason());
   // Does a trade executed today reset years kept? Derived from real deadline
   // math, not assumed — pre-deadline in-season trades preserve keeper value.
   const tradeResetsKeeperValue = isCurrentlyAfterTradeDeadline();
@@ -212,16 +213,21 @@ export default function TradeAnalyzerPage() {
 
   const fetchLeagueData = useCallback(async () => {
     try {
-      // Fetch rosters with players, draft picks, and schedule in parallel
-      const [rostersRes, picksRes, scheduleRes] = await Promise.all([
-        fetch(`/api/leagues/${leagueId}/rosters?includePlayers=true`),
-        fetch(`/api/leagues/${leagueId}/draft-picks`),
-        fetch(`/api/nflverse/schedule?season=${planningSeason}`),
-      ]);
-
+      // Rosters first: the response carries the league-derived planning
+      // season, which the schedule (bye weeks) request depends on.
+      const rostersRes = await fetch(`/api/leagues/${leagueId}/rosters?includePlayers=true`);
       if (!rostersRes.ok) throw new Error("Failed to fetch rosters");
-
       const rostersData = await rostersRes.json();
+      const season: number =
+        typeof rostersData.planningSeason === "number"
+          ? rostersData.planningSeason
+          : getKeeperPlanningSeason();
+      setPlanningSeason(season);
+
+      const [picksRes, scheduleRes] = await Promise.all([
+        fetch(`/api/leagues/${leagueId}/draft-picks`),
+        fetch(`/api/nflverse/schedule?season=${season}`),
+      ]);
       const picksData = picksRes.ok ? await picksRes.json() : { picks: [] };
       const scheduleData = scheduleRes.ok ? await scheduleRes.json() : { byeWeeks: {} };
 
@@ -268,7 +274,7 @@ export default function TradeAnalyzerPage() {
     } finally {
       setLoading(false);
     }
-  }, [leagueId, planningSeason]);
+  }, [leagueId]);
 
   useEffect(() => {
     fetchLeagueData();

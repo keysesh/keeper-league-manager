@@ -17,7 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { estimateMarketRounds } from "@/lib/keeper/market";
 import { getDraftPickValue } from "@/lib/constants/league-config";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 
 const EARLY_ROUNDS = 3;
 
@@ -32,7 +32,7 @@ export async function GET(
     }
 
     const { leagueId } = await params;
-    const season = getKeeperPlanningSeason();
+    const season = await getPlanningSeasonForLeague(leagueId);
 
     const league = await prisma.league.findUnique({
       where: { id: leagueId },

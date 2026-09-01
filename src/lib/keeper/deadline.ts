@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { resolvePlanningSeason } from "./planning-season";
 
 /**
  * Keeper deadline resolution — replaces the old hardcoded calendar dates
@@ -137,22 +137,22 @@ export async function getKeeperDeadlineStatus(
   leagueId: string,
   now: Date = new Date()
 ): Promise<KeeperDeadlineStatus> {
-  const planningSeason = getKeeperPlanningSeason();
-
+  // Planning season comes from the league's own draft state, not the calendar
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     select: {
+      season: true,
+      status: true,
       settings: true,
       drafts: {
-        where: { season: planningSeason },
-        select: { startTime: true, status: true },
+        select: { season: true, startTime: true, status: true },
         orderBy: { startTime: "desc" },
-        take: 1,
       },
     },
   });
 
-  const draft = league?.drafts[0] ?? null;
+  const planningSeason = resolvePlanningSeason(league);
+  const draft = league?.drafts.find((d) => d.season === planningSeason) ?? null;
 
   return resolveKeeperDeadline(
     {

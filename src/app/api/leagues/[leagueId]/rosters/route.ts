@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSeason } from "@/lib/constants/keeper-rules";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -168,9 +169,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       };
     });
 
+    // League-derived planning season so client screens never fall back to the calendar rule
+    const planningSeason = await getPlanningSeasonForLeague(leagueId);
+
     return NextResponse.json({
       rosters: transformedRosters,
       count: transformedRosters.length,
+      planningSeason,
     });
   } catch (error) {
     logger.error("Error fetching rosters", error);

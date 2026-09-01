@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { encode } from "next-auth/jwt";
+import { sessionCookieName, secureSessionCookies } from "@/lib/auth/session-cookie";
+import { SleeperClient } from "@/lib/sleeper/client";
 
 interface RouteParams {
   params: Promise<{ token: string }>;
@@ -159,13 +161,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // For now, allow linking if the user doesn't have a sleeperId or matches
       user = existingUserByEmail;
     } else {
-      // Create new user with email
+      // Create new user with email. Resolve the roster owner's real Sleeper
+      // identity so the account matches what the Sleeper/Discord login flows
+      // look up later (they key on sleeperId and show sleeperUsername).
+      const sleeperUser = roster.ownerId
+        ? await new SleeperClient().getUserById(roster.ownerId)
+        : null;
       user = await prisma.user.create({
         data: {
           email,
-          displayName: displayName || roster.teamName || "Team Owner",
+          displayName: displayName || sleeperUser?.display_name || roster.teamName || "Team Owner",
           sleeperId: roster.ownerId || roster.sleeperId,
-          sleeperUsername: roster.teamName || "user",
+          sleeperUsername: sleeperUser?.username || roster.teamName || "user",
+          avatar: sleeperUser?.avatar ?? undefined,
           onboardingComplete: true,
         },
       });
@@ -238,10 +246,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       redirectUrl: `/league/${invite.leagueId}`,
     });
 
-    // Set the session cookie
-    response.cookies.set("next-auth.session-token", sessionToken, {
+    // Set the session cookie under the exact name next-auth reads for this
+    // deployment (`__Secure-` prefixed on https). The plain name was silently
+    // ignored in production, so accepted invites bounced straight to /login.
+    response.cookies.set(sessionCookieName(), sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: secureSessionCookies(),
       sameSite: "lax",
       path: "/",
       expires: sessionExpiry,

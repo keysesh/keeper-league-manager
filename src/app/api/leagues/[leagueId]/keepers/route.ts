@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { getKeeperDeadlineStatus } from "@/lib/keeper/deadline";
 import { KeeperType, AcquisitionType } from "@prisma/client";
 import { recalculateAndApplyCascade } from "@/lib/keeper/cascade";
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { searchParams } = new URL(request.url);
-    const season = parseInt(searchParams.get("season") || String(getKeeperPlanningSeason()));
+    const season = parseInt(searchParams.get("season") || String(await getPlanningSeasonForLeague(leagueId)));
     const rosterId = searchParams.get("rosterId");
 
     // Get league with keeper settings
@@ -197,6 +197,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    const season = await getPlanningSeasonForLeague(leagueId);
+
     // OPTIMIZED: Single query to get roster, league settings, existing keepers, and player
     const [rosterWithData, player] = await Promise.all([
       prisma.roster.findFirst({
@@ -212,7 +214,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             include: { keeperSettings: true },
           },
           keepers: {
-            where: { season: getKeeperPlanningSeason() },
+            where: { season },
           },
         },
       }),
@@ -243,7 +245,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const season = getKeeperPlanningSeason();
     const existingKeepers = rosterWithData.keepers;
 
     const franchiseCount = existingKeepers.filter(k => k.type === KeeperType.FRANCHISE).length;

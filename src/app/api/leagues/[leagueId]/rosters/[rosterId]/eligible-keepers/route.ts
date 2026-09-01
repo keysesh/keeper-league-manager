@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 import { KeeperType } from "@prisma/client";
 import { logger } from "@/lib/logger";
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "You don't have access to this league" }, { status: 403 });
     }
 
-    const season = getKeeperPlanningSeason();
+    const season = await getPlanningSeasonForLeague(leagueId);
 
     // Fetch roster with players, keepers, and league settings
     const roster = await prisma.roster.findUnique({

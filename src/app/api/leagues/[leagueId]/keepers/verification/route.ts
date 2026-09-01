@@ -15,7 +15,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { getKeeperPlanningSeason } from "@/lib/constants/keeper-rules";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { computeKeeperVerification } from "@/lib/keeper/verification";
 
 export async function GET(
@@ -63,7 +63,7 @@ export async function GET(
       return NextResponse.json({ error: "Roster not found" }, { status: 404 });
     }
 
-    const planningSeason = getKeeperPlanningSeason();
+    const planningSeason = await getPlanningSeasonForLeague(leagueId);
 
     const [draft, plannedKeepers] = await Promise.all([
       prisma.draft.findFirst({

@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { syncLeague, syncTransactions } from "@/lib/sleeper/sync";
+import { syncLeague, syncAcquisitionChain } from "@/lib/sleeper/sync";
 import { logger } from "@/lib/logger";
 
 // Vercel Cron sends this header to authenticate
@@ -39,21 +39,28 @@ export async function GET(request: NextRequest) {
         id: true,
         sleeperId: true,
         name: true,
+        season: true,
+        status: true,
       },
+      orderBy: { season: "desc" },
     });
 
     const results = {
       leaguesSynced: 0,
       transactionsSynced: 0,
+      acquisitionChain: null as null | { leagueId: string; created: number; updated: number; ms: number },
       errors: [] as string[],
     };
 
     // Sync each league's rosters and transactions
     for (const league of leagues) {
       try {
-        // Quick sync - just rosters (fast)
+        // A COMPLETE season's transaction log is frozen on Sleeper — re-pulling
+        // ~400 transactions per historical league every run cost minutes of the
+        // 5-minute budget for nothing. Rosters/members still sync (cheap).
+        const frozen = league.status === "COMPLETE";
         await syncLeague(league.sleeperId, {
-          skipTransactions: false, // Include transactions to catch trades
+          skipTransactions: frozen, // Live leagues: include transactions to catch trades
           skipDrafts: true, // Skip drafts for speed (they don't change often)
         });
         results.leaguesSynced++;
@@ -66,6 +73,23 @@ export async function GET(request: NextRequest) {
         const errorMsg = `Failed to sync league ${league.name}: ${err instanceof Error ? err.message : err}`;
         results.errors.push(errorMsg);
         logger.error("Cron sync failed for league", err, { leagueId: league.id });
+      }
+    }
+
+    // Trades and pickups only change keeper COSTS once the acquisition chain
+    // is rebuilt (it is what the cost engine reads). It walks the whole league
+    // chain, so run it once, from the newest league that is still live.
+    const liveLeague = leagues.find((l) => l.status !== "COMPLETE");
+    if (liveLeague) {
+      const startedAt = Date.now();
+      try {
+        const chain = await syncAcquisitionChain(liveLeague.id);
+        results.acquisitionChain = { leagueId: liveLeague.id, ...chain, ms: Date.now() - startedAt };
+        logger.info("Rebuilt acquisition chain via cron", results.acquisitionChain);
+      } catch (err) {
+        const errorMsg = `Failed to rebuild acquisition chain for ${liveLeague.name}: ${err instanceof Error ? err.message : err}`;
+        results.errors.push(errorMsg);
+        logger.error("Cron acquisition chain sync failed", err, { leagueId: liveLeague.id, ms: Date.now() - startedAt });
       }
     }
 
