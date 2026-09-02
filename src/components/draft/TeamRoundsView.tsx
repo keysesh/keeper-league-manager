@@ -5,6 +5,7 @@ import { Star, ArrowLeftRight, Lock } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { cn } from "@/lib/design-tokens";
 import { managerHues, teamWash } from "@/lib/design/identity";
+import { buildPickSlots, heldPickCount } from "@/lib/keeper/pick-slots";
 
 interface KeeperResult {
   playerId: string;
@@ -85,6 +86,21 @@ export function TeamRoundsView({
   // plumbing the owner's Sleeper id down to a board that never needed it.
   const hues = managerHues(cascade.map((t) => t.rosterId));
 
+  // Every pick this team holds, flattened — plus a line for each one dealt
+  // away, which is a different fact from holding nothing in that round.
+  const pickSlots = buildPickSlots({
+    draftRounds,
+    keepers: team.results,
+    tradedAwayPicks: team.tradedAwayPicks,
+    acquiredPicks: team.acquiredPicks,
+    teamName: (rosterId) => rosterIdToName.get(rosterId) ?? null,
+    tradedTo: (round) =>
+      draftBoard
+        .find((r) => r.round === round)
+        ?.slots.find((s) => s.rosterId === team.rosterId)?.tradedTo ?? null,
+  });
+  const picksHeld = heldPickCount(pickSlots);
+
   return (
     <div className="space-y-3">
       {/* Team switcher */}
@@ -127,114 +143,90 @@ export function TeamRoundsView({
         </div>
       </div>
 
-      {/* Rounds, vertically */}
+      {/* Picks, vertically */}
       {/* No outer card. Sixteen rounds inside a bordered panel read as a
           table embedded in the page; on their own they read as the board. */}
+      {/* One row per pick, not per round. Two sevenths are two sevens — the
+          round number repeats because the picks do. */}
       <div className="divide-y divide-white/[0.05]">
-        {Array.from({ length: draftRounds }, (_, i) => {
-          const round = i + 1;
-          const keepersHere = team.results.filter((k) => k.finalCost === round);
-          const acquired = team.acquiredPicks.filter((p) => p.round === round);
-          // A round is not one pick. A team can have traded its own away and
-          // still hold two acquired ones, and the board used to render that as
-          // a single row plus a footnote reading "+2 extra picks via trade" —
-          // so a manager holding three fifths saw one slot. Every pick owned
-          // gets a slot of its own; keepers fill them in order, the rest are
-          // open.
-          const tradedAwayCount = team.tradedAwayPicks.filter((r) => r === round).length;
-          const ownPicks = Math.max(0, 1 - tradedAwayCount);
-          const pickSlots: Array<{ from: string | null }> = [
-            ...Array.from({ length: ownPicks }, () => ({ from: null })),
-            ...acquired.map((a) => ({ from: rosterIdToName.get(a.fromRosterId) ?? "another team" })),
-          ];
-          const tradedAway = tradedAwayCount > 0;
-          const slot = draftBoard
-            .find((r) => r.round === round)
-            ?.slots.find((s) => s.rosterId === team.rosterId);
-
-          return (
-            <div key={round} className="flex items-stretch gap-3 px-3 py-2 min-h-[48px]">
-              {/* Round number */}
-              <div className="flex w-8 items-center justify-end">
-                <span className="font-numeral text-[22px] leading-none text-slate-600">
-                  {round}
-                </span>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0 flex flex-col justify-center gap-1 py-0.5">
-                {pickSlots.map((pick, slotIndex) => {
-                  const k = keepersHere[slotIndex];
-                  if (!k) {
-                    return (
-                      <span
-                        key={`open-${slotIndex}`}
-                        className="flex items-center gap-1.5 text-xs text-slate-600"
-                      >
-                        Open pick
-                        {pick.from && (
-                          <span className="text-emerald-400/80">via {pick.from}</span>
-                        )}
-                      </span>
-                    );
-                  }
-                  return (
-                  <button
-                    key={k.playerId}
-                    onClick={() => onPlayerClick?.(k.playerId)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left",
-                      k.keeperType === "FRANCHISE"
-                        ? "border border-amber-500/30"
-                        : "border border-white/[0.06]"
-                    )}
-                    style={{ background: teamWash(k.team, 0.38) }}
-                  >
-                    <PositionBadge position={k.position} size="xs" />
-                    <span className="text-sm font-semibold text-white truncate">
-                      {k.playerName}
-                    </span>
-                    {k.keeperType === "FRANCHISE" && (
-                      <Star size={11} className="text-amber-400 fill-amber-400 flex-shrink-0" />
-                    )}
-                    {k.isLocked && <Lock size={10} className="text-slate-500 flex-shrink-0" />}
-                    <span className="ml-auto flex items-center gap-1 flex-shrink-0 text-xs">
-                      {k.cascaded && (
-                        <span className="text-slate-600 line-through">R{k.baseCost}</span>
-                      )}
-                      {k.yearsKept ? (
-                        <span className="text-slate-500">Y{k.yearsKept}</span>
-                      ) : null}
-                      {pick.from && (
-                        <span className="text-emerald-400/80">via {pick.from}</span>
-                      )}
-                    </span>
-                  </button>
-                  );
-                })}
-
-                {tradedAway && (
-                  <span className="flex items-center gap-1.5 text-xs text-rose-400/80">
-                    <ArrowLeftRight size={11} />
-                    Traded away{slot?.tradedTo ? ` to ${slot.tradedTo}` : ""}
-                  </span>
+        {pickSlots.map((pick) => (
+          <div
+            key={pick.key}
+            className="flex items-stretch gap-3 px-3 py-2 min-h-[48px]"
+          >
+            {/* Round number */}
+            <div className="flex w-8 items-center justify-end">
+              <span
+                className={cn(
+                  "font-numeral text-[22px] leading-none",
+                  pick.kind === "traded" ? "text-slate-700" : "text-slate-600"
                 )}
-
-                {pickSlots.length === 0 && !tradedAway && (
-                  <span className="text-xs text-slate-600">No pick</span>
-                )}
-
-              </div>
+              >
+                {pick.round}
+              </span>
             </div>
-          );
-        })}
+
+            {/* The pick */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5">
+              {pick.kind === "keeper" ? (
+                <button
+                  onClick={() => onPlayerClick?.(pick.keeper.playerId)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left",
+                    pick.keeper.keeperType === "FRANCHISE"
+                      ? "border border-amber-500/30"
+                      : "border border-white/[0.06]"
+                  )}
+                  style={{ background: teamWash(pick.keeper.team, 0.38) }}
+                >
+                  <PositionBadge position={pick.keeper.position} size="xs" />
+                  <span className="text-sm font-semibold text-white truncate">
+                    {pick.keeper.playerName}
+                  </span>
+                  {pick.keeper.keeperType === "FRANCHISE" && (
+                    <Star size={11} className="text-amber-400 fill-amber-400 flex-shrink-0" />
+                  )}
+                  {pick.keeper.isLocked && (
+                    <Lock size={10} className="text-slate-500 flex-shrink-0" />
+                  )}
+                  <span className="ml-auto flex items-center gap-1 flex-shrink-0 text-xs">
+                    {pick.keeper.cascaded && (
+                      <span className="text-slate-600 line-through">
+                        R{pick.keeper.baseCost}
+                      </span>
+                    )}
+                    {pick.keeper.yearsKept ? (
+                      <span className="text-slate-500">Y{pick.keeper.yearsKept}</span>
+                    ) : null}
+                    {pick.from && (
+                      <span className="text-emerald-400/80">via {pick.from}</span>
+                    )}
+                  </span>
+                </button>
+              ) : pick.kind === "open" ? (
+                <span className="flex items-center gap-1.5 text-xs text-slate-600">
+                  Open pick
+                  {pick.from && (
+                    <span className="text-emerald-400/80">via {pick.from}</span>
+                  )}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-xs text-rose-400/80">
+                  <ArrowLeftRight size={11} />
+                  Traded away{pick.to ? ` to ${pick.to}` : ""}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Team totals */}
       <p className="text-xs text-slate-500 text-center">
+        {picksHeld} pick{picksHeld !== 1 ? "s" : ""} ·{" "}
         {team.results.length} keeper{team.results.length !== 1 ? "s" : ""} ·{" "}
-        {team.tradedAwayPicks.length} pick{team.tradedAwayPicks.length !== 1 ? "s" : ""} traded away ·{" "}
-        {team.acquiredPicks.length} acquired
+        {team.acquiredPicks.length} acquired ·{" "}
+        {team.tradedAwayPicks.length} traded away
       </p>
     </div>
   );

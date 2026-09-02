@@ -115,6 +115,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       acquiredPicks: Array<{ round: number; fromRosterId: string }>;
     }> = [];
 
+    // Trades are recorded against Sleeper roster ids; every client of this
+    // payload looks teams up by our own roster id (cascade[].rosterId). Handing
+    // out the raw Sleeper id meant every "via" and "from" on the draft board
+    // missed its lookup and fell back to "a team".
+    const rosterIdBySleeperId = new Map(
+      league.rosters.map((r) => [r.sleeperId, r.id])
+    );
+
     for (const roster of league.rosters) {
       const rosterKeepers = keepersByRoster.get(roster.id) || [];
 
@@ -127,7 +135,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .filter(p => p.currentOwnerId === roster.sleeperId && p.originalOwnerId !== roster.sleeperId)
         .map(p => ({
           round: p.round,
-          fromRosterId: p.originalOwnerId,
+          fromRosterId: rosterIdBySleeperId.get(p.originalOwnerId) ?? p.originalOwnerId,
         }));
 
       detailedCascade.push({

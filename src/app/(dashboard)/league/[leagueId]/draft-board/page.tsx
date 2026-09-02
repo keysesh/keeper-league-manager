@@ -26,6 +26,7 @@ import {
 } from "@/components/league-screens";
 import { cn } from "@/lib/design-tokens";
 import { getDraftPickValue } from "@/lib/constants/league-config";
+import { buildPickSlots, heldPickCount, heldPicksByRound } from "@/lib/keeper/pick-slots";
 
 interface KeeperResult {
   playerId: string;
@@ -128,8 +129,21 @@ export default function DraftBoardPage() {
     const mine = data.cascade.find((t) => t.rosterId === userRosterId);
     if (!mine) return null;
 
-    const picksOwned =
-      data.draftRounds - mine.tradedAwayPicks.length + mine.acquiredPicks.length;
+    const nameOf = new Map(
+      data.cascade.map((t) => [t.rosterId, t.rosterName || "a team"])
+    );
+
+    // The same slot model the board below renders: one entry per pick, so a
+    // round holding two picks counts as two.
+    const mySlots = buildPickSlots({
+      draftRounds: data.draftRounds,
+      keepers: mine.results,
+      tradedAwayPicks: mine.tradedAwayPicks,
+      acquiredPicks: mine.acquiredPicks,
+      teamName: (rosterId) => nameOf.get(rosterId) ?? null,
+    });
+    const picksOwned = heldPickCount(mySlots);
+    const held = heldPicksByRound(mySlots);
 
     const capitals = data.cascade
       .map((t) => ({ rosterId: t.rosterId, capital: capitalOf(t, data.draftRounds) }))
@@ -137,16 +151,14 @@ export default function DraftBoardPage() {
     const capitalRank =
       capitals.findIndex((c) => c.rosterId === userRosterId) + 1;
 
+    // TRADED means you have nothing in that round — not merely that your own
+    // pick went out. Deal your fifth and acquire two, and the round is OPEN.
     const statuses: Record<number, PickStatus> = {};
     for (let round = 1; round <= data.draftRounds; round++) {
       if (mine.results.some((k) => k.finalCost === round)) statuses[round] = "KEEPER";
-      else if (mine.tradedAwayPicks.includes(round)) statuses[round] = "TRADED";
-      else statuses[round] = "OPEN";
+      else if ((held[round] ?? 0) > 0) statuses[round] = "OPEN";
+      else statuses[round] = "TRADED";
     }
-
-    const nameOf = new Map(
-      data.cascade.map((t) => [t.rosterId, t.rosterName || "a team"])
-    );
     const movement = [
       ...mine.tradedAwayPicks.map((round) => {
         const slot = data.draftBoard
