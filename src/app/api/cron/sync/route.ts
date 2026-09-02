@@ -10,6 +10,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { syncLeague } from "@/lib/sleeper/sync";
 import { rebuildAcquisitionChainIfChanged, type ChainRebuildResult } from "@/lib/sleeper/acquisition-chain-gate";
+import { resyncKeeperBaseCosts, type ResyncResult } from "@/lib/keeper/resync-base-costs";
+import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { logger } from "@/lib/logger";
 
 // Vercel Cron sends this header to authenticate
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
       leaguesSynced: 0,
       transactionsSynced: 0,
       acquisitionChain: null as null | (ChainRebuildResult & { ms: number }),
+      keeperCosts: null as null | (ResyncResult & { ms: number }),
       errors: [] as string[],
     };
 
@@ -86,16 +89,45 @@ export async function GET(request: NextRequest) {
     // only when a draft pick, transaction, or correction actually changed: a
     // full rebuild costs ~220s of the 300s budget.
     const liveLeague = leagues.find((l) => l.status !== "COMPLETE");
+    let chainOk = false;
     if (liveLeague) {
       const startedAt = Date.now();
       try {
         const chain = await rebuildAcquisitionChainIfChanged(liveLeague.id);
         results.acquisitionChain = { ...chain, ms: Date.now() - startedAt };
+        chainOk = true;
         logger.info(chain.skipped ? "Acquisition chain unchanged, rebuild skipped" : "Rebuilt acquisition chain via cron", { ...results.acquisitionChain });
       } catch (err) {
         const errorMsg = `Failed to rebuild acquisition chain for ${liveLeague.name}: ${err instanceof Error ? err.message : err}`;
         results.errors.push(errorMsg);
         logger.error("Cron acquisition chain sync failed", err, { leagueId: liveLeague.id, ms: Date.now() - startedAt });
+      }
+    }
+
+    // Rebuilding the chain changes what a keeper COSTS, but Keeper.baseCost is
+    // written once when the keeper is saved and never recomputed — the cascade
+    // only ever rewrites finalCost. Without this step a trade updates the
+    // derivation and leaves every saved keeper showing its old price until
+    // someone happens to re-save it by hand. Cheap and idempotent: it writes
+    // only the rows that actually differ, and refuses a season whose draft has
+    // already completed, whose rows are the record of what was drafted.
+    //
+    // Skipped when the chain rebuild threw, since a half-written chain would
+    // price keepers off incomplete history.
+    if (liveLeague && chainOk) {
+      const startedAt = Date.now();
+      try {
+        const season = await getPlanningSeasonForLeague(liveLeague.id);
+        const resync = await resyncKeeperBaseCosts(liveLeague.id, season, { apply: true });
+        results.keeperCosts = { ...resync, ms: Date.now() - startedAt };
+        results.errors.push(...resync.cascadeErrors);
+        if (resync.written > 0) {
+          logger.info("Re-derived keeper base costs via cron", { ...results.keeperCosts });
+        }
+      } catch (err) {
+        const errorMsg = `Failed to re-derive keeper costs for ${liveLeague.name}: ${err instanceof Error ? err.message : err}`;
+        results.errors.push(errorMsg);
+        logger.error("Cron keeper cost resync failed", err, { leagueId: liveLeague.id, ms: Date.now() - startedAt });
       }
     }
 

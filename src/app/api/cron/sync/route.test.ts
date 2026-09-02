@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => {
     syncLeague: vi.fn(),
     rebuildAcquisitionChainIfChanged: vi.fn(),
     syncUserLeagues: vi.fn(),
+    resyncKeeperBaseCosts: vi.fn(),
+    getPlanningSeasonForLeague: vi.fn(),
   };
 });
 
@@ -25,6 +27,14 @@ vi.mock("@/lib/sleeper/sync", () => ({
 
 vi.mock("@/lib/sleeper/acquisition-chain-gate", () => ({
   rebuildAcquisitionChainIfChanged: mocks.rebuildAcquisitionChainIfChanged,
+}));
+
+vi.mock("@/lib/keeper/resync-base-costs", () => ({
+  resyncKeeperBaseCosts: mocks.resyncKeeperBaseCosts,
+}));
+
+vi.mock("@/lib/keeper/planning-season-db", () => ({
+  getPlanningSeasonForLeague: mocks.getPlanningSeasonForLeague,
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -58,6 +68,10 @@ beforeEach(() => {
   mocks.syncLeague.mockResolvedValue({ league: {}, rosters: 12, players: 200, draftPicks: 0 });
   mocks.rebuildAcquisitionChainIfChanged.mockResolvedValue({
     leagueId: "l-2026", fingerprint: "fp-1", skipped: false, created: 3, updated: 1, deleted: 0,
+  });
+  mocks.getPlanningSeasonForLeague.mockResolvedValue(2026);
+  mocks.resyncKeeperBaseCosts.mockResolvedValue({
+    leagueId: "l-2026", season: 2026, changes: [], written: 0, cascadeErrors: [],
   });
 });
 
@@ -127,6 +141,46 @@ describe("GET /api/cron/sync", () => {
     expect(body.errors).toEqual([expect.stringContaining("chain exploded")]);
   });
 
+  it("re-derives keeper base costs for the live league's planning season", async () => {
+    // Keeper.baseCost is written once at save time, so a trade that changes a
+    // price leaves saved rows stale unless the cron re-derives them.
+    mocks.resyncKeeperBaseCosts.mockResolvedValue({
+      leagueId: "l-2026",
+      season: 2026,
+      changes: [{ keeperId: "k1", playerName: "Kyle Monangai", teamName: "T", from: 7, to: 8, breakdown: "Waiver/FA R8 = R8" }],
+      written: 1,
+      cascadeErrors: [],
+    });
+
+    const res = await GET(makeRequest("Bearer cron-test-secret"));
+    const body = await res.json();
+
+    expect(mocks.resyncKeeperBaseCosts).toHaveBeenCalledWith("l-2026", 2026, { apply: true });
+    expect(body.keeperCosts).toMatchObject({ written: 1 });
+    expect(body.errors).toEqual([]);
+  });
+
+  it("does not re-derive keeper costs off a half-written chain", async () => {
+    mocks.rebuildAcquisitionChainIfChanged.mockRejectedValue(new Error("chain exploded"));
+
+    const res = await GET(makeRequest("Bearer cron-test-secret"));
+    const body = await res.json();
+
+    expect(mocks.resyncKeeperBaseCosts).not.toHaveBeenCalled();
+    expect(body.keeperCosts).toBeNull();
+  });
+
+  it("reports a keeper resync failure without failing the whole run", async () => {
+    mocks.resyncKeeperBaseCosts.mockRejectedValue(new Error("resync exploded"));
+
+    const res = await GET(makeRequest("Bearer cron-test-secret"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.leaguesSynced).toBe(3);
+    expect(body.errors).toEqual([expect.stringContaining("resync exploded")]);
+  });
+
   it("skips the chain rebuild when every league is complete", async () => {
     mockFn(prisma.league.findMany).mockResolvedValue(LEAGUES.filter((l) => l.status === "COMPLETE"));
 
@@ -134,6 +188,8 @@ describe("GET /api/cron/sync", () => {
     const body = await res.json();
 
     expect(mocks.rebuildAcquisitionChainIfChanged).not.toHaveBeenCalled();
+    expect(mocks.resyncKeeperBaseCosts).not.toHaveBeenCalled();
     expect(body.acquisitionChain).toBeNull();
+    expect(body.keeperCosts).toBeNull();
   });
 });
