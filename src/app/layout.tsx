@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Anton, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -13,6 +13,18 @@ const geist = Geist({
   display: "swap",
   preload: true,
   fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+});
+
+// Rounds are the product. Anton is a condensed display face — a jersey number,
+// not a table cell — used only for round numbers and totals, never for prose:
+// it has no lowercase personality and stops being legible under ~18px.
+const anton = Anton({
+  variable: "--font-anton",
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  fallback: ["Impact", "Haettenschweiler", "sans-serif"],
 });
 
 const geistMono = Geist_Mono({
@@ -61,7 +73,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geist.variable} ${geistMono.variable} font-sans antialiased text-zinc-100`}
+        className={`${geist.variable} ${anton.variable} ${geistMono.variable} font-sans antialiased text-zinc-100`}
       >
         <AuthProvider>
           <QueryProvider>
