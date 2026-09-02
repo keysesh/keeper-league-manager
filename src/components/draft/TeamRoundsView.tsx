@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Star, ArrowLeftRight, Lock } from "lucide-react";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { cn } from "@/lib/design-tokens";
+import { managerHues, teamWash } from "@/lib/design/identity";
 
 interface KeeperResult {
   playerId: string;
@@ -78,6 +79,12 @@ export function TeamRoundsView({
     cascade.map((t) => [t.rosterId, t.rosterName || "Team"])
   );
 
+  // One hue per manager, assigned across the whole league — the same system
+  // the keeper screens use, so a team is the same colour wherever you meet it.
+  // Keyed on rosterId: stable and collision-free within a league, and it saves
+  // plumbing the owner's Sleeper id down to a board that never needed it.
+  const hues = managerHues(cascade.map((t) => t.rosterId));
+
   return (
     <div className="space-y-3">
       {/* Team switcher */}
@@ -91,14 +98,29 @@ export function TeamRoundsView({
                 key={t.rosterId}
                 onClick={() => setSelectedRosterId(t.rosterId)}
                 className={cn(
-                  "px-3 py-2 min-h-[40px] rounded-lg text-xs font-semibold whitespace-nowrap border transition-colors",
-                  isSelected
-                    ? "bg-blue-500/20 border-blue-500/40 text-blue-300"
-                    : "bg-[#141c2b] border-white/[0.08] text-slate-400 hover:text-white"
+                  "min-h-[40px] whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-colors",
+                  isSelected ? "text-white" : "text-slate-400 hover:text-white"
                 )}
+                // Every team wore the same blue when selected and the same
+                // slate when not, so the switcher said only "which one is on",
+                // never "which team". Their own colour says both.
+                style={
+                  isSelected
+                    ? {
+                        background: `${hues.get(t.rosterId)}2b`,
+                        boxShadow: `inset 0 0 0 1px ${hues.get(t.rosterId)}`,
+                      }
+                    : { background: "rgba(255,255,255,0.035)" }
+                }
               >
-                {isUser ? "★ " : ""}
-                {t.rosterName || "Team"}
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: hues.get(t.rosterId) }}
+                  />
+                  {t.rosterName || "Team"}
+                  {isUser && <span className="text-[10px] opacity-60">you</span>}
+                </span>
               </button>
             );
           })}
@@ -106,7 +128,9 @@ export function TeamRoundsView({
       </div>
 
       {/* Rounds, vertically */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#0c1219] overflow-hidden divide-y divide-white/[0.05]">
+      {/* No outer card. Sixteen rounds inside a bordered panel read as a
+          table embedded in the page; on their own they read as the board. */}
+      <div className="divide-y divide-white/[0.05]">
         {Array.from({ length: draftRounds }, (_, i) => {
           const round = i + 1;
           const keepersHere = team.results.filter((k) => k.finalCost === round);
@@ -119,8 +143,8 @@ export function TeamRoundsView({
           return (
             <div key={round} className="flex items-stretch gap-3 px-3 py-2 min-h-[48px]">
               {/* Round number */}
-              <div className="flex items-center">
-                <span className="flex items-center justify-center w-8 h-8 rounded-md bg-[#141c2b] border border-white/[0.08] text-blue-400 font-bold text-xs tabular-nums">
+              <div className="flex w-8 items-center justify-end">
+                <span className="font-numeral text-[22px] leading-none text-slate-600">
                   {round}
                 </span>
               </div>
@@ -132,11 +156,12 @@ export function TeamRoundsView({
                     key={k.playerId}
                     onClick={() => onPlayerClick?.(k.playerId)}
                     className={cn(
-                      "flex items-center gap-2 text-left rounded-md px-2 py-1.5 border",
+                      "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left",
                       k.keeperType === "FRANCHISE"
-                        ? "bg-amber-500/[0.07] border-amber-500/25"
-                        : "bg-blue-500/[0.06] border-blue-500/25"
+                        ? "border border-amber-500/30"
+                        : "border border-white/[0.06]"
                     )}
+                    style={{ background: teamWash(k.team, 0.38) }}
                   >
                     <PositionBadge position={k.position} size="xs" />
                     <span className="text-sm font-semibold text-white truncate">
