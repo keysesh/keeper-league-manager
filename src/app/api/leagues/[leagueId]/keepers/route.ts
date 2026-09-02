@@ -16,6 +16,8 @@ function lockMessage(lockReason: string | null): string {
       return "The draft has started — keeper changes are closed.";
     case "draft_complete":
       return "The draft is complete — keeper changes are closed.";
+    case "superseded":
+      return "This is last season's league. Open the current one to set keepers.";
     default:
       return "The keeper deadline has passed.";
   }

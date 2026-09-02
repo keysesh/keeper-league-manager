@@ -1229,12 +1229,12 @@ export async function quickSyncLeague(leagueId: string): Promise<{
  */
 export async function carryOverKeeperPlans(
   leagueId: string
-): Promise<{ carried: number }> {
+): Promise<{ carried: number; cleared: number }> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     select: { id: true, previousLeagueId: true, season: true, status: true },
   });
-  if (!league?.previousLeagueId) return { carried: 0 };
+  if (!league?.previousLeagueId) return { carried: 0, cleared: 0 };
   const planningSeason = resolvePlanningSeason(league);
 
   // previousLeagueId stores the previous SLEEPER league id
@@ -1242,7 +1242,7 @@ export async function carryOverKeeperPlans(
     where: { sleeperId: league.previousLeagueId },
     select: { id: true },
   });
-  if (!prevLeague) return { carried: 0 };
+  if (!prevLeague) return { carried: 0, cleared: 0 };
 
   const [newRosters, prevRosters] = await Promise.all([
     prisma.roster.findMany({
@@ -1265,13 +1265,21 @@ export async function carryOverKeeperPlans(
 
   const prevBySleeperId = new Map(prevRosters.map((r) => [r.sleeperId, r]));
   let carried = 0;
+  let cleared = 0;
 
   for (const roster of newRosters) {
-    // Never overwrite plans already made on the new league
-    if (roster._count.keepers > 0) continue;
-
     const prev = prevBySleeperId.get(roster.sleeperId);
     if (!prev || prev.keepers.length === 0) continue;
+
+    // Never overwrite plans already made on the new league — but the old rows
+    // are stale either way, so fall through to the delete below.
+    if (roster._count.keepers > 0) {
+      const { count } = await prisma.keeper.deleteMany({
+        where: { id: { in: prev.keepers.map((k) => k.id) } },
+      });
+      cleared += count;
+      continue;
+    }
 
     await prisma.keeper.createMany({
       data: prev.keepers.map((k) => ({
@@ -1293,18 +1301,31 @@ export async function carryOverKeeperPlans(
       skipDuplicates: true,
     });
     carried += prev.keepers.length;
+
+    // MOVE, not copy. Leaving the source rows behind gave the planning season
+    // two homes: reads and writes are scoped by roster.leagueId, so the old
+    // league row kept serving and accepting a second, diverging plan that the
+    // draft would never see (16 owner+player pairs in production, one of them
+    // still holding a player who had since been traded away). Deleting only
+    // after the destination has the plan, and only for a roster that exists on
+    // both sides, so a half-synced rollover can never drop a plan on the floor.
+    const { count } = await prisma.keeper.deleteMany({
+      where: { id: { in: prev.keepers.map((k) => k.id) } },
+    });
+    cleared += count;
   }
 
-  if (carried > 0) {
-    logger.info("Carried keeper plans across season rollover", {
+  if (carried > 0 || cleared > 0) {
+    logger.info("Moved keeper plans across season rollover", {
       leagueId,
       fromLeagueId: prevLeague.id,
       season: planningSeason,
       carried,
+      cleared,
     });
   }
 
-  return { carried };
+  return { carried, cleared };
 }
 
 /**

@@ -5,7 +5,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     league: { findUnique: vi.fn(), findFirst: vi.fn() },
     roster: { findMany: vi.fn() },
-    keeper: { createMany: vi.fn() },
+    keeper: { createMany: vi.fn(), deleteMany: vi.fn() },
   },
 }));
 
@@ -45,10 +45,11 @@ beforeEach(() => {
   });
   mockFn(prisma.league.findFirst).mockResolvedValue({ id: "prev-league" });
   mockFn(prisma.keeper.createMany).mockResolvedValue({ count: 0 });
+  mockFn(prisma.keeper.deleteMany).mockResolvedValue({ count: 1 });
 });
 
 describe("carryOverKeeperPlans", () => {
-  it("copies plans to the matching new roster with duplicate-safe writes", async () => {
+  it("moves plans to the matching new roster with duplicate-safe writes", async () => {
     mockFn(prisma.roster.findMany).mockImplementation(
       async (args: { where: { leagueId: string } }) =>
         args.where.leagueId === "new-league"
@@ -57,7 +58,7 @@ describe("carryOverKeeperPlans", () => {
               {
                 id: "prev-r1",
                 sleeperId: "owner-1",
-                keepers: [{ playerId: "p1", ...PLAN_FIELDS }],
+                keepers: [{ id: "old-k1", playerId: "p1", ...PLAN_FIELDS }],
               },
             ]
     );
@@ -69,6 +70,12 @@ describe("carryOverKeeperPlans", () => {
     const call = mockFn(prisma.keeper.createMany).mock.calls[0][0];
     expect(call.skipDuplicates).toBe(true);
     expect(call.data[0]).toMatchObject({ rosterId: "new-r1", playerId: "p1" });
+    // MOVE, not copy: the source row goes, so only one league row answers for
+    // the planning season. Leaving it produced two diverging plans.
+    expect(result.cleared).toBe(1);
+    expect(mockFn(prisma.keeper.deleteMany).mock.calls[0][0]).toEqual({
+      where: { id: { in: ["old-k1"] } },
+    });
   });
 
   it("never overwrites plans already made on the new league's roster", async () => {
@@ -80,7 +87,7 @@ describe("carryOverKeeperPlans", () => {
               {
                 id: "prev-r1",
                 sleeperId: "owner-1",
-                keepers: [{ playerId: "p1", ...PLAN_FIELDS }],
+                keepers: [{ id: "old-k1", playerId: "p1", ...PLAN_FIELDS }],
               },
             ]
     );
@@ -89,6 +96,36 @@ describe("carryOverKeeperPlans", () => {
 
     expect(result.carried).toBe(0);
     expect(prisma.keeper.createMany).not.toHaveBeenCalled();
+    // The new league's own plan wins, and the superseded rows still go —
+    // otherwise the case that actually happened in production (both sides
+    // holding a plan) is the one case that stays broken.
+    expect(result.cleared).toBe(1);
+    expect(mockFn(prisma.keeper.deleteMany).mock.calls[0][0]).toEqual({
+      where: { id: { in: ["old-k1"] } },
+    });
+  });
+
+  it("leaves a plan alone when that owner has no roster on the new league", async () => {
+    // Half-synced rollover: deleting here would drop the plan with nowhere to
+    // put it, so the guard is the roster matching on both sides, not the copy.
+    mockFn(prisma.roster.findMany).mockImplementation(
+      async (args: { where: { leagueId: string } }) =>
+        args.where.leagueId === "new-league"
+          ? [{ id: "new-r1", sleeperId: "owner-1", _count: { keepers: 0 } }]
+          : [
+              {
+                id: "prev-r2",
+                sleeperId: "owner-2",
+                keepers: [{ id: "old-k2", playerId: "p2", ...PLAN_FIELDS }],
+              },
+            ]
+    );
+
+    const result = await carryOverKeeperPlans("new-league");
+
+    expect(result.carried).toBe(0);
+    expect(result.cleared).toBe(0);
+    expect(prisma.keeper.deleteMany).not.toHaveBeenCalled();
   });
 
   it("is a no-op when the league has no previous season", async () => {

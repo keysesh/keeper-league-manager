@@ -16,7 +16,7 @@ interface DeadlineStatus {
   deadline: string | null;
   draftStartTime: string | null;
   locked: boolean;
-  lockReason: "deadline_passed" | "draft_started" | "draft_complete" | null;
+  lockReason: "deadline_passed" | "draft_started" | "draft_complete" | "superseded" | null;
   planningSeason: number;
 }
 
@@ -77,7 +77,12 @@ export function DeadlineBanner({ leagueId }: DeadlineBannerProps) {
         ? "The draft has started — keeper selections are closed"
         : status.lockReason === "draft_complete"
           ? `The ${status.planningSeason} draft is complete`
-          : "The keeper deadline has passed — selections are locked";
+          : status.lockReason === "superseded"
+            // Not a deadline at all: the reader is on last season's league row.
+            // Saying "the deadline has passed" here would be a lie, and would
+            // send someone hunting for an extension they do not need.
+            ? `This is last season's league — open the ${status.planningSeason} league to set keepers`
+            : "The keeper deadline has passed — selections are locked";
 
     return (
       <div className="relative mb-4 rounded-xl border border-red-500/25 bg-red-950/40 px-4 py-3">

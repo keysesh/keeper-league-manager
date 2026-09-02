@@ -26,6 +26,7 @@ export type LockReason =
   | "deadline_passed"
   | "draft_started"
   | "draft_complete"
+  | "superseded"
   | null;
 
 export interface KeeperDeadlineStatus {
@@ -67,6 +68,22 @@ export interface DeadlineInputs {
   draftStartTime: Date | null;
   /** Planning-season Sleeper draft status (PRE_DRAFT | DRAFTING | COMPLETE) */
   draftStatus: string | null;
+  /**
+   * True when a DIFFERENT league row already exists for the planning season —
+   * i.e. Sleeper has rolled the league over and this row is last year's.
+   *
+   * A COMPLETE league plans for season+1, which is right through the whole
+   * offseason and stops being right the moment the successor appears: from
+   * then on two rows answer for the same planning season, each with its own
+   * rosters, and every keeper read and write is scoped by roster.leagueId. Two
+   * plans, silently diverging — the 2025 row still held a January plan with
+   * Marvin Harrison on a roster he had been traded off. Only the successor is
+   * the planning context; this row is history.
+   *
+   * Guarded on the successor EXISTING, never on the league being COMPLETE, so
+   * ordinary offseason planning on the newest league row is untouched.
+   */
+  supersededByLeague: boolean;
 }
 
 /**
@@ -80,6 +97,20 @@ export function resolveKeeperDeadline(
 ): KeeperDeadlineStatus {
   const { draftStartTime, draftStatus } = inputs;
   const leagueDeadline = parseLeagueKeeperDeadline(inputs.leagueSettings);
+
+  // Checked before the draft status: this row has no planning-season draft of
+  // its own to consult, which is exactly why it looked open.
+  if (inputs.supersededByLeague) {
+    return {
+      source: leagueDeadline ? "league" : draftStartTime ? "draft" : "none",
+      deadline: leagueDeadline?.toISOString() ?? draftStartTime?.toISOString() ?? null,
+      draftStartTime: draftStartTime?.toISOString() ?? null,
+      draftStatus,
+      locked: true,
+      lockReason: "superseded",
+      planningSeason,
+    };
+  }
 
   // Technical hard stop: Sleeper's draft has started or finished
   if (draftStatus === "DRAFTING" || draftStatus === "COMPLETE") {
@@ -154,11 +185,21 @@ export async function getKeeperDeadlineStatus(
   const planningSeason = resolvePlanningSeason(league);
   const draft = league?.drafts.find((d) => d.season === planningSeason) ?? null;
 
+  // Has the league already rolled over past this row?
+  const successor =
+    league && league.season !== planningSeason
+      ? await prisma.league.findFirst({
+          where: { season: planningSeason, id: { not: leagueId } },
+          select: { id: true },
+        })
+      : null;
+
   return resolveKeeperDeadline(
     {
       leagueSettings: league?.settings ?? null,
       draftStartTime: draft?.startTime ?? null,
       draftStatus: draft?.status ?? null,
+      supersededByLeague: successor !== null,
     },
     now,
     planningSeason
