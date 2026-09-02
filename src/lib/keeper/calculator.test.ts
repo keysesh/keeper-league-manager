@@ -249,7 +249,18 @@ describe("Keeper Calculator", () => {
       expect(cost).toBe(3);
     });
 
-    it("starts waiver pickups at the undrafted round, less seasons held", async () => {
+    const waiverSettings = {
+      undraftedRound: 8,
+      minimumRound: 1,
+      costReductionPerYear: 1,
+    } as any;
+
+    /** Price an undrafted claim made in `season`, kept for `targetSeason`. */
+    async function waiverCost(
+      season: number,
+      acquisitionDate: string,
+      targetSeason: number
+    ): Promise<number> {
       vi.mocked(prisma.roster.findUnique).mockResolvedValue({
         id: "roster-1",
         sleeperId: "sleeper-roster-1",
@@ -262,27 +273,107 @@ describe("Keeper Calculator", () => {
         playerId: "player-1",
         ownerSleeperId: "sleeper-roster-1",
         acquisitionType: AcquisitionType.WAIVER,
-        acquisitionDate: new Date("2025-10-01"),
-        season: 2025,
+        acquisitionDate: new Date(acquisitionDate),
+        season,
         originalDraftRound: null,
         originalDraftSeason: null,
         isPreDeadline: null,
         baseCostOverride: null,
       } as any);
 
-      const cost = await calculateBaseCost(
-        "player-1",
-        "roster-1",
-        2026,
-        {
-          undraftedRound: 8,
-          minimumRound: 1,
-          costReductionPerYear: 1,
-        } as any
-      );
+      return calculateBaseCost("player-1", "roster-1", targetSeason, waiverSettings);
+    }
 
-      // Undrafted R8, claimed in 2025, kept for 2026: one season held = R7.
-      expect(cost).toBe(7);
+    it("charges the flat undrafted round the first time a waiver pickup is kept", async () => {
+      // Kyle Monangai: claimed off waivers during the 2025 season, kept for the
+      // 2026 draft for the first time. undraftedRound IS that first-keep price,
+      // so nothing has escalated yet.
+      expect(await waiverCost(2025, "2025-10-01", 2026)).toBe(8);
+    });
+
+    it("prices a waiver pickup the same whether he was claimed in-season or in the offseason", async () => {
+      // Same player, same first keeper draft, never kept before. Before the
+      // fix the in-season claim was charged a season of escalation it had not
+      // earned and came out a round more expensive than the offseason one.
+      const inSeason = await waiverCost(2025, "2025-12-02", 2026);
+      const offseason = await waiverCost(2026, "2026-03-15", 2026);
+      expect(inSeason).toBe(offseason);
+      expect(inSeason).toBe(8);
+    });
+
+    it("escalates a waiver pickup from the draft after his first keeper year", async () => {
+      // Claimed 2025, kept at R8 in 2026, kept again for the 2027 draft = R7.
+      expect(await waiverCost(2025, "2025-10-01", 2027)).toBe(7);
+      expect(await waiverCost(2025, "2025-10-01", 2028)).toBe(6);
+    });
+
+    /** Price a claim that carries the previous owner's draft round. */
+    async function claimWithInheritedRound(
+      claimSeason: number,
+      draftRound: number,
+      draftSeason: number,
+      targetSeason: number
+    ): Promise<number> {
+      vi.mocked(prisma.roster.findUnique).mockResolvedValue({
+        id: "roster-1",
+        sleeperId: "sleeper-roster-1",
+        leagueId: "league-1",
+      } as any);
+
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
+        playerId: "player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.FREE_AGENT,
+        acquisitionDate: new Date(`${claimSeason}-09-16`),
+        season: claimSeason,
+        originalDraftRound: draftRound,
+        originalDraftSeason: draftSeason,
+        isPreDeadline: true,
+        baseCostOverride: null,
+      } as any);
+
+      return calculateBaseCost("player-1", "roster-1", targetSeason, waiverSettings);
+    }
+
+    it("keeps the draft round when a player is dropped and re-added the same season", async () => {
+      // Drafted R7 in 2025, dropped, claimed back that same season: the
+      // contract survives the round trip, so he prices exactly like any other
+      // R7 pick from 2025 — a 6th for the 2026 draft.
+      expect(await claimWithInheritedRound(2025, 7, 2025, 2026)).toBe(6);
+    });
+
+    it("drops the draft round when a player is re-added in a later season", async () => {
+      // Caleb Williams: drafted R7 by someone in 2024, claimed off free agency
+      // in 2025. The season turned over, so he is back in the pool like anyone
+      // else and costs the flat undrafted round the first time he is kept.
+      expect(await claimWithInheritedRound(2025, 7, 2024, 2026)).toBe(8);
+    });
+
+    it("still carries a draft round across seasons through a trade", async () => {
+      // Only a claim resets it. George Pickens: drafted R6 in 2023, traded in
+      // 2024, still a 4th for the 2025 draft — two seasons off his 2023 clock.
+      vi.mocked(prisma.roster.findUnique).mockResolvedValue({
+        id: "roster-1",
+        sleeperId: "sleeper-roster-1",
+        leagueId: "league-1",
+      } as any);
+      vi.mocked(prisma.playerAcquisition.findFirst).mockResolvedValue({
+        id: "acq-1",
+        playerId: "player-1",
+        ownerSleeperId: "sleeper-roster-1",
+        acquisitionType: AcquisitionType.TRADE,
+        acquisitionDate: new Date("2024-08-19"),
+        season: 2024,
+        originalDraftRound: 6,
+        originalDraftSeason: 2023,
+        isPreDeadline: true,
+        baseCostOverride: null,
+      } as any);
+
+      expect(
+        await calculateBaseCost("player-1", "roster-1", 2025, waiverSettings)
+      ).toBe(4);
     });
 
     it("respects minimum round floor", async () => {

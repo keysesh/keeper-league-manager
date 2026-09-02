@@ -6,9 +6,20 @@ import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
 // TYPES
 // ============================================
 
+/**
+ * What a keeper's price counts down from. The three cases read very differently
+ * to a manager, so the UI must be able to tell them apart rather than showing a
+ * bare round number: a real draft round is history he can verify, the flat
+ * undrafted round is a rule, and an override is a commissioner decision.
+ */
+export type KeeperPriceBasis = "DRAFT_ROUND" | "UNDRAFTED" | "OVERRIDE";
+
 export interface KeeperCostResult {
   baseCost: number; // Original draft round (or R8 for undrafted)
   effectiveCost: number; // What he costs THIS draft: max(1, baseCost - seasons held)
+  /** Whether baseCost is a draft round he was actually taken at, the flat
+   *  undrafted round, or a commissioner override. */
+  priceBasis: KeeperPriceBasis;
   yearsKept: number; // Display value (1-indexed): how many times kept including this one
   originalDraftRound: number | null;
   originalDraftSeason: number | null;
@@ -27,6 +38,8 @@ export interface KeeperEligibilityResult {
 
 interface AcquisitionRecord {
   acquisitionType: AcquisitionType;
+  /** The season the player was acquired in, to judge same-season re-adds. */
+  season: number;
   originalDraftRound: number | null;
   originalDraftSeason: number | null;
   isPreDeadline: boolean | null;
@@ -66,7 +79,7 @@ export async function computeKeeperCost(
   if (!acquisition) {
     // No acquisition record — treat as waiver pickup
     return buildCostResult(
-      { acquisitionType: AcquisitionType.WAIVER, originalDraftRound: null, originalDraftSeason: null, isPreDeadline: null, baseCostOverride: null },
+      { acquisitionType: AcquisitionType.WAIVER, season: targetSeason, originalDraftRound: null, originalDraftSeason: null, isPreDeadline: null, baseCostOverride: null },
       1,
       undraftedRound,
       minRound,
@@ -86,6 +99,7 @@ export async function computeKeeperCost(
   return buildCostResult(
     {
       acquisitionType: acquisition.acquisitionType,
+      season: acquisition.season,
       originalDraftRound: acquisition.originalDraftRound,
       originalDraftSeason: acquisition.originalDraftSeason,
       isPreDeadline: acquisition.isPreDeadline,
@@ -157,7 +171,7 @@ export async function batchComputeKeeperCosts(
       results.set(
         playerId,
         buildCostResult(
-          { acquisitionType: AcquisitionType.WAIVER, originalDraftRound: null, originalDraftSeason: null, isPreDeadline: null, baseCostOverride: null },
+          { acquisitionType: AcquisitionType.WAIVER, season: targetSeason, originalDraftRound: null, originalDraftSeason: null, isPreDeadline: null, baseCostOverride: null },
           1,
           undraftedRound,
           minRound,
@@ -181,6 +195,7 @@ export async function batchComputeKeeperCosts(
       buildCostResult(
         {
           acquisitionType: acq.acquisitionType,
+          season: acq.season,
           originalDraftRound: acq.originalDraftRound,
           originalDraftSeason: acq.originalDraftSeason,
           isPreDeadline: acq.isPreDeadline,
@@ -355,6 +370,9 @@ function buildCostResult(
    * Verified against the commissioner's own 2026 keeper slots in Sleeper
    * (Skattebo R9->8, Hurts R13->12, Irving R14->13, McBride R15->14,
    * Marks R16->15, Javonte traded in R10->9, Chase Brown R7->6).
+   *
+   * A player with no draft round burns one of these seasons reaching his first
+   * keeper draft, where he costs the flat undraftedRound — see below.
    */
   seasonsHeld: number
 ): KeeperCostResult {
@@ -364,6 +382,7 @@ function buildCostResult(
     return {
       baseCost: acq.baseCostOverride,
       effectiveCost,
+      priceBasis: "OVERRIDE",
       yearsKept,
       originalDraftRound: acq.originalDraftRound,
       originalDraftSeason: acq.originalDraftSeason,
@@ -379,21 +398,46 @@ function buildCostResult(
   let startingCost: number;
   let costSource: string;
 
-  if (acq.originalDraftRound != null) {
-    startingCost = acq.originalDraftRound;
+  // How many drafts have passed since startingCost was this player's price.
+  let yearsImprovement: number;
+
+  // A waiver or free-agent claim only carries the player's draft round when he
+  // was dropped and re-added inside the SAME season: the contract survives a
+  // same-season round trip. Once a season has turned over he is back in the
+  // pool like anyone else and costs the flat undraftedRound, however early he
+  // once went. A TRADE is different — it carries the contract across seasons,
+  // which is why Pickens kept his R6 clock from 2023 (see keeperClockSeason).
+  const isClaim =
+    acq.acquisitionType === AcquisitionType.WAIVER ||
+    acq.acquisitionType === AcquisitionType.FREE_AGENT;
+  const inheritedRound =
+    isClaim && acq.originalDraftSeason !== acq.season
+      ? null
+      : acq.originalDraftRound;
+
+  if (inheritedRound != null) {
+    startingCost = inheritedRound;
     costSource =
       acq.acquisitionType === AcquisitionType.DRAFTED
         ? `Drafted R${startingCost}`
         : acq.acquisitionType === AcquisitionType.TRADE
           ? `Trade (inherited R${startingCost})`
           : `Waiver (inherited R${startingCost})`;
+    // The round was paid AT a draft, so the next draft is already one up.
+    yearsImprovement = seasonsHeld;
   } else {
-    // No original draft round — waiver/FA pickup
+    // No draft round to price off — waiver/FA pickup. undraftedRound is not a round
+    // anyone ever paid: it is the price at the FIRST draft after the claim, the
+    // league's "waiver pickups cost R8". Escalation therefore starts at the
+    // draft AFTER that one. Charging seasonsHeld here instead priced the same
+    // never-kept player by the date of his claim — a player grabbed in-season
+    // (season N) cost R7 at the season N+1 draft while an identical claim made
+    // in the offseason (season N+1) cost the advertised R8.
     startingCost = undraftedRound;
     costSource = `Waiver/FA R${undraftedRound}`;
+    yearsImprovement = Math.max(0, seasonsHeld - 1);
   }
 
-  const yearsImprovement = seasonsHeld;
   const effectiveCost = Math.max(minRound, startingCost - yearsImprovement);
 
   let costBreakdown: string;
@@ -406,6 +450,7 @@ function buildCostResult(
   return {
     baseCost: startingCost,
     effectiveCost,
+    priceBasis: inheritedRound != null ? "DRAFT_ROUND" : "UNDRAFTED",
     yearsKept,
     originalDraftRound: acq.originalDraftRound,
     originalDraftSeason: acq.originalDraftSeason,

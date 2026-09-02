@@ -218,8 +218,13 @@ export async function POST(request: NextRequest) {
       // Calculate base cost
       const baseCost = origin.draftRound ?? undraftedRound;
 
-      // Apply cost reduction
-      const newFinalCost = Math.max(minRound, baseCost - yearsOnRoster);
+      // Apply cost reduction. undraftedRound is the price at a player's FIRST
+      // keeper draft rather than a round paid at a past one, so its escalation
+      // clock starts a draft later — mirrors buildCostResult() in
+      // lib/keeper/cost.ts, which is the source of truth.
+      const seasonsToCharge =
+        origin.draftRound != null ? yearsOnRoster : Math.max(0, yearsOnRoster - 1);
+      const newFinalCost = Math.max(minRound, baseCost - seasonsToCharge);
 
       if (newFinalCost !== keeper.finalCost) {
         await prisma.keeper.update({
