@@ -14,7 +14,8 @@ import {
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
-import { PlayerAvatar } from "@/components/players/PlayerAvatar";
+import { PlayerCutout } from "@/components/players/PlayerCutout";
+import { teamWash } from "@/lib/design/identity";
 import { RefreshFromSleeper } from "@/components/ui/RefreshFromSleeper";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { CostTrajectory } from "@/components/ui/CostTrajectory";
@@ -459,29 +460,37 @@ export function KeeperWorkspace({
         key={p.player.id}
         onClick={() => setSheetPlayerId(p.player.id)}
         className={cn(
-          "w-full flex items-center gap-3 px-[13px] py-3 text-left transition-colors duration-150 hover:bg-[#111822]",
+          "w-full grid grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/[0.04]",
           !selectable && "opacity-60"
         )}
+        // A selected keeper is lit by his NFL club; a candidate stays neutral,
+        // so the list reads "these six are mine" before any text is parsed.
+        style={isKeeper ? { background: teamWash(p.player.team, 0.4) } : undefined}
       >
-        <PlayerAvatar sleeperId={p.player.sleeperId} name={p.player.fullName} size="sm" />
-        <span className="flex-1 min-w-0">
+        <PlayerCutout
+          sleeperId={p.player.sleeperId}
+          name={p.player.fullName}
+          team={p.player.team}
+          size={46}
+        />
+        <span className="min-w-0">
           <span className="flex items-center gap-1.5">
-            <span className="text-[13.5px] font-medium text-slate-50 truncate">
+            <span className="truncate text-[14px] font-semibold tracking-[-0.015em] text-slate-50">
               {p.player.fullName}
             </span>
             {isTag && (
-              <span className="font-mono text-[8.5px] font-semibold px-1 py-px rounded-[3px] bg-amber-500/15 text-amber-400 border border-amber-500/[0.22] shrink-0">
+              <span className="shrink-0 rounded-[3px] border border-amber-500/[0.22] bg-amber-500/15 px-1 py-px font-mono text-[8.5px] font-semibold text-amber-400">
                 TAG
               </span>
             )}
             {p.player.injuryStatus && (
-              <AlertTriangle size={11} className="text-rose-400 shrink-0" />
+              <AlertTriangle size={11} className="shrink-0 text-rose-400" />
             )}
           </span>
-          <span className="flex items-center gap-1.5 mt-1.5">
+          <span className="mt-1 flex items-center gap-1.5">
             <span
               className={cn(
-                "px-1.5 py-px rounded text-[9px] font-semibold border",
+                "rounded border px-1.5 py-px text-[9px] font-semibold",
                 pos.bg,
                 pos.text,
                 pos.border
@@ -489,6 +498,9 @@ export function KeeperWorkspace({
             >
               {p.player.position || "?"}
             </span>
+            {p.player.team && (
+              <span className="text-[10px] font-medium text-slate-500">{p.player.team}</span>
+            )}
             {price > 0 && (
               <CostTrajectory
                 trajectory={trajectoryFor(price, p.eligibility.yearsKept, maxYears, data.season, isTag)}
@@ -498,36 +510,50 @@ export function KeeperWorkspace({
                 compact
               />
             )}
-            {slotDiffers && (
-              <span
-                className="font-mono text-[9px] font-semibold px-1 py-px rounded bg-amber-500/[0.12] text-amber-400 border border-amber-500/[0.25] shrink-0"
-                title={`Costs a round ${price}, but you already have a keeper there — this one takes your round ${slot} pick`}
-              >
-                ⤴ slot R{slot}
-              </span>
-            )}
             {!selectable && p.eligibility.reason && (
-              <span className="text-[10px] text-slate-600 truncate">{p.eligibility.reason}</span>
+              <span className="truncate text-[10px] text-slate-600">{p.eligibility.reason}</span>
             )}
           </span>
         </span>
-        <span className="text-right shrink-0">
-          <span
-            className={cn(
-              "block font-mono text-[15px] font-semibold",
-              surplus === null
-                ? "text-slate-500"
-                : surplus > 2
-                  ? "text-emerald-400"
-                  : surplus < -2
-                    ? "text-rose-400"
-                    : "text-slate-300"
+        <span className="flex shrink-0 flex-col items-end gap-0.5">
+          <span className="flex items-baseline gap-1.5">
+            {slotDiffers && (
+              // The price did not move — the cascade only slid which pick pays
+              // it. Struck-through so the two numbers cannot be read as one.
+              <span
+                className="font-numeral text-[15px] leading-none text-slate-600 line-through"
+                title={`Costs a round ${price}, but you already have a keeper there — this one takes your round ${slot} pick`}
+              >
+                R{price}
+              </span>
             )}
-          >
-            {surplus === null ? "—" : surplus > 0 ? `+${surplus}` : `${surplus}`}
+            <span
+              className={cn(
+                "font-numeral text-[26px] leading-none",
+                slotDiffers ? "text-amber-300" : "text-slate-50"
+              )}
+            >
+              R{slotDiffers ? slot : price || "—"}
+            </span>
           </span>
-          <span className="block font-mono text-[10px] text-slate-500 mt-0.5">
-            {market ? `mkt R${market}` : "no est"}
+          <span className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "font-mono text-[10px] font-semibold",
+                surplus === null
+                  ? "text-slate-600"
+                  : surplus > 2
+                    ? "text-emerald-400"
+                    : surplus < -2
+                      ? "text-rose-400"
+                      : "text-slate-400"
+              )}
+            >
+              {surplus === null ? "—" : surplus > 0 ? `+${surplus}` : `${surplus}`}
+            </span>
+            <span className="font-mono text-[10px] text-slate-600">
+              {market ? `mkt R${market}` : "no est"}
+            </span>
           </span>
         </span>
       </button>

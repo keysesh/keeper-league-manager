@@ -179,6 +179,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist);
   --font-mono: var(--font-mono);
+  /* font-numeral — round numbers only, never prose. See layout.tsx. */
+  --font-numeral: var(--font-anton), Impact, Haettenschweiler, sans-serif;
 }
 
 /* ============================================
