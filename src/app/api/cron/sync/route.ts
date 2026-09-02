@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { syncLeague } from "@/lib/sleeper/sync";
 import { rebuildAcquisitionChainIfChanged, type ChainRebuildResult } from "@/lib/sleeper/acquisition-chain-gate";
 import { resyncKeeperBaseCosts, type ResyncResult } from "@/lib/keeper/resync-base-costs";
+import { fetchReceptionPoints, syncAdp, type AdpSyncResult } from "@/lib/keeper/adp-sync";
 import { getPlanningSeasonForLeague } from "@/lib/keeper/planning-season-db";
 import { logger } from "@/lib/logger";
 
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         sleeperId: true,
+        totalRosters: true,
         name: true,
         season: true,
         status: true,
@@ -53,6 +55,7 @@ export async function GET(request: NextRequest) {
       transactionsSynced: 0,
       acquisitionChain: null as null | (ChainRebuildResult & { ms: number }),
       keeperCosts: null as null | (ResyncResult & { ms: number }),
+      adp: null as null | (AdpSyncResult & { ms: number }),
       errors: [] as string[],
     };
 
@@ -128,6 +131,23 @@ export async function GET(request: NextRequest) {
         const errorMsg = `Failed to re-derive keeper costs for ${liveLeague.name}: ${err instanceof Error ? err.message : err}`;
         results.errors.push(errorMsg);
         logger.error("Cron keeper cost resync failed", err, { leagueId: liveLeague.id, ms: Date.now() - startedAt });
+      }
+    }
+
+    // Real-world ADP. Independent of the chain — it describes the market, not
+    // this league — so it runs whether or not the rebuild succeeded, and a
+    // failure is recorded rather than thrown: stale ADP is a much better
+    // answer than none, and the previous values stay untouched on error.
+    if (liveLeague) {
+      const startedAt = Date.now();
+      try {
+        const rec = await fetchReceptionPoints(liveLeague.sleeperId);
+        const adp = await syncAdp(liveLeague.totalRosters, rec, liveLeague.season);
+        results.adp = { ...adp, ms: Date.now() - startedAt };
+      } catch (err) {
+        const errorMsg = `Failed to sync ADP: ${err instanceof Error ? err.message : err}`;
+        results.errors.push(errorMsg);
+        logger.error("Cron ADP sync failed", err, { ms: Date.now() - startedAt });
       }
     }
 

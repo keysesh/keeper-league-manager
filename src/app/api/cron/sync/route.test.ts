@@ -10,6 +10,10 @@ const mocks = vi.hoisted(() => {
     syncUserLeagues: vi.fn(),
     resyncKeeperBaseCosts: vi.fn(),
     getPlanningSeasonForLeague: vi.fn(),
+    // ADP reaches a third-party API. Unmocked, every cron test made a real
+    // network call and the run's error list filled with HTTP failures.
+    syncAdp: vi.fn(),
+    fetchReceptionPoints: vi.fn(),
   };
 });
 
@@ -31,6 +35,11 @@ vi.mock("@/lib/sleeper/acquisition-chain-gate", () => ({
 
 vi.mock("@/lib/keeper/resync-base-costs", () => ({
   resyncKeeperBaseCosts: mocks.resyncKeeperBaseCosts,
+}));
+
+vi.mock("@/lib/keeper/adp-sync", () => ({
+  syncAdp: mocks.syncAdp,
+  fetchReceptionPoints: mocks.fetchReceptionPoints,
 }));
 
 vi.mock("@/lib/keeper/planning-season-db", () => ({
@@ -72,6 +81,11 @@ beforeEach(() => {
   mocks.getPlanningSeasonForLeague.mockResolvedValue(2026);
   mocks.resyncKeeperBaseCosts.mockResolvedValue({
     leagueId: "l-2026", season: 2026, changes: [], written: 0, cascadeErrors: [],
+  });
+  mocks.fetchReceptionPoints.mockResolvedValue(1);
+  mocks.syncAdp.mockResolvedValue({
+    format: "PPR", totalDrafts: 8007, window: "2026-08-26..2026-09-02",
+    fetched: 264, matched: 259, written: 0,
   });
 });
 
@@ -191,5 +205,34 @@ describe("GET /api/cron/sync", () => {
     expect(mocks.resyncKeeperBaseCosts).not.toHaveBeenCalled();
     expect(body.acquisitionChain).toBeNull();
     expect(body.keeperCosts).toBeNull();
+  });
+});
+
+describe("GET /api/cron/sync — ADP", () => {
+  it("records an ADP failure without failing the run or blanking the market", async () => {
+    // Third-party API. When it is down the previous ADP has to stand: an
+    // exception here would abort the cron, and a "successful" empty sync would
+    // silently re-price every keeper in the league as undrafted.
+    mocks.syncAdp.mockRejectedValue(new Error("HTTP 503"));
+
+    const res = await GET(makeRequest("Bearer cron-test-secret"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.adp).toBeNull();
+    expect(body.errors).toEqual([expect.stringContaining("HTTP 503")]);
+  });
+
+  it("runs even when the acquisition chain rebuild failed", async () => {
+    // ADP describes the market, not this league, so it does not depend on the
+    // chain the way the keeper-cost resync does.
+    mocks.rebuildAcquisitionChainIfChanged.mockRejectedValue(new Error("chain exploded"));
+
+    const res = await GET(makeRequest("Bearer cron-test-secret"));
+    const body = await res.json();
+
+    expect(mocks.syncAdp).toHaveBeenCalled();
+    expect(body.adp).toMatchObject({ format: "PPR", matched: 259 });
   });
 });

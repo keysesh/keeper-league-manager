@@ -1,10 +1,18 @@
 import { prisma } from "@/lib/prisma";
+import { pickToRound } from "./adp";
 
 /**
- * Estimated market draft round per player.
+ * Market draft round per player.
  *
- * The league has no external market feed (ADP and ECR are unpopulated in
- * production), so the market round is derived from last season's scoring:
+ * Real ADP first: Player.adp holds the average pick across thousands of real
+ * drafts run this week (see adp-sync.ts), which is what a player actually
+ * costs in the world. A pick number becomes a round using THIS league's team
+ * count, because pick 11 is a second-rounder in a ten-team league and a
+ * first-rounder in a twelve.
+ *
+ * Where no ADP exists — a player nobody in the sample drafted — the old
+ * estimate stands as the fallback, and it is only ever a fallback now. It is
+ * derived from last season's scoring:
  * value-over-replacement within each position, ranked into rounds of
  * `totalRosters` picks. It's an estimate and every surface that shows it
  * must say so — but it is deterministic, league-shaped (positional
@@ -60,5 +68,16 @@ export async function estimateMarketRounds(
   ranked.forEach((p, idx) => {
     rounds.set(p.id, Math.min(draftRounds, Math.floor(idx / totalRosters) + 1));
   });
+
+  // Real ADP overrides the estimate wherever it exists. Applied last so a
+  // player who has both keeps the number the world actually drafted him at.
+  const drafted = await prisma.player.findMany({
+    where: { adp: { not: null, gt: 0 } },
+    select: { id: true, adp: true },
+  });
+  for (const p of drafted) {
+    rounds.set(p.id, pickToRound(p.adp!, totalRosters, draftRounds));
+  }
+
   return rounds;
 }
