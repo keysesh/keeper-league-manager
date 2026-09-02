@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { getLeagueChain } from "@/lib/services/league-chain";
@@ -22,9 +23,15 @@ export interface ChainRebuildResult {
  * it when a draft pick, transaction, or draft correction actually changed.
  */
 export async function acquisitionChainFingerprint(leagueIds: string[]): Promise<string> {
-  const [drafts, picks, txPlayers, corrections, latestTx] = await Promise.all([
+  const [drafts, pickRows, txPlayers, corrections, latestTx] = await Promise.all([
     prisma.draft.count({ where: { leagueId: { in: leagueIds } } }),
-    prisma.draftPick.count({ where: { draft: { leagueId: { in: leagueIds } } } }),
+    // Content, not just a count: a commissioner can move a keeper to a
+    // different slot or swap which player holds it without changing how many
+    // picks exist, and a count-only fingerprint skips the rebuild.
+    prisma.draftPick.findMany({
+      where: { draft: { leagueId: { in: leagueIds } } },
+      select: { draftId: true, round: true, draftSlot: true, playerId: true, isKeeper: true },
+    }),
     prisma.transactionPlayer.count({ where: { transaction: { leagueId: { in: leagueIds } } } }),
     prisma.draftCorrection.count(),
     prisma.transaction.aggregate({
@@ -32,11 +39,21 @@ export async function acquisitionChainFingerprint(leagueIds: string[]): Promise<
       where: { leagueId: { in: leagueIds } },
     }),
   ]);
+  const picksSignature = createHash("sha1")
+    .update(
+      pickRows
+        .map((r) => `${r.draftId}:${r.round}:${r.draftSlot}:${r.playerId ?? "-"}:${r.isKeeper ? 1 : 0}`)
+        .sort()
+        .join("|")
+    )
+    .digest("hex")
+    .slice(0, 12);
+
   return [
     `replay:${ACQUISITION_REPLAY_VERSION}`,
     `leagues:${leagueIds.length}`,
     `drafts:${drafts}`,
-    `picks:${picks}`,
+    `picks:${pickRows.length}/${picksSignature}`,
     `tx:${txPlayers}`,
     `corr:${corrections}`,
     `lastTx:${latestTx._max.createdAt?.toISOString() ?? "-"}`,

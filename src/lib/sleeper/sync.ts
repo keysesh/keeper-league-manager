@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma, AcquisitionType, DispositionType } from "@prisma/client";
+import { Prisma, AcquisitionType, DispositionType, DraftStatus } from "@prisma/client";
 import { SleeperClient } from "./client";
 import { SleeperLeague } from "./types";
 import {
@@ -479,6 +479,38 @@ async function syncDraft(
     });
 
     pickCount++;
+  }
+
+  // Sleeper owns a draft that has not finished. Commissioners clear and
+  // re-enter keeper slots right up to draft day, and upserting alone left the
+  // old rows behind: a clear-down from 39 keeper slots to 2 on 2026-09-01 left
+  // all 39 in the database. Those rows feed the acquisition chain and the cost
+  // engine, so a stale slot silently prices a keeper.
+  //
+  // A COMPLETE draft is frozen history and is never pruned.
+  if (mapSleeperDraftStatus(draftData.status) !== DraftStatus.COMPLETE) {
+    const stillInSleeper = picks.map((pk) => ({
+      round: pk.round,
+      draftSlot: pk.draft_slot,
+    }));
+    const { count: removed } = await prisma.draftPick.deleteMany({
+      where: {
+        draftId: draft.id,
+        ...(stillInSleeper.length > 0 ? { NOT: { OR: stillInSleeper } } : {}),
+      },
+    });
+    if (removed > 0) {
+      const message =
+        stillInSleeper.length === 0
+          ? "Removed every draft pick: Sleeper now reports none for this draft"
+          : "Removed draft picks Sleeper no longer has";
+      logger.info(message, {
+        draftId: draftData.draft_id,
+        season: draftData.season,
+        removed,
+        remaining: stillInSleeper.length,
+      });
+    }
   }
 
   return pickCount;

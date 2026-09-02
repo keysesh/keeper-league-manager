@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     draft: { count: vi.fn() },
-    draftPick: { count: vi.fn() },
+    draftPick: { findMany: vi.fn() },
     transactionPlayer: { count: vi.fn() },
     draftCorrection: { count: vi.fn() },
     transaction: { aggregate: vi.fn() },
@@ -36,7 +36,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.getLeagueChain.mockResolvedValue(["l-2026", "l-2025", "l-2024", "l-2023"]);
   mockFn(prisma.draft.count).mockResolvedValue(7);
-  mockFn(prisma.draftPick.count).mockResolvedValue(651);
+  mockFn(prisma.draftPick.findMany).mockResolvedValue(
+    Array.from({ length: 651 }, (_, i) => ({
+      draftId: "d1", round: (i % 16) + 1, draftSlot: (i % 10) + 1, playerId: `p${i}`, isKeeper: false,
+    }))
+  );
   mockFn(prisma.transactionPlayer.count).mockResolvedValue(2210);
   mockFn(prisma.draftCorrection.count).mockResolvedValue(3);
   mockFn(prisma.transaction.aggregate).mockResolvedValue({ _max: { createdAt: LAST_TX } });
@@ -48,10 +52,12 @@ beforeEach(() => {
 describe("acquisitionChainFingerprint", () => {
   it("summarises every input the chain is derived from, scoped to the league chain", async () => {
     const fp = await acquisitionChainFingerprint(["l-2026", "l-2025"]);
-    expect(fp).toBe("replay:3|leagues:2|drafts:7|picks:651|tx:2210|corr:3|lastTx:2026-08-29T15:00:00.000Z");
-    expect(prisma.draftPick.count).toHaveBeenCalledWith({
-      where: { draft: { leagueId: { in: ["l-2026", "l-2025"] } } },
-    });
+    expect(fp).toMatch(
+      /^replay:3\|leagues:2\|drafts:7\|picks:651\/[0-9a-f]{12}\|tx:2210\|corr:3\|lastTx:2026-08-29T15:00:00\.000Z$/
+    );
+    expect(prisma.draftPick.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { draft: { leagueId: { in: ["l-2026", "l-2025"] } } } })
+    );
     expect(prisma.transactionPlayer.count).toHaveBeenCalledWith({
       where: { transaction: { leagueId: { in: ["l-2026", "l-2025"] } } },
     });
@@ -63,6 +69,32 @@ describe("acquisitionChainFingerprint", () => {
     mockFn(prisma.transaction.aggregate).mockResolvedValue({ _max: { createdAt: new Date("2026-09-02T01:00:00Z") } });
     const after = await acquisitionChainFingerprint(["l-2026"]);
     expect(after).not.toBe(before);
+  });
+
+  it("REGRESSION: changes when a keeper moves slots, with the pick COUNT unchanged", async () => {
+    // A commissioner reassigning a keeper to a different round leaves the pick
+    // count identical. A count-only fingerprint skipped the rebuild entirely.
+    const before = await acquisitionChainFingerprint(["l-2026"]);
+    mockFn(prisma.draftPick.findMany).mockResolvedValue(
+      Array.from({ length: 651 }, (_, i) => ({
+        draftId: "d1",
+        round: i === 0 ? 9 : (i % 16) + 1, // one keeper moved to a different round
+        draftSlot: (i % 10) + 1,
+        playerId: `p${i}`,
+        isKeeper: false,
+      }))
+    );
+    const after = await acquisitionChainFingerprint(["l-2026"]);
+    expect(after).not.toBe(before);
+  });
+
+  it("is stable when the same picks come back in a different order", async () => {
+    const before = await acquisitionChainFingerprint(["l-2026"]);
+    const rows = Array.from({ length: 651 }, (_, i) => ({
+      draftId: "d1", round: (i % 16) + 1, draftSlot: (i % 10) + 1, playerId: `p${i}`, isKeeper: false,
+    }));
+    mockFn(prisma.draftPick.findMany).mockResolvedValue([...rows].reverse());
+    expect(await acquisitionChainFingerprint(["l-2026"])).toBe(before);
   });
 });
 
