@@ -8,21 +8,22 @@ import {
   History,
   TrendingUp,
   AlertTriangle,
-  Info,
   X,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { PlayerCutout } from "@/components/players/PlayerCutout";
-import { teamWash } from "@/lib/design/identity";
+import {
+  managerAvatarUrl,
+  managerHue,
+  managerInitials,
+  teamWash,
+} from "@/lib/design/identity";
 import { RefreshFromSleeper } from "@/components/ui/RefreshFromSleeper";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { CostTrajectory } from "@/components/ui/CostTrajectory";
 import {
-  ScreenHeader,
-  SectionLabel,
-  listCard,
   featureCard,
 } from "@/components/league-screens";
 import { cn, getPositionClasses } from "@/lib/design-tokens";
@@ -55,6 +56,12 @@ interface KeeperWorkspaceProps {
   sleeperLeagueId: string;
   leagueName: string;
   teamName: string;
+  /** Sleeper user id of the roster's owner — the key its hue is assigned to. */
+  ownerSleeperId?: string | null;
+  /** Their uploaded Sleeper avatar, or null: two of ten never set one. */
+  ownerAvatarId?: string | null;
+  /** Every owner in the league; a hue is a position among all of them. */
+  leagueOwnerIds?: string[];
 }
 
 /** Surplus in pick points: market pick value − keeper cost pick value. */
@@ -104,6 +111,9 @@ export function KeeperWorkspace({
   sleeperLeagueId,
   leagueName,
   teamName,
+  ownerSleeperId,
+  ownerAvatarId,
+  leagueOwnerIds,
 }: KeeperWorkspaceProps) {
   const { success, error: showError } = useToast();
   const [historyPlayerId, setHistoryPlayerId] = useState<string | null>(null);
@@ -341,6 +351,9 @@ export function KeeperWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKeepers, data?.marketRounds, rosterCascade]);
 
+  const ownerHue = managerHue(ownerSleeperId ?? "", leagueOwnerIds ?? []);
+  const ownerAvatar = managerAvatarUrl(ownerAvatarId);
+
   const myRank = economics?.teams.find((t) => t.rosterId === rosterId)?.rank;
   const teamCount = economics?.teams.length ?? 0;
 
@@ -561,23 +574,54 @@ export function KeeperWorkspace({
   };
 
   return (
-    <div className="space-y-4">
-      <ScreenHeader
-        title="My Keepers"
-        subtitle={`${teamName} · ${data.currentKeepers.total} of ${data.limits.maxKeepers} slots used`}
-        right={
-          <RefreshFromSleeper
-            leagueId={leagueId}
-            compact
-            className="flex-shrink-0"
-            onRefreshed={() => {
-              mutate();
-              mutateCascade();
-              mutateVerification();
-            }}
-          />
-        }
-      />
+    <div className="space-y-6">
+      {/* The manager is the header. "My Keepers" over a grey subtitle told the
+          reader nothing they did not know; their own team name, in their own
+          colour, is the only thing on this screen that is theirs. */}
+      <div className="flex items-center gap-3">
+        <span
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+          style={{ boxShadow: `0 0 0 2px ${ownerHue}` }}
+        >
+          {ownerAvatar ? (
+            /* Sleeper avatars are already 80px thumbs — routing them through
+               the optimiser costs more than it saves. */
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={ownerAvatar}
+              alt=""
+              width={44}
+              height={44}
+              className="h-11 w-11 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              className="font-numeral text-[15px] leading-none"
+              style={{ color: ownerHue }}
+            >
+              {managerInitials(teamName)}
+            </span>
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-[22px] font-bold leading-tight tracking-[-0.03em] text-slate-50">
+            {teamName}
+          </h1>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: ownerHue }}>
+            {data.currentKeepers.total} of {data.limits.maxKeepers} kept
+          </p>
+        </div>
+        <RefreshFromSleeper
+          leagueId={leagueId}
+          compact
+          className="flex-shrink-0"
+          onRefreshed={() => {
+            mutate();
+            mutateCascade();
+            mutateVerification();
+          }}
+        />
+      </div>
 
       {/* Changes since the user's last planning visit */}
       {planChanges.length > 0 && (
@@ -693,25 +737,28 @@ export function KeeperWorkspace({
       <PlanningTray data={data} cascadeResults={rosterCascade?.results} />
 
       <div>
-        <SectionLabel label="Roster" right="COST PATH · SURPLUS" />
-        <div className={listCard}>
+        <div className="flex items-baseline gap-2.5 mb-2.5">
+          <h2 className="text-[19px] font-semibold tracking-[-0.025em] text-slate-50">Keeping</h2>
+          <span className="font-numeral text-[19px] leading-none text-slate-600">
+            {currentKeepers.length} of {data.limits.maxKeepers}
+          </span>
+        </div>
+        <div className="space-y-1.5">
           {currentKeepers.length > 0 ? (
             currentKeepers.map((p) => keeperRow(p, true))
           ) : (
-            <p className="text-sm text-slate-500 py-4 text-center">
-              No keepers selected yet — pick from the eligible list below
+            <p className="py-5 text-sm text-slate-500">
+              Nobody kept yet. Every round is still yours to spend.
             </p>
           )}
         </div>
 
-        {/* Explanatory note */}
-        <div className="flex items-start gap-2 mt-2 px-2.5 py-2 rounded-lg bg-[#111822] border border-white/[0.06]">
-          <Info size={13} className="text-slate-500 shrink-0 mt-px" />
-          <p className="text-[10.5px] leading-[1.4] text-slate-400">
-            Chips show this year&apos;s cost and the next two years — amber outline marks the final
-            eligible year. Market rounds are estimated from last season&apos;s scoring.
-          </p>
-        </div>
+        {/* A caption, not a widget: the old bordered note read as one more
+            card in the stack, which is exactly what made the screen generic. */}
+        <p className="mt-2.5 text-[10.5px] leading-[1.45] text-slate-500">
+          Chips show this year&apos;s cost and the next two — an amber outline is the last
+          eligible year. Market rounds are estimated from last season&apos;s scoring.
+        </p>
       </div>
 
       {/* Actions */}
@@ -737,12 +784,17 @@ export function KeeperWorkspace({
 
       {/* Eligible players — the selection pool */}
       <div>
-        <SectionLabel label="Eligible players" right="COST · MKT" />
-        <div className={listCard}>
+        <div className="flex items-baseline gap-2.5 mb-2.5">
+          <h2 className="text-[19px] font-semibold tracking-[-0.025em] text-slate-50">Available</h2>
+          <span className="font-numeral text-[19px] leading-none text-slate-600">
+            {eligiblePlayers.length}
+          </span>
+        </div>
+        <div className="space-y-1.5">
           {eligiblePlayers.length > 0 ? (
             eligiblePlayers.map((p) => keeperRow(p, true))
           ) : (
-            <p className="text-sm text-slate-500 py-4 text-center">No eligible players available</p>
+            <p className="py-5 text-sm text-slate-500">No eligible players available</p>
           )}
         </div>
       </div>
@@ -756,7 +808,7 @@ export function KeeperWorkspace({
               Tap to expand
             </span>
           </summary>
-          <div className={listCard}>{ineligiblePlayers.map((p) => keeperRow(p, false))}</div>
+          <div className="space-y-1.5 pt-1">{ineligiblePlayers.map((p) => keeperRow(p, false))}</div>
         </details>
       )}
 
