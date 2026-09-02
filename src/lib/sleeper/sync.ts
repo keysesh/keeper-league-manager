@@ -1854,7 +1854,7 @@ export const STALE_ACQUISITION_MAX_FRACTION = 0.25;
  * inputs. It is part of the change-gate fingerprint, so a logic change forces
  * one rebuild instead of waiting for the next transaction.
  */
-export const ACQUISITION_REPLAY_VERSION = 3;
+export const ACQUISITION_REPLAY_VERSION = 4;
 
 /** One row of the derived PlayerAcquisition table, as the replay wants it. */
 export interface AcquisitionTarget {
@@ -2002,6 +2002,31 @@ export function replayAcquisitionEvents(input: {
     { ownerSleeperId: string; originalDraftRound: number | null; originalDraftSeason: number | null }
   >();
 
+  // The draft provenance a player is carrying, kept apart from currentAcq
+  // because it has to SURVIVE A DROP. currentAcq answers "who holds him", so a
+  // drop deletes it; this answers "what round is he carrying", which a drop
+  // does not erase. The league rule is tied to the season, not to a roster or
+  // the trade deadline: a player dropped and re-added inside the same season
+  // keeps his draft position, whoever claims him and however late it happens.
+  // Whether that round still applies is the cost engine's call — only a
+  // same-season round counts (see buildCostResult in lib/keeper/cost.ts) — so
+  // this map stays permissive and keeps the provenance for the player page.
+  const carriedRound = new Map<
+    string,
+    { originalDraftRound: number | null; originalDraftSeason: number | null }
+  >();
+
+  /** Record who holds the player and what round he carries, in both maps. */
+  const setHolder = (
+    playerId: string,
+    ownerSleeperId: string,
+    originalDraftRound: number | null,
+    originalDraftSeason: number | null
+  ): void => {
+    currentAcq.set(playerId, { ownerSleeperId, originalDraftRound, originalDraftSeason });
+    carriedRound.set(playerId, { originalDraftRound, originalDraftSeason });
+  };
+
   type ChainEvent =
     | { kind: "draft"; at: number; pick: ReplayDraftPick }
     | { kind: "tx"; at: number; tp: ReplayTransactionPlayer };
@@ -2060,11 +2085,12 @@ export function replayAcquisitionEvents(input: {
             notes: trueRound ? null : "Keeper — original round not in synced data",
           });
 
-          currentAcq.set(pick.playerId, {
-            ownerSleeperId: pick.roster.sleeperId,
-            originalDraftRound: trueRound,
-            originalDraftSeason: trueRound ? (roundInfo?.season ?? season) : null,
-          });
+          setHolder(
+            pick.playerId,
+            pick.roster.sleeperId,
+            trueRound,
+            trueRound ? (roundInfo?.season ?? season) : null
+          );
         }
         continue;
       }
@@ -2115,11 +2141,7 @@ export function replayAcquisitionEvents(input: {
         sleeperDraftId: pick.draft.sleeperId,
       });
 
-      currentAcq.set(pick.playerId, {
-        ownerSleeperId: pick.roster.sleeperId,
-        originalDraftRound: trueRound,
-        originalDraftSeason: season,
-      });
+      setHolder(pick.playerId, pick.roster.sleeperId, trueRound, season);
       continue;
     }
 
@@ -2160,11 +2182,7 @@ export function replayAcquisitionEvents(input: {
         sleeperTransactionId: tp.transaction.sleeperId,
       });
 
-      currentAcq.set(tp.playerId, {
-        ownerSleeperId: toSleeper,
-        originalDraftRound: inheritedRound,
-        originalDraftSeason: inheritedSeason,
-      });
+      setHolder(tp.playerId, toSleeper, inheritedRound, inheritedSeason);
     } else if ((txType === "WAIVER" || txType === "FREE_AGENT") && toSleeper) {
       const existing = currentAcq.get(tp.playerId);
       const postDeadline = isTradeAfterDeadline(txDate, txSeason);
@@ -2173,13 +2191,18 @@ export function replayAcquisitionEvents(input: {
         close(tp.playerId, existing.ownerSleeperId, DispositionType.DROPPED, txDate);
       }
 
-      // Before deadline: inherit from previous owner
-      let inheritedRound: number | null = null;
-      let inheritedSeason: number | null = null;
-      if (existing && !postDeadline) {
-        inheritedRound = existing.originalDraftRound;
-        inheritedSeason = existing.originalDraftSeason;
-      }
+      // A claim carries whatever round the player was carrying, from
+      // carriedRound rather than currentAcq so the round survives the drop that
+      // put him back in the pool, and with no deadline test: the rule is tied
+      // to the season. Chris Godwin, drafted R4 in 2025, dropped 19 Nov and
+      // claimed by a DIFFERENT owner on 6 Dec, is still carrying that R4.
+      // Gating this on the deadline (borrowed from the post-deadline TRADE
+      // reset, which is a real rule) and letting a drop wipe the round meant
+      // the same-season carry never once fired in production: 233 same-season
+      // drop/re-add claims, none of them carrying a round.
+      const carried = carriedRound.get(tp.playerId);
+      const inheritedRound = carried?.originalDraftRound ?? null;
+      const inheritedSeason = carried?.originalDraftSeason ?? null;
 
       emit({
         playerId: tp.playerId,
@@ -2195,13 +2218,11 @@ export function replayAcquisitionEvents(input: {
         sleeperTransactionId: tp.transaction.sleeperId,
       });
 
-      currentAcq.set(tp.playerId, {
-        ownerSleeperId: toSleeper,
-        originalDraftRound: inheritedRound,
-        originalDraftSeason: inheritedSeason,
-      });
+      setHolder(tp.playerId, toSleeper, inheritedRound, inheritedSeason);
     } else if (fromSleeper && !toSleeper) {
-      // Pure drop
+      // Pure drop. Nobody holds him, so currentAcq goes — but carriedRound
+      // deliberately stays: the round he was drafted at is what the next
+      // same-season claimant inherits.
       const existing = currentAcq.get(tp.playerId);
       if (existing) {
         close(tp.playerId, existing.ownerSleeperId, DispositionType.DROPPED, txDate);

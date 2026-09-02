@@ -179,8 +179,13 @@ describe("syncAcquisitionChain — chronological replay", () => {
       { season: 2023, owner: A, type: "DRAFTED", round: 1, disposition: "TRADED", dispositionDate: "2024-08-14", date: "2023-08-15" },
       { season: 2024, owner: B, type: "TRADE", round: 1, disposition: "TRADED", dispositionDate: "2024-10-03", date: "2024-08-14" },
       { season: 2024, owner: C, type: "TRADE", round: 1, disposition: "DROPPED", dispositionDate: "2024-12-20", date: "2024-10-03" },
-      // Post-deadline pickup: no inherited round; closed at the start of the draft where K takes him
-      { season: 2024, owner: C, type: "FREE_AGENT", round: null, disposition: "SEASON_END", dispositionDate: "2025-08-16", date: "2024-12-20" },
+      // The re-add carries the round he was drafted at as PROVENANCE — the
+      // replay no longer drops it at the deadline. It buys him nothing here:
+      // that round is from 2023 and this claim is in 2024, and only a
+      // same-season round is a live contract, so the cost engine prices him
+      // off the flat undrafted round (see calculator.test.ts, "drops the draft
+      // round when a player is re-added in a later season").
+      { season: 2024, owner: C, type: "FREE_AGENT", round: 1, disposition: "SEASON_END", dispositionDate: "2025-08-16", date: "2024-12-20" },
       { season: 2025, owner: K, type: "DRAFTED", round: 2, disposition: null, dispositionDate: null, date: "2025-08-15" },
     ]);
     // The invariant the old order violated on 153 production rows
@@ -188,6 +193,54 @@ describe("syncAcquisitionChain — chronological replay", () => {
       if (r.dispositionDate) expect(r.dispositionDate.getTime()).toBeGreaterThanOrEqual(r.acquisitionDate.getTime());
     }
     expect(result.deleted).toBe(0);
+  });
+
+  it("Godwin: a same-season re-add keeps the draft round, new owner and past the deadline", async () => {
+    // Drafted R4 in 2025 by A, dropped 19 Nov, claimed by B on 6 Dec. Both
+    // dates are past the 2025 trade deadline (11 Nov) and B never owned him
+    // before — neither matters. The rule is tied to the season: he is still
+    // carrying that R4, so B keeps him for a 3rd in 2026 rather than the flat
+    // undrafted 8th. Two bugs used to sink this: the drop deleted the round,
+    // and the claim only inherited before the deadline.
+    fixtures.draftPicks = [pick(2025, A, "godwin", 4)];
+    fixtures.transactions = [
+      tx("WAIVER", "2025-11-19T14:00:00Z", "godwin", A, null),
+      tx("FREE_AGENT", "2025-12-06T14:00:00Z", "godwin", null, B),
+    ];
+
+    await syncAcquisitionChain("L2026");
+
+    expect(rowsFor("godwin")).toEqual([
+      { season: 2025, owner: A, type: "DRAFTED", round: 4, disposition: "DROPPED", dispositionDate: "2025-11-19", date: "2025-08-15" },
+      { season: 2025, owner: B, type: "FREE_AGENT", round: 4, disposition: null, dispositionDate: null, date: "2025-12-06" },
+    ]);
+    const claim = db.rows.find((r) => r.playerId === "godwin" && r.ownerSleeperId === B)!;
+    // The season on the row is what makes the round a live contract rather
+    // than history, so the engine's same-season test can see it.
+    expect(claim.originalDraftSeason).toBe(2025);
+    expect(claim.season).toBe(2025);
+    // Still recorded as the post-deadline claim it was — the deadline is real
+    // provenance, it just does not decide whether the round carries.
+    expect(claim.isPreDeadline).toBe(false);
+  });
+
+  it("Godwin, next season: the same claim a season later carries the round as history only", async () => {
+    // Identical drop, claimed 2 Sep 2026 instead of 6 Dec 2025. The round
+    // still rides along for the player page, but originalDraftSeason (2025)
+    // no longer matches the claim season (2026), so the engine prices him at
+    // the undrafted round.
+    fixtures.draftPicks = [pick(2025, A, "godwin", 4)];
+    fixtures.transactions = [
+      tx("WAIVER", "2025-11-19T14:00:00Z", "godwin", A, null),
+      tx("FREE_AGENT", "2026-09-02T14:00:00Z", "godwin", null, B),
+    ];
+
+    await syncAcquisitionChain("L2026");
+
+    const claim = db.rows.find((r) => r.playerId === "godwin" && r.ownerSleeperId === B)!;
+    expect(claim.originalDraftRound).toBe(4);
+    expect(claim.originalDraftSeason).toBe(2025);
+    expect(claim.season).toBe(2026);
   });
 
   it("Javonte: a keeper slot after a mid-season trade does not create a placeholder", async () => {
