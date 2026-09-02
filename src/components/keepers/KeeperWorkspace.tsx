@@ -159,7 +159,7 @@ export function KeeperWorkspace({
               existingKeeper: {
                 id: `temp-${playerId}`,
                 type,
-                finalCost: costData?.finalCost || p.costs.regular?.finalCost || 1,
+                finalCost: costData?.finalCost || p.costs.regular?.price || 1,
                 isLocked: false,
               },
             }
@@ -278,9 +278,9 @@ export function KeeperWorkspace({
       (data?.players ?? [])
         .filter((p) => p.eligibility.isEligible && !p.existingKeeper)
         .sort((a, b) => {
-          const costOf = (p: EligiblePlayer) =>
-            p.costs.regular?.finalCost ?? p.costs.franchise?.finalCost ?? 99;
-          const diff = costOf(a) - costOf(b);
+          const priceOf = (p: EligiblePlayer) =>
+            p.costs.regular?.price ?? p.costs.franchise?.price ?? 99;
+          const diff = priceOf(a) - priceOf(b);
           if (diff !== 0) return diff;
           return (b.player.lastSeasonPpg ?? 0) - (a.player.lastSeasonPpg ?? 0);
         }),
@@ -294,11 +294,20 @@ export function KeeperWorkspace({
 
   const sheetEntry = data?.players.find((p) => p.player.id === sheetPlayerId) ?? null;
 
-  const liveCostOf = (p: EligiblePlayer) =>
+  /**
+   * The round this player actually occupies on the draft board: the live
+   * cascade slot once he is a keeper, falling back to his price before the
+   * cascade has an answer. Distinct from priceOf() — see EligiblePlayer.costs.
+   */
+  const liveSlotOf = (p: EligiblePlayer) =>
     rosterCascade?.results.find((r) => r.playerId === p.player.sleeperId)?.finalCost ??
     p.existingKeeper?.finalCost ??
-    p.costs.regular?.finalCost ??
+    p.costs.regular?.price ??
     1;
+
+  /** What keeping this player costs, before the cascade moves him to a slot. */
+  const priceOfPlayer = (p: EligiblePlayer) =>
+    p.costs.regular?.price ?? p.costs.franchise?.price ?? null;
 
   // Roster surplus + bargain/fair/overpay split across the selected keepers
   const surplusSummary = useMemo(() => {
@@ -307,7 +316,7 @@ export function KeeperWorkspace({
     let fair = 0;
     let overpay = 0;
     for (const p of currentKeepers) {
-      const s = surplusFor(data?.marketRounds?.[p.player.id], liveCostOf(p));
+      const s = surplusFor(data?.marketRounds?.[p.player.id], liveSlotOf(p));
       if (s === null) {
         fair++;
         continue;
@@ -421,11 +430,17 @@ export function KeeperWorkspace({
 
   const keeperRow = (p: EligiblePlayer, selectable: boolean) => {
     const isKeeper = !!p.existingKeeper;
-    const cost = isKeeper
-      ? liveCostOf(p)
-      : p.costs.regular?.finalCost ?? p.costs.franchise?.finalCost ?? 0;
+    // Two different rounds, and they are not interchangeable:
+    //   price — what the keeper rules charge for him
+    //   slot  — the pick the cascade actually spends, which slides off the
+    //           price when the roster keeps two players at the same price
+    // The trajectory escalates from the PRICE (that is what the rule moves),
+    // while surplus is judged against the SLOT (that is the pick you give up).
+    const price = priceOfPlayer(p) ?? 0;
+    const slot = isKeeper ? liveSlotOf(p) : price;
+    const slotDiffers = isKeeper && slot !== price && price > 0;
     const market = data.marketRounds?.[p.player.id];
-    const surplus = cost ? surplusFor(market, cost) : null;
+    const surplus = slot ? surplusFor(market, slot) : null;
     const isTag = p.existingKeeper?.type === "FRANCHISE";
     const pos = getPositionClasses(p.player.position || "");
 
@@ -464,14 +479,22 @@ export function KeeperWorkspace({
             >
               {p.player.position || "?"}
             </span>
-            {cost > 0 && (
+            {price > 0 && (
               <CostTrajectory
-                trajectory={trajectoryFor(cost, p.eligibility.yearsKept, maxYears, data.season, isTag)}
-                currentCost={cost}
+                trajectory={trajectoryFor(price, p.eligibility.yearsKept, maxYears, data.season, isTag)}
+                currentCost={price}
                 yearsKept={p.eligibility.yearsKept}
                 maxYears={isTag ? 99 : maxYears}
                 compact
               />
+            )}
+            {slotDiffers && (
+              <span
+                className="font-mono text-[9px] font-semibold px-1 py-px rounded bg-amber-500/[0.12] text-amber-400 border border-amber-500/[0.25] shrink-0"
+                title={`Costs a round ${price}, but you already have a keeper there — this one takes your round ${slot} pick`}
+              >
+                ⤴ slot R{slot}
+              </span>
             )}
             {!selectable && p.eligibility.reason && (
               <span className="text-[10px] text-slate-600 truncate">{p.eligibility.reason}</span>
@@ -718,8 +741,8 @@ export function KeeperWorkspace({
             p.player.fullName,
             cost
               ? {
-                  baseCost: cost.baseCost,
-                  finalCost: cost.finalCost,
+                  baseCost: cost.startingRound,
+                  finalCost: cost.price,
                   yearsKept: p.eligibility.yearsKept,
                 }
               : undefined

@@ -55,6 +55,26 @@ export function PlayerDetailSheet({
   const isRookie = player.yearsExp === 0;
   const ageInfo = getAgeInfo(player.age ?? null, player.position ?? null);
 
+  // What keeping him costs. Not the round he was drafted in, and not the slot
+  // the cascade puts him in — this sheet is where those three get told apart.
+  const cost = costs.regular ?? costs.franchise;
+  const price = cost?.price ?? null;
+  const slotDiffers =
+    isKeeper && price != null && existingKeeper.finalCost !== price;
+
+  const priceExplanation = (() => {
+    if (!cost) return null;
+    if (eligibility.priceBasis === "OVERRIDE") {
+      return `Set by the commissioner at round ${cost.startingRound}.`;
+    }
+    if (eligibility.priceBasis === "UNDRAFTED") {
+      return eligibility.originalDraft
+        ? `He went round ${eligibility.originalDraft.draftRound} back in ${eligibility.originalDraft.draftYear}, but he came back through waivers in a later season — that resets him to the league's flat round ${cost.startingRound}.`
+        : `Never drafted in this league, so he costs the flat round ${cost.startingRound} the first time he is kept.`;
+    }
+    return cost.costBreakdown;
+  })();
+
   return (
     <Sheet isOpen={isOpen} onClose={onClose}>
       {/* Player header */}
@@ -88,7 +108,8 @@ export function PlayerDetailSheet({
                 : "bg-blue-500/20 text-blue-300"
             )}
           >
-            {existingKeeper.type === "FRANCHISE" ? "Franchise" : "Keeper"} · R{existingKeeper.finalCost}
+            {existingKeeper.type === "FRANCHISE" ? "Franchise" : "Keeper"} · slot R
+            {existingKeeper.finalCost}
           </span>
         )}
       </div>
@@ -121,7 +142,7 @@ export function PlayerDetailSheet({
             value={
               eligibility.originalDraft
                 ? `'${String(eligibility.originalDraft.draftYear).slice(-2)} R${eligibility.originalDraft.draftRound}`
-                : "—"
+                : "Undrafted"
             }
           />
           <StatCell label="Acquired" value={getAcquisitionLabel(eligibility.acquisitionType)} />
@@ -139,8 +160,44 @@ export function PlayerDetailSheet({
           />
         </div>
 
-        {costs.regular && !isKeeper && (eligibility.consecutiveYears ?? 0) > 0 && (
-          <p className="text-xs text-slate-500 text-center">{costs.regular.costBreakdown}</p>
+        {/*
+          Price, and the two ways it gets mistaken for something else.
+          "Drafted" above is history — for an undrafted pickup, or a player
+          claimed back in a later season, it is NOT what he costs. And the
+          price is not the draft slot either: the cascade slides a keeper off
+          his price when the roster already has one there.
+        */}
+        {price != null && (
+          <div className="rounded-md bg-white/[0.03] border border-white/[0.06] px-3 py-2 space-y-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                Keeper price
+              </span>
+              <span className="text-base font-bold text-white tabular-nums">R{price}</span>
+            </div>
+
+            {priceExplanation && (
+              <p className="text-xs text-slate-400 text-left">{priceExplanation}</p>
+            )}
+
+            {slotDiffers && (
+              <>
+                <div className="flex items-baseline justify-between gap-2 pt-1 border-t border-white/[0.06]">
+                  <span className="text-[11px] uppercase tracking-wide text-amber-400/80">
+                    Draft slot
+                  </span>
+                  <span className="text-sm font-bold text-amber-300 tabular-nums">
+                    R{existingKeeper!.finalCost}
+                  </span>
+                </div>
+                <p className="text-xs text-amber-400/80 text-left">
+                  You already have a keeper at round {price}, so this one takes
+                  your round {existingKeeper!.finalCost} pick instead. The price
+                  is unchanged.
+                </p>
+              </>
+            )}
+          </div>
         )}
 
         {/* Future costs */}
@@ -150,8 +207,8 @@ export function PlayerDetailSheet({
               Future costs
             </p>
             <CostTrajectory
-              trajectory={calculateCostTrajectory(costs.regular.finalCost, eligibility.yearsKept, 2)}
-              currentCost={costs.regular.finalCost}
+              trajectory={calculateCostTrajectory(costs.regular.price, eligibility.yearsKept, 2)}
+              currentCost={costs.regular.price}
               yearsKept={eligibility.yearsKept}
               maxYears={2}
               compact={true}
@@ -183,7 +240,7 @@ export function PlayerDetailSheet({
                 disabled={!canAddRegular}
                 className="flex-1 min-h-[48px] rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white disabled:opacity-40 transition-colors"
               >
-                Keep · R{costs.regular.finalCost}
+                Keep · R{costs.regular.price}
               </button>
             )}
             {costs.franchise && (
@@ -199,7 +256,7 @@ export function PlayerDetailSheet({
                 )}
               >
                 <Star size={14} className="fill-current" />
-                {costs.regular ? "FT" : `Franchise Tag · R${costs.franchise.finalCost}`}
+                {costs.regular ? "FT" : `Franchise Tag · R${costs.franchise.price}`}
               </button>
             )}
           </div>

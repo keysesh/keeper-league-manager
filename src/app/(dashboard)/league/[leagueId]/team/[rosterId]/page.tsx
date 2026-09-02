@@ -53,8 +53,8 @@ interface EligiblePlayer {
     } | null;
   };
   costs: {
-    franchise: { baseCost: number; finalCost: number; costBreakdown: string } | null;
-    regular: { baseCost: number; finalCost: number; costBreakdown: string } | null;
+    franchise: { startingRound: number; price: number; costBreakdown: string } | null;
+    regular: { startingRound: number; price: number; costBreakdown: string } | null;
   };
   existingKeeper: {
     id: string;

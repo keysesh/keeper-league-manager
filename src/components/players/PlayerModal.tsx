@@ -48,8 +48,8 @@ interface PlayerModalProps {
     acquisitionType: string;
   };
   costs?: {
-    franchise: { baseCost: number; finalCost: number; costBreakdown: string } | null;
-    regular: { baseCost: number; finalCost: number; costBreakdown: string } | null;
+    franchise: { startingRound: number; price: number; costBreakdown: string } | null;
+    regular: { startingRound: number; price: number; costBreakdown: string } | null;
   };
   existingKeeper?: {
     id: string;
@@ -214,7 +214,7 @@ export function PlayerModal({
               <div className="flex flex-wrap gap-3">
                 {costs.regular && (
                   <div className="flex items-center gap-2">
-                    <StatPill value={`R${costs.regular.finalCost}`} variant="primary" />
+                    <StatPill value={`R${costs.regular.price}`} variant="primary" />
                     <span className="text-xs text-gray-400">{costs.regular.costBreakdown}</span>
                   </div>
                 )}
@@ -315,7 +315,7 @@ export function PlayerModal({
                   disabled={!canAddRegular || isLoading}
                   className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors"
                 >
-                  {isLoading ? "Adding..." : `Keep as Round ${costs.regular.finalCost}`}
+                  {isLoading ? "Adding..." : `Keep as Round ${costs.regular.price}`}
                 </button>
               )}
               {costs.franchise && (

@@ -9,10 +9,8 @@ import type { EligiblePlayer } from "./types";
 
 interface KeeperRowProps {
   entry: EligiblePlayer;
-  /** Live cascade cost for selected keepers (falls back to stored finalCost) */
-  liveCost?: number;
-  /** Whether the live cascade moved this keeper off its base round */
-  cascaded?: boolean;
+  /** Live cascade SLOT for selected keepers (falls back to the stored slot) */
+  liveSlot?: number;
   onClick: () => void;
 }
 
@@ -20,13 +18,12 @@ interface KeeperRowProps {
  * Compact one-line player row for the mobile keeper picker.
  *
  * Shows everything needed to compare candidates without opening the sheet:
- * name, position, team, keeper-year state, injury and the round cost.
+ * name, position, team, keeper-year state, injury and the keeper price.
  * Full detail + actions live in PlayerDetailSheet (opened on tap).
  */
 export const KeeperRow = memo(function KeeperRow({
   entry,
-  liveCost,
-  cascaded = false,
+  liveSlot,
   onClick,
 }: KeeperRowProps) {
   const { player, eligibility, costs, existingKeeper } = entry;
@@ -34,11 +31,13 @@ export const KeeperRow = memo(function KeeperRow({
   const isFranchise = existingKeeper?.type === "FRANCHISE";
   const ftOnly = !isKeeper && eligibility.isEligible && !costs.regular && !!costs.franchise;
 
-  // The number the user is comparing on:
-  // selected → live cascade cost; candidate → regular cost (or FT cost when FT-only)
-  const displayCost = isKeeper
-    ? liveCost ?? existingKeeper.finalCost
-    : costs.regular?.finalCost ?? costs.franchise?.finalCost ?? null;
+  // The number the user compares on is the PRICE — what the rules charge for
+  // him. The slot (the pick actually spent) can differ once the cascade runs,
+  // so it is shown as a separate marker rather than quietly replacing the
+  // price in the same chip.
+  const price = costs.regular?.price ?? costs.franchise?.price ?? null;
+  const slot = isKeeper ? liveSlot ?? existingKeeper.finalCost : null;
+  const slotDiffers = slot != null && price != null && slot !== price;
 
   // Keeper-year state: "Y1" for current keepers, "→Y2" for candidates
   const yearLabel = isKeeper
@@ -92,8 +91,8 @@ export const KeeperRow = memo(function KeeperRow({
         </div>
       </div>
 
-      {/* Cost chip — the comparison number, always visible */}
-      {displayCost != null && (
+      {/* Price chip — the comparison number, always visible */}
+      {price != null && (
         <span
           className={cn(
             "flex-shrink-0 inline-flex items-center justify-center min-w-[44px] px-2 py-1 rounded-md text-sm font-bold tabular-nums",
@@ -104,12 +103,15 @@ export const KeeperRow = memo(function KeeperRow({
               : "bg-white/[0.06] text-slate-200"
           )}
         >
-          {cascaded && (
-            <span className="text-[10px] font-medium text-amber-400 mr-1" title="Cascaded from base round">
-              ⤴
+          {slotDiffers && (
+            <span
+              className="text-[10px] font-medium text-amber-400 mr-1"
+              title={`Costs a round ${price}; takes your round ${slot} pick`}
+            >
+              ⤴{slot}
             </span>
           )}
-          R{displayCost}
+          R{price}
         </span>
       )}
 

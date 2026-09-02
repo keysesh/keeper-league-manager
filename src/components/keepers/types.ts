@@ -38,26 +38,42 @@ export interface EligiblePlayer {
     yearsKept: number;
     consecutiveYears: number;
     acquisitionType: string;
+    /** Where he was originally drafted — HISTORY, shown even when it no longer
+     *  sets the price. Check `pricedFromDraft` before presenting it as the
+     *  reason for the price. */
     originalDraft: {
       draftYear: number;
       draftRound: number;
     } | null;
+    /** What the price counts down from: a real draft round, the league's flat
+     *  undrafted round, or a commissioner override. */
+    priceBasis: "DRAFT_ROUND" | "UNDRAFTED" | "OVERRIDE";
+    /** True when `originalDraft` is what the price is derived from. */
+    pricedFromDraft: boolean;
   };
+  /**
+   * Three different round numbers live in this screen; do not mix them up.
+   *  - `startingRound` — the round the price counts down from
+   *  - `price`         — what keeping him costs this year (the rule's answer)
+   *  - `existingKeeper.finalCost` — the draft SLOT the cascade assigns, which
+   *    can differ from `price` when a roster keeps two players at one price
+   */
   costs: {
     franchise: {
-      baseCost: number;
-      finalCost: number;
+      startingRound: number;
+      price: number;
       costBreakdown: string;
     } | null;
     regular: {
-      baseCost: number;
-      finalCost: number;
+      startingRound: number;
+      price: number;
       costBreakdown: string;
     } | null;
   };
   existingKeeper: {
     id: string;
     type: string;
+    /** The draft SLOT this keeper occupies after the cascade — NOT the price. */
     finalCost: number;
     isLocked: boolean;
   } | null;
@@ -94,8 +110,11 @@ export interface RosterData {
 export interface CascadeKeeperResult {
   playerId: string; // Sleeper ID
   playerName: string;
+  /** The draft SLOT this keeper occupies once conflicts are resolved. */
   finalCost: number;
+  /** The PRICE the rules charge for him, before any slot conflict. */
   baseCost: number;
+  /** True when the two above differ — he was moved off his price. */
   cascaded: boolean;
 }
 

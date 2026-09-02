@@ -121,17 +121,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       let reason = eligibility.reason;
 
       if (costResult) {
-        // Franchise tag cost (same formula, no year limit)
+        // `price` is what keeping him costs, and `startingRound` is the round
+        // that price counts down from. Neither is the draft SLOT he ends up in
+        // — that is the cascade's finalCost on a saved Keeper row, and it can
+        // differ when a roster keeps two players at the same price. The three
+        // numbers were all called some flavour of "cost" before, which is how a
+        // waiver pickup priced R8 could read as R7 on screen with no
+        // explanation.
         franchiseCost = {
-          baseCost: costResult.baseCost,
-          finalCost: costResult.effectiveCost,
+          startingRound: costResult.baseCost,
+          price: costResult.effectiveCost,
           costBreakdown: `Franchise Tag: ${costResult.costBreakdown}`,
         };
 
         if (eligibility.canBeRegularKeeper) {
           regularCost = {
-            baseCost: costResult.baseCost,
-            finalCost: costResult.effectiveCost,
+            startingRound: costResult.baseCost,
+            price: costResult.effectiveCost,
             costBreakdown: costResult.costBreakdown,
           };
         } else if (eligibility.mustBeFranchise && !canAddFranchise) {
@@ -201,9 +207,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           consecutiveYears: (costResult?.yearsKept ?? 1) - 1,
           originSeason: costResult?.originalDraftSeason ?? null,
           acquisitionType: costResult?.acquisitionType ?? "WAIVER",
+          // Where he was originally drafted. This is HISTORY: it is still shown
+          // for a player whose price no longer derives from it (an undrafted
+          // pickup, or a claim made in a later season, both of which reset to
+          // the flat undrafted round), so the UI must read priceBasis before
+          // presenting this round as the reason for the price.
           originalDraft: costResult?.originalDraftRound
             ? { draftYear: costResult.originalDraftSeason!, draftRound: costResult.originalDraftRound }
             : null,
+          priceBasis: costResult?.priceBasis ?? "UNDRAFTED",
+          pricedFromDraft: costResult?.priceBasis === "DRAFT_ROUND",
           _debug: {
             planningSeason: season,
             costBreakdown: costResult?.costBreakdown ?? "No acquisition record",

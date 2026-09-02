@@ -69,8 +69,8 @@ interface Eligibility {
 }
 
 interface Costs {
-  franchise: { baseCost: number; finalCost: number; costBreakdown: string } | null;
-  regular: { baseCost: number; finalCost: number; costBreakdown: string } | null;
+  franchise: { startingRound: number; price: number; costBreakdown: string } | null;
+  regular: { startingRound: number; price: number; costBreakdown: string } | null;
 }
 
 interface ExistingKeeper {
@@ -319,9 +319,9 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
                 {isKeeper
                   ? `R${existingKeeper.finalCost}`
                   : costs?.regular
-                    ? `R${costs.regular.finalCost}`
+                    ? `R${costs.regular.price}`
                     : costs?.franchise
-                      ? `R${costs.franchise.finalCost} (FT)`
+                      ? `R${costs.franchise.price} (FT)`
                       : "—"}
               </div>
             </div>
@@ -341,8 +341,8 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
                 Future Costs
               </div>
               <CostTrajectory
-                trajectory={calculateCostTrajectory(costs.regular.finalCost, eligibility.yearsKept, 2)}
-                currentCost={costs.regular.finalCost}
+                trajectory={calculateCostTrajectory(costs.regular.price, eligibility.yearsKept, 2)}
+                currentCost={costs.regular.price}
                 yearsKept={eligibility.yearsKept}
                 maxYears={2}
                 compact={true}
@@ -368,7 +368,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
               disabled={!canAddRegular || isLoading}
               className="flex-1 min-h-[44px] sm:min-h-0 py-2.5 sm:py-1.5 rounded-md sm:rounded text-xs sm:text-[10px] font-bold bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white disabled:opacity-40 transition-colors"
             >
-              {isLoading ? "..." : `Keep R${costs.regular.finalCost}`}
+              {isLoading ? "..." : `Keep R${costs.regular.price}`}
             </button>
           )}
           {/* FT-only button (gold, full-width) - for players who MUST be franchise tagged */}
@@ -378,7 +378,7 @@ export const PremiumPlayerCard = memo(function PremiumPlayerCard({
               disabled={!canAddFranchise || isLoading}
               className="flex-1 min-h-[44px] sm:min-h-0 py-2.5 sm:py-1.5 rounded-md sm:rounded text-xs sm:text-[10px] font-bold bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-black disabled:opacity-40 transition-colors"
             >
-              {isLoading ? "..." : `Franchise Tag (R${costs.franchise.finalCost})`}
+              {isLoading ? "..." : `Franchise Tag (R${costs.franchise.price})`}
             </button>
           )}
           {/* Compact FT button (gold) - when both regular keep and FT are available */}
