@@ -134,8 +134,20 @@ export function TeamRoundsView({
         {Array.from({ length: draftRounds }, (_, i) => {
           const round = i + 1;
           const keepersHere = team.results.filter((k) => k.finalCost === round);
-          const tradedAway = team.tradedAwayPicks.includes(round);
           const acquired = team.acquiredPicks.filter((p) => p.round === round);
+          // A round is not one pick. A team can have traded its own away and
+          // still hold two acquired ones, and the board used to render that as
+          // a single row plus a footnote reading "+2 extra picks via trade" —
+          // so a manager holding three fifths saw one slot. Every pick owned
+          // gets a slot of its own; keepers fill them in order, the rest are
+          // open.
+          const tradedAwayCount = team.tradedAwayPicks.filter((r) => r === round).length;
+          const ownPicks = Math.max(0, 1 - tradedAwayCount);
+          const pickSlots: Array<{ from: string | null }> = [
+            ...Array.from({ length: ownPicks }, () => ({ from: null })),
+            ...acquired.map((a) => ({ from: rosterIdToName.get(a.fromRosterId) ?? "another team" })),
+          ];
+          const tradedAway = tradedAwayCount > 0;
           const slot = draftBoard
             .find((r) => r.round === round)
             ?.slots.find((s) => s.rosterId === team.rosterId);
@@ -151,7 +163,22 @@ export function TeamRoundsView({
 
               {/* Content */}
               <div className="flex-1 min-w-0 flex flex-col justify-center gap-1 py-0.5">
-                {keepersHere.map((k) => (
+                {pickSlots.map((pick, slotIndex) => {
+                  const k = keepersHere[slotIndex];
+                  if (!k) {
+                    return (
+                      <span
+                        key={`open-${slotIndex}`}
+                        className="flex items-center gap-1.5 text-xs text-slate-600"
+                      >
+                        Open pick
+                        {pick.from && (
+                          <span className="text-emerald-400/80">via {pick.from}</span>
+                        )}
+                      </span>
+                    );
+                  }
+                  return (
                   <button
                     key={k.playerId}
                     onClick={() => onPlayerClick?.(k.playerId)}
@@ -178,29 +205,25 @@ export function TeamRoundsView({
                       {k.yearsKept ? (
                         <span className="text-slate-500">Y{k.yearsKept}</span>
                       ) : null}
+                      {pick.from && (
+                        <span className="text-emerald-400/80">via {pick.from}</span>
+                      )}
                     </span>
                   </button>
-                ))}
+                  );
+                })}
 
-                {keepersHere.length === 0 && tradedAway && (
+                {tradedAway && (
                   <span className="flex items-center gap-1.5 text-xs text-rose-400/80">
                     <ArrowLeftRight size={11} />
                     Traded away{slot?.tradedTo ? ` to ${slot.tradedTo}` : ""}
                   </span>
                 )}
 
-                {keepersHere.length === 0 && !tradedAway && (
-                  <span className="text-xs text-slate-600">Open pick</span>
+                {pickSlots.length === 0 && !tradedAway && (
+                  <span className="text-xs text-slate-600">No pick</span>
                 )}
 
-                {acquired.length > 0 && (
-                  <span className="text-[11px] text-emerald-400/80">
-                    +{acquired.length} extra pick{acquired.length > 1 ? "s" : ""} via trade
-                    {acquired[0] && rosterIdToName.get(acquired[0].fromRosterId)
-                      ? ` (from ${acquired.map((a) => rosterIdToName.get(a.fromRosterId)).join(", ")})`
-                      : ""}
-                  </span>
-                )}
               </div>
             </div>
           );
