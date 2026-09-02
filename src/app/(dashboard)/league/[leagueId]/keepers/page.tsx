@@ -31,7 +31,7 @@ export default async function KeepersPage({
         leagueId,
         teamMembers: { some: { userId: session.user.id } },
       },
-      select: { id: true, teamName: true },
+      select: { id: true, teamName: true, ownerId: true },
     }),
     prisma.league.findUnique({
       where: { id: leagueId },
@@ -42,6 +42,22 @@ export default async function KeepersPage({
   if (!league) {
     redirect("/leagues");
   }
+
+  // Every owner in the league, because a manager's hue is decided by their
+  // position among all of them — one owner in isolation has no colour.
+  // Roster.ownerId is a Sleeper user id, which is User.sleeperId.
+  const [leagueOwners, ownerUser] = await Promise.all([
+    prisma.roster.findMany({
+      where: { leagueId },
+      select: { ownerId: true },
+    }),
+    roster?.ownerId
+      ? prisma.user.findUnique({
+          where: { sleeperId: roster.ownerId },
+          select: { avatar: true },
+        })
+      : Promise.resolve(null),
+  ]);
 
   if (!roster) {
     // Viewer has no team in this league — point them at the league overview
@@ -75,6 +91,11 @@ export default async function KeepersPage({
         sleeperLeagueId={league.sleeperId}
         leagueName={league.name}
         teamName={roster.teamName || "Your team"}
+        ownerSleeperId={roster.ownerId}
+        ownerAvatarId={ownerUser?.avatar ?? null}
+        leagueOwnerIds={leagueOwners
+          .map((r) => r.ownerId)
+          .filter((id): id is string => id !== null)}
       />
     </div>
   );
