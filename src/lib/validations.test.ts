@@ -56,6 +56,16 @@ describe("SyncRequestSchema", () => {
     expect(SyncRequestSchema.parse({ action: "quick" }).action).toBe("quick");
   });
 
+  it("accepts the exact body the Refresh from Sleeper button sends", () => {
+    // The button posts this and nothing else. "refresh-planning" had a handler
+    // but was missing from the enum, so every click died at validateBody with
+    // "Validation failed" before the router saw it. Asserted with the real
+    // payload rather than the bare action, so a future required field in
+    // SyncRequestSchema breaks here instead of in the user's hands.
+    const body = { action: "refresh-planning", leagueId: "cmsryqdm0000c7ecmxltbuw4f" };
+    expect(SyncRequestSchema.parse(body)).toEqual(body);
+  });
+
   it("rejects invalid sync actions", () => {
     expect(() => SyncRequestSchema.parse({ action: "invalid" })).toThrow();
   });

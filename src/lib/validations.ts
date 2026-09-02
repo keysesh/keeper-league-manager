@@ -100,6 +100,7 @@ export const SyncActionSchema = z.enum([
   "sync-history",
   "sync-drafts",
   "update-keepers",
+  "refresh-planning",
   "sync-players",
   "membership",
   // Legacy actions (backward compatible)

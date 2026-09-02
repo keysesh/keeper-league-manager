@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { SyncContext, SyncHandler, createSyncError, createSyncResponse } from "./types";
 import { syncService } from "@/lib/services/sync";
+import type { z } from "zod";
+import type { SyncActionSchema } from "@/lib/validations";
+
+/** The actions POST /api/sleeper/sync will accept, from the request schema. */
+type SyncAction = z.infer<typeof SyncActionSchema>;
 
 // Legacy handlers (kept for backward compatibility during migration)
 import {
@@ -275,7 +280,19 @@ const handleSyncPlayers: SyncHandler = async () => {
  * - sync-transactions → part of sync
  * - sync-traded-picks → part of sync
  */
-const actionHandlers: Record<string, SyncHandler> = {
+/**
+ * Keyed by SyncActionSchema, not by string, so the router and the request
+ * validator cannot drift: Record<SyncAction, …> rejects a handler the schema
+ * does not accept AND a schema action with no handler, at compile time.
+ *
+ * They did drift. "refresh-planning" — the one action behind the Refresh from
+ * Sleeper button on every screen — had a handler here and was missing from the
+ * enum, so POST /api/sleeper/sync validated the body first and answered
+ * "Validation failed" before the router was ever reached. The button had never
+ * worked. A runtime test would have caught it a release later; the type
+ * catches it in the editor.
+ */
+const actionHandlers: Record<SyncAction, SyncHandler> = {
   // ============================================
   // NEW UNIFIED ACTIONS (preferred)
   // ============================================
@@ -328,7 +345,9 @@ export async function routeSyncAction(
   context: SyncContext,
   body: Record<string, unknown>
 ): Promise<NextResponse> {
-  const handler = actionHandlers[action];
+  // Widened deliberately: callers reach here with an unvalidated string, and
+  // the guard below is what turns an unknown one into a 400.
+  const handler = (actionHandlers as Record<string, SyncHandler | undefined>)[action];
 
   if (!handler) {
     const validActions = Object.keys(actionHandlers).join(", ");
