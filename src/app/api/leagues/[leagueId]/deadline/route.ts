@@ -53,10 +53,18 @@ export async function GET(
       return NextResponse.json({ error: "League not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ...status,
       lastSyncedAt: league.lastSyncedAt?.toISOString() ?? null,
     });
+
+    // Planning state changes on every add/remove, and it is per-user. Without
+    // this the browser is free to serve a cached body to the revalidation the
+    // workspace fires right after a save, so the screen keeps showing the old
+    // slots. eligible-keepers was given the same header in a2e4ad3 ("Fix keeper
+    // data not refreshing after add/remove"); the endpoints below were missed.
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return response;
   } catch (error) {
     logger.error("Error fetching deadline status", error);
     return NextResponse.json(

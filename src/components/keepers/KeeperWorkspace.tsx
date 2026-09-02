@@ -196,8 +196,13 @@ export function KeeperWorkspace({
         throw new Error(err.error || "Failed to add keeper");
       }
 
+      // All three, always: the cascade moves other players' slots when one is
+      // added or removed, and verification compares the whole plan to Sleeper's
+      // board. Revalidating only the roster list leaves those two panels
+      // describing the plan as it was before the save.
       mutate();
       mutateCascade();
+      mutateVerification();
     } catch (err) {
       mutate(data, { revalidate: false });
       showError(err instanceof Error ? err.message : "Failed to add keeper");
@@ -250,8 +255,13 @@ export function KeeperWorkspace({
         throw new Error(err.error || "Failed to remove keeper");
       }
 
+      // All three, always: the cascade moves other players' slots when one is
+      // added or removed, and verification compares the whole plan to Sleeper's
+      // board. Revalidating only the roster list leaves those two panels
+      // describing the plan as it was before the save.
       mutate();
       mutateCascade();
+      mutateVerification();
     } catch (err) {
       mutate(data, { revalidate: false });
       showError(err instanceof Error ? err.message : "Failed to remove keeper");
