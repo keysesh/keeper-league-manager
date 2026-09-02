@@ -291,19 +291,23 @@ export function PublicTeamProfile({
 
   // Get keepers and regular players
   const keepers = players.filter(p => p.existingKeeper);
-  const topPlayers = players.slice(0, 12); // Top 12 for roster preview
+  // The whole roster. This used to be players.slice(0, 12) feeding a grid that
+  // then took 3 per position — so a page meant to answer "who has who" showed
+  // at most 12 of 16-18, hid every K and DEF, and printed per-position counts
+  // taken from the truncated list, which made the counts wrong as well as the
+  // roster incomplete.
+  const rosterPlayers = players;
 
-  // Group players by position for roster preview
   const playersByPosition = useMemo(() => {
-    const grouped: Record<string, typeof topPlayers> = { QB: [], RB: [], WR: [], TE: [] };
-    for (const p of topPlayers) {
+    const grouped: Record<string, typeof rosterPlayers> = { QB: [], RB: [], WR: [], TE: [], K: [], DEF: [] };
+    for (const p of rosterPlayers) {
       const pos = p.player.position || "FLEX";
       if (grouped[pos]) {
         grouped[pos].push(p);
       }
     }
     return grouped;
-  }, [topPlayers]);
+  }, [rosterPlayers]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-2">
@@ -399,8 +403,8 @@ export function PublicTeamProfile({
           </div>
 
           {/* Position-grouped roster grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {(["QB", "RB", "WR", "TE"] as const).map((pos) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {(["QB", "RB", "WR", "TE", "K", "DEF"] as const).map((pos) => (
               <div key={pos} className="space-y-1.5">
                 <div className="flex items-center gap-1.5 mb-2">
                   <PositionBadge position={pos} size="xs" />
@@ -408,7 +412,7 @@ export function PublicTeamProfile({
                     {playersByPosition[pos]?.length || 0}
                   </span>
                 </div>
-                {playersByPosition[pos]?.slice(0, 3).map((p) => (
+                {playersByPosition[pos]?.map((p) => (
                   <div
                     key={p.player.id}
                     className={cn(
