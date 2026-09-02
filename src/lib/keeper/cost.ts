@@ -280,14 +280,16 @@ export function keeperClockSeason(acq: {
   originalDraftSeason: number | null;
   isPreDeadline: boolean | null;
 }): number {
-  // A post-deadline trade already resets the keeper YEAR count, so it resets
-  // the price clock too: it is treated as a fresh acquisition.
-  const postDeadlineTrade =
-    acq.acquisitionType === AcquisitionType.TRADE && acq.isPreDeadline === false;
+  // A trade carries the round, always — including an offseason one. The two
+  // halves of a keeper contract move independently: an offseason trade resets
+  // the YEAR count (countKeeperYearsFrom), and nothing about a trade resets
+  // the ROUND. Only a drop that goes unclaimed past the next draft does that.
+  // Tying both to the deadline made an offseason trade quietly re-price the
+  // player — Jefferson R6 to R7, Pickens R3 to R4 — which is a discount
+  // nobody in the league agreed to.
   const carriesTheClock =
-    !postDeadlineTrade &&
-    (acq.acquisitionType === AcquisitionType.DRAFTED ||
-      acq.acquisitionType === AcquisitionType.TRADE);
+    acq.acquisitionType === AcquisitionType.DRAFTED ||
+    acq.acquisitionType === AcquisitionType.TRADE;
   return carriesTheClock && acq.originalDraftSeason != null
     ? Math.min(acq.originalDraftSeason, acq.season)
     : acq.season;

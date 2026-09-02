@@ -123,8 +123,17 @@ describe("keeperClockSeason", () => {
     expect(clock(AcquisitionType.TRADE, 2026, null)).toBe(2026);
   });
 
-  it("a post-deadline trade restarts the clock, like it restarts the year count", () => {
-    expect(clock(AcquisitionType.TRADE, 2025, 2023, false)).toBe(2025);
+  it("an offseason trade resets the year count but NOT the round", () => {
+    // The two halves of a keeper contract move independently. An offseason
+    // trade makes the new owner a year-1 keeper (countKeeperYearsFrom), and
+    // leaves the price exactly where it was — the round only resets when a
+    // player is dropped and goes unclaimed past the next draft.
+    // Confirmed by the commissioner 2026-09-02 on Justin Jefferson, traded
+    // 28 Aug 2026: years reset to 1, price stays the R6 his 2025 R7 had
+    // escalated to. Tying the clock to the deadline as well handed the new
+    // owner a discount nobody agreed to.
+    expect(clock(AcquisitionType.TRADE, 2025, 2023, false)).toBe(2023);
+    expect(clock(AcquisitionType.TRADE, 2025, 2023, true)).toBe(2023);
   });
 
   it("never starts the clock after the acquisition itself", () => {

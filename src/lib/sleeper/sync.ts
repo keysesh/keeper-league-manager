@@ -17,7 +17,10 @@ import {
   DEFAULT_DRAFT_ROUNDS,
   MAX_HISTORICAL_SEASONS,
 } from "@/lib/constants";
-import { isTradeAfterDeadline } from "@/lib/constants/keeper-rules";
+import {
+  governingSeasonForTrade,
+  isTradeAfterDeadline,
+} from "@/lib/constants/keeper-rules";
 import { resolvePlanningSeason } from "@/lib/keeper/planning-season";
 import { pruneKeepersForDepartedPlayers } from "./keeper-prune";
 import { getLeagueChain } from "@/lib/services/league-chain";
@@ -1875,7 +1878,7 @@ export const STALE_ACQUISITION_MAX_FRACTION = 0.25;
  * inputs. It is part of the change-gate fingerprint, so a logic change forces
  * one rebuild instead of waiting for the next transaction.
  */
-export const ACQUISITION_REPLAY_VERSION = 4;
+export const ACQUISITION_REPLAY_VERSION = 5;
 
 /** One row of the derived PlayerAcquisition table, as the replay wants it. */
 export interface AcquisitionTarget {
@@ -1959,6 +1962,16 @@ export function replayAcquisitionEvents(input: {
       }
     }
   }
+
+  // Draft start times, so a trade is judged against the deadline of the season
+  // it actually sits in. getSeasonFromDate calls an August 2026 trade "2026"
+  // and then asks whether it beat the NOVEMBER 2026 deadline — it never does,
+  // so every offseason trade was filed as pre-deadline and carried keeper
+  // years that should have reset.
+  const draftStarts = draftPicks.map((p) => ({
+    season: p.draft.season,
+    startTime: p.draft.startTime,
+  }));
 
   const targets = new Map<string, AcquisitionTarget>();
   const byPlayerOwner = new Map<string, AcquisitionTarget[]>();
@@ -2177,7 +2190,10 @@ export function replayAcquisitionEvents(input: {
 
     if (txType === "TRADE" && toSleeper && fromSleeper) {
       const existing = currentAcq.get(tp.playerId);
-      const postDeadline = isTradeAfterDeadline(txDate, txSeason);
+      const postDeadline = isTradeAfterDeadline(
+        txDate,
+        governingSeasonForTrade(txDate, draftStarts)
+      );
 
       // Close old acquisition
       if (existing) {

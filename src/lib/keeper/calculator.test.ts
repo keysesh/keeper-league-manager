@@ -417,7 +417,7 @@ describe("Keeper Calculator", () => {
       expect(cost).toBe(1);
     });
 
-    it("resets cost reduction for post-deadline (offseason) trades", async () => {
+    it("does not re-price a player on an offseason trade", async () => {
       vi.mocked(prisma.roster.findUnique).mockResolvedValue({
         id: "roster-2",
         sleeperId: "sleeper-roster-2",
@@ -455,10 +455,12 @@ describe("Keeper Calculator", () => {
         } as any
       );
 
-      // Post-deadline trade = cost resets: baseCost = 5, keeperYears = 0, cost = 5
-      // A post-deadline trade restarts the clock at the trade; one season
-      // then elapses before the 2026 draft, so R5 becomes R4.
-      expect(cost).toBe(4);
+      // An offseason trade does NOT re-price the player. He was taken in R5 in
+      // 2023; by the 2026 draft three seasons have come off, so he costs a
+      // 2nd whoever holds him. What the trade resets is his YEAR count, which
+      // is eligibility, not price. Restarting the clock here instead made the
+      // new owner pay a 4th for a player the rules price at a 2nd.
+      expect(cost).toBe(2);
     });
 
     it("carries both the round and the escalation clock through a pre-deadline trade", async () => {

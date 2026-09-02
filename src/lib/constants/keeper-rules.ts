@@ -181,17 +181,15 @@ export function isTradeAfterDeadline(
   }
 
   if (tradeYear === season + 1) {
-    // Trade in next calendar year (e.g., trade in 2025, season 2024)
-    if (tradeMonth < 2) {
-      // Jan-Feb = playoffs/offseason, after deadline
-      return true;
-    }
-    if (tradeMonth <= 7) {
-      // March-Aug = offseason, after deadline
-      return true;
-    }
-    // Sept+ = new season started, this trade is for a different season context
-    return false;
+    // Any date in the calendar year AFTER the season is past that season's
+    // November deadline — January through December alike. The month ladder
+    // that used to live here carved out September onwards on the assumption
+    // that a September trade must belong to a new season; that is the caller's
+    // job to decide, and governingSeasonForTrade decides it from the real
+    // draft dates. Keeping the carve-out meant a 2 Sep 2026 trade, two days
+    // before the 2026 draft, came back "before the 2025 deadline" — which is
+    // ten months wrong.
+    return true;
   }
 
   // Trade year is before season year - historical trade
@@ -215,6 +213,37 @@ export function isTradeAfterDeadline(
  * - Aug 2027  → evaluates vs 2026 season             → true  (still offseason)
  * - Sept 2027 → evaluates vs 2027 deadline           → false (new season, pre-deadline)
  */
+/**
+ * Which season's trade deadline governs a trade made at `tradeDate`?
+ *
+ * The offseason runs from a season's trade deadline to the NEXT draft, so the
+ * governing season is simply the season of the most recent draft already
+ * started. Anything after that draft belongs to that season; anything before
+ * it is still the previous season's offseason.
+ *
+ * This has to come from the drafts, not the calendar. The obvious shortcut —
+ * "September onwards is the new season" — is wrong for any league that drafts
+ * in September: a trade on 2 Sep 2026, two days before the 2026 draft, is an
+ * offseason trade under the 2025 deadline, but the month test calls it an
+ * in-season 2026 trade and preserves keeper years that should have reset.
+ *
+ * Falls back to the month rule only when no draft dates are known.
+ */
+export function governingSeasonForTrade(
+  tradeDate: Date,
+  draftStarts: ReadonlyArray<{ season: number; startTime: Date | null }>
+): number {
+  const started = draftStarts
+    .filter((d): d is { season: number; startTime: Date } => d.startTime !== null)
+    .filter((d) => d.startTime.getTime() <= tradeDate.getTime())
+    .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+
+  if (started.length > 0) return started[0].season;
+
+  const month = tradeDate.getMonth();
+  return month >= 8 ? tradeDate.getFullYear() : tradeDate.getFullYear() - 1;
+}
+
 export function isCurrentlyAfterTradeDeadline(
   now: Date = new Date(),
   deadlineWeek: number = DEFAULT_KEEPER_RULES.TRADE_DEADLINE_WEEK
