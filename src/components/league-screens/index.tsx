@@ -112,3 +112,64 @@ export function MeterRow({
     </div>
   );
 }
+
+/**
+ * The waiting state for a league screen — the screen's own chrome, drawn
+ * empty.
+ *
+ * Route-level loading.tsx and the client screen's own loading branch both
+ * render this, and that is the point. They used to be different pictures: a
+ * pre-redesign grid of light-grey cards for the route, then the real screen's
+ * dark skeleton once the component mounted, so a tab switch showed two
+ * unrelated animations in a row and read as a stall. One shape, held from tap
+ * to paint, reads as the screen arriving.
+ */
+export function ScreenSkeleton({
+  hero = false,
+  tiles = 0,
+  rows = 6,
+  className,
+}: {
+  /** A tall feature card above the list — the keeper and team screens. */
+  hero?: boolean;
+  /** Summary tiles across the top, two per row. */
+  tiles?: number;
+  /** Rows in the list card below. */
+  rows?: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn("max-w-2xl space-y-4 animate-pulse", className)}
+      aria-hidden
+    >
+      <div className="px-1 mb-4 space-y-2">
+        <div className="h-[22px] w-40 rounded-md bg-white/[0.07]" />
+        <div className="h-[13px] w-56 rounded bg-white/[0.04]" />
+      </div>
+
+      {hero && (
+        <div className={cn(featureCard, "h-36 bg-white/[0.035]")} />
+      )}
+
+      {tiles > 0 && (
+        <div className="grid grid-cols-2 gap-2.5">
+          {Array.from({ length: tiles }).map((_, i) => (
+            <div
+              key={i}
+              className="h-20 rounded-xl border border-white/[0.08] border-t-white/[0.12] bg-white/[0.035]"
+            />
+          ))}
+        </div>
+      )}
+
+      {rows > 0 && (
+        <div className={listCard}>
+          {Array.from({ length: rows }).map((_, i) => (
+            <div key={i} className="h-[52px]" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

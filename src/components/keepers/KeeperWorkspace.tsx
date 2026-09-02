@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { PlayerCutout } from "@/components/players/PlayerCutout";
@@ -23,9 +22,7 @@ import {
 import { RefreshFromSleeper } from "@/components/ui/RefreshFromSleeper";
 import { DeadlineBanner } from "@/components/ui/DeadlineBanner";
 import { CostTrajectory } from "@/components/ui/CostTrajectory";
-import {
-  featureCard,
-} from "@/components/league-screens";
+import { featureCard, ScreenSkeleton } from "@/components/league-screens";
 import { cn, getPositionClasses } from "@/lib/design-tokens";
 import { getDraftPickValue } from "@/lib/constants/league-config";
 import { DEFAULT_KEEPER_RULES } from "@/lib/constants/keeper-rules";
@@ -421,18 +418,10 @@ export function KeeperWorkspace({
     [currentKeepers, rosterCascade]
   );
 
+  // Cold only — SWR hands back the cached roster on a revisit, so switching
+  // back to this tab paints the workspace instead of a skeleton.
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-16 w-full rounded-xl bg-white/[0.05]" />
-        <Skeleton className="h-36 w-full rounded-2xl bg-white/[0.05]" />
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-14 rounded-lg bg-white/[0.03]" />
-          ))}
-        </div>
-      </div>
-    );
+    return <ScreenSkeleton hero rows={5} />;
   }
 
   if (error || !data) {

@@ -60,6 +60,20 @@ const nextConfig: NextConfig = {
       "date-fns",
       "@tanstack/react-query",
     ],
+
+    // The client router cache is disabled for dynamic routes by default
+    // (staleTimes.dynamic = 0), and every dashboard route is dynamic — the
+    // layout is force-dynamic because it is session-gated. So each tab switch
+    // threw away the segment and re-fetched it from the server, loading.tsx
+    // and all, including a return to the tab you left five seconds ago, which
+    // is most of what navigation in a five-tab app IS. Half a minute of reuse
+    // makes going back instant; SWR still revalidates the data underneath, so
+    // what you get back is a painted screen that corrects itself, not a
+    // skeleton.
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
   },
 
   // Headers for caching static assets

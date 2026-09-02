@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import useSWR from "swr";
 import {
   Repeat,
   Lock,
@@ -12,10 +13,10 @@ import {
   Filter,
   type LucideIcon,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   ScreenHeader,
+  ScreenSkeleton,
   SectionLabel,
   listCard,
 } from "@/components/league-screens";
@@ -111,63 +112,82 @@ function relativeTime(ts: string): string {
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+const fetcher = (url: string) =>
+  fetch(url).then((res) => {
+    if (!res.ok) throw new Error("Failed to fetch");
+    return res.json();
+  });
+
 /** Activity — scan what changed in the league (value-screens handoff). */
 export default function ActivityPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
 
-  const [data, setData] = useState<ActivityData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [older, setOlder] = useState<ActivityItem[]>([]);
+  const [moreToLoad, setMoreToLoad] = useState<boolean | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
   const [filterType, setFilterType] = useState<ActivityItem["type"] | "ALL">("ALL");
   const [showFilters, setShowFilters] = useState(false);
 
-  const fetchData = useCallback(
-    async (offset = 0, append = false) => {
-      if (append) setLoadingMore(true);
-      try {
-        const res = await fetch(
-          `/api/leagues/${leagueId}/activity?limit=50&offset=${offset}`
-        );
-        if (!res.ok) throw new Error("Failed to fetch activity");
-        const result: ActivityData = await res.json();
-        setData((prev) =>
-          append && prev
-            ? { ...result, activities: [...prev.activities, ...result.activities] }
-            : result
-        );
-        setError("");
-      } catch {
-        setError("Failed to load activity");
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [leagueId]
+  // The newest page lives in the SWR cache, so coming back to this tab paints
+  // the feed you were looking at and revalidates behind it. Pages you loaded
+  // by scrolling stay local — they are a scroll position, not state worth
+  // restoring.
+  const { data, error, isLoading, mutate } = useSWR<ActivityData>(
+    `/api/leagues/${leagueId}/activity?limit=50&offset=0`,
+    fetcher,
+    { revalidateOnFocus: false, keepPreviousData: true }
   );
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // The newest page can be revalidated under the older ones, which shifts
+  // every offset by however many events arrived — so the same event can come
+  // back in both halves. Rows are keyed by id; dedupe before they collide.
+  const activities = useMemo(() => {
+    if (!data) return [];
+    const seen = new Set<string>();
+    return [...data.activities, ...older].filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [data, older]);
+  const hasMore = moreToLoad ?? data?.pagination.hasMore ?? false;
 
-  if (loading) {
-    return (
-      <div className="max-w-2xl space-y-4">
-        <Skeleton className="h-12 w-40 rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-xl" />
-      </div>
-    );
+  const loadMore = async () => {
+    setLoadingMore(true);
+    setMoreFailed(false);
+    try {
+      const res = await fetch(
+        `/api/leagues/${leagueId}/activity?limit=50&offset=${activities.length}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch activity");
+      const page: ActivityData = await res.json();
+      setOlder((prev) => [...prev, ...page.activities]);
+      setMoreToLoad(page.pagination.hasMore);
+    } catch {
+      // A failed older page is not a failed screen — the feed above it is
+      // still good, so say so on the button and leave the list alone.
+      setMoreFailed(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Cold only — the same shape loading.tsx drew, so the handover is invisible.
+  if (isLoading && !data) {
+    return <ScreenSkeleton rows={8} />;
   }
 
   if (error || !data) {
     return (
       <div className="max-w-2xl">
         <div className="bg-[#0c1219] border border-rose-500/20 rounded-xl p-6">
-          <p className="text-rose-400 font-medium">{error || "Failed to load"}</p>
+          <p className="text-rose-400 font-medium">
+            {error ? "Failed to load activity" : "Failed to load"}
+          </p>
           <button
-            onClick={() => fetchData()}
+            onClick={() => mutate()}
             className="mt-4 px-5 py-2.5 min-h-[44px] bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 rounded-lg text-sm font-medium border border-rose-500/25 transition-colors"
           >
             Try Again
@@ -177,7 +197,7 @@ export default function ActivityPage() {
     );
   }
 
-  const filtered = data.activities.filter(
+  const filtered = activities.filter(
     (a) => filterType === "ALL" || a.type === filterType
   );
 
@@ -282,13 +302,17 @@ export default function ActivityPage() {
         </div>
       ))}
 
-      {data.pagination.hasMore && filterType === "ALL" && (
+      {hasMore && filterType === "ALL" && (
         <button
-          onClick={() => fetchData(data.activities.length, true)}
+          onClick={loadMore}
           disabled={loadingMore}
           className="w-full min-h-[44px] rounded-xl bg-[#0c1219] border border-white/[0.08] text-[13px] font-medium text-slate-400 hover:text-white transition-colors duration-150 disabled:opacity-50"
         >
-          {loadingMore ? "Loading…" : "Load older activity"}
+          {loadingMore
+            ? "Loading…"
+            : moreFailed
+              ? "Couldn't load older activity — try again"
+              : "Load older activity"}
         </button>
       )}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
@@ -11,7 +11,6 @@ import {
   FlaskConical,
   ChevronRight,
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { TeamRoundsView } from "@/components/draft/TeamRoundsView";
 import {
@@ -21,6 +20,7 @@ import {
 import { InfoModal } from "@/components/ui/InfoModal";
 import {
   ScreenHeader,
+  ScreenSkeleton,
   SectionLabel,
   listCard,
 } from "@/components/league-screens";
@@ -68,7 +68,11 @@ interface DraftBoardData {
   };
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error("Failed to fetch");
+    return r.json();
+  });
 
 /** Total pick value a team holds: base rounds kept + acquired, minus dealt. */
 function capitalOf(team: CascadeResult, draftRounds: number): number {
@@ -94,10 +98,22 @@ export default function DraftBoardPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
 
-  const [data, setData] = useState<DraftBoardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+
+  // The same SWR key the keeper workspace reads, so the board is already in
+  // cache by the time you switch tabs to it — and an add/remove there, which
+  // revalidates this key, lands here too. Fetching this by hand into
+  // useState meant a cold start on every visit: skeleton, request, wait.
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: reload,
+  } = useSWR<DraftBoardData>(
+    `/api/leagues/${leagueId}/keepers/cascade`,
+    fetcher,
+    { revalidateOnFocus: false, keepPreviousData: true }
+  );
 
   const { data: rostersData } = useSWR<{
     rosters: Array<{ id: string; isUserRoster: boolean }>;
@@ -106,23 +122,6 @@ export default function DraftBoardPage() {
     dedupingInterval: 300000,
   });
   const userRosterId = rostersData?.rosters?.find((r) => r.isUserRoster)?.id;
-
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/leagues/${leagueId}/keepers/cascade`);
-      if (!res.ok) throw new Error("Failed to fetch draft board");
-      setData(await res.json());
-      setError("");
-    } catch {
-      setError("Failed to load draft board");
-    } finally {
-      setLoading(false);
-    }
-  }, [leagueId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   const derived = useMemo(() => {
     if (!data || !userRosterId) return null;
@@ -184,26 +183,21 @@ export default function DraftBoardPage() {
     return { mine, picksOwned, capitalRank, capitalCount: capitals.length, statuses, movement };
   }, [data, userRosterId]);
 
-  if (loading) {
-    return (
-      <div className="max-w-2xl space-y-4">
-        <Skeleton className="h-12 w-48 rounded-lg" />
-        <div className="grid grid-cols-2 gap-2.5">
-          <Skeleton className="h-20 rounded-xl" />
-          <Skeleton className="h-20 rounded-xl" />
-        </div>
-        <Skeleton className="h-96 w-full rounded-xl" />
-      </div>
-    );
+  // Only cold — a revisit paints the cached board and revalidates behind it.
+  // The same shape loading.tsx just drew, so the handover is invisible.
+  if (isLoading && !data) {
+    return <ScreenSkeleton tiles={2} rows={8} />;
   }
 
   if (error || !data) {
     return (
       <div className="max-w-2xl">
         <div className="bg-[#0c1219] border border-rose-500/20 rounded-xl p-8 text-center">
-          <p className="text-rose-400 font-medium">{error || "Failed to load data"}</p>
+          <p className="text-rose-400 font-medium">
+            {error ? "Failed to load draft board" : "Failed to load data"}
+          </p>
           <button
-            onClick={() => fetchData()}
+            onClick={() => reload()}
             className="mt-4 px-5 py-2.5 min-h-[44px] bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 rounded-lg text-sm font-medium border border-rose-500/25 transition-colors"
           >
             Try Again

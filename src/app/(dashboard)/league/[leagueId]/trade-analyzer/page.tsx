@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import useSWR from "swr";
 import { PositionBadge } from "@/components/ui/PositionBadge";
 import { PlayerAvatar } from "@/components/players/PlayerAvatar";
-import { Skeleton, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { BackLink } from "@/components/ui/BackLink";
 import { AgeBadge } from "@/components/ui/AgeBadge";
 import { Share2, Save, FileText, Check, Copy, X, ArrowLeftRight, Plus, Scale } from "lucide-react";
 import { TradeAssetSheet } from "@/components/trade/TradeAssetSheet";
+import { ScreenSkeleton } from "@/components/league-screens";
 import {
   getKeeperPlanningSeason,
   isCurrentlyAfterTradeDeadline,
@@ -167,23 +168,114 @@ interface TradeAnalysisResult {
   };
 }
 
+interface RostersResponse {
+  planningSeason?: number;
+  rosters: Array<{
+    id: string;
+    teamName: string | null;
+    sleeperId: string;
+    isUserRoster?: boolean;
+    players?: Array<{
+      id: string;
+      sleeperId: string;
+      fullName: string;
+      position: string | null;
+      team: string | null;
+    }>;
+  }>;
+}
+
+const fetcher = (url: string) =>
+  fetch(url).then((res) => {
+    if (!res.ok) throw new Error("Failed to fetch");
+    return res.json();
+  });
+
+// Cached across navigation: coming back to the Trades tab should paint the
+// league you already loaded, not start from a skeleton.
+const CACHED = { revalidateOnFocus: false, keepPreviousData: true } as const;
+
 export default function TradeAnalyzerPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
 
-  const [rosters, setRosters] = useState<Roster[]>([]);
-  const [players, setPlayers] = useState<Map<string, Player[]>>(new Map());
-  const [draftPicks, setDraftPicks] = useState<DraftPickOwnership[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // Seeded from the calendar rule; replaced by the league-derived season once rosters load
-  const [planningSeason, setPlanningSeason] = useState<number>(() => getKeeperPlanningSeason());
+
+  // Rosters carry the league-derived planning season, which the schedule
+  // request needs. Picks never did — they used to wait behind rosters anyway,
+  // one more round trip on the critical path for no reason.
+  const {
+    data: rostersData,
+    error: rostersError,
+    mutate: reloadRosters,
+  } = useSWR<RostersResponse>(
+    `/api/leagues/${leagueId}/rosters?includePlayers=true`,
+    fetcher,
+    CACHED
+  );
+  const { data: picksData, error: picksError } = useSWR<{
+    picks: DraftPickOwnership[];
+  }>(`/api/leagues/${leagueId}/draft-picks`, fetcher, CACHED);
+
+  // Seeded from the calendar rule until the league says otherwise.
+  const planningSeason =
+    typeof rostersData?.planningSeason === "number"
+      ? rostersData.planningSeason
+      : getKeeperPlanningSeason();
+
+  const { data: scheduleData } = useSWR<{ byeWeeks?: Record<string, number> }>(
+    rostersData ? `/api/nflverse/schedule?season=${planningSeason}` : null,
+    fetcher,
+    CACHED
+  );
+
+  const rosters = useMemo<Roster[]>(
+    () =>
+      (rostersData?.rosters ?? []).map((r) => ({
+        id: r.id,
+        teamName: r.teamName,
+        sleeperId: r.sleeperId,
+        isUserRoster: r.isUserRoster ?? false,
+      })),
+    [rostersData]
+  );
+
+  const players = useMemo(() => {
+    const map = new Map<string, Player[]>();
+    for (const roster of rostersData?.rosters ?? []) {
+      map.set(
+        roster.id,
+        (roster.players ?? []).map((p) => ({
+          id: p.id,
+          sleeperId: p.sleeperId,
+          fullName: p.fullName,
+          position: p.position,
+          team: p.team,
+          age: null, // Not needed for selection
+          injuryStatus: null,
+        }))
+      );
+    }
+    return map;
+  }, [rostersData]);
+
+  const draftPicks = useMemo(() => picksData?.picks ?? [], [picksData]);
+  const byeWeeks = scheduleData?.byeWeeks ?? {};
+
+  // The screen needs rosters and picks. A pick request that failed is not a
+  // reason to sit on a skeleton — the old code shrugged those off too — and
+  // neither is a roster request that failed: that one has an error screen
+  // below, which it never reaches if this still reads as loading.
+  const loading =
+    !rostersError && (!rostersData || (!picksData && !picksError));
   // Does a trade executed today reset years kept? Derived from real deadline
   // math, not assumed — pre-deadline in-season trades preserve keeper value.
   const tradeResetsKeeperValue = isCurrentlyAfterTradeDeadline();
 
-  // Trade builder state
-  const [team1, setTeam1] = useState<string>("");
+  // Trade builder state. Side 1 falls back to the viewer's own team — most
+  // trades start "my team vs…" — without an effect writing it into state.
+  const [team1Choice, setTeam1] = useState<string>("");
+  const team1 = team1Choice || rosters.find((r) => r.isUserRoster)?.id || "";
   const [team2, setTeam2] = useState<string>("");
   const [team1Players, setTeam1Players] = useState<string[]>([]);
   const [team2Players, setTeam2Players] = useState<string[]>([]);
@@ -193,9 +285,6 @@ export default function TradeAnalyzerPage() {
   // Analysis state
   const [analysis, setAnalysis] = useState<TradeAnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-
-  // Schedule data for bye weeks
-  const [byeWeeks, setByeWeeks] = useState<Record<string, number>>({});
 
   // Player picker sheet (which side it's adding to)
   const [assetSheetSide, setAssetSheetSide] = useState<"team1" | "team2" | null>(null);
@@ -210,75 +299,6 @@ export default function TradeAnalyzerPage() {
   const [saving, setSaving] = useState(false);
   const [savedProposal, setSavedProposal] = useState<{ id: string; shareUrl: string } | null>(null);
   const [copied, setCopied] = useState(false);
-
-  const fetchLeagueData = useCallback(async () => {
-    try {
-      // Rosters first: the response carries the league-derived planning
-      // season, which the schedule (bye weeks) request depends on.
-      const rostersRes = await fetch(`/api/leagues/${leagueId}/rosters?includePlayers=true`);
-      if (!rostersRes.ok) throw new Error("Failed to fetch rosters");
-      const rostersData = await rostersRes.json();
-      const season: number =
-        typeof rostersData.planningSeason === "number"
-          ? rostersData.planningSeason
-          : getKeeperPlanningSeason();
-      setPlanningSeason(season);
-
-      const [picksRes, scheduleRes] = await Promise.all([
-        fetch(`/api/leagues/${leagueId}/draft-picks`),
-        fetch(`/api/nflverse/schedule?season=${season}`),
-      ]);
-      const picksData = picksRes.ok ? await picksRes.json() : { picks: [] };
-      const scheduleData = scheduleRes.ok ? await scheduleRes.json() : { byeWeeks: {} };
-
-      // Set bye weeks if available
-      if (scheduleData.byeWeeks) {
-        setByeWeeks(scheduleData.byeWeeks);
-      }
-
-      // Build roster list
-      const rosterList = rostersData.rosters.map(
-        (r: { id: string; teamName: string | null; sleeperId: string; isUserRoster?: boolean }) => ({
-          id: r.id,
-          teamName: r.teamName,
-          sleeperId: r.sleeperId,
-          isUserRoster: r.isUserRoster ?? false,
-        })
-      );
-      setRosters(rosterList);
-
-      // Default side 1 to the viewer's own team — most trades start "my team vs…"
-      const mine = rosterList.find((r: Roster) => r.isUserRoster);
-      if (mine) {
-        setTeam1((prev) => prev || mine.id);
-      }
-
-      // Build player map from the rosters response
-      const playerMap = new Map<string, Player[]>();
-      for (const roster of rostersData.rosters) {
-        const players = (roster.players || []).map((p: { id: string; sleeperId: string; fullName: string; position: string | null; team: string | null }) => ({
-          id: p.id,
-          sleeperId: p.sleeperId,
-          fullName: p.fullName,
-          position: p.position,
-          team: p.team,
-          age: null, // Not needed for selection
-          injuryStatus: null,
-        }));
-        playerMap.set(roster.id, players);
-      }
-      setPlayers(playerMap);
-      setDraftPicks(picksData.picks || []);
-    } catch {
-      setError("Failed to load league data");
-    } finally {
-      setLoading(false);
-    }
-  }, [leagueId]);
-
-  useEffect(() => {
-    fetchLeagueData();
-  }, [fetchLeagueData]);
 
   const analyzeTrade = async () => {
     if (!team1 || !team2) return;
@@ -416,42 +436,26 @@ export default function TradeAnalyzerPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Cold only — the same shape loading.tsx drew, so the handover is invisible.
   if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <Skeleton className="h-4 w-24 mb-2" />
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-48" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
-            <div key={i} className="bg-[#141414] border border-[#2a2a2a] rounded-lg p-5">
-              <Skeleton className="h-5 w-24 mb-4" />
-              <Skeleton className="h-10 w-full mb-4" />
-              <Skeleton className="h-4 w-40 mb-3" />
-              <div className="space-y-2">
-                {[1, 2, 3, 4, 5].map((j) => (
-                  <div key={j} className="flex items-center gap-3 p-2 bg-[#1a1a1a] rounded-md">
-                    <SkeletonAvatar size="sm" />
-                    <Skeleton className="h-5 w-12" />
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-12" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <ScreenSkeleton className="max-w-7xl" tiles={2} rows={6} />;
   }
 
-  if (error) {
+  if (rostersError || error) {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="bg-red-500/5 border border-red-500/20 rounded-md p-4">
-          <p className="text-red-400 text-sm">{error}</p>
+          <p className="text-red-400 text-sm">
+            {error || "Failed to load league data"}
+          </p>
+          {rostersError && (
+            <button
+              onClick={() => reloadRosters()}
+              className="mt-3 px-4 py-2 min-h-[44px] rounded-md bg-red-500/15 hover:bg-red-500/25 text-red-400 text-sm font-medium border border-red-500/25 transition-colors"
+            >
+              Try Again
+            </button>
+          )}
         </div>
       </div>
     );
