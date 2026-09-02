@@ -2,7 +2,9 @@
 
 import { Star, History } from "lucide-react";
 import { Sheet } from "@/components/ui/Sheet";
-import { PlayerAvatar, TeamLogo } from "@/components/players/PlayerAvatar";
+import { TeamLogo } from "@/components/players/PlayerAvatar";
+import { PlayerCutout } from "@/components/players/PlayerCutout";
+import { teamWash } from "@/lib/design/identity";
 import { PositionBadge, RookieBadge } from "@/components/ui/PositionBadge";
 import { getAgeInfo } from "@/components/ui/AgeBadge";
 import {
@@ -77,12 +79,23 @@ export function PlayerDetailSheet({
 
   return (
     <Sheet isOpen={isOpen} onClose={onClose}>
-      {/* Player header */}
-      <div className="flex items-start gap-3 pb-4 border-b border-white/[0.08]">
-        <PlayerAvatar sleeperId={player.sleeperId} name={player.fullName} size="lg" />
+      {/* Player header — lit by his club, the same way his row is, so the sheet
+          reads as the same player rather than a generic detail panel. */}
+      <div
+        className="-mx-4 -mt-4 mb-4 flex items-start gap-3 px-4 pb-4 pt-4"
+        style={{ background: teamWash(player.team, 0.42) }}
+      >
+        <PlayerCutout
+          sleeperId={player.sleeperId}
+          name={player.fullName}
+          team={player.team}
+          size={64}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-lg font-bold text-white">{player.fullName}</span>
+            <span className="text-[22px] font-bold leading-tight tracking-[-0.028em] text-white">
+              {player.fullName}
+            </span>
             {isRookie && <RookieBadge size="xs" />}
           </div>
           <div className="flex items-center gap-2 mt-1">
@@ -173,7 +186,11 @@ export function PlayerDetailSheet({
               <span className="text-[11px] uppercase tracking-wide text-slate-500">
                 Keeper price
               </span>
-              <span className="text-base font-bold text-white tabular-nums">R{price}</span>
+              {/* The price is the whole product — it should not be the same
+                  size as the label describing it. */}
+              <span className="font-numeral text-[30px] leading-none text-white">
+                R{price}
+              </span>
             </div>
 
             {priceExplanation && (
