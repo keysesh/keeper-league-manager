@@ -20,6 +20,7 @@ import {
 import {
   handlePopulateKeepers,
   handleRecalculateKeeperYears,
+  handleImportKeeperLocks,
 } from "./handlers/keepers";
 
 // Draft sync handlers
@@ -301,6 +302,7 @@ const actionHandlers: Record<SyncAction, SyncHandler> = {
   "sync-history": handleSyncHistory,
   "sync-drafts": handleSyncDrafts,
   "update-keepers": handleUpdateKeepers,
+  "import-keeper-locks": handleImportKeeperLocks,
   "refresh-planning": handleRefreshPlanning,
   "sync-players": handleSyncPlayers,
   membership: handleEnsureMembership,

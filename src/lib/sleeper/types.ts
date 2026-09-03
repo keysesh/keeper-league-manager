@@ -49,6 +49,12 @@ export interface SleeperRoster {
   starters: string[] | null;
   reserve: string[] | null;
   taxi: string[] | null;
+  /**
+   * Players locked as keepers for the coming draft. Sleeper sends these as
+   * player ids, sometimes numeric, and omits the field entirely on a league
+   * that has never set one.
+   */
+  keepers?: (string | number)[] | null;
   settings: {
     wins: number;
     losses: number;

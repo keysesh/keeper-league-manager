@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { populateKeepersFromDraftPicks, recalculateKeeperYears } from "@/lib/sleeper/sync";
 import { getLeagueChain } from "@/lib/services/league-chain";
+import { importKeeperLocks } from "@/lib/keeper/import-locks-apply";
 import { SyncContext, createSyncResponse, createSyncError } from "../types";
 
 /**
@@ -16,6 +17,55 @@ async function verifyLeagueAccess(leagueId: string, userId: string) {
     },
   });
   return !!roster;
+}
+
+/**
+ * Pull Sleeper's keeper slots into the plan.
+ *
+ * Managers who lock keepers in Sleeper and never open the app leave the plan
+ * short, and the draft board then shows their picks as open. This closes that
+ * gap in the one safe direction: it only adds, and it refuses anything the
+ * league's own keeper limits would not allow.
+ *
+ * Commissioner-only, because it writes other managers' plans. Pass
+ * `dryRun: true` to see what it would do.
+ */
+export async function handleImportKeeperLocks(
+  context: SyncContext,
+  body: Record<string, unknown>
+) {
+  const { leagueId, dryRun } = body;
+
+  if (!leagueId || typeof leagueId !== "string") {
+    return createSyncError("leagueId is required for import-keeper-locks", 400);
+  }
+
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { commissionerId: true },
+  });
+  if (!league) {
+    return createSyncError("League not found", 404);
+  }
+  if (league.commissionerId !== context.userId) {
+    return createSyncError(
+      "Only the commissioner can import keeper slots for the league",
+      403
+    );
+  }
+
+  const result = await importKeeperLocks(leagueId, { apply: dryRun !== true });
+
+  const blocked = result.blocked.length
+    ? `, ${result.blocked.length} refused by the league's keeper limits`
+    : "";
+  return createSyncResponse({
+    success: true,
+    message: dryRun === true
+      ? `Would add ${result.created.length} keeper(s)${blocked}`
+      : `Added ${result.created.length} keeper(s)${blocked}`,
+    data: result,
+  });
 }
 
 /**
