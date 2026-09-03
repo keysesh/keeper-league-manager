@@ -100,6 +100,16 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // The worker script itself must never be served from a stale cache:
+        // it is the one file whose whole job is deciding what is stale, and a
+        // browser holding an old copy keeps an old policy alive.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
         // Security headers
         source: "/:path*",
         headers: [

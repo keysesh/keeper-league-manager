@@ -6,6 +6,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 import { PostHogProvider } from "@/providers/PostHogProvider";
 import { ToastProvider } from "@/components/ui/Toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ServiceWorkerRegistrar } from "@/components/layout/ServiceWorkerRegistrar";
 
 const geist = Geist({
   variable: "--font-geist",
@@ -83,6 +84,7 @@ export default function RootLayout({
           </QueryProvider>
         </AuthProvider>
         <SpeedInsights />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
