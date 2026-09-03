@@ -38,8 +38,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           select: {
             id: true,
             sleeperId: true,
+            ownerId: true,
             teamName: true,
           },
+        },
+        drafts: {
+          where: { season },
+          select: { draftOrder: true },
+          take: 1,
         },
       },
     });
@@ -98,9 +104,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       keepersByRoster.get(keeper.rosterId)!.push(keeper);
     }
 
+    // Where each team sits in the running order, so the board can be read the
+    // way the draft is actually run. Sleeper's draft order is stored as slot
+    // to owner id; a draft it has not published one for leaves every slot null
+    // and the screens fall back to roster order.
+    const draftOrder = league.drafts[0]?.draftOrder as Record<string, string> | null | undefined;
+    const slotOfOwner = new Map<string, number>();
+    for (const [slot, ownerId] of Object.entries(draftOrder ?? {})) {
+      const n = Number(slot);
+      if (Number.isFinite(n) && typeof ownerId === "string") slotOfOwner.set(ownerId, n);
+    }
+
     const detailedCascade: Array<{
       rosterId: string;
       rosterName: string | null;
+      draftSlot: number | null;
       results: Array<{
         playerId: string;
         playerName: string;
@@ -141,6 +159,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       detailedCascade.push({
         rosterId: roster.id,
         rosterName: roster.teamName,
+        draftSlot:
+          slotOfOwner.get(roster.ownerId ?? "") ??
+          slotOfOwner.get(roster.sleeperId) ??
+          null,
         results: rosterKeepers.map(r => {
           const keeper = keepers.find(k => k.playerId === r.playerId);
           return {

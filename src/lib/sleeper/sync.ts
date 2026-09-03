@@ -362,6 +362,47 @@ export async function syncLeague(
 // ============================================
 
 /**
+ * The draft's running order, as slot number to the OWNER's Sleeper id — the
+ * id Roster.sleeperId holds, so a screen can order teams without a second
+ * call to Sleeper.
+ *
+ * Sleeper answers this two ways and only fills one at a time. Once a draft is
+ * live, slot_to_roster_id maps the slot to a roster_id (1..n, which is not
+ * what we store). Before it starts, that field is null and draft_order maps
+ * the owner to their slot — which is precisely when the order is worth
+ * knowing, because prep is the only thing anyone can do with it. Reading only
+ * the first left the column null through the whole pre-draft window.
+ */
+function resolveDraftOrder(
+  draftData: {
+    slot_to_roster_id?: Record<string, number> | null;
+    draft_order?: Record<string, number> | null;
+  },
+  sleeperRosters: Array<{ roster_id: number; owner_id: string }>
+): Record<string, string> | null {
+  const ownerOfRoster = new Map(sleeperRosters.map((r) => [r.roster_id, r.owner_id]));
+
+  if (draftData.slot_to_roster_id) {
+    const bySlot: Record<string, string> = {};
+    for (const [slot, rosterId] of Object.entries(draftData.slot_to_roster_id)) {
+      const owner = ownerOfRoster.get(rosterId);
+      if (owner) bySlot[slot] = owner;
+    }
+    if (Object.keys(bySlot).length > 0) return bySlot;
+  }
+
+  if (draftData.draft_order) {
+    const bySlot: Record<string, string> = {};
+    for (const [ownerId, slot] of Object.entries(draftData.draft_order)) {
+      bySlot[String(slot)] = ownerId;
+    }
+    if (Object.keys(bySlot).length > 0) return bySlot;
+  }
+
+  return null;
+}
+
+/**
  * Sync a single draft and its picks
  */
 async function syncDraft(
@@ -374,10 +415,12 @@ async function syncDraft(
     start_time?: number | null;
     settings?: Record<string, unknown> | null;
     slot_to_roster_id?: Record<string, number> | null;
+    draft_order?: Record<string, number> | null;
   },
   sleeperRosters: Array<{ roster_id: number; owner_id: string }>
 ): Promise<number> {
   const picks = await sleeper.getDraftPicks(draftData.draft_id);
+  const draftOrder = resolveDraftOrder(draftData, sleeperRosters);
 
   // Upsert draft
   const draft = await prisma.draft.upsert({
@@ -385,8 +428,8 @@ async function syncDraft(
     update: {
       status: mapSleeperDraftStatus(draftData.status),
       startTime: draftData.start_time ? new Date(draftData.start_time) : null,
-      draftOrder: draftData.slot_to_roster_id
-        ? (draftData.slot_to_roster_id as Prisma.InputJsonValue)
+      draftOrder: draftOrder
+        ? (draftOrder as Prisma.InputJsonValue)
         : Prisma.JsonNull,
       settings: draftData.settings
         ? (draftData.settings as Prisma.InputJsonValue)
@@ -400,8 +443,8 @@ async function syncDraft(
       status: mapSleeperDraftStatus(draftData.status),
       startTime: draftData.start_time ? new Date(draftData.start_time) : null,
       rounds: typeof draftData.settings?.rounds === 'number' ? draftData.settings.rounds : DEFAULT_DRAFT_ROUNDS,
-      draftOrder: draftData.slot_to_roster_id
-        ? (draftData.slot_to_roster_id as Prisma.InputJsonValue)
+      draftOrder: draftOrder
+        ? (draftOrder as Prisma.InputJsonValue)
         : Prisma.JsonNull,
       settings: draftData.settings
         ? (draftData.settings as Prisma.InputJsonValue)

@@ -4,6 +4,7 @@ import {
   MANAGER_HUES,
   teamColors,
   teamWash,
+  clubInk,
   withAlpha,
   managerHues,
   managerHue,
@@ -39,6 +40,39 @@ describe("teamWash", () => {
 
   it("stays a valid gradient for an unknown club", () => {
     expect(teamWash("XXX")).toContain("linear-gradient(");
+  });
+
+  it("a club whose primary mark is black is drawn in its second mark", () => {
+    // Las Vegas is #000000. Washed over this app's ground that is no wash at
+    // all — a kept Raider read as an empty pick on the draft board.
+    expect(clubInk("LV")).toBe(NFL_TEAM_COLORS.LV.secondary);
+    expect(teamWash("LV")).toContain(NFL_TEAM_COLORS.LV.secondary);
+  });
+
+  it("the other two clubs who wear black are lifted the same way", () => {
+    expect(clubInk("PIT")).toBe(NFL_TEAM_COLORS.PIT.secondary);
+    expect(clubInk("NO")).toBe(NFL_TEAM_COLORS.NO.secondary);
+  });
+
+  it("a dark club that is a COLOUR keeps it — navy is not black", () => {
+    // Chicago's navy is no lighter than Pittsburgh's black; drawing the Bears
+    // in orange would be wrong in a way a dull cell is not.
+    for (const club of ["CHI", "CLE", "HOU", "DAL", "NE", "SEA", "NYG"] as const) {
+      expect(clubInk(club)).toBe(NFL_TEAM_COLORS[club].primary);
+    }
+  });
+
+  it("exactly the three black-primary clubs are lifted", () => {
+    const lifted = Object.keys(NFL_TEAM_COLORS).filter(
+      (c) => clubInk(c) !== NFL_TEAM_COLORS[c].primary
+    );
+    expect(lifted.sort()).toEqual(["LV", "NO", "PIT"]);
+  });
+
+  it("every club ends up with something visible on the app ground", () => {
+    for (const club of Object.keys(NFL_TEAM_COLORS)) {
+      expect(clubInk(club)).not.toBe("#000000");
+    }
   });
 });
 

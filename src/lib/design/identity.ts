@@ -62,6 +62,45 @@ export function teamColors(team: string | null | undefined): TeamColors {
   return NFL_TEAM_COLORS[team.toUpperCase()] ?? NO_TEAM;
 }
 
+/** Relative luminance of an #RRGGBB colour, 0 (black) to 1 (white). */
+function luminance(hex: string): number {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return 0.5;
+  const channel = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const r = channel(parseInt(hex.slice(1, 3), 16));
+  const g = channel(parseInt(hex.slice(3, 5), 16));
+  const b = channel(parseInt(hex.slice(5, 7), 16));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** How far a colour is from grey: 0 for any shade of grey, 255 for a pure hue. */
+function chroma(hex: string): number {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return 255;
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return Math.max(...c) - Math.min(...c);
+}
+
+/**
+ * The colour a club is drawn in on a dark surface.
+ *
+ * Three clubs wear black as their primary mark — Las Vegas #000000, Pittsburgh
+ * and New Orleans #101820 — and black washed over this app's ground lights
+ * nothing: the Raiders' wash comes out darker than the surface under it. Those
+ * are also the clubs whose identity everyone actually names second (silver,
+ * gold, gold), so that is what they get drawn in.
+ *
+ * The test is black specifically, not darkness: Chicago's navy is no lighter
+ * than Pittsburgh's black, but it is a colour, and a navy club drawn in orange
+ * would be wrong in a way a dull cell is not.
+ */
+export function clubInk(team: string | null | undefined): string {
+  const { primary, secondary } = teamColors(team);
+  const isBlack = luminance(primary) < 0.012 && chroma(primary) <= 20;
+  return isBlack && luminance(secondary) > luminance(primary) ? secondary : primary;
+}
+
 /**
  * The wash a player's card sits on: his club's colour bled across the card
  * and dropped into the app's ground, so the row is lit by his team rather
@@ -69,8 +108,7 @@ export function teamColors(team: string | null | undefined): TeamColors {
  * behind text, and a saturated fill would fight both.
  */
 export function teamWash(team: string | null | undefined, opacity = 0.55): string {
-  const { primary } = teamColors(team);
-  return `linear-gradient(100deg, ${withAlpha(primary, opacity)}, rgba(12, 14, 20, 0.45))`;
+  return `linear-gradient(100deg, ${withAlpha(clubInk(team), opacity)}, rgba(12, 14, 20, 0.45))`;
 }
 
 /** #RRGGBB plus an alpha, as #RRGGBBAA. Any other input is returned unchanged. */

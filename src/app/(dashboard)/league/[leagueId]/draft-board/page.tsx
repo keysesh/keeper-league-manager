@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { KeeperHistoryModal } from "@/components/players/KeeperHistoryModal";
 import { TeamRoundsView } from "@/components/draft/TeamRoundsView";
+import { LeagueGridView } from "@/components/draft/LeagueGridView";
 import {
   DraftPickValueChart,
   type PickStatus,
@@ -49,6 +50,8 @@ interface DraftSlot {
 interface CascadeResult {
   rosterId: string;
   rosterName: string | null;
+  /** Position in the running order, when Sleeper has published one. */
+  draftSlot?: number | null;
   results: KeeperResult[];
   tradedAwayPicks: number[];
   acquiredPicks: Array<{ round: number; fromRosterId: string }>;
@@ -99,6 +102,9 @@ export default function DraftBoardPage() {
   const leagueId = params.leagueId as string;
 
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  // The board as the draft runs (every team, every round) or as one team's
+  // rounds. The grid is the default: it is the question the night before.
+  const [boardView, setBoardView] = useState<"grid" | "team">("grid");
 
   // The same SWR key the keeper workspace reads, so the board is already in
   // cache by the time you switch tabs to it — and an add/remove there, which
@@ -341,14 +347,44 @@ export default function DraftBoardPage() {
 
       {/* Full league board */}
       <div>
-        <SectionLabel label="League board" right="BY TEAM" />
-        <TeamRoundsView
-          cascade={data.cascade}
-          draftBoard={data.draftBoard}
-          draftRounds={data.draftRounds}
-          userRosterId={userRosterId}
-          onPlayerClick={setSelectedPlayerId}
+        <SectionLabel
+          label="League board"
+          right={
+            <span className="inline-flex overflow-hidden rounded-md border border-white/[0.08]">
+              {(["grid", "team"] as const).map((view) => (
+                <button
+                  key={view}
+                  onClick={() => setBoardView(view)}
+                  aria-pressed={boardView === view}
+                  className={cn(
+                    "px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] transition-colors duration-150",
+                    boardView === view
+                      ? "bg-blue-500/15 text-blue-400"
+                      : "text-slate-500 hover:text-slate-300"
+                  )}
+                >
+                  {view === "grid" ? "Grid" : "By team"}
+                </button>
+              ))}
+            </span>
+          }
         />
+        {boardView === "grid" ? (
+          <LeagueGridView
+            cascade={data.cascade}
+            draftRounds={data.draftRounds}
+            userRosterId={userRosterId}
+            onPlayerClick={setSelectedPlayerId}
+          />
+        ) : (
+          <TeamRoundsView
+            cascade={data.cascade}
+            draftBoard={data.draftBoard}
+            draftRounds={data.draftRounds}
+            userRosterId={userRosterId}
+            onPlayerClick={setSelectedPlayerId}
+          />
+        )}
       </div>
 
       <KeeperHistoryModal
