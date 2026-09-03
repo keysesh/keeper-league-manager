@@ -104,7 +104,7 @@ export function TeamRoundsView({
   return (
     <div className="space-y-3">
       {/* Team switcher */}
-      <div className="overflow-x-auto scrollbar-thin -mx-4 px-4">
+      <div className="scroll-x scrollbar-thin -mx-4 px-4">
         <div className="flex gap-1.5 pb-1 min-w-max">
           {cascade.map((t) => {
             const isSelected = t.rosterId === selectedRosterId;

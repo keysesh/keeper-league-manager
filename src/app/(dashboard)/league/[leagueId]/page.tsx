@@ -73,7 +73,7 @@ export default function LeaguePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl space-y-4">
+      <div className="max-w-6xl mx-auto space-y-4">
         <Skeleton className="h-12 w-56 rounded-lg" />
         <Skeleton className="h-80 w-full rounded-2xl" />
       </div>
@@ -82,7 +82,7 @@ export default function LeaguePage() {
 
   if (error || !league) {
     return (
-      <div className="max-w-6xl">
+      <div className="max-w-6xl mx-auto">
         <div className="bg-[#0c1219] border border-rose-500/20 rounded-xl p-6">
           <p className="text-rose-400 font-medium">League not found</p>
         </div>
@@ -94,7 +94,7 @@ export default function LeaguePage() {
   const pressure = economics?.pressure;
 
   return (
-    <div className="max-w-6xl space-y-4">
+    <div className="max-w-6xl mx-auto space-y-4">
       <ScreenHeader
         title="League"
         subtitle={`${league.name} · ${league.totalRosters} teams`}

@@ -197,7 +197,7 @@ export default function DraftBoardPage() {
 
   if (error || !data) {
     return (
-      <div className="max-w-2xl">
+      <div className="screen-col">
         <div className="bg-[#0c1219] border border-rose-500/20 rounded-xl p-8 text-center">
           <p className="text-rose-400 font-medium">
             {error ? "Failed to load draft board" : "Failed to load data"}
@@ -214,7 +214,7 @@ export default function DraftBoardPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="screen-col space-y-4">
       <ScreenHeader
         title="Draft Board"
         subtitle={`${data.season} season · ${data.draftRounds} rounds`}

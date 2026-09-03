@@ -187,6 +187,14 @@
    BASE STYLES
    ============================================ */
 
+html {
+  /* iOS inflates text when a phone is turned to landscape unless this is
+     pinned — a keeper row that reads correctly in portrait otherwise comes
+     back a size larger and breaks every fixed cell on the draft board. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: var(--bg-app);
   color: var(--text-primary);
@@ -198,6 +206,13 @@ body {
      per-component (MobileNav) so the nav bar itself paints edge-to-edge. */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  /* Where the app ends. An installed app does not rubber-band away from its
+     own background, and a pull downward at the top of the keeper list is a
+     scroll that has run out, not a request to reload the page. */
+  overscroll-behavior-y: none;
+  /* No grey flash on tap: every row here is a real control with its own
+     pressed state, and the flash reads as a rendering fault. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ============================================
@@ -306,6 +321,65 @@ body {
 
 .scrollbar-thin {
   scrollbar-width: thin;
+}
+
+/* A sideways scroller inside a vertical page — the draft board, the team
+   switcher. Two things have to be true: reaching its end must not hand the
+   swipe to the browser's back gesture (which would walk you out of the app
+   mid-board), and it must not pass the scroll up to the page and jerk it
+   sideways. */
+.scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Room for the fixed bottom nav, reserved once, on the scrolling content.
+   It used to be reserved twice — 5rem of padding on the page AND a 4rem
+   spacer inside the nav — which left about eighty pixels of nothing at the
+   bottom of every phone screen. */
+.pb-nav {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem);
+}
+@media (min-width: 1024px) {
+  .pb-nav {
+    padding-bottom: 2rem;
+  }
+}
+
+/* The install nudge docks above the bottom nav on a phone — over the content,
+   never over the tabs — and drops into the corner once the sidebar takes over
+   navigation. */
+.install-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
+  z-index: 40;
+  padding-inline: 0.75rem;
+}
+@media (min-width: 1024px) {
+  .install-dock {
+    left: auto;
+    right: 1rem;
+    bottom: 1rem;
+    width: 22rem;
+    padding-inline: 0;
+  }
+}
+
+/* The one column of content, centred. Left-aligned at a fixed width, every
+   screen wider than a phone put the whole app in its left third and left the
+   rest empty — which reads as a broken page rather than a roomy one. */
+.screen-col {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: auto;
+}
+@media (min-width: 1024px) {
+  .screen-col {
+    max-width: 48rem;
+  }
 }
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;

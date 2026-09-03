@@ -62,7 +62,7 @@ export default async function KeepersPage({
   if (!roster) {
     // Viewer has no team in this league — point them at the league overview
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="screen-col">
         <div className="bg-[#0c1219] border border-white/[0.08] rounded-xl p-8 text-center">
           <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-4">
             <Crown className="w-7 h-7 text-blue-400" />
@@ -84,7 +84,7 @@ export default async function KeepersPage({
 
   return (
     // The workspace carries its own screen header; single column reads best
-    <div className="max-w-2xl">
+    <div className="screen-col">
       <KeeperWorkspace
         leagueId={leagueId}
         rosterId={roster.id}

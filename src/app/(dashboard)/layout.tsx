@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { InstallPrompt } from "@/components/layout/InstallPrompt";
 import { logger } from "@/lib/logger";
 import { resolveDashboardGate } from "@/lib/auth/dashboard-gate";
 
@@ -70,18 +71,19 @@ export default async function DashboardLayout({
   const isAdmin = gate.isAdmin;
 
   return (
-    <div className="min-h-screen bg-[#06090f]">
+    <div className="min-h-[100dvh] bg-[#06090f]">
       <Header user={session.user} />
-      <div className="flex min-h-[calc(100vh-3.5rem)]">
+      <div className="flex min-h-[calc(100dvh-3.5rem)]">
         <Sidebar isAdmin={isAdmin} />
         <main className="flex-1 w-full min-w-0 overflow-x-hidden">
-          <div className="p-4 sm:p-6 lg:p-8 max-w-[100vw] lg:max-w-none pb-20 lg:pb-8">
+          <div className="p-4 sm:p-6 lg:p-8 max-w-full lg:max-w-none pb-nav">
             <Breadcrumbs />
             {children}
           </div>
         </main>
       </div>
       <MobileNav />
+      <InstallPrompt />
     </div>
   );
 }

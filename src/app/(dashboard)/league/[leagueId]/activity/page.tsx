@@ -181,7 +181,7 @@ export default function ActivityPage() {
 
   if (error || !data) {
     return (
-      <div className="max-w-2xl">
+      <div className="screen-col">
         <div className="bg-[#0c1219] border border-rose-500/20 rounded-xl p-6">
           <p className="text-rose-400 font-medium">
             {error ? "Failed to load activity" : "Failed to load"}
@@ -211,7 +211,7 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="screen-col space-y-4">
       <ScreenHeader
         title="Activity"
         subtitle="Recent keeper and league activity"

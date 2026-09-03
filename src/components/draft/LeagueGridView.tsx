@@ -84,7 +84,7 @@ export function LeagueGridView({
   );
 
   return (
-    <div className="-mx-4 overflow-x-auto scrollbar-thin px-4">
+    <div className="-mx-4 scroll-x scrollbar-thin px-4">
       <div className="min-w-max rounded-xl border border-white/[0.08] border-t-white/[0.12] bg-[#0a0e15] overflow-hidden">
         {/* Round numbers */}
         <div className="flex">

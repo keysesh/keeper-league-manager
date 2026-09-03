@@ -52,7 +52,7 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
 
   return (
     <aside
-      className="hidden lg:flex lg:flex-col lg:w-60 xl:w-64 border-r border-white/[0.08] bg-[#06090f] min-h-[calc(100vh-3.5rem)]"
+      className="hidden lg:flex lg:flex-col lg:w-60 xl:w-64 border-r border-white/[0.08] bg-[#06090f] min-h-[calc(100dvh-3.5rem)]"
       aria-label="Main navigation"
     >
       {/* Back to Leagues when in league view */}
